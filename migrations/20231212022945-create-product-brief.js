@@ -11,6 +11,7 @@ module.exports = {
       },
       productBrief: {
         type: Sequelize.STRING,
+        allowNull: false,
       },
       kode: {
         type: Sequelize.STRING,
@@ -29,6 +30,13 @@ module.exports = {
       },
       bahanAktifDanDosis: {
         type: Sequelize.JSONB,
+      },
+      rdSelection: {
+        type: Sequelize.STRING,
+      },
+      status: {
+        type: Sequelize.STRING,
+        defaultValue: "Draft",
       },
       createdAt: {
         allowNull: false,

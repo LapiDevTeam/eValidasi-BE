@@ -23,6 +23,8 @@ module.exports = (sequelize, DataTypes) => {
       bentukSediaan: DataTypes.STRING,
       ruangLingkup: DataTypes.STRING,
       bahanAktifDanDosis: DataTypes.JSONB,
+      rdSelection: DataTypes.STRING,
+      status: DataTypes.STRING,
     },
     {
       sequelize,

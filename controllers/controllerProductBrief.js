@@ -1,6 +1,9 @@
 const { ProductBrief } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
+const { Op } = require("sequelize");
+const getPagination = require("../helpers/getPagination");
+const { transporter } = require("../config/configNodeMailer");
 
 class ControllerProductBrief {
   static async createProductBrief(req, res, next) {
@@ -13,6 +16,8 @@ class ControllerProductBrief {
         bentukSediaan,
         ruangLingkup,
         bahanAktifDanDosis,
+        rdSelection,
+        status,
       } = req.body;
 
       if (!productBrief) {
@@ -42,11 +47,58 @@ class ControllerProductBrief {
         bentukSediaan: bentukSediaan,
         ruangLingkup: ruangLingkup,
         bahanAktifDanDosis: bahanAktifDanDosis,
+        rdSelection: rdSelection,
+        status: status,
       });
 
       res.status(201).json({
         message: "Success Create CUY",
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+  static async editProductBrief(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        productBrief,
+        kode,
+        nama,
+        kemasan,
+        bentukSediaan,
+        ruangLingkup,
+        bahanAktifDanDosis,
+        rdSelection,
+        status,
+      } = req.body;
+
+      const [updatedRowsCount] = await ProductBrief.update(
+        {
+          productBrief: productBrief,
+          kode: kode,
+          nama: nama,
+          kemasan: kemasan,
+          bentukSediaan: bentukSediaan,
+          ruangLingkup: ruangLingkup,
+          bahanAktifDanDosis: bahanAktifDanDosis,
+          rdSelection: rdSelection,
+          status: status,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Product brief updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "Product brief not found",
+        });
+      }
     } catch (err) {
       next(err);
     }
@@ -85,7 +137,6 @@ class ControllerProductBrief {
       console.log(err);
     }
   }
-
   static async findAllRuangLingkup(req, res) {
     try {
       const config = {
@@ -113,6 +164,120 @@ class ControllerProductBrief {
       });
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async findAllProductBrief(req, res) {
+    try {
+      const {
+        page,
+        productBrief,
+        kode,
+        nama,
+        kemasan,
+        bentukSediaan,
+        ruangLingkup,
+        bahanAktifDanDosis,
+        rdSelection,
+        status,
+      } = req.body;
+      const size = page ? 15 : "";
+
+      const { limit, offset } = getPagination(page, size);
+
+      const searchParams = {};
+      if (productBrief)
+        searchParams.productBrief = { [Op.iLike]: `%${productBrief}%` };
+      if (kode) searchParams.kode = { [Op.iLike]: `%${kode}%` };
+      if (nama) searchParams.nama = { [Op.iLike]: `%${nama}%` };
+      if (kemasan) searchParams.kemasan = { [Op.iLike]: `%${kemasan}%` };
+      if (bentukSediaan) searchParams.bentukSediaan = +bentukSediaan;
+      if (ruangLingkup)
+        searchParams.ruangLingkup = { [Op.iLike]: `%${ruangLingkup}%` };
+      if (bahanAktifDanDosis)
+        searchParams.bahanAktifDanDosis = {
+          [Op.iLike]: `%${bahanAktifDanDosis}%`,
+        };
+      if (rdSelection)
+        searchParams.rdSelection = {
+          [Op.iLike]: `%${rdSelection}%`,
+        };
+      if (status)
+        searchParams.status = {
+          [Op.iLike]: `%${status}%`,
+        };
+
+      const brief = await ProductBrief.findAndCountAll({
+        where: searchParams,
+        ...(size && { limit }),
+        ...(size && { offset }),
+        order: [["id", "DESC"]],
+      });
+
+      res.status(200).json({
+        limitData: size ? limit : "",
+        Offset: size ? offset : "",
+        totalPage: size ? Math.ceil(brief.count / limit) : "",
+        brief,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async getProductBriefDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const briefDetail = await ProductBrief.findByPk(id);
+      if (!briefDetail) throw new MyError(400, "notFound!");
+
+      res.status(200).json(briefDetail);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async getNoProductBrief(req, res) {
+    try {
+      const noProductBrief = await ProductBrief.findAll({
+        attributes: ["productBrief"], // Replace 'columnName' with the actual name of the column you want
+      });
+      if (!noProductBrief) throw new MyError(400, "notFound!");
+
+      res.status(200).json(noProductBrief);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async deleteProductBrief(req, res) {
+    try {
+      const { id } = req.params;
+
+      await ProductBrief.destroy({
+        where: { id: id }, // Corrected the where clause
+      });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async nodeMailer(req, res, next) {
+    try {
+      const info = await transporter.sendMail({
+        from: '"no_reply_it " <no_reply_it@lapilabs.co.id>', // sender address
+        to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
+        subject: "Hello  test✔", // Subject line
+        text: "Hellow world?", // plain text body
+        html: "<b>Hellowwww world? Hai hai</b>", // html body
+      });
+
+      console.log("Message sent: %s", info.messageId);
+
+      res.status(200).json({
+        message: "Success Mail",
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
 }
