@@ -2,47 +2,35 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("StudiPraformulasi", {
+    await queryInterface.createTable("Stabilita", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      nomor: {
-        type: Sequelize.STRING,
-      },
-      tanggalPenyusunan: {
-        type: Sequelize.DATE,
-      },
-      tanggalAddendum: {
-        type: Sequelize.DATE,
-      },
-      addendumKe: {
-        type: Sequelize.INTEGER,
-      },
       namaProduk: {
         type: Sequelize.STRING,
       },
-      komposisi: {
-        type: Sequelize.JSONB,
-      },
-      kemasan: {
+      kondisiPenyimpanan: {
         type: Sequelize.STRING,
       },
-      alasan: {
+      kondisiKhusus: {
         type: Sequelize.STRING,
       },
-      tujuan: {
+      hasilStudiStabilita: {
         type: Sequelize.STRING,
       },
-      productBriefNo: {
+      masaKadaluarsa: {
         type: Sequelize.STRING,
       },
-      ProductBriefId: {
+      sumberPustaka: {
+        type: Sequelize.STRING,
+      },
+      StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "ProductBrief",
+          model: "StudiPraformulasi",
           key: "id",
         },
         onDelete: "CASCADE",
@@ -59,6 +47,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("StudiPraformulasi");
+    await queryInterface.dropTable("Stabilita");
   },
 };

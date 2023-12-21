@@ -6,5 +6,6 @@ router.post(
   "/studi-praformulasi",
   ControllerStudiPraformulasi.createStudiPraformulasi
 );
+router.get("/get-product-brief", ControllerStudiPraformulasi.getProductBrief);
 
 module.exports = router;

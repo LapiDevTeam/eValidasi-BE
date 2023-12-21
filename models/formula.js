@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class StudiOriginator extends Model {
+  class Formula extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,22 +9,25 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      Formula.belongsTo(models.StudiPraformulasi, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
-  StudiOriginator.init(
+  Formula.init(
     {
-      deskripsiProduct: DataTypes.JSONB,
-      farmalogiKlinis: DataTypes.JSONB,
-      formula: DataTypes.JSONB,
-      kemasan: DataTypes.JSONB,
-      stabilita: DataTypes.JSONB,
-      karakteristik: DataTypes.JSONB,
+      bahanTambahan: DataTypes.STRING,
+      kandungan: DataTypes.STRING,
+      fungsi: DataTypes.STRING,
+      sumberPustaka: DataTypes.STRING,
+      prosesPembuatan: DataTypes.STRING,
+      StudiPraformulasiID: DataTypes.INTEGER,
     },
     {
       sequelize,
-      modelName: "StudiOriginator",
+      modelName: "Formula",
       freezeTableName: true,
     }
   );
-  return StudiOriginator;
+  return Formula;
 };

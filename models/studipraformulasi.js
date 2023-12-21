@@ -12,23 +12,32 @@ module.exports = (sequelize, DataTypes) => {
       StudiPraformulasi.belongsTo(models.ProductBrief, {
         foreignKey: "ProductBriefId",
       });
+      StudiPraformulasi.hasMany(models.DeskripsiProduct, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      StudiPraformulasi.hasMany(models.FarmalogiKlinis, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      StudiPraformulasi.hasMany(models.Formula, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      StudiPraformulasi.hasMany(models.Stabilita, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
   StudiPraformulasi.init(
     {
+      nomor: DataTypes.STRING,
+      tanggalPenyusunan: DataTypes.DATE,
       tanggalAddendum: DataTypes.DATE,
       addendumKe: DataTypes.INTEGER,
       namaProduk: DataTypes.STRING,
-      komposisi: DataTypes.STRING,
+      komposisi: DataTypes.JSONB,
       kemasan: DataTypes.STRING,
       alasan: DataTypes.STRING,
       tujuan: DataTypes.STRING,
       productBriefNo: DataTypes.STRING,
-      studiOriginatorId: DataTypes.INTEGER,
-      studiLiterature: DataTypes.JSONB,
-      studiPaten: DataTypes.JSONB,
-      ujiKompatibilitas: DataTypes.JSONB,
-      kesimpulan: DataTypes.STRING,
       ProductBriefId: DataTypes.INTEGER,
     },
     {
