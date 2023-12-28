@@ -24,6 +24,9 @@ module.exports = (sequelize, DataTypes) => {
       StudiPraformulasi.hasMany(models.Stabilita, {
         foreignKey: "StudiPraformulasiID",
       });
+      StudiPraformulasi.hasMany(models.StudiPaten, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
   StudiPraformulasi.init(
