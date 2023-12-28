@@ -16,12 +16,11 @@ module.exports = (sequelize, DataTypes) => {
   }
   DeskripsiProduct.init(
     {
-      judul: DataTypes.STRING,
       namaStudi: DataTypes.STRING,
       namaProduk: DataTypes.STRING,
       manufacturer: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
-      dosageDesign: DataTypes.STRING,
+      dosage: DataTypes.STRING,
       labelClaim: DataTypes.STRING,
       rutePemberian: DataTypes.STRING,
       aturanPakai: DataTypes.STRING,

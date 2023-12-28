@@ -9,9 +9,6 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      judul: {
-        type: Sequelize.STRING,
-      },
       namaStudi: {
         type: Sequelize.STRING,
       },
@@ -24,7 +21,7 @@ module.exports = {
       bentukSediaan: {
         type: Sequelize.STRING,
       },
-      dosageDesign: {
+      dosage: {
         type: Sequelize.STRING,
       },
       labelClaim: {
