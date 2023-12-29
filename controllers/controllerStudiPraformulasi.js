@@ -4,6 +4,7 @@ const {
   DeskripsiProduct,
   FarmalogiKlinis,
   Stabilita,
+  Formula,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -204,6 +205,35 @@ class ControllerStudiPraformulasi {
       res.status(201).json({
         message: "Success Create Farmakologi Klinis",
         data: createFarmalogiKlinis,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createFormula(req, res, next) {
+    try {
+      const {
+        bahanTambahan,
+        kandungan,
+        fungsi,
+        prosesPembuatan,
+        sumberPustaka,
+        StudiPraformulasiID,
+      } = req.body;
+
+      const createFormula = await Formula.create({
+        bahanTambahan,
+        kandungan,
+        fungsi,
+        prosesPembuatan,
+        sumberPustaka,
+        StudiPraformulasiID,
+      });
+
+      res.status(201).json({
+        message: "Success Create Formula",
+        data: createFormula,
       });
     } catch (err) {
       console.error(err);

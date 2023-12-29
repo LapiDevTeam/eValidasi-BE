@@ -15,6 +15,7 @@ router.post(
   ControllerStudiPraformulasi.createFarmalogiKlinis
 );
 router.post("/create-stabilita", ControllerStudiPraformulasi.createStabilita);
+router.post("/create-formula", ControllerStudiPraformulasi.createFormula);
 router.get("/get-product-brief", ControllerStudiPraformulasi.getProductBrief);
 router.put(
   "/update-tujuan/:StudiPraformulasiID",
