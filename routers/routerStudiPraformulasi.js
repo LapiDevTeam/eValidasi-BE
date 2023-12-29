@@ -16,6 +16,10 @@ router.post(
 );
 router.post("/create-stabilita", ControllerStudiPraformulasi.createStabilita);
 router.post("/create-formula", ControllerStudiPraformulasi.createFormula);
+router.put(
+  "/create-kesimpulan/:StudiPraformulasiID",
+  ControllerStudiPraformulasi.createKesimpulan
+);
 router.get("/get-product-brief", ControllerStudiPraformulasi.getProductBrief);
 router.put(
   "/update-tujuan/:StudiPraformulasiID",

@@ -313,6 +313,29 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
+  static async createKesimpulan(req, res) {
+    try {
+      const { StudiPraformulasiID } = req.params;
+      const { kesimpulan } = req.body;
+      const findStudiPraformulasiID = await StudiPraformulasi.findByPk(
+        +StudiPraformulasiID
+      );
+
+      if (!findStudiPraformulasiID) throw { name: "NotFound" };
+      const createKesimpulan = await StudiPraformulasi.update(
+        { kesimpulan: kesimpulan },
+        {
+          where: {
+            id: findStudiPraformulasiID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(createKesimpulan);
+    } catch (err) {
+      console.log(err);
+    }
+  }
   static async updateDokumenAcuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;
