@@ -244,6 +244,7 @@ class ControllerStudiPraformulasi {
   static async createKemasan(req, res, next) {
     try {
       const {
+        StudiPraformulasiID,
         namaProduk,
         manufacturer,
         noBatch,
@@ -254,6 +255,7 @@ class ControllerStudiPraformulasi {
       } = req.body;
 
       const createKemasan = await Kemasan.create({
+        StudiPraformulasiID,
         namaProduk,
         manufacturer,
         noBatch,
