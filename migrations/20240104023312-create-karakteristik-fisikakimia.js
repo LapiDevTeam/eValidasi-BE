@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("Kemasan", {
+    await queryInterface.createTable("KarakteristikFisikakimia", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -22,6 +22,9 @@ module.exports = {
         type: Sequelize.STRING,
       },
       tanggalKadarluarsa: {
+        type: Sequelize.STRING,
+      },
+      het: {
         type: Sequelize.STRING,
       },
       bentukSediaan: {
@@ -53,6 +56,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("Kemasan");
+    await queryInterface.dropTable("KarakteristikFisikakimia");
   },
 };

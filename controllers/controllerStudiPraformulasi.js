@@ -6,6 +6,7 @@ const {
   Stabilita,
   Formula,
   Kemasan,
+  KarakteristikFisikakimia,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -250,6 +251,7 @@ class ControllerStudiPraformulasi {
         noBatch,
         tanggalProduksi,
         tanggalKadarluarsa,
+        sumberPustaka,
         bentukSediaan,
         detailSediaan,
       } = req.body;
@@ -261,6 +263,7 @@ class ControllerStudiPraformulasi {
         noBatch,
         tanggalProduksi,
         tanggalKadarluarsa,
+        sumberPustaka,
         bentukSediaan,
         detailSediaan,
       });
@@ -268,6 +271,45 @@ class ControllerStudiPraformulasi {
       res.status(201).json({
         message: "Success Create kemasan",
         data: createKemasan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createFisikaKimia(req, res, next) {
+    try {
+      const {
+        StudiPraformulasiID,
+        namaProduk,
+        manufacturer,
+        noBatch,
+        het,
+        tanggalProduksi,
+        tanggalKadarluarsa,
+        bentukSediaan,
+        sumberPustaka,
+        detailSediaan,
+      } = req.body;
+
+      console.log(req.body);
+
+      const createFisikaKimia = await KarakteristikFisikakimia.create({
+        StudiPraformulasiID: StudiPraformulasiID,
+        namaProduk: namaProduk,
+        manufacturer,
+        noBatch,
+        het,
+        tanggalProduksi,
+        tanggalKadarluarsa,
+        bentukSediaan,
+        sumberPustaka,
+        detailSediaan,
+      });
+
+      res.status(201).json({
+        message: "Success Create fisikakimia",
+        data: createFisikaKimia,
       });
     } catch (err) {
       console.error(err);
@@ -391,6 +433,27 @@ class ControllerStudiPraformulasi {
       res.status(200).json(updateDokumenAcuan);
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async testDownload(req, res, next) {
+    try {
+      // Simpan buffer foto ke database menggunakan Sequelize
+      const dataPhoto = await Kemasan.findOne({
+        where: {
+          id: 3,
+        },
+      });
+      // console.log(dataPhoto.detailSediaan.gambar, "<<");
+      // const byteaToBase64 = (bytea) => {
+      //   return Buffer.from(bytea, "binary").toString("base64");
+      // };
+
+      // const base64ImageData = byteaToBase64(dataPhoto.data);
+
+      res.status(201).json(dataPhoto.detailSediaan.gambar);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 }

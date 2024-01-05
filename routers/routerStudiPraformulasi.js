@@ -17,6 +17,10 @@ router.post(
 router.post("/create-stabilita", ControllerStudiPraformulasi.createStabilita);
 router.post("/create-formula", ControllerStudiPraformulasi.createFormula);
 router.post("/create-kemasan", ControllerStudiPraformulasi.createKemasan);
+router.post(
+  "/create-fisikakimia",
+  ControllerStudiPraformulasi.createFisikaKimia
+);
 router.put(
   "/create-kesimpulan/:StudiPraformulasiID",
   ControllerStudiPraformulasi.createKesimpulan
@@ -39,5 +43,6 @@ router.delete(
   "/delete-studi-praformulasi/:id",
   ControllerStudiPraformulasi.deleteStudiPraformulasi
 );
+router.get("/download", ControllerStudiPraformulasi.testDownload);
 
 module.exports = router;
