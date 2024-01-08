@@ -6,6 +6,10 @@ const {
   Stabilita,
   Formula,
   Kemasan,
+  Sequelize,
+  StudiPaten,
+  KarakteristikBahanAktif,
+  KarakteristikBahanKemasan,
   KarakteristikFisikakimia,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
@@ -107,12 +111,6 @@ class ControllerStudiPraformulasi {
         alasan,
         tujuan,
         productBriefNo,
-        studiOriginatorId,
-        studiLiterature,
-        studiPaten,
-        ujiKompatibilitas,
-        kesimpulan,
-        ProductBriefId,
       } = req.body;
 
       const createdStudiPraformulasi = await StudiPraformulasi.create({
@@ -124,18 +122,56 @@ class ControllerStudiPraformulasi {
         alasan,
         tujuan,
         productBriefNo,
-        studiOriginatorId,
-        studiLiterature,
-        studiPaten,
-        ujiKompatibilitas,
-        kesimpulan,
-        ProductBriefId,
       });
 
       res.status(201).json({
         message: "Success Create CUY",
         data: createdStudiPraformulasi,
       });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editStudiPraformulasi(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        nomor,
+        tanggalPenyusunan,
+        namaProduk,
+        komposisi,
+        kemasan,
+        alasan,
+        tujuan,
+        productBriefNo,
+      } = req.body;
+
+      const [updatedRowsCount] = await StudiPraformulasi.update(
+        {
+          nomor,
+          tanggalPenyusunan,
+          namaProduk,
+          komposisi,
+          kemasan,
+          alasan,
+          tujuan,
+          productBriefNo,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "studi pra updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "studi pra not found",
+        });
+      }
     } catch (err) {
       console.error(err);
       next(err);
@@ -454,6 +490,17 @@ class ControllerStudiPraformulasi {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+  static async getStudiPraformulasiDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const studiDetails = await StudiPraformulasi.findByPk(id);
+      if (!studiDetails) throw new MyError(400, "notFound!");
+      console.log(studiDetails, "<<");
+      res.status(200).json(studiDetails);
+    } catch (err) {
+      console.log(err);
     }
   }
 }

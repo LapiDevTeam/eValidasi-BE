@@ -44,5 +44,12 @@ router.delete(
   ControllerStudiPraformulasi.deleteStudiPraformulasi
 );
 router.get("/download", ControllerStudiPraformulasi.testDownload);
-
+router.get(
+  "/studi-praformulasi/:id",
+  ControllerStudiPraformulasi.getStudiPraformulasiDetails
+);
+router.put(
+  "/edit-studi-praformulasi/:id",
+  ControllerStudiPraformulasi.editStudiPraformulasi
+);
 module.exports = router;

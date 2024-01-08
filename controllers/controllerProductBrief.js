@@ -228,7 +228,7 @@ class ControllerProductBrief {
     try {
       const briefDetail = await ProductBrief.findByPk(id);
       if (!briefDetail) throw new MyError(400, "notFound!");
-
+      // console.log(briefDetail);
       res.status(200).json(briefDetail);
     } catch (err) {
       console.log(err);
