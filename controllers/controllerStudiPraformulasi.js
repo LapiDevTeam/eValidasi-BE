@@ -145,6 +145,7 @@ class ControllerStudiPraformulasi {
         alasan,
         tujuan,
         productBriefNo,
+        kesimpulan,
       } = req.body;
 
       const [updatedRowsCount] = await StudiPraformulasi.update(
@@ -157,6 +158,7 @@ class ControllerStudiPraformulasi {
           alasan,
           tujuan,
           productBriefNo,
+          kesimpulan,
         },
         {
           where: { id: id },
@@ -501,6 +503,208 @@ class ControllerStudiPraformulasi {
       res.status(200).json(studiDetails);
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async getDeskripsiProductDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const desDetails = await DeskripsiProduct.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!desDetails || desDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      console.log(desDetails, "<<");
+      res.status(200).json(desDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editDeskripsiProduct(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        namaStudi,
+        namaProduk,
+        manufacturer,
+        bentukSediaan,
+        dosage,
+        labelClaim,
+        rutePemberian,
+        aturanPakai,
+        sumberPustaka,
+      } = req.body;
+
+      const [updatedRowsCount] = await DeskripsiProduct.update(
+        {
+          namaStudi,
+          namaProduk,
+          manufacturer,
+          bentukSediaan,
+          dosage,
+          labelClaim,
+          rutePemberian,
+          aturanPakai,
+          sumberPustaka,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "des pro updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "des pro not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async getFarmakologiKlinisDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const farmakologiDetail = await FarmalogiKlinis.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!farmakologiDetail || farmakologiDetail.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      console.log(farmakologiDetail, "<<");
+      res.status(200).json(farmakologiDetail);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editFarmakologiKlinis(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        indikasi,
+        mekanismeAksi,
+        efekSamping,
+        absorpsi,
+        distribusi,
+        metabolisme,
+        eliminasi,
+        sumberPustaka,
+      } = req.body;
+
+      const [updatedRowsCount] = await FarmalogiKlinis.update(
+        {
+          indikasi,
+          mekanismeAksi,
+          efekSamping,
+          absorpsi,
+          distribusi,
+          metabolisme,
+          eliminasi,
+          sumberPustaka,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "farm updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "farm not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async getFormulaDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const formulaDetail = await Formula.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!formulaDetail || formulaDetail.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      console.log(formulaDetail, "<<");
+      res.status(200).json(formulaDetail);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getStabilitaDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const stabilitaDetails = await Stabilita.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!stabilitaDetails || stabilitaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      console.log(stabilitaDetails, "<<");
+      res.status(200).json(stabilitaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editStabilita(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        namaProduk,
+        kondisiPenyimpanan,
+        kondisiKhusus,
+        hasilStudiStabilita,
+        masaKadaluarsa,
+        sumberPustaka,
+      } = req.body;
+
+      const [updatedRowsCount] = await Stabilita.update(
+        {
+          namaProduk,
+          kondisiPenyimpanan,
+          kondisiKhusus,
+          hasilStudiStabilita,
+          masaKadaluarsa,
+          sumberPustaka,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "stab updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "stab not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
 }

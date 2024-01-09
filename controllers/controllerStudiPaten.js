@@ -43,6 +43,66 @@ class ControllerStudiPaten {
       next(err);
     }
   }
+  static async getStudiPaten(req, res) {
+    const { id } = req.params;
+    try {
+      const studipatenDetails = await StudiPaten.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!studipatenDetails || studipatenDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      console.log(studipatenDetails, "<<");
+      res.status(200).json(studipatenDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editStudiPaten(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        nomorPaten,
+        judulPaten,
+        filingDate,
+        expiredDate,
+        claimPaten,
+        infringePaten,
+        sumberPustaka,
+      } = req.body;
+
+      const [updatedRowsCount] = await StudiPaten.update(
+        {
+          nomorPaten,
+          judulPaten,
+          filingDate,
+          expiredDate,
+          claimPaten,
+          infringePaten,
+          sumberPustaka,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "stud updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "stud not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
 }
 
 module.exports = ControllerStudiPaten;

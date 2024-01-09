@@ -48,8 +48,28 @@ router.get(
   "/studi-praformulasi/:id",
   ControllerStudiPraformulasi.getStudiPraformulasiDetails
 );
+router.get(
+  "/deskripsi-product/:id",
+  ControllerStudiPraformulasi.getDeskripsiProductDetails
+);
+router.get(
+  "/farmakologi-klinis/:id",
+  ControllerStudiPraformulasi.getFarmakologiKlinisDetails
+);
+router.get("/formula/:id", ControllerStudiPraformulasi.getFormulaDetails);
+router.get("/stabilita/:id", ControllerStudiPraformulasi.getStabilitaDetails);
 router.put(
   "/edit-studi-praformulasi/:id",
   ControllerStudiPraformulasi.editStudiPraformulasi
 );
+router.put(
+  "/edit-deskripsi-product/:id",
+  ControllerStudiPraformulasi.editDeskripsiProduct
+);
+router.put(
+  "/edit-farmakologi-klinis/:id",
+  ControllerStudiPraformulasi.editFarmakologiKlinis
+);
+router.put("/edit-stabilita/:id", ControllerStudiPraformulasi.editStabilita);
+
 module.exports = router;
