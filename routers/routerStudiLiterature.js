@@ -13,4 +13,28 @@ router.post(
   "/create-karateristikBahanTambahan",
   ControllerStudiLiterature.createKarakteristikBahanTambahan
 );
+router.get(
+  "/get-bahan-aktif/:id",
+  ControllerStudiLiterature.getKarakteristikBahanAktif
+);
+router.get(
+  "/get-bahan-kemas/:id",
+  ControllerStudiLiterature.getKarakteristikBahanKemasan
+);
+router.get(
+  "/get-bahan-tambahan/:id",
+  ControllerStudiLiterature.getKarakteristikBahanTambahan
+);
+router.put(
+  "/edit-bahan-aktif/:id",
+  ControllerStudiLiterature.editKarakteristikBahanAktif
+);
+router.put(
+  "/edit-bahan-kemas/:id",
+  ControllerStudiLiterature.editKarakteristikBahanKemasan
+);
+router.put(
+  "/edit-bahan-tambahan/:id",
+  ControllerStudiLiterature.editKarakteristikBahanTambahan
+);
 module.exports = router;

@@ -148,22 +148,54 @@ class ControllerStudiPraformulasi {
         kesimpulan,
       } = req.body;
 
+      const obj = {};
+
+      if (nomor) {
+        obj.nomor = nomor;
+      }
+
+      if (tanggalPenyusunan) {
+        obj.tanggalPenyusunan = tanggalPenyusunan;
+      }
+
+      if (namaProduk) {
+        obj.namaProduk = namaProduk;
+      }
+
+      if (komposisi) {
+        obj.komposisi = komposisi;
+      }
+
+      if (kemasan) {
+        obj.kemasan = kemasan;
+      }
+
+      if (alasan) {
+        obj.alasan = alasan;
+      }
+
+      if (tujuan) {
+        obj.tujuan = tujuan;
+      }
+
+      if (productBriefNo) {
+        obj.productBriefNo = productBriefNo;
+      }
+
+      if (kesimpulan) {
+        obj.kesimpulan = kesimpulan;
+      }
+
       const [updatedRowsCount] = await StudiPraformulasi.update(
         {
-          nomor,
-          tanggalPenyusunan,
-          namaProduk,
-          komposisi,
-          kemasan,
-          alasan,
-          tujuan,
-          productBriefNo,
-          kesimpulan,
+          ...obj,
         },
         {
           where: { id: id },
         }
       );
+
+      console.log(updatedRowsCount, "<<< updated");
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
@@ -179,6 +211,7 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
+
   static async createDeskripsiProduct(req, res, next) {
     try {
       const {
@@ -295,7 +328,30 @@ class ControllerStudiPraformulasi {
       } = req.body;
 
       const createKemasan = await Kemasan.create({
-        StudiPraformulasiID,
+        StudiPraformulasiID: StudiPraformulasiID,
+        namaProduk: namaProduk,
+        manufacturer: manufacturer,
+        noBatch: noBatch,
+        tanggalProduksi: tanggalProduksi,
+        tanggalKadarluarsa: tanggalKadarluarsa,
+        sumberPustaka: sumberPustaka,
+        bentukSediaan: bentukSediaan,
+        detailSediaan: detailSediaan,
+      });
+
+      res.status(201).json({
+        message: "Success Create kemasan",
+        data: createKemasan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editKemasan(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
         namaProduk,
         manufacturer,
         noBatch,
@@ -304,12 +360,33 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
         bentukSediaan,
         detailSediaan,
-      });
+      } = req.body;
 
-      res.status(201).json({
-        message: "Success Create kemasan",
-        data: createKemasan,
-      });
+      const [updatedRowsCount] = await Kemasan.update(
+        {
+          namaProduk,
+          manufacturer,
+          noBatch,
+          tanggalProduksi,
+          tanggalKadarluarsa,
+          sumberPustaka,
+          bentukSediaan,
+          detailSediaan,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "kemasan updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "kemasan not found",
+        });
+      }
     } catch (err) {
       console.error(err);
       next(err);
@@ -450,6 +527,7 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
+
   static async updateDokumenAcuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;
@@ -474,32 +552,33 @@ class ControllerStudiPraformulasi {
     }
   }
   static async testDownload(req, res, next) {
-    try {
-      // Simpan buffer foto ke database menggunakan Sequelize
-      const dataPhoto = await Kemasan.findOne({
-        where: {
-          id: 3,
-        },
-      });
-      // console.log(dataPhoto.detailSediaan.gambar, "<<");
-      // const byteaToBase64 = (bytea) => {
-      //   return Buffer.from(bytea, "binary").toString("base64");
-      // };
+    console.log("hi");
+    // try {
+    //   // Simpan buffer foto ke database menggunakan Sequelize
+    //   const dataPhoto = await Kemasan.findOne({
+    //     where: {
+    //       id: 3,
+    //     },
+    //   });
+    //   // console.log(dataPhoto.detailSediaan.gambar, "<<");
+    //   // const byteaToBase64 = (bytea) => {
+    //   //   return Buffer.from(bytea, "binary").toString("base64");
+    //   // };
 
-      // const base64ImageData = byteaToBase64(dataPhoto.data);
+    //   // const base64ImageData = byteaToBase64(dataPhoto.data);
 
-      res.status(201).json(dataPhoto.detailSediaan.gambar);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
+    //   res.status(201).json(dataPhoto.detailSediaan.gambar);
+    // } catch (error) {
+    //   console.error(error);
+    //   res.status(500).json({ error: "Internal Server Error" });
+    // }
   }
   static async getStudiPraformulasiDetails(req, res) {
     const { id } = req.params;
     try {
       const studiDetails = await StudiPraformulasi.findByPk(id);
       if (!studiDetails) throw new MyError(400, "notFound!");
-      console.log(studiDetails, "<<");
+      // console.log(studiDetails, "<<");
       res.status(200).json(studiDetails);
     } catch (err) {
       console.log(err);
@@ -516,7 +595,7 @@ class ControllerStudiPraformulasi {
         throw new MyError(404, "Not found!");
       }
 
-      console.log(desDetails, "<<");
+      // console.log(desDetails, "<<");
       res.status(200).json(desDetails);
     } catch (err) {
       console.error(err);
@@ -580,7 +659,7 @@ class ControllerStudiPraformulasi {
         throw new MyError(404, "Not found!");
       }
 
-      console.log(farmakologiDetail, "<<");
+      // console.log(farmakologiDetail, "<<");
       res.status(200).json(farmakologiDetail);
     } catch (err) {
       console.error(err);
@@ -642,11 +721,48 @@ class ControllerStudiPraformulasi {
         throw new MyError(404, "Not found!");
       }
 
-      console.log(formulaDetail, "<<");
       res.status(200).json(formulaDetail);
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editFormulaDetails(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        bahanTambahan,
+        kandungan,
+        fungsi,
+        prosesPembuatan,
+        sumberPustaka,
+      } = req.body;
+
+      const [updatedRowsCount] = await Formula.update(
+        {
+          bahanTambahan,
+          kandungan,
+          fungsi,
+          prosesPembuatan,
+          sumberPustaka,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "formula updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "formula not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
   static async getStabilitaDetails(req, res) {
@@ -660,7 +776,7 @@ class ControllerStudiPraformulasi {
         throw new MyError(404, "Not found!");
       }
 
-      console.log(stabilitaDetails, "<<");
+      // console.log(stabilitaDetails, "<<");
       res.status(200).json(stabilitaDetails);
     } catch (err) {
       console.error(err);
@@ -705,6 +821,24 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async getKemasanDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const kemasanDetails = await Kemasan.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!kemasanDetails || kemasanDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      // console.log(kemasanDetails, "<<");
+      res.status(200).json(kemasanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
 }

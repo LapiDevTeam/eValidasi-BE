@@ -58,6 +58,7 @@ router.get(
 );
 router.get("/formula/:id", ControllerStudiPraformulasi.getFormulaDetails);
 router.get("/stabilita/:id", ControllerStudiPraformulasi.getStabilitaDetails);
+router.get("/kemasan/:id", ControllerStudiPraformulasi.getKemasanDetails);
 router.put(
   "/edit-studi-praformulasi/:id",
   ControllerStudiPraformulasi.editStudiPraformulasi
@@ -71,5 +72,6 @@ router.put(
   ControllerStudiPraformulasi.editFarmakologiKlinis
 );
 router.put("/edit-stabilita/:id", ControllerStudiPraformulasi.editStabilita);
-
+router.put("/edit-formula/:id", ControllerStudiPraformulasi.editFormulaDetails);
+router.put("/edit-kemasan/:id", ControllerStudiPraformulasi.editKemasan);
 module.exports = router;
