@@ -111,6 +111,7 @@ class ControllerStudiPraformulasi {
         alasan,
         tujuan,
         productBriefNo,
+        ProductBriefId,
       } = req.body;
 
       const createdStudiPraformulasi = await StudiPraformulasi.create({
@@ -122,6 +123,7 @@ class ControllerStudiPraformulasi {
         alasan,
         tujuan,
         productBriefNo,
+        ProductBriefId,
       });
 
       res.status(201).json({
