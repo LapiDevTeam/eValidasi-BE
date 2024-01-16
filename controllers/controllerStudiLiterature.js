@@ -99,7 +99,7 @@ class ControllerStudiLiterature {
     const { id } = req.params;
     try {
       const bahanAktifDetails = await KarakteristikBahanAktif.findAll({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!bahanAktifDetails || bahanAktifDetails.length === 0) {
@@ -148,7 +148,7 @@ class ControllerStudiLiterature {
     const { id } = req.params;
     try {
       const bahanKemasDetail = await KarakteristikBahanKemasan.findAll({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!bahanKemasDetail || bahanKemasDetail.length === 0) {
@@ -197,7 +197,7 @@ class ControllerStudiLiterature {
     const { id } = req.params;
     try {
       const bahanTamabahanDetails = await KarakteristikBahanTambahan.findAll({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!bahanTamabahanDetails || bahanTamabahanDetails.length === 0) {

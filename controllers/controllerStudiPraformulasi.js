@@ -6,6 +6,8 @@ const {
   Stabilita,
   Formula,
   Kemasan,
+  UjiInkompatibilitas,
+  KontrolBahan,
   Sequelize,
   StudiPaten,
   KarakteristikBahanAktif,
@@ -141,6 +143,8 @@ class ControllerStudiPraformulasi {
       const {
         nomor,
         tanggalPenyusunan,
+        tanggalAddendum,
+        addendumKe,
         namaProduk,
         komposisi,
         kemasan,
@@ -158,6 +162,12 @@ class ControllerStudiPraformulasi {
 
       if (tanggalPenyusunan) {
         obj.tanggalPenyusunan = tanggalPenyusunan;
+      }
+      if (tanggalAddendum) {
+        obj.tanggalAddendum = tanggalAddendum;
+      }
+      if (addendumKe) {
+        obj.addendumKe = addendumKe;
       }
 
       if (namaProduk) {
@@ -213,7 +223,6 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-
   static async createDeskripsiProduct(req, res, next) {
     try {
       const {
@@ -239,7 +248,7 @@ class ControllerStudiPraformulasi {
         rutePemberian,
         aturanPakai,
         sumberPustaka,
-        StudiPraformulasiID,
+        StudiPraformulasiID: +StudiPraformulasiID,
       });
 
       res.status(201).json({
@@ -249,6 +258,32 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async deleteDeskripsiProduct(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log(id, 898989);
+
+      const deskripsi = await DeskripsiProduct.findAll({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      console.log(deskripsi, "<<<des");
+
+      if (deskripsi.length > 0) {
+        await DeskripsiProduct.destroy({
+          where: { StudiPraformulasiID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
   static async createFarmalogiKlinis(req, res, next) {
@@ -284,6 +319,32 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async deleteFarmakologiKlinis(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log(id, 898989);
+
+      const farm = await FarmalogiKlinis.findAll({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      console.log(farm, "<<<des");
+
+      if (farm.length > 0) {
+        await FarmalogiKlinis.destroy({
+          where: { StudiPraformulasiID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
   static async createFormula(req, res, next) {
@@ -348,6 +409,32 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async deleteKemasan(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log(id, 898989);
+
+      const kemasan = await Kemasan.findAll({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      console.log(kemasan, "<<<des");
+
+      if (kemasan.length > 0) {
+        await Kemasan.destroy({
+          where: { StudiPraformulasiID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
   static async editKemasan(req, res, next) {
@@ -464,6 +551,30 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
+  static async deleteStabilita(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log(id, 898989);
+
+      const stabilita = await Stabilita.findAll({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      if (stabilita.length > 0) {
+        await Stabilita.destroy({
+          where: { StudiPraformulasiID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
   static async getProductBrief(req, res) {
     try {
       const noProductBrief = await ProductBrief.findAll({
@@ -529,7 +640,6 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
-
   static async updateDokumenAcuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;
@@ -590,7 +700,7 @@ class ControllerStudiPraformulasi {
     const { id } = req.params;
     try {
       const desDetails = await DeskripsiProduct.findAll({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!desDetails || desDetails.length === 0) {
@@ -841,6 +951,119 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getKarakteristikFisikaKimia(req, res) {
+    const { id } = req.params;
+    try {
+      const fisikaKimiaDetails = await KarakteristikFisikakimia.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!fisikaKimiaDetails || fisikaKimiaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      // console.log(fisikaKimiaDetails, "<<");
+      res.status(200).json(fisikaKimiaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editKarakteristikFisikaKimia(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        namaProduk,
+        manufacturer,
+        noBatch,
+        het,
+        tanggalProduksi,
+        tanggalKadarluarsa,
+        bentukSediaan,
+        sumberPustaka,
+        detailSediaan,
+      } = req.body;
+
+      const [updatedRowsCount] = await KarakteristikFisikakimia.update(
+        {
+          namaProduk,
+          manufacturer,
+          noBatch,
+          het,
+          tanggalProduksi,
+          tanggalKadarluarsa,
+          bentukSediaan,
+          sumberPustaka,
+          detailSediaan,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "fisikaKimia updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "fisikaKimia not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUjiInkomptabilitas(req, res, next) {
+    try {
+      const { namaBahan, kondisi1, kondisi2, kondisi3, StudiPraformulasiID } =
+        req.body;
+
+      const createUjiInkomptabilitas = await UjiInkompatibilitas.create({
+        namaBahan,
+        kondisi1,
+        kondisi2,
+        kondisi3,
+        StudiPraformulasiID,
+      });
+
+      res.status(201).json({
+        message: "Success Create",
+        data: createUjiInkomptabilitas,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createKontrolBahan(req, res, next) {
+    try {
+      const {
+        namaBahan,
+        parameter1,
+        parameter2,
+        parameter3,
+        UjiInkompatibilitasID,
+      } = req.body;
+
+      const kontrolbahan = await KontrolBahan.create({
+        namaBahan,
+        parameter1,
+        parameter2,
+        parameter3,
+        UjiInkompatibilitasID,
+      });
+
+      res.status(201).json({
+        message: "Success Create",
+        data: kontrolbahan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
 }

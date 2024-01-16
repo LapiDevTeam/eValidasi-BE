@@ -54,7 +54,6 @@ class ControllerStudiPaten {
         throw new MyError(404, "Not found!");
       }
 
-      console.log(studipatenDetails, "<<");
       res.status(200).json(studipatenDetails);
     } catch (err) {
       console.error(err);
@@ -101,6 +100,30 @@ class ControllerStudiPaten {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async deleteStudiPaten(req, res) {
+    try {
+      const { id } = req.params;
+
+      console.log(id, 898989);
+
+      const studipaten = await StudiPaten.findAll({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      if (studipaten.length > 0) {
+        await StudiPaten.destroy({
+          where: { StudiPraformulasiID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
 }

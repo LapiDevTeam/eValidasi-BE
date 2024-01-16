@@ -10,12 +10,33 @@ router.post(
   "/create-deskripsi-product",
   ControllerStudiPraformulasi.createDeskripsiProduct
 );
+router.delete(
+  "/delete-deskripsi-product/:id",
+  ControllerStudiPraformulasi.deleteDeskripsiProduct
+);
+router.delete(
+  "/delete-stabilita/:id",
+  ControllerStudiPraformulasi.deleteStabilita
+);
+router.delete(
+  "/delete-farmakologi-klinis/:id",
+  ControllerStudiPraformulasi.deleteFarmakologiKlinis
+);
+router.delete("/delete-kemasan/:id", ControllerStudiPraformulasi.deleteKemasan);
 router.post(
   "/create-farmakologi-klinis",
   ControllerStudiPraformulasi.createFarmalogiKlinis
 );
 router.post("/create-stabilita", ControllerStudiPraformulasi.createStabilita);
 router.post("/create-formula", ControllerStudiPraformulasi.createFormula);
+router.post(
+  "/create-ujiinkomptabilitas",
+  ControllerStudiPraformulasi.createUjiInkomptabilitas
+);
+router.post(
+  "/create-kontrol-bahan",
+  ControllerStudiPraformulasi.createKontrolBahan
+);
 router.post("/create-kemasan", ControllerStudiPraformulasi.createKemasan);
 router.post(
   "/create-fisikakimia",
@@ -59,6 +80,10 @@ router.get(
 router.get("/formula/:id", ControllerStudiPraformulasi.getFormulaDetails);
 router.get("/stabilita/:id", ControllerStudiPraformulasi.getStabilitaDetails);
 router.get("/kemasan/:id", ControllerStudiPraformulasi.getKemasanDetails);
+router.get(
+  "/karakteristikFisikaKimia/:id",
+  ControllerStudiPraformulasi.getKarakteristikFisikaKimia
+);
 router.put(
   "/edit-studi-praformulasi/:id",
   ControllerStudiPraformulasi.editStudiPraformulasi
@@ -74,4 +99,8 @@ router.put(
 router.put("/edit-stabilita/:id", ControllerStudiPraformulasi.editStabilita);
 router.put("/edit-formula/:id", ControllerStudiPraformulasi.editFormulaDetails);
 router.put("/edit-kemasan/:id", ControllerStudiPraformulasi.editKemasan);
+router.put(
+  "/edit-fisika-kimia/:id",
+  ControllerStudiPraformulasi.editKarakteristikFisikaKimia
+);
 module.exports = router;
