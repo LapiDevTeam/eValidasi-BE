@@ -895,6 +895,30 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  static async getUjiKompatibilitas(req, res) {
+    const { id } = req.params;
+    try {
+      const uji = await UjiInkompatibilitas.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!uji || uji.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      const kontrolBahan = await KontrolBahan.findAll({
+        where: { UjiInkompatibilitasID: uji[0].id },
+      });
+
+      // Now you have both 'uji' and 'kontrolBahan' available for further processing
+
+      res.status(200).json({ uji, kontrolBahan });
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async editStabilita(req, res, next) {
     const { id } = req.params;
     try {

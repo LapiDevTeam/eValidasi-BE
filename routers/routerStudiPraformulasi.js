@@ -84,6 +84,10 @@ router.get(
   "/karakteristikFisikaKimia/:id",
   ControllerStudiPraformulasi.getKarakteristikFisikaKimia
 );
+router.get(
+  "/uji-inkompatibilitas/:id",
+  ControllerStudiPraformulasi.getUjiKompatibilitas
+);
 router.put(
   "/edit-studi-praformulasi/:id",
   ControllerStudiPraformulasi.editStudiPraformulasi
