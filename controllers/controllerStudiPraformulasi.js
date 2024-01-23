@@ -899,7 +899,7 @@ class ControllerStudiPraformulasi {
     const { id } = req.params;
     try {
       const uji = await UjiInkompatibilitas.findAll({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!uji || uji.length === 0) {
@@ -1051,7 +1051,7 @@ class ControllerStudiPraformulasi {
         kondisi1,
         kondisi2,
         kondisi3,
-        StudiPraformulasiID,
+        StudiPraformulasiID: StudiPraformulasiID,
       });
 
       res.status(201).json({
