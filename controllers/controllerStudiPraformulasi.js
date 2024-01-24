@@ -198,9 +198,14 @@ class ControllerStudiPraformulasi {
         obj.kesimpulan = kesimpulan;
       }
 
+      const studi = await StudiPraformulasi.findByPk(+id);
+      const studiNo = studi.addendumKe;
+      console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
+
       const [updatedRowsCount] = await StudiPraformulasi.update(
         {
           ...obj,
+          addendumKe: studiNo + 1,
         },
         {
           where: { id: id },
@@ -1045,6 +1050,8 @@ class ControllerStudiPraformulasi {
     try {
       const { namaBahan, kondisi1, kondisi2, kondisi3, StudiPraformulasiID } =
         req.body;
+
+      console.log(StudiPraformulasiID, " !@#@!#!@321");
 
       const createUjiInkomptabilitas = await UjiInkompatibilitas.create({
         namaBahan,
