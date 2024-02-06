@@ -8,6 +8,10 @@ router.get("/all-ruang-lingkup", ControllerProductBrief.findAllRuangLingkup);
 router.get("/all-product-brief", ControllerProductBrief.findAllProductBrief);
 router.get("/product-brief/:id", ControllerProductBrief.getProductBriefDetails);
 router.put("/product-brief/:id", ControllerProductBrief.editProductBrief);
+router.put(
+  "/update-status/:ProductBriefID",
+  ControllerProductBrief.updateStatus
+);
 router.get("/get-no-product-brief", ControllerProductBrief.getNoProductBrief);
 router.delete(
   "/delete-product-brief/:id",

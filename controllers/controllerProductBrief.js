@@ -103,7 +103,6 @@ class ControllerProductBrief {
       next(err);
     }
   }
-
   static async findAllSediaan(req, res) {
     const { sites } = req.query;
 
@@ -278,6 +277,28 @@ class ControllerProductBrief {
     } catch (error) {
       console.log(error);
       next(error);
+    }
+  }
+  static async updateStatus(req, res) {
+    try {
+      const { ProductBriefID } = req.params;
+      console.log(ProductBriefID, "<< ID");
+      const { status } = req.body;
+      const findProductBriefID = await ProductBrief.findByPk(+ProductBriefID);
+
+      if (!findProductBriefID) throw { name: "NotFound" };
+      const updateStatus = await ProductBrief.update(
+        { status: status },
+        {
+          where: {
+            id: findProductBriefID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateStatus);
+    } catch (err) {
+      console.log(err);
     }
   }
 }

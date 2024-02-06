@@ -1,21 +1,20 @@
 const decrypt = require("../helpers/crypto");
-const MyError = require("../helpers/eror");
+const MyError = require("../helpers/errors");
 
 const authentication = async (req, res, next) => {
   try {
     const { authentication } = req.headers;
     if (!authentication) throw new MyError(401, "Not Authentication");
     if (authentication) {
-    const data = decrypt(authentication)
-    if(!data) throw new MyError(401,'Not Authentication')
-    const dataParse = JSON.parse(data.result)
+      const data = decrypt(authentication);
+      // console.log(data, "<< DATA");
+      if (!data) throw new MyError(401, "Not Authentication");
+      const dataParse = JSON.parse(data.result);
       req.user = {
         user_id: dataParse.user_id,
         nama_user: dataParse.nama_user,
-        jabatan_user: dataParse.jabatan_user,
-        joblevel_id_user: dataParse.joblevel_id_user,
         bagian_user: dataParse.bagian_user,
-        delegated_to: dataParse.delegated_to
+        delegated_to: dataParse.delegated_to,
       };
     }
     next();
