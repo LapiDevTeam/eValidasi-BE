@@ -9,6 +9,9 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      ProtokolTrialSkalaLab.hasMany(models.Cqa, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
     }
   }
   ProtokolTrialSkalaLab.init(

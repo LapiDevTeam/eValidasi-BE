@@ -6,6 +6,7 @@ router.post(
   "/protokol-trial-skala-lab",
   ControllerProtokolTrialSkalaLab.createProtokolTrialSkalaLab
 );
+router.post("/create-cqa", ControllerProtokolTrialSkalaLab.createCqa);
 
 router.put(
   "/update-tujuan-protokol-trial-skala-lab/:ProtokolTrialSkalaLabID",

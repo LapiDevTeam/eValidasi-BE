@@ -1,4 +1,4 @@
-const { ProtokolTrialSkalaLab } = require("../models/index");
+const { ProtokolTrialSkalaLab, Cqa } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 
@@ -38,6 +38,39 @@ class ControllerProtokolTrialSkalaLab {
       res.status(201).json({
         message: "Success Create Protokol Trial Skala Lab",
         data: createdProtokolTrialSkalaLab,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createCqa(req, res, next) {
+    try {
+      const {
+        qttpElements,
+        target,
+        safety,
+        efficacy,
+        formulaDanProses,
+        apakahIniKritikalCqa,
+        justifikasi,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      const createCqa = await Cqa.create({
+        qttpElements,
+        target,
+        safety,
+        efficacy,
+        formulaDanProses,
+        apakahIniKritikalCqa,
+        justifikasi,
+        ProtokolTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success Create Cqa",
+        data: createCqa,
       });
     } catch (err) {
       console.error(err);
