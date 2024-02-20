@@ -21,6 +21,9 @@ module.exports = {
       sumberPustaka: {
         type: Sequelize.STRING,
       },
+      tableIndex: {
+        type: Sequelize.INTEGER,
+      },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {

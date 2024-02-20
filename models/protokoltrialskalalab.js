@@ -12,6 +12,24 @@ module.exports = (sequelize, DataTypes) => {
       ProtokolTrialSkalaLab.hasMany(models.Cqa, {
         foreignKey: "ProtokolTrialSkalaLabID",
       });
+      ProtokolTrialSkalaLab.hasMany(models.FormulaProtokol, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+      ProtokolTrialSkalaLab.hasMany(models.ProsesPembuatan, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+      ProtokolTrialSkalaLab.hasMany(models.Cpp, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+      ProtokolTrialSkalaLab.hasMany(models.RencanaAktivitas, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+      ProtokolTrialSkalaLab.hasMany(models.OriginatorAtauKompetitor, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+      ProtokolTrialSkalaLab.hasMany(models.KebutuhanPeralatanDanMesin, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
     }
   }
   ProtokolTrialSkalaLab.init(

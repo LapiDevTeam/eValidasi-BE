@@ -20,6 +20,7 @@ class ControllerStudiLiterature {
         parameter,
         hasilTinjauan,
         sumberPustaka,
+        tableIndex,
         StudiPraformulasiID,
       } = req.body;
       const createKarakteristikBahanAktif =
@@ -28,6 +29,7 @@ class ControllerStudiLiterature {
           parameter,
           hasilTinjauan,
           sumberPustaka,
+          tableIndex: +tableIndex,
           StudiPraformulasiID,
         });
       res.status(201).json({
@@ -46,6 +48,7 @@ class ControllerStudiLiterature {
         parameter,
         hasilTinjauan,
         sumberPustaka,
+        tableIndex,
         StudiPraformulasiID,
       } = req.body;
       const createKarakteristikBahanKemasan =
@@ -54,6 +57,7 @@ class ControllerStudiLiterature {
           parameter,
           hasilTinjauan,
           sumberPustaka,
+          tableIndex: +tableIndex,
           StudiPraformulasiID,
         });
       res.status(201).json({
@@ -72,6 +76,7 @@ class ControllerStudiLiterature {
         parameter,
         hasilTinjauan,
         sumberPustaka,
+        tableIndex,
         StudiPraformulasiID,
       } = req.body;
 
@@ -83,6 +88,7 @@ class ControllerStudiLiterature {
           parameter,
           hasilTinjauan,
           sumberPustaka,
+          tableIndex: +tableIndex,
           StudiPraformulasiID,
         });
       console.log(createKarakteristikBahanTambahan);
@@ -116,17 +122,19 @@ class ControllerStudiLiterature {
   static async editKarakteristikBahanAktif(req, res, next) {
     const { id } = req.params;
     try {
-      const { namaBahan, parameter, hasilTinjauan, sumberPustaka } = req.body;
+      const { namaBahan, parameter, hasilTinjauan, tableIndex, sumberPustaka } =
+        req.body;
 
       const [updatedRowsCount] = await KarakteristikBahanAktif.update(
         {
           namaBahan,
           parameter,
           hasilTinjauan,
+          tableIndex: +tableIndex,
           sumberPustaka,
         },
         {
-          where: { id: id },
+          where: { id: +id },
         }
       );
 
