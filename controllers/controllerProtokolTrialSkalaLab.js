@@ -7,6 +7,10 @@ const {
   RencanaAktivitas,
   OriginatorAtauKompetitor,
   KebutuhanPeralatanDanMesin,
+  Material,
+  ZatAktif,
+  BahanTambahan,
+  KemasanPrimer,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -237,6 +241,138 @@ class ControllerProtokolTrialSkalaLab {
       res.status(201).json({
         message: "Success Kebutuhan Peralatan Dan Mesin",
         data: createKebutuhanPeralatanDanMesin,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createMaterial(req, res, next) {
+    try {
+      const {
+        jumlahPenelitianAnalisaMaterial,
+        biayaAnalisaMaterial,
+        jumlahPenelitianOrientasiFormulaDanProses,
+        biayaOrientasiFormulaDanProses,
+        jumlahPenelitianOptimasiFormulaDanProses,
+        biayaOptimasiFormulaDanProses,
+        jumlahPenelitianStabilitaSkalaLab,
+        biayaStabilitaSkalaLab,
+        totalKebutuhanMaterial,
+        perkiraanHargaPembelianMaterial,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      const createMaterial = await Material.create({
+        jumlahPenelitianAnalisaMaterial,
+        biayaAnalisaMaterial,
+        jumlahPenelitianOrientasiFormulaDanProses,
+        biayaOrientasiFormulaDanProses,
+        jumlahPenelitianOptimasiFormulaDanProses,
+        biayaOptimasiFormulaDanProses,
+        jumlahPenelitianStabilitaSkalaLab,
+        biayaStabilitaSkalaLab,
+        totalKebutuhanMaterial,
+        perkiraanHargaPembelianMaterial,
+        ProtokolTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success create material",
+        data: createMaterial,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createZatAktif(req, res, next) {
+    try {
+      const {
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+      const createZatAktif = await ZatAktif.create({
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex: +tableIndex,
+        ProtokolTrialSkalaLabID,
+      });
+      res.status(201).json({
+        message: "Success Create ZatAktif",
+        data: createZatAktif,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createBahanTambahan(req, res, next) {
+    try {
+      const {
+        bahanTambahan,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+      const createBahanTambahan = await BahanTambahan.create({
+        bahanTambahan,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex: +tableIndex,
+        ProtokolTrialSkalaLabID,
+      });
+      res.status(201).json({
+        message: "Success Create bahan tambahan",
+        data: createBahanTambahan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createKemasanPrimer(req, res, next) {
+    try {
+      const {
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+      const createKemasanPrimer = await KemasanPrimer.create({
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+        tableIndex: +tableIndex,
+        ProtokolTrialSkalaLabID,
+      });
+      res.status(201).json({
+        message: "Success Create kemasan primer",
+        data: createKemasanPrimer,
       });
     } catch (err) {
       console.error(err);

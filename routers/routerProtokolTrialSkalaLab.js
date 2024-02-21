@@ -28,6 +28,16 @@ router.post(
   "/kebutuhan-peralatan-dan-mesin",
   ControllerProtokolTrialSkalaLab.createKebutuhanPeralatanDanMesin
 );
+router.post("/material", ControllerProtokolTrialSkalaLab.createMaterial);
+router.post("/zat-aktif", ControllerProtokolTrialSkalaLab.createZatAktif);
+router.post(
+  "/bahan-tambahan",
+  ControllerProtokolTrialSkalaLab.createBahanTambahan
+);
+router.post(
+  "/kemasan-primer",
+  ControllerProtokolTrialSkalaLab.createKemasanPrimer
+);
 
 router.put(
   "/update-tujuan-protokol-trial-skala-lab/:ProtokolTrialSkalaLabID",

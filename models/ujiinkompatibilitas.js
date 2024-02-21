@@ -25,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "UjiInkompatibilitas",
+      freezeTableName: true,
     }
   );
   return UjiInkompatibilitas;
