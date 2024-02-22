@@ -39,6 +39,9 @@ module.exports = {
       perkiraanHargaPembelianMaterial: {
         type: Sequelize.STRING,
       },
+      tableIndex: {
+        type: Sequelize.INTEGER,
+      },
       ProtokolTrialSkalaLabID: {
         type: Sequelize.INTEGER,
         references: {

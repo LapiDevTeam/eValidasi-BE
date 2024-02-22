@@ -200,6 +200,7 @@ class ControllerProtokolTrialSkalaLab {
         stabilita,
         totalKebutuhanMaterial,
         perkiraanHargaPembelianMaterial,
+        tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
 
@@ -213,6 +214,7 @@ class ControllerProtokolTrialSkalaLab {
           stabilita,
           totalKebutuhanMaterial,
           perkiraanHargaPembelianMaterial,
+          tableIndex: +tableIndex,
           ProtokolTrialSkalaLabID: +ProtokolTrialSkalaLabID,
         });
 
@@ -260,6 +262,7 @@ class ControllerProtokolTrialSkalaLab {
         biayaStabilitaSkalaLab,
         totalKebutuhanMaterial,
         perkiraanHargaPembelianMaterial,
+        tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
 
@@ -274,7 +277,8 @@ class ControllerProtokolTrialSkalaLab {
         biayaStabilitaSkalaLab,
         totalKebutuhanMaterial,
         perkiraanHargaPembelianMaterial,
-        ProtokolTrialSkalaLabID,
+        tableIndex: +tableIndex,
+        ProtokolTrialSkalaLabID: +ProtokolTrialSkalaLabID,
       });
 
       res.status(201).json({
