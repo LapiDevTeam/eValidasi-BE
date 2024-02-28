@@ -38,10 +38,76 @@ router.post(
   "/kemasan-primer",
   ControllerProtokolTrialSkalaLab.createKemasanPrimer
 );
+router.post(
+  "/create-kemasan-skala-lab",
+  ControllerProtokolTrialSkalaLab.createKemasanSkalaLab
+);
 
 router.put(
   "/update-tujuan-protokol-trial-skala-lab/:ProtokolTrialSkalaLabID",
   ControllerProtokolTrialSkalaLab.updateTujuan
 );
+router.get(
+  "/all-protokol-skala-lab",
+  ControllerProtokolTrialSkalaLab.findAllProtokolSkalaLab
+);
+
+router.get(
+  "/protokol-skala-lab/:id",
+  ControllerProtokolTrialSkalaLab.getProtokolSkalaLabDetails
+);
+router.get("/cqa/:id", ControllerProtokolTrialSkalaLab.getCqa);
+router.get("/cpp/:id", ControllerProtokolTrialSkalaLab.getCpp);
+router.get("/formula-protokol/:id", ControllerProtokolTrialSkalaLab.getFormula);
+router.get(
+  "/proses-pembuatan/:id",
+  ControllerProtokolTrialSkalaLab.getProsesPembuatan
+);
+router.get(
+  "/rencana-aktivitas/:id",
+  ControllerProtokolTrialSkalaLab.getRencanaAktivitas
+);
+router.get(
+  "/kebutuhan-peralatan/:id",
+  ControllerProtokolTrialSkalaLab.getKebutuhanPeralatan
+);
+router.get("/material/:id", ControllerProtokolTrialSkalaLab.getMaterial);
+router.get(
+  "/originator-kompetitor/:id",
+  ControllerProtokolTrialSkalaLab.getOriginatorKompetitor
+);
+router.get("/zat-aktif/:id", ControllerProtokolTrialSkalaLab.getZatAktif);
+router.delete(
+  "/delete-protokol-skala-lab/:id",
+  ControllerProtokolTrialSkalaLab.deleteProtokolSkalaLab
+);
+router.put(
+  "/edit-protokol-skala-lab/:id",
+  ControllerProtokolTrialSkalaLab.editProtokolSkalaLab
+);
+router.put("/edit-material/:id", ControllerProtokolTrialSkalaLab.editMaterial);
+router.put(
+  "/edit-originator-kompetitor/:id",
+  ControllerProtokolTrialSkalaLab.editOriginatorKompetitor
+);
+router.put(
+  "/edit-rencana-aktivitas/:id",
+  ControllerProtokolTrialSkalaLab.editRencanaAktivitas
+);
+router.put(
+  "/edit-kebutuhan-peralatan/:id",
+  ControllerProtokolTrialSkalaLab.editKebutuhanPeralatan
+);
+router.put("/edit-cqa/:id", ControllerProtokolTrialSkalaLab.editCqaDetails);
+router.put("/edit-cpp/:id", ControllerProtokolTrialSkalaLab.editCppDetails);
+router.put(
+  "/edit-formula-protokol/:id",
+  ControllerProtokolTrialSkalaLab.editFormulaDetails
+);
+router.put(
+  "/edit-proses-pembuatan/:id",
+  ControllerProtokolTrialSkalaLab.editProsesPembuatan
+);
+router.put("/edit-zat-aktif/:id", ControllerProtokolTrialSkalaLab.editZatAktif);
 
 module.exports = router;

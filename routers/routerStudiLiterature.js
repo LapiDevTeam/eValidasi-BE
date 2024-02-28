@@ -18,7 +18,7 @@ router.get(
   ControllerStudiLiterature.getKarakteristikBahanAktif
 );
 router.get(
-  "/get-bahan-kemas/:id",
+  "/get-bahan-kemasan/:id",
   ControllerStudiLiterature.getKarakteristikBahanKemasan
 );
 router.get(

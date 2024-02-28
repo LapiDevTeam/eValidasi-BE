@@ -42,6 +42,9 @@ module.exports = (sequelize, DataTypes) => {
       ProtokolTrialSkalaLab.hasMany(models.KemasanPrimer, {
         foreignKey: "ProtokolTrialSkalaLabID",
       });
+      ProtokolTrialSkalaLab.hasMany(models.KemasanProtokolSkalaLab, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
     }
   }
   ProtokolTrialSkalaLab.init(

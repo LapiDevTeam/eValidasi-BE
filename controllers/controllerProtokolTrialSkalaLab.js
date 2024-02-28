@@ -11,11 +11,69 @@ const {
   ZatAktif,
   BahanTambahan,
   KemasanPrimer,
+  KemasanProtokolSkalaLab,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 
 class ControllerProtokolTrialSkalaLab {
+  static async findAllProtokolSkalaLab(req, res) {
+    try {
+      const { page, nomor, tanggal, namaProduk, komposisi, alasan, tujuan } =
+        req.body;
+      const size = page ? 15 : "";
+
+      const { limit, offset } = getPagination(page, size);
+
+      const searchParams = {};
+      if (nomor) searchParams.nomor = { [Op.iLike]: `%${nomor}%` };
+      if (tanggal)
+        searchParams.tanggal = {
+          [Op.iLike]: `%${tanggal}%`,
+        };
+      if (namaProduk)
+        searchParams.namaProduk = { [Op.iLike]: `%${namaProduk}%` };
+      if (komposisi) searchParams.komposisi = { [Op.iLike]: `%${komposisi}%` };
+      if (alasan)
+        searchParams.alasan = {
+          [Op.iLike]: `%${alasan}%`,
+        };
+      if (tujuan)
+        searchParams.tujuan = {
+          [Op.iLike]: `%${tujuan}%`,
+        };
+
+      const studi = await ProtokolTrialSkalaLab.findAndCountAll({
+        where: searchParams,
+        ...(size && { limit }),
+        ...(size && { offset }),
+        order: [["id", "DESC"]],
+      });
+
+      res.status(200).json({
+        limitData: size ? limit : "",
+        Offset: size ? offset : "",
+        totalPage: size ? Math.ceil(studi.count / limit) : "",
+        studi,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async deleteProtokolSkalaLab(req, res) {
+    try {
+      const { id } = req.params;
+
+      await ProtokolTrialSkalaLab.destroy({
+        where: { id: id }, // Corrected the where clause
+      });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
   static async createProtokolTrialSkalaLab(req, res, next) {
     try {
       const {
@@ -404,6 +462,626 @@ class ControllerProtokolTrialSkalaLab {
       res.status(200).json(updateTujuan);
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async createKemasanSkalaLab(req, res, next) {
+    try {
+      const {
+        parameterBentukSediaan,
+        samaDenganOriginatorAtauKompetitorBentukSediaan,
+        justifikasiBentukSediaan,
+        detailSediaan,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      const createKemasan = await KemasanProtokolSkalaLab.create({
+        parameterBentukSediaan: parameterBentukSediaan,
+        samaDenganOriginatorAtauKompetitorBentukSediaan:
+          samaDenganOriginatorAtauKompetitorBentukSediaan,
+        justifikasiBentukSediaan: justifikasiBentukSediaan,
+        detailSediaan: detailSediaan,
+        ProtokolTrialSkalaLabID: ProtokolTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success Create kemasan skala lab",
+        data: createKemasan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async getProtokolSkalaLabDetails(req, res) {
+    const { id } = req.params;
+    try {
+      const protokolDetails = await ProtokolTrialSkalaLab.findByPk(id);
+      if (!protokolDetails) throw new MyError(400, "notFound!");
+      // console.log(protokolDetails, "<<");
+      res.status(200).json(protokolDetails);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async editProtokolSkalaLab(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        nomor,
+        tanggal,
+        revisi,
+        namaProduk,
+        komposisi,
+        kemasan,
+        alasan,
+        tujuan,
+        productBriefNo,
+        hasilStudiPraformulasiNo,
+        lainlain,
+        ProductBriefId,
+      } = req.body;
+
+      const obj = {};
+
+      if (nomor) {
+        obj.nomor = nomor;
+      }
+      if (tanggal) {
+        obj.tanggal = tanggal;
+      }
+      if (revisi) {
+        obj.revisi = revisi;
+      }
+
+      if (namaProduk) {
+        obj.namaProduk = namaProduk;
+      }
+
+      if (komposisi) {
+        obj.komposisi = komposisi;
+      }
+
+      if (kemasan) {
+        obj.kemasan = kemasan;
+      }
+
+      if (alasan) {
+        obj.alasan = alasan;
+      }
+
+      if (tujuan) {
+        obj.tujuan = tujuan;
+      }
+
+      if (productBriefNo) {
+        obj.productBriefNo = productBriefNo;
+      }
+
+      if (hasilStudiPraformulasiNo) {
+        obj.hasilStudiPraformulasiNo = hasilStudiPraformulasiNo;
+      }
+      if (lainlain) {
+        obj.lainlain = lainlain;
+      }
+      if (ProductBriefId) {
+        obj.ProductBriefId = ProductBriefIs;
+      }
+
+      const proto = await ProtokolTrialSkalaLab.findByPk(+id);
+      // const protoNo = studi.addendumKe;
+      // console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
+
+      const [updatedRowsCount] = await ProtokolTrialSkalaLab.update(
+        {
+          ...obj,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      console.log(updatedRowsCount, "<<< updated");
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "protokol skala lab updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "protokol skala lab not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async getCqa(req, res) {
+    const { id } = req.params;
+    try {
+      const cqaDetails = await Cqa.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!cqaDetails || cqaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(cqaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getCpp(req, res) {
+    const { id } = req.params;
+    try {
+      const cppDetails = await Cpp.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!cppDetails || cppDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(cppDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getFormula(req, res) {
+    const { id } = req.params;
+    try {
+      const formulaDetails = await FormulaProtokol.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!formulaDetails || formulaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(formulaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getProsesPembuatan(req, res) {
+    const { id } = req.params;
+    try {
+      const pembuatanDetails = await ProsesPembuatan.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!pembuatanDetails || pembuatanDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(pembuatanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getRencanaAktivitas(req, res) {
+    const { id } = req.params;
+    try {
+      const rencanaDetails = await RencanaAktivitas.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!rencanaDetails || rencanaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(rencanaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getMaterial(req, res) {
+    const { id } = req.params;
+    try {
+      const materialDetails = await Material.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!materialDetails || materialDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(materialDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getOriginatorKompetitor(req, res) {
+    const { id } = req.params;
+    try {
+      const originatorDetails = await OriginatorAtauKompetitor.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!originatorDetails || originatorDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(originatorDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getKebutuhanPeralatan(req, res) {
+    const { id } = req.params;
+    try {
+      const kebutuhanDetails = await KebutuhanPeralatanDanMesin.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(kebutuhanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getZatAktif(req, res) {
+    const { id } = req.params;
+    try {
+      const zatAktifDetails = await ZatAktif.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+      });
+
+      if (!zatAktifDetails || zatAktifDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(zatAktifDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editCqaDetails(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        qttpElements,
+        target,
+        safety,
+        efficacy,
+        formulaDanProses,
+        apakahIniKritikalCqa,
+        justifikasi,
+      } = req.body;
+
+      const [updatedRowsCount] = await Cqa.update(
+        {
+          qttpElements,
+          target,
+          safety,
+          efficacy,
+          formulaDanProses,
+          apakahIniKritikalCqa,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "cqa updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "cqa not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editCppDetails(req, res, next) {
+    const { id } = req.params;
+    try {
+      const { parameterProcess, CQA1, CQA2, apakahTermasukCpp, justifikasi } =
+        req.body;
+
+      const [updatedRowsCount] = await Cpp.update(
+        {
+          parameterProcess,
+          CQA1,
+          CQA2,
+          apakahTermasukCpp,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "cpp updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "cpp not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editZatAktif(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+      } = req.body;
+
+      const [updatedRowsCount] = await ZatAktif.update(
+        {
+          materialAttributes,
+          Cqa1,
+          Cqa2,
+          apakahVariabelDapatDimodifikasi,
+          apakahTermasukCma,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "zatAktif updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "zatAktif not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editMaterial(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        jumlahPenelitianAnalisaMaterial,
+        biayaAnalisaMaterial,
+        jumlahPenelitianOrientasiFormulaDanProses,
+        biayaOrientasiFormulaDanProses,
+        jumlahPenelitianOptimasiFormulaDanProses,
+        biayaOptimasiFormulaDanProses,
+        jumlahPenelitianStabilitaSkalaLab,
+        biayaStabilitaSkalaLab,
+        totalKebutuhanMaterial,
+        perkiraanHargaPembelianMaterial,
+      } = req.body;
+
+      const [updatedRowsCount] = await Material.update(
+        {
+          jumlahPenelitianAnalisaMaterial,
+          biayaAnalisaMaterial,
+          jumlahPenelitianOrientasiFormulaDanProses,
+          biayaOrientasiFormulaDanProses,
+          jumlahPenelitianOptimasiFormulaDanProses,
+          biayaOptimasiFormulaDanProses,
+          jumlahPenelitianStabilitaSkalaLab,
+          biayaStabilitaSkalaLab,
+          totalKebutuhanMaterial,
+          perkiraanHargaPembelianMaterial,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "material updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "material not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editOriginatorKompetitor(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        originator,
+        source,
+        harga,
+        pemeriksaanFisikDanKimiaOriginator,
+        profilDisolusi,
+        stabilita,
+        totalKebutuhanMaterial,
+        perkiraanHargaPembelianMaterial,
+      } = req.body;
+
+      const [updatedRowsCount] = await OriginatorAtauKompetitor.update(
+        {
+          originator,
+          source,
+          harga,
+          pemeriksaanFisikDanKimiaOriginator,
+          profilDisolusi,
+          stabilita,
+          totalKebutuhanMaterial,
+          perkiraanHargaPembelianMaterial,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "originator kompetitor updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "originator kompetitor not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editKebutuhanPeralatan(req, res, next) {
+    const { id } = req.params;
+    try {
+      const { peralatanDanMesin, fungsi, kapasitas } = req.body;
+
+      const [updatedRowsCount] = await KebutuhanPeralatanDanMesin.update(
+        {
+          peralatanDanMesin,
+          fungsi,
+          kapasitas,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "kebutuhan peralatan updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "kebutuhan peralatan not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editFormulaDetails(req, res, next) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const {
+        komposisi,
+        fungsi,
+        apakahAdaPadaKomposisiOriginatorKompetitor,
+        justifikasi,
+      } = req.body;
+
+      const [updatedRowsCount] = await FormulaProtokol.update(
+        {
+          komposisi,
+          fungsi,
+          apakahAdaPadaKomposisiOriginatorKompetitor,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "formula updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "formula not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editRencanaAktivitas(req, res, next) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
+        req.body;
+
+      const [updatedRowsCount] = await RencanaAktivitas.update(
+        {
+          tersediaBahanAwal,
+          optimasiFormulaDanProses,
+          stabilitaSkalaLab,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "rencana aktivitas updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "rencana aktivitas not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editProsesPembuatan(req, res, next) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const { prosesPembuatan } = req.body;
+
+      const [updatedRowsCount] = await ProsesPembuatan.update(
+        {
+          prosesPembuatan,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "prosesPembuatan updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "prosesPembuatan not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
 }
