@@ -13,7 +13,7 @@ router.post(
 );
 router.post(
   "/create-proses-pembuatan",
-  ControllerProtokolTrialSkalaLab.createFormulaProtokol
+  ControllerProtokolTrialSkalaLab.createProsesPembuatan
 );
 router.post("/create-cpp", ControllerProtokolTrialSkalaLab.createCpp);
 router.post(
@@ -77,6 +77,14 @@ router.get(
   ControllerProtokolTrialSkalaLab.getOriginatorKompetitor
 );
 router.get("/zat-aktif/:id", ControllerProtokolTrialSkalaLab.getZatAktif);
+router.get(
+  "/bahan-tambahan/:id",
+  ControllerProtokolTrialSkalaLab.getBahanTambahan
+);
+router.get(
+  "/kemasan-primer/:id",
+  ControllerProtokolTrialSkalaLab.getKemasanPrimer
+);
 router.delete(
   "/delete-protokol-skala-lab/:id",
   ControllerProtokolTrialSkalaLab.deleteProtokolSkalaLab
@@ -109,5 +117,13 @@ router.put(
   ControllerProtokolTrialSkalaLab.editProsesPembuatan
 );
 router.put("/edit-zat-aktif/:id", ControllerProtokolTrialSkalaLab.editZatAktif);
+router.put(
+  "/edit-bahan-tambahan/:id",
+  ControllerProtokolTrialSkalaLab.editBahanTambahan
+);
+router.put(
+  "/edit-kemasan-primer/:id",
+  ControllerProtokolTrialSkalaLab.editKemasanPrimer
+);
 
 module.exports = router;

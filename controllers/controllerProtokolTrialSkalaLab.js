@@ -495,7 +495,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getProtokolSkalaLabDetails(req, res) {
     const { id } = req.params;
     try {
-      const protokolDetails = await ProtokolTrialSkalaLab.findByPk(id);
+      const protokolDetails = await ProtokolTrialSkalaLab.findByPk(+id);
       if (!protokolDetails) throw new MyError(400, "notFound!");
       // console.log(protokolDetails, "<<");
       res.status(200).json(protokolDetails);
@@ -598,10 +598,13 @@ class ControllerProtokolTrialSkalaLab {
   }
   static async getCqa(req, res) {
     const { id } = req.params;
+    console.log(id, "< id");
     try {
       const cqaDetails = await Cqa.findAll({
-        where: { ProtokolTrialSkalaLabID: id },
+        where: { ProtokolTrialSkalaLabID: +id },
       });
+
+      console.log(cqaDetails, "<< cqa details");
 
       if (!cqaDetails || cqaDetails.length === 0) {
         throw new MyError(404, "Not found!");
@@ -749,6 +752,40 @@ class ControllerProtokolTrialSkalaLab {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  static async getBahanTambahan(req, res) {
+    const { id } = req.params;
+    try {
+      const bahanTambahanDetails = await BahanTambahan.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+      });
+
+      if (!bahanTambahanDetails || bahanTambahanDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(bahanTambahanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getKemasanPrimer(req, res) {
+    const { id } = req.params;
+    try {
+      const kemasanPrimerDetails = await KemasanPrimer.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+      });
+
+      if (!kemasanPrimerDetails || kemasanPrimerDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(kemasanPrimerDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
   static async editCqaDetails(req, res, next) {
     const { id } = req.params;
     try {
@@ -857,6 +894,86 @@ class ControllerProtokolTrialSkalaLab {
       } else {
         res.status(404).json({
           message: "zatAktif not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editKemasanPrimer(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        materialAttributes,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+      } = req.body;
+
+      const [updatedRowsCount] = await KemasanPrimer.update(
+        {
+          materialAttributes,
+          Cqa1,
+          Cqa2,
+          apakahVariabelDapatDimodifikasi,
+          apakahTermasukCma,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "kemasanPrimer updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "kemasanPrimer not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editBahanTambahan(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        bahanTambahan,
+        Cqa1,
+        Cqa2,
+        apakahVariabelDapatDimodifikasi,
+        apakahTermasukCma,
+        justifikasi,
+      } = req.body;
+
+      const [updatedRowsCount] = await BahanTambahan.update(
+        {
+          bahanTambahan,
+          Cqa1,
+          Cqa2,
+          apakahVariabelDapatDimodifikasi,
+          apakahTermasukCma,
+          justifikasi,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "bahanTambahan updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "bahanTambahan not found",
         });
       }
     } catch (err) {
