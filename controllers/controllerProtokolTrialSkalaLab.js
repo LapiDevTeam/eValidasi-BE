@@ -11,6 +11,7 @@ const {
   ZatAktif,
   BahanTambahan,
   KemasanPrimer,
+  MappingProcess,
   KemasanProtokolSkalaLab,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
@@ -404,6 +405,33 @@ class ControllerProtokolTrialSkalaLab {
       res.status(201).json({
         message: "Success Create bahan tambahan",
         data: createBahanTambahan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createMappingProcess(req, res, next) {
+    try {
+      const {
+        processParameters,
+        materialAttributes,
+        manufacturingProcess,
+        qualityAttributes,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      console.log(req.body, "1231321");
+      const createMappingProcess = await MappingProcess.create({
+        processParameters,
+        materialAttributes,
+        manufacturingProcess,
+        qualityAttributes,
+        ProtokolTrialSkalaLabID,
+      });
+      res.status(201).json({
+        message: "Success Create mapping process",
+        data: createMappingProcess,
       });
     } catch (err) {
       console.error(err);

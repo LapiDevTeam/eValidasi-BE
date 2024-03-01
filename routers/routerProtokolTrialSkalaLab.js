@@ -39,6 +39,10 @@ router.post(
   ControllerProtokolTrialSkalaLab.createKemasanPrimer
 );
 router.post(
+  "/mapping-process",
+  ControllerProtokolTrialSkalaLab.createMappingProcess
+);
+router.post(
   "/create-kemasan-skala-lab",
   ControllerProtokolTrialSkalaLab.createKemasanSkalaLab
 );
