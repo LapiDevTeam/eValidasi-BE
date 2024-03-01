@@ -40,7 +40,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       lainlain: {
-        type: Sequelize.STRING,
+        type: Sequelize.JSONB,
       },
       createdAt: {
         allowNull: false,

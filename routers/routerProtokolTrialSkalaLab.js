@@ -85,6 +85,10 @@ router.get(
   "/kemasan-primer/:id",
   ControllerProtokolTrialSkalaLab.getKemasanPrimer
 );
+router.get(
+  "/cqa-filter-yes/:id",
+  ControllerProtokolTrialSkalaLab.getCqaFilterYes
+);
 router.delete(
   "/delete-protokol-skala-lab/:id",
   ControllerProtokolTrialSkalaLab.deleteProtokolSkalaLab
@@ -124,6 +128,10 @@ router.put(
 router.put(
   "/edit-kemasan-primer/:id",
   ControllerProtokolTrialSkalaLab.editKemasanPrimer
+);
+router.put(
+  "/update-dokumenacuan-protokol/:ProtokolTrialSkalaLabID",
+  ControllerProtokolTrialSkalaLab.updateDokumenAcuanProtokol
 );
 
 module.exports = router;

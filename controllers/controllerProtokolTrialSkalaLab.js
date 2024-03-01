@@ -786,6 +786,24 @@ class ControllerProtokolTrialSkalaLab {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  static async getCqaFilterYes(req, res) {
+    const { id } = req.params;
+    try {
+      const cqaDetails = await Cqa.findAll({
+        where: { ProtokolTrialSkalaLabID: +id, apakahIniKritikalCqa: "Yes" },
+      });
+
+      if (!cqaDetails || cqaDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(cqaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async editCqaDetails(req, res, next) {
     const { id } = req.params;
     try {
@@ -1199,6 +1217,36 @@ class ControllerProtokolTrialSkalaLab {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async updateDokumenAcuanProtokol(req, res) {
+    try {
+      const { ProtokolTrialSkalaLabID } = req.params;
+      console.log(ProtokolTrialSkalaLabID, "<!@312312312");
+      const { productBriefNo, hasilStudiPraformulasiNo, lainlain } = req.body;
+      const findProtokolTrialSkalaLabID = await ProtokolTrialSkalaLab.findByPk(
+        +ProtokolTrialSkalaLabID
+      );
+
+      console.log(findProtokolTrialSkalaLabID, "< IDDDDDDD ");
+
+      if (!findProtokolTrialSkalaLabID) throw { name: "NotFound" };
+      const updateDokumenAcuan = await ProtokolTrialSkalaLab.update(
+        {
+          productBriefNo: productBriefNo,
+          hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
+          lainlain: lainlain,
+        },
+        {
+          where: {
+            id: findProtokolTrialSkalaLabID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateDokumenAcuan);
+    } catch (err) {
+      console.log(err);
     }
   }
 }
