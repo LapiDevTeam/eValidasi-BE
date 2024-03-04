@@ -12,31 +12,58 @@ module.exports = {
       jumlahPenelitianAnalisaMaterial: {
         type: Sequelize.STRING,
       },
-      biayaAnalisaMaterial: {
-        type: Sequelize.STRING,
+      kebutuhanAnalisaMaterial: {
+        type: Sequelize.INTEGER,
       },
+      biayaAnalisaMaterial: {
+        type: Sequelize.INTEGER,
+      },
+
       jumlahPenelitianOrientasiFormulaDanProses: {
         type: Sequelize.STRING,
       },
-      biayaOrientasiFormulaDanProses: {
-        type: Sequelize.STRING,
+      kebutuhanOrientasiFormulaDanProses: {
+        type: Sequelize.INTEGER,
       },
+      biayaOrientasiFormulaDanProses: {
+        type: Sequelize.INTEGER,
+      },
+
       jumlahPenelitianOptimasiFormulaDanProses: {
         type: Sequelize.STRING,
       },
-      biayaOptimasiFormulaDanProses: {
-        type: Sequelize.STRING,
+      kebutuhanOptimasiFormulaDanProses: {
+        type: Sequelize.INTEGER,
       },
+      biayaOptimasiFormulaDanProses: {
+        type: Sequelize.INTEGER,
+      },
+
       jumlahPenelitianStabilitaSkalaLab: {
         type: Sequelize.STRING,
       },
+      kebutuhanStabilitaSkalaLab: {
+        type: Sequelize.INTEGER,
+      },
       biayaStabilitaSkalaLab: {
+        type: Sequelize.INTEGER,
+      },
+      jumlahPenelitianSampelPerTinggal: {
         type: Sequelize.STRING,
+      },
+      kebutuhanSampelPerTinggal: {
+        type: Sequelize.INTEGER,
+      },
+      biayaSampelPerTinggal: {
+        type: Sequelize.INTEGER,
       },
       totalKebutuhanMaterial: {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
       },
       perkiraanHargaPembelianMaterial: {
+        type: Sequelize.INTEGER,
+      },
+      source: {
         type: Sequelize.STRING,
       },
       tableIndex: {

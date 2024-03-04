@@ -93,6 +93,11 @@ router.get(
   "/cqa-filter-yes/:id",
   ControllerProtokolTrialSkalaLab.getCqaFilterYes
 );
+router.get(
+  "/mapping-process/:id",
+  ControllerProtokolTrialSkalaLab.getMappingProcess
+);
+
 router.delete(
   "/delete-protokol-skala-lab/:id",
   ControllerProtokolTrialSkalaLab.deleteProtokolSkalaLab
@@ -136,6 +141,10 @@ router.put(
 router.put(
   "/update-dokumenacuan-protokol/:ProtokolTrialSkalaLabID",
   ControllerProtokolTrialSkalaLab.updateDokumenAcuanProtokol
+);
+router.put(
+  "/edit-mapping-process/:id",
+  ControllerProtokolTrialSkalaLab.editMappingProcess
 );
 
 module.exports = router;

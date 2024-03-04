@@ -312,32 +312,48 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         jumlahPenelitianAnalisaMaterial,
+        kebutuhanAnalisaMaterial,
         biayaAnalisaMaterial,
         jumlahPenelitianOrientasiFormulaDanProses,
+        kebutuhanOrientasiFormulaDanProses,
         biayaOrientasiFormulaDanProses,
         jumlahPenelitianOptimasiFormulaDanProses,
+        kebutuhanOptimasiFormulaDanProses,
         biayaOptimasiFormulaDanProses,
         jumlahPenelitianStabilitaSkalaLab,
+        kebutuhanStabilitaSkalaLab,
         biayaStabilitaSkalaLab,
+        jumlahPenelitianSampelPerTinggal,
+        kebutuhanSampelPerTinggal,
+        biayaSampelPerTinggal,
         totalKebutuhanMaterial,
         perkiraanHargaPembelianMaterial,
+        source,
         tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
 
       const createMaterial = await Material.create({
         jumlahPenelitianAnalisaMaterial,
-        biayaAnalisaMaterial,
+        kebutuhanAnalisaMaterial: +kebutuhanAnalisaMaterial,
+        biayaAnalisaMaterial: +biayaAnalisaMaterial,
         jumlahPenelitianOrientasiFormulaDanProses,
+        kebutuhanOrientasiFormulaDanProses,
         biayaOrientasiFormulaDanProses,
         jumlahPenelitianOptimasiFormulaDanProses,
+        kebutuhanOptimasiFormulaDanProses,
         biayaOptimasiFormulaDanProses,
         jumlahPenelitianStabilitaSkalaLab,
+        kebutuhanStabilitaSkalaLab,
         biayaStabilitaSkalaLab,
+        jumlahPenelitianSampelPerTinggal,
+        kebutuhanSampelPerTinggal,
+        biayaSampelPerTinggal,
         totalKebutuhanMaterial,
         perkiraanHargaPembelianMaterial,
-        tableIndex: +tableIndex,
-        ProtokolTrialSkalaLabID: +ProtokolTrialSkalaLabID,
+        source,
+        tableIndex,
+        ProtokolTrialSkalaLabID,
       });
 
       res.status(201).json({
@@ -831,7 +847,61 @@ class ControllerProtokolTrialSkalaLab {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  static async getMappingProcess(req, res) {
+    const { id } = req.params;
+    try {
+      const mappingDetails = await MappingProcess.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+        order: [["createdAt", "ASC"]], // Order by createdAt descending
+      });
 
+      if (!mappingDetails || mappingDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(mappingDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async editMappingProcess(req, res, next) {
+    const { id } = req.params;
+    try {
+      const {
+        processParameters,
+        materialAttributes,
+        manufacturingProcess,
+        qualityAttributes,
+      } = req.body;
+
+      const [updatedRowsCount] = await MappingProcess.update(
+        {
+          processParameters,
+          materialAttributes,
+          manufacturingProcess,
+          qualityAttributes,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "mapping process updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "mapping process not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
   static async editCqaDetails(req, res, next) {
     const { id } = req.params;
     try {

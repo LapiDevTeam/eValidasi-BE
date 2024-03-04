@@ -17,15 +17,28 @@ module.exports = (sequelize, DataTypes) => {
   Material.init(
     {
       jumlahPenelitianAnalisaMaterial: DataTypes.STRING,
-      biayaAnalisaMaterial: DataTypes.STRING,
+      kebutuhanAnalisaMaterial: DataTypes.INTEGER,
+      biayaAnalisaMaterial: DataTypes.INTEGER,
+
       jumlahPenelitianOrientasiFormulaDanProses: DataTypes.STRING,
-      biayaOrientasiFormulaDanProses: DataTypes.STRING,
+      kebutuhanOrientasiFormulaDanProses: DataTypes.INTEGER,
+      biayaOrientasiFormulaDanProses: DataTypes.INTEGER,
+
       jumlahPenelitianOptimasiFormulaDanProses: DataTypes.STRING,
-      biayaOptimasiFormulaDanProses: DataTypes.STRING,
+      kebutuhanOptimasiFormulaDanProses: DataTypes.INTEGER,
+      biayaOptimasiFormulaDanProses: DataTypes.INTEGER,
+
       jumlahPenelitianStabilitaSkalaLab: DataTypes.STRING,
-      biayaStabilitaSkalaLab: DataTypes.STRING,
-      totalKebutuhanMaterial: DataTypes.STRING,
-      perkiraanHargaPembelianMaterial: DataTypes.STRING,
+      kebutuhanStabilitaSkalaLab: DataTypes.INTEGER,
+      biayaStabilitaSkalaLab: DataTypes.INTEGER,
+
+      jumlahPenelitianSampelPerTinggal: DataTypes.STRING,
+      kebutuhanSampelPerTinggal: DataTypes.INTEGER,
+      biayaSampelPerTinggal: DataTypes.INTEGER,
+
+      totalKebutuhanMaterial: DataTypes.INTEGER,
+      perkiraanHargaPembelianMaterial: DataTypes.INTEGER,
+      source: DataTypes.STRING,
       tableIndex: DataTypes.INTEGER,
       ProtokolTrialSkalaLabID: DataTypes.INTEGER,
     },
