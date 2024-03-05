@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       samaDenganOriginatorAtauKompetitorBentukSediaan: DataTypes.STRING,
       justifikasiBentukSediaan: DataTypes.STRING,
       detailSediaan: DataTypes.JSONB,
+      tableIndex: DataTypes.INTEGER,
       ProtokolTrialSkalaLabID: DataTypes.INTEGER,
     },
     {

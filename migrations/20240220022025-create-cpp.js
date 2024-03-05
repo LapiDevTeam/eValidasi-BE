@@ -12,11 +12,8 @@ module.exports = {
       parameterProcess: {
         type: Sequelize.STRING,
       },
-      CQA1: {
-        type: Sequelize.STRING,
-      },
-      CQA2: {
-        type: Sequelize.STRING,
+      pengaruhKeCqa: {
+        type: Sequelize.JSONB,
       },
       apakahTermasukCpp: {
         type: Sequelize.STRING,

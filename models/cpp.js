@@ -17,8 +17,7 @@ module.exports = (sequelize, DataTypes) => {
   Cpp.init(
     {
       parameterProcess: DataTypes.STRING,
-      CQA1: DataTypes.STRING,
-      CQA2: DataTypes.STRING,
+      pengaruhKeCqa: DataTypes.JSONB,
       apakahTermasukCpp: DataTypes.STRING,
       justifikasi: DataTypes.STRING,
       ProtokolTrialSkalaLabID: DataTypes.INTEGER,

@@ -17,8 +17,7 @@ module.exports = (sequelize, DataTypes) => {
   KemasanPrimer.init(
     {
       materialAttributes: DataTypes.STRING,
-      Cqa1: DataTypes.STRING,
-      Cqa2: DataTypes.STRING,
+      pengaruhKeCqa: DataTypes.JSONB,
       apakahVariabelDapatDimodifikasi: DataTypes.STRING,
       apakahTermasukCma: DataTypes.STRING,
       justifikasi: DataTypes.STRING,

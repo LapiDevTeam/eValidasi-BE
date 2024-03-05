@@ -153,8 +153,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         parameterProcess,
-        CQA1,
-        CQA2,
+        pengaruhKeCqa,
         apakahTermasukCpp,
         justifikasi,
         ProtokolTrialSkalaLabID,
@@ -162,8 +161,7 @@ class ControllerProtokolTrialSkalaLab {
 
       const createCpp = await Cpp.create({
         parameterProcess,
-        CQA1,
-        CQA2,
+        pengaruhKeCqa,
         apakahTermasukCpp,
         justifikasi,
         ProtokolTrialSkalaLabID,
@@ -369,8 +367,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -379,8 +376,7 @@ class ControllerProtokolTrialSkalaLab {
       } = req.body;
       const createZatAktif = await ZatAktif.create({
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -400,8 +396,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         bahanTambahan,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -410,8 +405,7 @@ class ControllerProtokolTrialSkalaLab {
       } = req.body;
       const createBahanTambahan = await BahanTambahan.create({
         bahanTambahan,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -458,8 +452,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -468,8 +461,7 @@ class ControllerProtokolTrialSkalaLab {
       } = req.body;
       const createKemasanPrimer = await KemasanPrimer.create({
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -515,6 +507,7 @@ class ControllerProtokolTrialSkalaLab {
         samaDenganOriginatorAtauKompetitorBentukSediaan,
         justifikasiBentukSediaan,
         detailSediaan,
+        tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
 
@@ -524,6 +517,7 @@ class ControllerProtokolTrialSkalaLab {
           samaDenganOriginatorAtauKompetitorBentukSediaan,
         justifikasiBentukSediaan: justifikasiBentukSediaan,
         detailSediaan: detailSediaan,
+        tableIndex: +tableIndex,
         ProtokolTrialSkalaLabID: ProtokolTrialSkalaLabID,
       });
 
@@ -842,6 +836,24 @@ class ControllerProtokolTrialSkalaLab {
       }
 
       res.status(200).json(cqaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getKemasanProtokol(req, res) {
+    const { id } = req.params;
+    try {
+      const kemasanProtokolDetails = await KemasanProtokolSkalaLab.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+        order: [["createdAt", "ASC"]], // Order by createdAt descending
+      });
+
+      if (!kemasanProtokolDetails || kemasanProtokolDetails.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      res.status(200).json(kemasanProtokolDetails);
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });

@@ -12,11 +12,8 @@ module.exports = {
       bahanTambahan: {
         type: Sequelize.STRING,
       },
-      Cqa1: {
-        type: Sequelize.STRING,
-      },
-      Cqa2: {
-        type: Sequelize.STRING,
+      pengaruhKeCqa: {
+        type: Sequelize.JSONB,
       },
       apakahVariabelDapatDimodifikasi: {
         type: Sequelize.STRING,

@@ -97,6 +97,10 @@ router.get(
   "/mapping-process/:id",
   ControllerProtokolTrialSkalaLab.getMappingProcess
 );
+router.get(
+  "/kemasan-protokol/:id",
+  ControllerProtokolTrialSkalaLab.getKemasanProtokol
+);
 
 router.delete(
   "/delete-protokol-skala-lab/:id",

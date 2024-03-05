@@ -21,6 +21,9 @@ module.exports = {
       detailSediaan: {
         type: Sequelize.JSONB,
       },
+      tableIndex: {
+        type: Sequelize.INTEGER,
+      },
       ProtokolTrialSkalaLabID: {
         type: Sequelize.INTEGER,
         references: {
