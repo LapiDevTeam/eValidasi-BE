@@ -1301,34 +1301,29 @@ class ControllerProtokolTrialSkalaLab {
     }
   }
   static async editProsesPembuatan(req, res, next) {
-    const { id } = req.params;
-    console.log(id, "< id");
     try {
-      const { prosesPembuatan } = req.body;
+      const { id } = req.params;
+      console.log(id, "< id");
 
-      const [updatedRowsCount] = await ProsesPembuatan.update(
-        {
-          prosesPembuatan,
-        },
-        {
-          where: { id: id },
-        }
+      const { prosesPembuatan } = req.body;
+      if (!prosesPembuatan) {
+        return res
+          .status(400)
+          .json({ error: "Field 'prosesPembuatan' is required." });
+      }
+
+      const updateProsesPembuatan = await ProsesPembuatan.update(
+        { prosesPembuatan },
+        { where: { ProtokolTrialSkalaLabID: +id } }
       );
 
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "prosesPembuatan updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "prosesPembuatan not found",
-        });
-      }
+      res.status(200).json(updateProsesPembuatan);
     } catch (err) {
       console.error(err);
-      next(err);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
+
   static async updateDokumenAcuanProtokol(req, res) {
     try {
       const { ProtokolTrialSkalaLabID } = req.params;

@@ -110,6 +110,7 @@ router.put(
   "/edit-protokol-skala-lab/:id",
   ControllerProtokolTrialSkalaLab.editProtokolSkalaLab
 );
+
 router.put("/edit-material/:id", ControllerProtokolTrialSkalaLab.editMaterial);
 router.put(
   "/edit-originator-kompetitor/:id",
