@@ -15,6 +15,9 @@ module.exports = {
       tanggal: {
         type: Sequelize.DATE,
       },
+      tanggalPengesahan: {
+        type: Sequelize.DATE,
+      },
       revisi: {
         type: Sequelize.INTEGER,
       },
@@ -37,6 +40,9 @@ module.exports = {
         type: Sequelize.STRING,
       },
       hasilStudiPraformulasiNo: {
+        type: Sequelize.STRING,
+      },
+      status: {
         type: Sequelize.STRING,
       },
       lainlain: {

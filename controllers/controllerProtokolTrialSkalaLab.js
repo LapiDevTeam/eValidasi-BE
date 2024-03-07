@@ -16,6 +16,8 @@ const {
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
+const { Op } = require("sequelize");
+const { AsyncLocalStorage } = require("async_hooks");
 
 class ControllerProtokolTrialSkalaLab {
   static async findAllProtokolSkalaLab(req, res) {
@@ -90,6 +92,8 @@ class ControllerProtokolTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
+        tanggalPengesahan,
+        status,
       } = req.body;
 
       const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create({
@@ -105,6 +109,8 @@ class ControllerProtokolTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
+        tanggalPengesahan,
+        status,
       });
 
       res.status(201).json({
@@ -634,6 +640,44 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
+  static async findSameDate(req, res) {
+    try {
+      const currentDate = new Date();
+
+      const yesterday = new Date(currentDate);
+      yesterday.setDate(currentDate.getDate() - 1);
+
+      const protokolRevisi = await ProtokolTrialSkalaLab.findAll({
+        attributes: ["nomor", "id", "status", "tanggalPengesahan", "revisi"],
+        where: {
+          status: "Approve",
+        },
+        order: [["tanggalPengesahan", "DESC"]],
+      });
+
+      const revisiTerakhir = protokolRevisi[0].dataValues.revisi;
+
+      console.log(revisiTerakhir, "<<<");
+
+      const protokol = await ProtokolTrialSkalaLab.findAll({
+        where: {
+          status: "Draft",
+          tanggalPengesahan: {
+            [Op.gte]: yesterday,
+            [Op.lte]: currentDate,
+          },
+        },
+      });
+
+      console.log(protokol, "<< protokol");
+
+      res.status(200).json(protokol);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async getCqa(req, res) {
     const { id } = req.params;
     console.log(id, "< id");
@@ -959,14 +1003,17 @@ class ControllerProtokolTrialSkalaLab {
   static async editCppDetails(req, res, next) {
     const { id } = req.params;
     try {
-      const { parameterProcess, CQA1, CQA2, apakahTermasukCpp, justifikasi } =
-        req.body;
+      const {
+        parameterProcess,
+        pengaruhKeCqa,
+        apakahTermasukCpp,
+        justifikasi,
+      } = req.body;
 
       const [updatedRowsCount] = await Cpp.update(
         {
           parameterProcess,
-          CQA1,
-          CQA2,
+          pengaruhKeCqa,
           apakahTermasukCpp,
           justifikasi,
         },
@@ -991,11 +1038,11 @@ class ControllerProtokolTrialSkalaLab {
   }
   static async editZatAktif(req, res, next) {
     const { id } = req.params;
+    console.log(id, "IASDIASIDSAIDA");
     try {
       const {
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -1004,8 +1051,7 @@ class ControllerProtokolTrialSkalaLab {
       const [updatedRowsCount] = await ZatAktif.update(
         {
           materialAttributes,
-          Cqa1,
-          Cqa2,
+          pengaruhKeCqa,
           apakahVariabelDapatDimodifikasi,
           apakahTermasukCma,
           justifikasi,
@@ -1034,8 +1080,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const {
         materialAttributes,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -1044,8 +1089,7 @@ class ControllerProtokolTrialSkalaLab {
       const [updatedRowsCount] = await KemasanPrimer.update(
         {
           materialAttributes,
-          Cqa1,
-          Cqa2,
+          pengaruhKeCqa,
           apakahVariabelDapatDimodifikasi,
           apakahTermasukCma,
           justifikasi,
@@ -1070,12 +1114,13 @@ class ControllerProtokolTrialSkalaLab {
     }
   }
   static async editBahanTambahan(req, res, next) {
+    console.log("xixixixi");
     const { id } = req.params;
+    console.log(id, "< IDDIDIDIDID");
     try {
       const {
         bahanTambahan,
-        Cqa1,
-        Cqa2,
+        pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
         apakahTermasukCma,
         justifikasi,
@@ -1084,16 +1129,17 @@ class ControllerProtokolTrialSkalaLab {
       const [updatedRowsCount] = await BahanTambahan.update(
         {
           bahanTambahan,
-          Cqa1,
-          Cqa2,
+          pengaruhKeCqa,
           apakahVariabelDapatDimodifikasi,
           apakahTermasukCma,
           justifikasi,
         },
         {
-          where: { id: id },
+          where: { id: +id },
         }
       );
+
+      console.log(updatedRowsCount, "<< UPDAte");
 
       if (updatedRowsCount > 0) {
         res.status(201).json({

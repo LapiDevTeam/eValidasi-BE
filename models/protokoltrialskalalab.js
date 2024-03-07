@@ -51,6 +51,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       nomor: DataTypes.STRING,
       tanggal: DataTypes.DATE,
+      tanggalPengesahan: DataTypes.DATE,
       revisi: DataTypes.INTEGER,
       namaProduk: DataTypes.STRING,
       komposisi: DataTypes.JSONB,
@@ -59,6 +60,7 @@ module.exports = (sequelize, DataTypes) => {
       tujuan: DataTypes.STRING,
       productBriefNo: DataTypes.STRING,
       hasilStudiPraformulasiNo: DataTypes.STRING,
+      status: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
     },
     {

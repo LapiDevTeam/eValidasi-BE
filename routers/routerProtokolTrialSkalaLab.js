@@ -47,10 +47,7 @@ router.post(
   ControllerProtokolTrialSkalaLab.createKemasanSkalaLab
 );
 
-router.put(
-  "/update-tujuan-protokol-trial-skala-lab/:ProtokolTrialSkalaLabID",
-  ControllerProtokolTrialSkalaLab.updateTujuan
-);
+router.get("/findSameDate", ControllerProtokolTrialSkalaLab.findSameDate);
 router.get(
   "/all-protokol-skala-lab",
   ControllerProtokolTrialSkalaLab.findAllProtokolSkalaLab
@@ -105,6 +102,10 @@ router.get(
 router.delete(
   "/delete-protokol-skala-lab/:id",
   ControllerProtokolTrialSkalaLab.deleteProtokolSkalaLab
+);
+router.put(
+  "/update-tujuan-protokol-trial-skala-lab/:ProtokolTrialSkalaLabID",
+  ControllerProtokolTrialSkalaLab.updateTujuan
 );
 router.put(
   "/edit-protokol-skala-lab/:id",
