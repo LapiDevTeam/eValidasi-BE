@@ -2,49 +2,39 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("ProtokolTrialSkalaLab", {
+    await queryInterface.createTable("t_studiPraformulasi_status", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      nomor: {
-        type: Sequelize.STRING,
-      },
-      tanggal: {
-        type: Sequelize.DATE,
-      },
-      revisi: {
+      StudiPraformulasiId: {
         type: Sequelize.INTEGER,
       },
-      namaProduk: {
+      approver_no: {
+        type: Sequelize.INTEGER,
+      },
+      is_approve: {
+        type: Sequelize.BOOLEAN,
+      },
+      approver_name: {
         type: Sequelize.STRING,
       },
-      komposisi: {
-        type: Sequelize.JSONB,
-      },
-      kemasan: {
+      approver_joblevel_id: {
         type: Sequelize.STRING,
       },
-      alasan: {
+      approver_inisial: {
         type: Sequelize.STRING,
       },
-      tujuan: {
+      keterangan_reject: {
+        type: Sequelize.TEXT,
+      },
+      user_id: {
         type: Sequelize.STRING,
       },
-      productBriefNo: {
+      delegated_to: {
         type: Sequelize.STRING,
-      },
-      hasilStudiPraformulasiNo: {
-        type: Sequelize.STRING,
-      },
-      lainlain: {
-        type: Sequelize.JSONB,
-      },
-      status: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
       },
       createdAt: {
         allowNull: false,
@@ -57,6 +47,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("ProtokolTrialSkalaLab");
+    await queryInterface.dropTable("t_studiPraformulasi_status");
   },
 };

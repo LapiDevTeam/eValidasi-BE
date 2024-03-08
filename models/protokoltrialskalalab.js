@@ -45,13 +45,15 @@ module.exports = (sequelize, DataTypes) => {
       ProtokolTrialSkalaLab.hasMany(models.KemasanProtokolSkalaLab, {
         foreignKey: "ProtokolTrialSkalaLabID",
       });
+      ProtokolTrialSkalaLab.hasMany(models.t_protokolSkalaLab_status, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
     }
   }
   ProtokolTrialSkalaLab.init(
     {
       nomor: DataTypes.STRING,
       tanggal: DataTypes.DATE,
-      tanggalPengesahan: DataTypes.DATE,
       revisi: DataTypes.INTEGER,
       namaProduk: DataTypes.STRING,
       komposisi: DataTypes.JSONB,

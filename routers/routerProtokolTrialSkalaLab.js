@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ControllerProtokolTrialSkalaLab = require("../controllers/controllerProtokolTrialSkalaLab");
+const { authentication } = require("../middlewares/authentication");
 
 router.post(
   "/protokol-trial-skala-lab",
@@ -121,6 +122,7 @@ router.put(
   "/edit-rencana-aktivitas/:id",
   ControllerProtokolTrialSkalaLab.editRencanaAktivitas
 );
+
 router.put(
   "/edit-kebutuhan-peralatan/:id",
   ControllerProtokolTrialSkalaLab.editKebutuhanPeralatan
@@ -151,6 +153,11 @@ router.put(
 router.put(
   "/edit-mapping-process/:id",
   ControllerProtokolTrialSkalaLab.editMappingProcess
+);
+router.put(
+  "/approve/:id",
+  authentication,
+  ControllerProtokolTrialSkalaLab.approveProtokol
 );
 
 module.exports = router;

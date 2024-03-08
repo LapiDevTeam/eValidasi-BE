@@ -18,6 +18,9 @@ const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const { AsyncLocalStorage } = require("async_hooks");
+const { checkStatusProtokol } = require("../helpers/checkStatus");
+const { getStatus } = require("../helpers/statusProtokolSkalaLab");
+const t_protokolskalalab_status = require("../models/t_protokolskalalab_status");
 
 class ControllerProtokolTrialSkalaLab {
   static async findAllProtokolSkalaLab(req, res) {
@@ -92,7 +95,6 @@ class ControllerProtokolTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        tanggalPengesahan,
         status,
       } = req.body;
 
@@ -109,7 +111,6 @@ class ControllerProtokolTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        tanggalPengesahan,
         status,
       });
 
@@ -642,34 +643,55 @@ class ControllerProtokolTrialSkalaLab {
   }
   static async findSameDate(req, res) {
     try {
-      const currentDate = new Date();
-
-      const yesterday = new Date(currentDate);
-      yesterday.setDate(currentDate.getDate() - 1);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1); // Mendapatkan tanggal kemarin
 
       const protokolRevisi = await ProtokolTrialSkalaLab.findAll({
         attributes: ["nomor", "id", "status", "tanggalPengesahan", "revisi"],
         where: {
           status: "Approve",
         },
-        order: [["tanggalPengesahan", "DESC"]],
+        order: [
+          ["nomor", "ASC"],
+          ["tanggalPengesahan", "DESC"],
+        ],
       });
 
-      const revisiTerakhir = protokolRevisi[0].dataValues.revisi;
+      // const revisiTerakhirPerNomor = {};
+      // protokolRevisi.forEach((entry) => {
+      //   const nomor = entry.dataValues.nomor;
+      //   const revisi = entry.dataValues.revisi;
+      //   if (
+      //     !revisiTerakhirPerNomor[nomor] ||
+      //     revisiTerakhirPerNomor[nomor] < revisi
+      //   ) {
+      //     revisiTerakhirPerNomor[nomor] = revisi;
+      //   }
+      // });
 
-      console.log(revisiTerakhir, "<<<");
+      // console.log(revisiTerakhirPerNomor, "<<< revisi terakhir");
 
       const protokol = await ProtokolTrialSkalaLab.findAll({
         where: {
           status: "Draft",
           tanggalPengesahan: {
             [Op.gte]: yesterday,
-            [Op.lte]: currentDate,
+            [Op.lte]: new Date(), // Menggunakan tanggal hari ini
           },
         },
       });
 
-      console.log(protokol, "<< protokol");
+      // Lakukan pembaruan status dan revisi untuk setiap entri
+      for (const entry of protokol) {
+        console.log(entry.dataValues, "<< entry revisi");
+        // const nomor = entry.dataValues.nomor;
+        // const revisiTerakhir = revisiTerakhirPerNomor[nomor] || 0;
+        await ProtokolTrialSkalaLab.update(
+          { status: "Approve" },
+          { where: { id: entry.id } }
+        );
+        console.log(`Protokol dengan ID ${entry.id} telah diperbarui.`);
+      }
 
       res.status(200).json(protokol);
     } catch (err) {
@@ -1396,6 +1418,70 @@ class ControllerProtokolTrialSkalaLab {
         }
       );
       res.status(200).json(updateDokumenAcuan);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async approveProtokol(req, res, next) {
+    try {
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findProtokol = await ProtokolTrialSkalaLab.findByPk(+id);
+      if (!findProtokol)
+        throw new MyError(404, "Form Protokol tidak ditemukan");
+      const apprNo = await checkStatusProtokol(id);
+
+      const dataApprove = await approverRecordset(
+        findProtokol.nama_pegawai,
+        findProtokol.apprAplicationCode,
+        findProtokol.bagian,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let status;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        status = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (is_approve === false) status = "Reject";
+
+      await t_protokolskalalab_status.create({
+        ProtokolSkalaLabId: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await ProtokolTrialSkalaLab.update(
+        {
+          status: status,
+          // alasan_reject: keterangan_reject,
+          // user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
     }

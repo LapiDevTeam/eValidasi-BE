@@ -51,6 +51,10 @@ module.exports = {
       kesimpulan: {
         type: Sequelize.STRING,
       },
+      status: {
+        type: Sequelize.STRING,
+        defaultValue: "Draft",
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

@@ -10,9 +10,9 @@ const path = require("path");
 const { Kemasan } = require("./models");
 const port = process.env.PORT || 3001;
 
-cron.schedule("* * * * *", async () => {
-  console.log("xixixixi per menit");
-});
+// cron.schedule("* * * * *", async () => {
+//   console.log("xixixixi per menit");
+// });
 
 app.use(express.static("public"));
 app.use(cors());

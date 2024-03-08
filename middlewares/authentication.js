@@ -13,6 +13,9 @@ const authentication = async (req, res, next) => {
       req.user = {
         user_id: dataParse.user_id,
         nama_user: dataParse.nama_user,
+        inisial_user: dataParse.inisial_user,
+        jabatan_user: dataParse.jabatan_user,
+        joblevel_id_user: dataParse.joblevel_id_user,
         bagian_user: dataParse.bagian_user,
         delegated_to: dataParse.delegated_to,
       };

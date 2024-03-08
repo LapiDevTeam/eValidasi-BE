@@ -1,9 +1,15 @@
-const { ProductBrief } = require("../models/index");
+const { ProductBrief, t_productBrief_status } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
 const { transporter } = require("../config/configNodeMailer");
+const { checkStatusProductBrief } = require("../helpers/checkStatus");
+const { getStatus } = require("../helpers/statusProductBrief");
+const {
+  approverRecordset,
+  isApproveValidation,
+} = require("../helpers/approver");
 
 class ControllerProductBrief {
   static async createProductBrief(req, res, next) {
@@ -222,17 +228,81 @@ class ControllerProductBrief {
       console.log(err);
     }
   }
-  static async getProductBriefDetails(req, res) {
-    const { id } = req.params;
+  static async getProductBriefDetails(req, res, next) {
+    console.log("xixixi");
     try {
-      const briefDetail = await ProductBrief.findByPk(id);
-      if (!briefDetail) throw new MyError(400, "notFound!");
-      // console.log(briefDetail);
-      res.status(200).json(briefDetail);
-    } catch (err) {
-      console.log(err);
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      console.log(req.user, "< req user");
+      const { id } = req.params;
+      // console.log(id, "<< req uer");
+      let productBriefDetail;
+      if (+joblevel_id_user === 1 || bagian_user === "RD1") {
+        console.log(id, "<< id");
+        productBriefDetail = await ProductBrief.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_productBrief_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_productBrief_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(productBriefDetail, "<< detil");
+      } else {
+        console.log("test");
+        productBriefDetail = await ProductBrief.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_productBrief_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_productBrief_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      const apprApplicationCode = productBriefDetail.apprAplicationCode;
+      const apprDeptId = productBriefDetail.rdSelection;
+      const apprNo = await checkStatusProductBrief(id);
+
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "productBrief",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({ productBriefDetail, isApprove });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
+  // static async getProductBriefDetails(req, res) {
+  //   const { id } = req.params;
+  //   try {
+  //     const briefDetail = await ProductBrief.findByPk(id);
+  //     if (!briefDetail) throw new MyError(400, "notFound!");
+  //     // console.log(briefDetail);
+  //     res.status(200).json(briefDetail);
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // }
   static async getNoProductBrief(req, res) {
     try {
       const noProductBrief = await ProductBrief.findAll({
@@ -297,6 +367,76 @@ class ControllerProductBrief {
         }
       );
       res.status(200).json(updateStatus);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async approveProductBrief(req, res, next) {
+    try {
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      // console.log(req.user, "< reqq");
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findProductBrief = await ProductBrief.findByPk(+id);
+      console.log(findProductBrief, " <find product brief");
+      if (!findProductBrief)
+        throw new MyError(404, "Form ProductBrief tidak ditemukan");
+      const apprNo = await checkStatusProductBrief(id);
+
+      console.log(apprNo, "<< apprNo");
+
+      const dataApprove = await approverRecordset(
+        // findProductBrief.nama_pegawai,
+        "productBrief",
+        findProductBrief.rdSelection,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      console.log(dataApprove, "<< DATA approve");
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let status;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        status = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<DATSASDASd");
+      console.log(status, "<< STATUS");
+      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (is_approve === false) status = "Reject";
+
+      await t_productBrief_status.create({
+        ProductBriefId: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await ProductBrief.update(
+        {
+          status: status,
+          // alasan_reject: keterangan_reject,
+          // user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
     }

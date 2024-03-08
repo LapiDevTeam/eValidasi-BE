@@ -12,6 +12,10 @@ module.exports = (sequelize, DataTypes) => {
       ProductBrief.hasMany(models.StudiPraformulasi, {
         foreignKey: "ProductBriefId",
       });
+      ProductBrief.hasMany(models.t_productBrief_status, {
+        foreignKey: "ProductBriefId",
+        as: "approver_data",
+      });
     }
   }
   ProductBrief.init(
