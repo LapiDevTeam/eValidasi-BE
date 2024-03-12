@@ -13,14 +13,20 @@ const {
   KemasanPrimer,
   MappingProcess,
   KemasanProtokolSkalaLab,
+  t_protokolSkalaLab_status,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const { AsyncLocalStorage } = require("async_hooks");
 const { checkStatusProtokol } = require("../helpers/checkStatus");
-const { getStatus } = require("../helpers/statusProtokolSkalaLab");
-const t_protokolskalalab_status = require("../models/t_protokolskalalab_status");
+const {
+  getStatusProtokolSkalaLab,
+} = require("../helpers/statusProtokolSkalaLab");
+const {
+  approverRecordset,
+  isApproveValidation,
+} = require("../helpers/approver");
 
 class ControllerProtokolTrialSkalaLab {
   static async findAllProtokolSkalaLab(req, res) {
@@ -96,33 +102,64 @@ class ControllerProtokolTrialSkalaLab {
         lainlain,
         ProductBriefId,
         status,
+        rdSelection,
       } = req.body;
 
-      const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create({
-        nomor,
-        tanggal,
-        revisi,
-        namaProduk,
-        komposisi,
-        kemasan,
-        alasan,
-        tujuan,
-        productBriefNo,
-        hasilStudiPraformulasiNo,
-        lainlain,
-        ProductBriefId,
-        status,
+      console.log(namaProduk, " NAMAPRODUK");
+
+      // Cek apakah ada protokol dengan nama produk yang sama dan statusnya sudah disetujui
+      const existingProtokol = await ProtokolTrialSkalaLab.findOne({
+        where: {
+          namaProduk: namaProduk,
+        },
+        order: [["createdAt", "DESC"]], // Mengurutkan berdasarkan tanggal dalam urutan menurun (tanggal terkini pertama)
       });
 
-      res.status(201).json({
-        message: "Success Create Protokol Trial Skala Lab",
-        data: createdProtokolTrialSkalaLab,
-      });
+      console.log(existingProtokol.dataValues, "exis");
+      if (
+        existingProtokol &&
+        existingProtokol.dataValues.status === "Approved"
+      ) {
+        // If a protocol with the same product name already exists and its status is approved,
+        // increase the revision number and create a new protocol with the incremented revision
+        const newRevisi = existingProtokol.revisi + 1;
+
+        const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create(
+          {
+            nomor,
+            tanggal,
+            revisi: newRevisi,
+            namaProduk,
+            komposisi,
+            kemasan,
+            alasan,
+            tujuan,
+            productBriefNo,
+            hasilStudiPraformulasiNo,
+            lainlain,
+            ProductBriefId,
+            status,
+            rdSelection,
+          }
+        );
+
+        res.status(201).json({
+          message:
+            "Success Create Protokol Trial Skala Lab with Revised Revisi",
+          data: createdProtokolTrialSkalaLab,
+        });
+      } else if (existingProtokol.dataValues.status != "Approved") {
+        throw new MyError(
+          404,
+          "Product masih Draft, menunggu status menjadi approved"
+        );
+      }
     } catch (err) {
       console.error(err);
       next(err);
     }
   }
+
   static async createCqa(req, res, next) {
     try {
       const {
@@ -438,7 +475,6 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      console.log(req.body, "1231321");
       const createMappingProcess = await MappingProcess.create({
         processParameters,
         materialAttributes,
@@ -537,17 +573,77 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
-  static async getProtokolSkalaLabDetails(req, res) {
-    const { id } = req.params;
+  static async getProtokolSkalaLabDetails(req, res, next) {
     try {
-      const protokolDetails = await ProtokolTrialSkalaLab.findByPk(+id);
-      if (!protokolDetails) throw new MyError(400, "notFound!");
-      // console.log(protokolDetails, "<<");
-      res.status(200).json(protokolDetails);
-    } catch (err) {
-      console.log(err);
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      const { id } = req.params;
+      // console.log(id, "<< req uer");
+      let protokolTrialSkalaLabDetail;
+      if (+joblevel_id_user === 1 || bagian_user === "RD1") {
+        protokolTrialSkalaLabDetail = await ProtokolTrialSkalaLab.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_protokolSkalaLab_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_protokolSkalaLab_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      } else {
+        protokolTrialSkalaLabDetail = await ProtokolTrialSkalaLab.findOne({
+          where: {
+            id,
+            // bagian: bagian_user,
+          },
+          include: {
+            model: t_protokolSkalaLab_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_protokolSkalaLab_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      // const apprApplicationCode =
+      //   protokolTrialSkalaLabDetail.apprAplicationCode;
+      const apprDeptId = protokolTrialSkalaLabDetail.rdSelection;
+      const apprNo = await checkStatusProtokol(id);
+
+      // console.log(apprApplicationCode, "< AP code");
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "protokolTrialSkalaLab",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({ protokolTrialSkalaLabDetail, isApprove });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
+  // static async getProtokolSkalaLabDetails(req, res) {
+  //   const { id } = req.params;
+  //   try {
+  //     const protokolDetails = await ProtokolTrialSkalaLab.findByPk(+id);
+  //     if (!protokolDetails) throw new MyError(400, "notFound!");
+  //     // console.log(protokolDetails, "<<");
+  //     res.status(200).json(protokolDetails);
+  //   } catch (err) {
+  //     console.log(err);
+  //   }
+  // }
   static async editProtokolSkalaLab(req, res, next) {
     const { id } = req.params;
     try {
@@ -624,8 +720,6 @@ class ControllerProtokolTrialSkalaLab {
           where: { id: id },
         }
       );
-
-      console.log(updatedRowsCount, "<<< updated");
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
@@ -1440,9 +1534,9 @@ class ControllerProtokolTrialSkalaLab {
       const apprNo = await checkStatusProtokol(id);
 
       const dataApprove = await approverRecordset(
-        findProtokol.nama_pegawai,
-        findProtokol.apprAplicationCode,
-        findProtokol.bagian,
+        // findProtokol.nama_pegawai,
+        "protokolTrialSkalaLab",
+        findProtokol.rdSelection,
         apprNo,
         user_id,
         nama_user
@@ -1453,12 +1547,14 @@ class ControllerProtokolTrialSkalaLab {
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        status = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+        status = getStatusProtokolSkalaLab(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
       if (dataApprove.recordset1.length === 0) status = "Approved";
       if (is_approve === false) status = "Reject";
 
-      await t_protokolskalalab_status.create({
-        ProtokolSkalaLabId: id,
+      await t_protokolSkalaLab_status.create({
+        ProtokolTrialSkalaLabID: id,
         approver_no: apprNo,
         is_approve,
         approver_inisial: inisial_user,

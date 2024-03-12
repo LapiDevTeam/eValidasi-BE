@@ -19,6 +19,7 @@ const authentication = async (req, res, next) => {
         bagian_user: dataParse.bagian_user,
         delegated_to: dataParse.delegated_to,
       };
+      console.log(req.user, "< REQSADAS USEr");
     }
     next();
   } catch (error) {

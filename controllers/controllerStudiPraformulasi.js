@@ -115,6 +115,7 @@ class ControllerStudiPraformulasi {
         productBriefNo,
         ProductBriefId,
         status,
+        rdSelection,
       } = req.body;
 
       const createdStudiPraformulasi = await StudiPraformulasi.create({
@@ -128,6 +129,7 @@ class ControllerStudiPraformulasi {
         productBriefNo,
         ProductBriefId,
         status,
+        rdSelection,
       });
 
       res.status(201).json({
@@ -592,6 +594,7 @@ class ControllerStudiPraformulasi {
           "kode",
           "kemasan",
           "bahanAktifDanDosis",
+          "rdSelection",
         ], // Replace 'columnName' with the actual name of the column you want
       });
       if (!noProductBrief) throw new MyError(400, "notFound!");

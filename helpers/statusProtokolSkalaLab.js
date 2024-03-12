@@ -1,11 +1,11 @@
 const listStatus = [
-  "Menunggu Approve SPV",
-  "Menunggu Approve Manager",
-  //   "Menunggu Approve Head",
+  // "Menunggu Approve RD1/RD2",
+  "Menunggu Approve RD3",
+  "Menunggu Approve HD",
 ];
 
-const getStatus = (num) => {
+const getStatusProtokolSkalaLab = (num) => {
   return listStatus[+num - 1];
 };
 
-module.exports = { getStatus };
+module.exports = { getStatusProtokolSkalaLab };

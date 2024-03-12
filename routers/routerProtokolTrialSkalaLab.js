@@ -54,8 +54,11 @@ router.get(
   ControllerProtokolTrialSkalaLab.findAllProtokolSkalaLab
 );
 
+// router.use(authentication);
+//
 router.get(
   "/protokol-skala-lab/:id",
+  authentication,
   ControllerProtokolTrialSkalaLab.getProtokolSkalaLabDetails
 );
 router.get("/cqa/:id", ControllerProtokolTrialSkalaLab.getCqa);
@@ -155,7 +158,7 @@ router.put(
   ControllerProtokolTrialSkalaLab.editMappingProcess
 );
 router.put(
-  "/approve/:id",
+  "/approve-protokol/:id",
   authentication,
   ControllerProtokolTrialSkalaLab.approveProtokol
 );

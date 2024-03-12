@@ -31,7 +31,7 @@ const checkStatusProtokol = async (id) => {
   let apprNo = 1;
   const checkStatus = await t_protokolSkalaLab_status.findAll({
     where: {
-      ProtokolSkalaLabId: id,
+      ProtokolTrialSkalaLabID: id,
       is_approve: true,
     },
     order: [["approver_no", "DESC"]],

@@ -55,6 +55,9 @@ module.exports = {
         type: Sequelize.STRING,
         defaultValue: "Draft",
       },
+      rdSelection: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

@@ -1,5 +1,5 @@
 const listStatus = [
-  "Menunggu Approve Managr",
+  "Menunggu Approve HD",
   //   "Menunggu Approve Manager",
   //   "Menunggu Approve Head",
 ];

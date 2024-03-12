@@ -47,6 +47,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       ProtokolTrialSkalaLab.hasMany(models.t_protokolSkalaLab_status, {
         foreignKey: "ProtokolTrialSkalaLabID",
+        as: "approver_data",
       });
     }
   }
@@ -63,6 +64,7 @@ module.exports = (sequelize, DataTypes) => {
       productBriefNo: DataTypes.STRING,
       hasilStudiPraformulasiNo: DataTypes.STRING,
       status: DataTypes.STRING,
+      rdSelection: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
     },
     {

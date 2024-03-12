@@ -238,7 +238,7 @@ class ControllerProductBrief {
       let productBriefDetail;
       if (+joblevel_id_user === 1 || bagian_user === "RD1") {
         console.log(id, "<< id");
-        productBriefDetail = await ProductBrief.findOne({
+        productBriefDetail = await ProductBrief?.findOne({
           where: {
             id,
           },
@@ -292,17 +292,6 @@ class ControllerProductBrief {
       next(error);
     }
   }
-  // static async getProductBriefDetails(req, res) {
-  //   const { id } = req.params;
-  //   try {
-  //     const briefDetail = await ProductBrief.findByPk(id);
-  //     if (!briefDetail) throw new MyError(400, "notFound!");
-  //     // console.log(briefDetail);
-  //     res.status(200).json(briefDetail);
-  //   } catch (err) {
-  //     console.log(err);
-  //   }
-  // }
   static async getNoProductBrief(req, res) {
     try {
       const noProductBrief = await ProductBrief.findAll({
@@ -383,7 +372,7 @@ class ControllerProductBrief {
       // console.log(req.user, "< reqq");
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findProductBrief = await ProductBrief.findByPk(+id);
+      const findProductBrief = await ProductBrief?.findByPk(+id);
       console.log(findProductBrief, " <find product brief");
       if (!findProductBrief)
         throw new MyError(404, "Form ProductBrief tidak ditemukan");
