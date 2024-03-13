@@ -69,7 +69,7 @@ class ControllerProtokolTrialSkalaLab {
         studi,
       });
     } catch (err) {
-      console.log(err);
+      console.log(err, 12312312);
     }
   }
   static async deleteProtokolSkalaLab(req, res) {
@@ -804,13 +804,13 @@ class ControllerProtokolTrialSkalaLab {
 
       console.log(cqaDetails, "<< cqa details");
 
-      if (!cqaDetails || cqaDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(cqaDetails);
     } catch (err) {
-      console.error(err);
+      console.error(err, 333333333333);
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
@@ -821,9 +821,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!cppDetails || cppDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!cppDetails || cppDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(cppDetails);
     } catch (err) {
@@ -838,9 +838,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!formulaDetails || formulaDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!formulaDetails || formulaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(formulaDetails);
     } catch (err) {
@@ -855,9 +855,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!pembuatanDetails || pembuatanDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!pembuatanDetails || pembuatanDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(pembuatanDetails);
     } catch (err) {
@@ -872,9 +872,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!rencanaDetails || rencanaDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!rencanaDetails || rencanaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(rencanaDetails);
     } catch (err) {
@@ -889,9 +889,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!materialDetails || materialDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!materialDetails || materialDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(materialDetails);
     } catch (err) {
@@ -906,9 +906,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!originatorDetails || originatorDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!originatorDetails || originatorDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(originatorDetails);
     } catch (err) {
@@ -923,9 +923,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: id },
       });
 
-      if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(kebutuhanDetails);
     } catch (err) {
@@ -940,9 +940,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
-      if (!zatAktifDetails || zatAktifDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!zatAktifDetails || zatAktifDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(zatAktifDetails);
     } catch (err) {
@@ -957,9 +957,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
-      if (!bahanTambahanDetails || bahanTambahanDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!bahanTambahanDetails || bahanTambahanDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(bahanTambahanDetails);
     } catch (err) {
@@ -974,9 +974,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
-      if (!kemasanPrimerDetails || kemasanPrimerDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!kemasanPrimerDetails || kemasanPrimerDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(kemasanPrimerDetails);
     } catch (err) {
@@ -991,9 +991,9 @@ class ControllerProtokolTrialSkalaLab {
         where: { ProtokolTrialSkalaLabID: +id, apakahIniKritikalCqa: "Yes" },
       });
 
-      if (!cqaDetails || cqaDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(cqaDetails);
     } catch (err) {
@@ -1009,9 +1009,9 @@ class ControllerProtokolTrialSkalaLab {
         order: [["createdAt", "ASC"]], // Order by createdAt descending
       });
 
-      if (!kemasanProtokolDetails || kemasanProtokolDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!kemasanProtokolDetails || kemasanProtokolDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(kemasanProtokolDetails);
     } catch (err) {
@@ -1027,9 +1027,9 @@ class ControllerProtokolTrialSkalaLab {
         order: [["createdAt", "ASC"]], // Order by createdAt descending
       });
 
-      if (!mappingDetails || mappingDetails.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!mappingDetails || mappingDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
 
       res.status(200).json(mappingDetails);
     } catch (err) {
@@ -1193,6 +1193,7 @@ class ControllerProtokolTrialSkalaLab {
   }
   static async editKemasanPrimer(req, res, next) {
     const { id } = req.params;
+    console.log(id, "IASDIASIDSAIDA");
     try {
       const {
         materialAttributes,
@@ -1217,11 +1218,11 @@ class ControllerProtokolTrialSkalaLab {
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
-          message: "kemasanPrimer updated successfully",
+          message: "kemasan updated successfully",
         });
       } else {
         res.status(404).json({
-          message: "kemasanPrimer not found",
+          message: "kemasan not found",
         });
       }
     } catch (err) {
@@ -1230,9 +1231,8 @@ class ControllerProtokolTrialSkalaLab {
     }
   }
   static async editBahanTambahan(req, res, next) {
-    console.log("xixixixi");
     const { id } = req.params;
-    console.log(id, "< IDDIDIDIDID");
+    console.log(id, "IASDIASIDSAIDA");
     try {
       const {
         bahanTambahan,
@@ -1251,19 +1251,17 @@ class ControllerProtokolTrialSkalaLab {
           justifikasi,
         },
         {
-          where: { id: +id },
+          where: { id: id },
         }
       );
 
-      console.log(updatedRowsCount, "<< UPDAte");
-
       if (updatedRowsCount > 0) {
         res.status(201).json({
-          message: "bahanTambahan updated successfully",
+          message: "bahan updated successfully",
         });
       } else {
         res.status(404).json({
-          message: "bahanTambahan not found",
+          message: "bahan not found",
         });
       }
     } catch (err) {
@@ -1271,6 +1269,7 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
+
   static async editMaterial(req, res, next) {
     const { id } = req.params;
     try {
