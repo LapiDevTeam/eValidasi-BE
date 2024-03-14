@@ -141,8 +141,9 @@ router.put(
   ControllerProtokolTrialSkalaLab.editProsesPembuatan
 );
 router.put("/edit-zat-aktif/:id", ControllerProtokolTrialSkalaLab.editZatAktif);
+
 router.put(
-  "/edit-bahan-tambahan/:id",
+  "/edit-bahan-tambahan-protokol/:id",
   ControllerProtokolTrialSkalaLab.editBahanTambahan
 );
 router.put(

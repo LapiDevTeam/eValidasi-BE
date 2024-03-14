@@ -107,53 +107,61 @@ class ControllerProtokolTrialSkalaLab {
 
       console.log(namaProduk, " NAMAPRODUK");
 
-      // Cek apakah ada protokol dengan nama produk yang sama dan statusnya sudah disetujui
       const existingProtokol = await ProtokolTrialSkalaLab.findOne({
         where: {
           namaProduk: namaProduk,
         },
-        order: [["createdAt", "DESC"]], // Mengurutkan berdasarkan tanggal dalam urutan menurun (tanggal terkini pertama)
+        order: [["createdAt", "DESC"]],
       });
 
-      console.log(existingProtokol.dataValues, "exis");
+      let newRevisi;
+
+      // console.log(existingProtokol.dataValues, "exis");
       if (
         existingProtokol &&
         existingProtokol.dataValues.status === "Approved"
       ) {
-        // If a protocol with the same product name already exists and its status is approved,
-        // increase the revision number and create a new protocol with the incremented revision
-        const newRevisi = existingProtokol.revisi + 1;
-
-        const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create(
-          {
-            nomor,
-            tanggal,
-            revisi: newRevisi,
-            namaProduk,
-            komposisi,
-            kemasan,
-            alasan,
-            tujuan,
-            productBriefNo,
-            hasilStudiPraformulasiNo,
-            lainlain,
-            ProductBriefId,
-            status,
-            rdSelection,
-          }
-        );
-
-        res.status(201).json({
-          message:
-            "Success Create Protokol Trial Skala Lab with Revised Revisi",
-          data: createdProtokolTrialSkalaLab,
-        });
-      } else if (existingProtokol.dataValues.status != "Approved") {
+        newRevisi = existingProtokol.revisi + 1;
+      } else if (
+        existingProtokol &&
+        existingProtokol.dataValues.status !== "Approved"
+      ) {
         throw new MyError(
           404,
           "Product masih Draft, menunggu status menjadi approved"
         );
+      } else {
+        newRevisi = 0;
       }
+
+      // const newRevisi = existingProtokol.revisi + 1;
+      const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create({
+        nomor,
+        tanggal,
+        revisi: newRevisi,
+        namaProduk,
+        komposisi,
+        kemasan,
+        alasan,
+        tujuan,
+        productBriefNo,
+        hasilStudiPraformulasiNo,
+        lainlain,
+        ProductBriefId,
+        status,
+        rdSelection,
+      });
+
+      res.status(201).json({
+        message: "Success Create Protokol Trial Skala Lab with Revised Revisi",
+        data: createdProtokolTrialSkalaLab,
+      });
+      // } else if (existingProtokol.dataValues.status != "Approved") {
+      //   throw new MyError(
+      //     404,
+      //     "Product masih Draft, menunggu status menjadi approved"
+      //   );
+      // }
     } catch (err) {
       console.error(err);
       next(err);
@@ -1231,43 +1239,45 @@ class ControllerProtokolTrialSkalaLab {
     }
   }
   static async editBahanTambahan(req, res, next) {
+    console.log("ziziiziziziziz");
     const { id } = req.params;
     console.log(id, "IASDIASIDSAIDA");
-    try {
-      const {
-        bahanTambahan,
-        pengaruhKeCqa,
-        apakahVariabelDapatDimodifikasi,
-        apakahTermasukCma,
-        justifikasi,
-      } = req.body;
+    res.send();
+    // try {
+    //   const {
+    //     bahanTambahan,
+    //     pengaruhKeCqa,
+    //     apakahVariabelDapatDimodifikasi,
+    //     apakahTermasukCma,
+    //     justifikasi,
+    //   } = req.body;
 
-      const [updatedRowsCount] = await BahanTambahan.update(
-        {
-          bahanTambahan,
-          pengaruhKeCqa,
-          apakahVariabelDapatDimodifikasi,
-          apakahTermasukCma,
-          justifikasi,
-        },
-        {
-          where: { id: id },
-        }
-      );
+    //   const [updatedRowsCount] = await BahanTambahan.update(
+    //     {
+    //       bahanTambahan,
+    //       pengaruhKeCqa,
+    //       apakahVariabelDapatDimodifikasi,
+    //       apakahTermasukCma,
+    //       justifikasi,
+    //     },
+    //     {
+    //       where: { id: +id },
+    //     }
+    //   );
 
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "bahan updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "bahan not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
+    //   if (updatedRowsCount > 0) {
+    //     res.status(201).json({
+    //       message: "bahan updated successfully",
+    //     });
+    //   } else {
+    //     res.status(404).json({
+    //       message: "bahan not found",
+    //     });
+    //   }
+    // } catch (err) {
+    //   console.error(err);
+    //   next(err);
+    // }
   }
 
   static async editMaterial(req, res, next) {
@@ -1459,7 +1469,7 @@ class ControllerProtokolTrialSkalaLab {
           stabilitaSkalaLab,
         },
         {
-          where: { id: id },
+          where: { ProtokolTrialSkalaLabID: id },
         }
       );
 
