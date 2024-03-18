@@ -5,6 +5,7 @@ const routerStudiPraformulasi = require("./routerStudiPraformulasi");
 const routerStudiPaten = require("./routerStudiPaten");
 const routerStudiLiterature = require("./routerStudiLiterature");
 const routerProtokolTrialSkalaLab = require("./routerProtokolTrialSkalaLab");
+const routerCatatanTrial = require("./routerCatatanTrial");
 const { authentication } = require("../middlewares/authentication");
 
 router.get("/current-user", authentication, (req, res) => {
@@ -29,5 +30,6 @@ router.use("/", routerStudiPraformulasi);
 router.use("/", routerStudiPaten);
 router.use("/", routerStudiLiterature);
 router.use("/", routerProtokolTrialSkalaLab);
+router.use("/", routerCatatanTrial);
 
 module.exports = router;
