@@ -33,6 +33,15 @@ module.exports = {
       statusA: {
         type: Sequelize.STRING,
       },
+      pembahasan: {
+        type: Sequelize.TEXT,
+      },
+      kesimpulan: {
+        type: Sequelize.TEXT,
+      },
+      tindakLanjut: {
+        type: Sequelize.TEXT,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

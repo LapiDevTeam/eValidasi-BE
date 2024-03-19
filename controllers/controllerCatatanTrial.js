@@ -227,58 +227,67 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-  static async createPembahasan(req, res, next) {
+  static async updatePembahasan(req, res) {
     try {
-      const { pembahasan, CatatanTrialID } = req.body;
+      const { CatatanTrialID } = req.params;
+      const { pembahasan } = req.body;
+      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
 
-      const createPembahasan = await Pembahasan.create({
-        pembahasan,
-        CatatanTrialID,
-      });
-
-      res.status(201).json({
-        message: "Success Create pembahasan",
-        data: createPembahasan,
-      });
+      if (!findCatatanTrialID) throw { name: "NotFound" };
+      const updatePembahasan = await CatatanTrial.update(
+        { pembahasan: pembahasan },
+        {
+          where: {
+            id: findCatatanTrialID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updatePembahasan);
     } catch (err) {
-      console.error(err);
-      next(err);
+      console.log(err);
     }
   }
-  static async createKesimpulan(req, res, next) {
+  static async updateKesimpulan(req, res) {
     try {
-      const { kesimpulan, CatatanTrialID } = req.body;
+      const { CatatanTrialID } = req.params;
+      const { kesimpulan } = req.body;
+      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
 
-      const createKesimpulan = await Kesimpulan.create({
-        kesimpulan,
-        CatatanTrialID,
-      });
-
-      res.status(201).json({
-        message: "Success Create kesimpulan",
-        data: createKesimpulan,
-      });
+      if (!findCatatanTrialID) throw { name: "NotFound" };
+      const updateKesimpulan = await CatatanTrial.update(
+        { kesimpulan: kesimpulan },
+        {
+          where: {
+            id: findCatatanTrialID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateKesimpulan);
     } catch (err) {
-      console.error(err);
-      next(err);
+      console.log(err);
     }
   }
-  static async createTindakLanjut(req, res, next) {
+  static async updateTindakLanjut(req, res) {
     try {
-      const { tindakLanjut, CatatanTrialID } = req.body;
+      const { CatatanTrialID } = req.params;
+      const { tindakLanjut } = req.body;
+      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
 
-      const createTindakLanjut = await TindakLanjut.create({
-        tindakLanjut,
-        CatatanTrialID,
-      });
-
-      res.status(201).json({
-        message: "Success Create tindakLanjut",
-        data: createTindakLanjut,
-      });
+      if (!findCatatanTrialID) throw { name: "NotFound" };
+      const updateTindakLanjut = await CatatanTrial.update(
+        { tindakLanjut: tindakLanjut },
+        {
+          where: {
+            id: findCatatanTrialID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateTindakLanjut);
     } catch (err) {
-      console.error(err);
-      next(err);
+      console.log(err);
     }
   }
   static async getKomposisiNamaBahan(req, res) {
