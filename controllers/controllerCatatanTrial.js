@@ -2,6 +2,7 @@ const { CatatanTrial, KomposisiCatatanTrial } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
+const getPagination = require("../helpers/getPagination");
 
 class ControllerCatatanTrial {
   static async findAllNamaProduct(req, res) {
@@ -150,6 +151,75 @@ class ControllerCatatanTrial {
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async findAllCatatanTrial(req, res) {
+    try {
+      const {
+        page,
+        tanggalTrial,
+        namaProduk,
+        kodeTrial,
+        trialKe,
+        bentukSediaan,
+        productKompetitor,
+        statusB,
+        statusA,
+      } = req.body;
+      const size = page ? 15 : "";
+
+      const { limit, offset } = getPagination(page, size);
+
+      const searchParams = {};
+      if (tanggalTrial)
+        searchParams.tanggalTrial = { [Op.iLike]: `%${tanggalTrial}%` };
+      if (namaProduk)
+        searchParams.namaProduk = { [Op.iLike]: `%${namaProduk}%` };
+      if (kodeTrial) searchParams.kodeTrial = { [Op.iLike]: `%${kodeTrial}%` };
+      if (trialKe) searchParams.trialKe = { [Op.iLike]: `%${trialKe}%` };
+      if (bentukSediaan) searchParams.bentukSediaan = +bentukSediaan;
+      if (productKompetitor)
+        searchParams.productKompetitor = {
+          [Op.iLike]: `%${productKompetitor}%`,
+        };
+      if (statusB)
+        searchParams.statusB = {
+          [Op.iLike]: `%${statusB}%`,
+        };
+      if (statusA)
+        searchParams.statusA = {
+          [Op.iLike]: `%${statusA}%`,
+        };
+
+      const brief = await CatatanTrial.findAndCountAll({
+        where: searchParams,
+        ...(size && { limit }),
+        ...(size && { offset }),
+        order: [["id", "DESC"]],
+      });
+
+      res.status(200).json({
+        limitData: size ? limit : "",
+        Offset: size ? offset : "",
+        totalPage: size ? Math.ceil(brief.count / limit) : "",
+        brief,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async deleteCatatanTrial(req, res) {
+    try {
+      const { id } = req.params;
+
+      await CatatanTrial.destroy({
+        where: { id: +id }, // Corrected the where clause
+      });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
 }

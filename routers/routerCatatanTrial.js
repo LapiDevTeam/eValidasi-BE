@@ -4,6 +4,7 @@ const ControllerCatatanTrial = require("../controllers/controllerCatatanTrial");
 // const { authentication } = require("../middlewares/authentication");
 
 router.get("/all-namaProduk", ControllerCatatanTrial.findAllNamaProduct);
+router.get("/all-catatan-trial", ControllerCatatanTrial.findAllCatatanTrial);
 router.post("/create-catatanTrial", ControllerCatatanTrial.createCatatanTrial);
 router.get("/all-namaBahanBaku", ControllerCatatanTrial.findNamaBahanBaku);
 router.post(
@@ -13,6 +14,10 @@ router.post(
 router.get(
   "/get-komposisiNamaBahan/:id",
   ControllerCatatanTrial.getKomposisiNamaBahan
+);
+router.delete(
+  "/delete-catatan-trial/:id",
+  ControllerCatatanTrial.deleteCatatanTrial
 );
 
 module.exports = router;
