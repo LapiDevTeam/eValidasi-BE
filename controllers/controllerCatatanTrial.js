@@ -1,4 +1,13 @@
-const { CatatanTrial, KomposisiCatatanTrial } = require("../models/index");
+const {
+  CatatanTrial,
+  KomposisiCatatanTrial,
+  PerhitunganZatAktif,
+  MetodePembuatan,
+  ProsesCatatanTrialPadat,
+  Pembahasan,
+  Kesimpulan,
+  TindakLanjut,
+} = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
@@ -130,6 +139,142 @@ class ControllerCatatanTrial {
       res.status(201).json({
         message: "Success Create komposisiCatatanTrial",
         data: createKomposisi,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPerhitunganZatAktif(req, res, next) {
+    try {
+      const {
+        padaEtiket,
+        bahanBakuYangDigunakan,
+        perhitunganBahanBaku,
+        CatatanTrialID,
+      } = req.body;
+
+      const createPerhitunganZatAktif = await PerhitunganZatAktif.create({
+        padaEtiket,
+        bahanBakuYangDigunakan,
+        perhitunganBahanBaku,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create perhitungan zat aktif",
+        data: createPerhitunganZatAktif,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createMetodePembuatan(req, res, next) {
+    try {
+      const { aktivitas, pengamatan, CatatanTrialID } = req.body;
+
+      const createMetodePembuatan = await MetodePembuatan.create({
+        aktivitas,
+        pengamatan,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create metode pembuatan",
+        data: createMetodePembuatan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createProsesCatatanTrialPadat(req, res, next) {
+    try {
+      const {
+        speed,
+        mainPressure,
+        prePressure,
+        settingBobot,
+        kekerasan,
+        tebal,
+        abrasi,
+        wh,
+        keterangan,
+        CatatanTrialID,
+      } = req.body;
+
+      const createProsesCatatanTrialPadat =
+        await ProsesCatatanTrialPadat.create({
+          speed,
+          mainPressure,
+          prePressure,
+          settingBobot,
+          kekerasan,
+          tebal,
+          abrasi,
+          wh,
+          keterangan,
+          CatatanTrialID,
+        });
+
+      res.status(201).json({
+        message: "Success Create proses Catatna trial padat",
+        data: createProsesCatatanTrialPadat,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPembahasan(req, res, next) {
+    try {
+      const { pembahasan, CatatanTrialID } = req.body;
+
+      const createPembahasan = await Pembahasan.create({
+        pembahasan,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create pembahasan",
+        data: createPembahasan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createKesimpulan(req, res, next) {
+    try {
+      const { kesimpulan, CatatanTrialID } = req.body;
+
+      const createKesimpulan = await Kesimpulan.create({
+        kesimpulan,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create kesimpulan",
+        data: createKesimpulan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createTindakLanjut(req, res, next) {
+    try {
+      const { tindakLanjut, CatatanTrialID } = req.body;
+
+      const createTindakLanjut = await TindakLanjut.create({
+        tindakLanjut,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create tindakLanjut",
+        data: createTindakLanjut,
       });
     } catch (err) {
       console.error(err);

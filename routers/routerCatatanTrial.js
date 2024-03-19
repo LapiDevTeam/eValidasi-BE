@@ -11,6 +11,21 @@ router.post(
   "/create-komposisi-catatanTrial",
   ControllerCatatanTrial.createKomposisiCatatanTrial
 );
+router.post(
+  "/create-perhitungan-zatAktif",
+  ControllerCatatanTrial.createPerhitunganZatAktif
+);
+router.post(
+  "/create-metode-pembuatan",
+  ControllerCatatanTrial.createMetodePembuatan
+);
+router.post(
+  "/create-proses-catatan-trial-padat",
+  ControllerCatatanTrial.createProsesCatatanTrialPadat
+);
+router.post("/create-pembahasan", ControllerCatatanTrial.createPembahasan);
+router.post("/create-kesimpulan", ControllerCatatanTrial.createKesimpulan);
+router.post("/create-tindakLanjut", ControllerCatatanTrial.createTindakLanjut);
 router.get(
   "/get-komposisiNamaBahan/:id",
   ControllerCatatanTrial.getKomposisiNamaBahan
