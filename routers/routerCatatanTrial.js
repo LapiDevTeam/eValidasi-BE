@@ -3,7 +3,8 @@ const router = express.Router();
 const ControllerCatatanTrial = require("../controllers/controllerCatatanTrial");
 // const { authentication } = require("../middlewares/authentication");
 
-router.get("/all-namaProduk", ControllerCatatanTrial.findAllNamaProduct);
+router.get("/all-namaProduk01", ControllerCatatanTrial.findAllNamaProduct01);
+router.get("/all-namaProduk02", ControllerCatatanTrial.findAllNamaProduct02);
 router.get("/all-catatan-trial", ControllerCatatanTrial.findAllCatatanTrial);
 router.post("/create-catatanTrial", ControllerCatatanTrial.createCatatanTrial);
 router.get("/all-namaBahanBaku", ControllerCatatanTrial.findNamaBahanBaku);

@@ -19,7 +19,7 @@ const { Op } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
 
 class ControllerCatatanTrial {
-  static async findAllNamaProduct(req, res) {
+  static async findAllNamaProduct01(req, res) {
     try {
       const config = {
         user: process.env.MS_SQL_DB_USER,
@@ -37,6 +37,35 @@ class ControllerCatatanTrial {
         const request = new sql.Request();
         request.query(
           `SELECT Product_ID, Product_Name, Product_Category FROM m_product WHERE Product_Category = '01' AND isActive = '1';
+          `,
+          async function (err, { recordset }) {
+            if (err) console.log(err);
+            res.status(200).json(recordset);
+          }
+        );
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async findAllNamaProduct02(req, res) {
+    try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      sql.connect(config, function (err) {
+        if (err) console.log(err);
+        const request = new sql.Request();
+        request.query(
+          `SELECT Product_ID, Product_Name, Product_Category FROM m_product WHERE Product_Category = '02' AND isActive = '1';
           `,
           async function (err, { recordset }) {
             if (err) console.log(err);
