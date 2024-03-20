@@ -7,6 +7,11 @@ const {
   Pembahasan,
   Kesimpulan,
   TindakLanjut,
+  FormulaCatatanTrial,
+  PengamatanAwalCair,
+  PengamatanLanjutan,
+  PengamatanAwalPadat,
+  PengamatanAwalSteril,
 } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
@@ -221,6 +226,181 @@ class ControllerCatatanTrial {
       res.status(201).json({
         message: "Success Create proses Catatna trial padat",
         data: createProsesCatatanTrialPadat,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createFormulaCatatanTrial(req, res, next) {
+    try {
+      const {
+        tujuanTrial,
+        tiapSediaan,
+        besarBets,
+        satuan,
+        bentukSediaan,
+        detailFormula,
+        CatatanTrialID,
+      } = req.body;
+
+      const createFormula = await FormulaCatatanTrial.create({
+        tujuanTrial: tujuanTrial,
+        tiapSediaan: tiapSediaan,
+        besarBets: besarBets,
+        satuan: satuan,
+        bentukSediaan: bentukSediaan,
+        detailFormula: detailFormula,
+        CatatanTrialID: +CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create Formula Catatan Trial",
+        data: createFormula,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPengamatanAwalCair(req, res, next) {
+    try {
+      const {
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratViskositas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianViskositas,
+        CatatanTrialID,
+      } = req.body;
+
+      const createPengamatanAwalCair = await PengamatanAwalCair.create({
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratViskositas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianViskositas,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create proses Catatna trial padat",
+        data: createPengamatanAwalCair,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPengamatanAwalSteril(req, res, next) {
+    try {
+      const {
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratOsmolaritas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianOsmolaritas,
+        CatatanTrialID,
+      } = req.body;
+
+      const createPengamatanAwalSteril = await PengamatanAwalSteril.create({
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratOsmolaritas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianOsmolaritas,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create pengamatan awal steril",
+        data: createPengamatanAwalSteril,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPengamatanAwalPadat(req, res, next) {
+    try {
+      const {
+        spesifikasiPemerian,
+        settingPemerian,
+        evaluasiPemerian,
+        spesifikasiKeseragamanBobot,
+        spesifikasiKekerasanTablet,
+        settingKekerasanTablet,
+        evaluasiKekerasanTablet,
+        rataRataKekerasanTablet,
+        spesifikasiKerapuhan,
+        settingKerapuhan,
+        evaluasiKerapuhan,
+        spesifikasiKetebalan,
+        settingKetebalan,
+        evaluasiKetebalan,
+        rataRataKetebalan,
+        spesifikasiUkuran,
+        settingUkuran,
+        evaluasiUkuran,
+        CatatanTrialID,
+      } = req.body;
+
+      const createPengamatanAwalPadat = await PengamatanAwalPadat.create({
+        spesifikasiPemerian,
+        settingPemerian,
+        evaluasiPemerian,
+        spesifikasiKeseragamanBobot,
+        spesifikasiKekerasanTablet,
+        settingKekerasanTablet,
+        evaluasiKekerasanTablet: evaluasiKekerasanTablet,
+        rataRataKekerasanTablet,
+        spesifikasiKerapuhan,
+        settingKerapuhan,
+        evaluasiKerapuhan,
+        spesifikasiKetebalan,
+        settingKetebalan,
+        evaluasiKetebalan: evaluasiKetebalan,
+        rataRataKetebalan,
+        spesifikasiUkuran,
+        settingUkuran,
+        evaluasiUkuran,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create pengamatan awal padat",
+        data: createPengamatanAwalPadat,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createPengamatanLanjutan(req, res, next) {
+    try {
+      const { kodeTrialHeaders, content, CatatanTrialID } = req.body;
+
+      const createPengamatanLanjutan = await PengamatanLanjutan.create({
+        kodeTrialHeaders,
+        content,
+        CatatanTrialID,
+      });
+
+      res.status(201).json({
+        message: "Success Create pengamatanLAnjutan",
+        data: createPengamatanLanjutan,
       });
     } catch (err) {
       console.error(err);
