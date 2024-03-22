@@ -60,6 +60,8 @@ module.exports = (sequelize, DataTypes) => {
       pembahasan: DataTypes.TEXT,
       kesimpulan: DataTypes.TEXT,
       tindakLanjut: DataTypes.TEXT,
+      filter: DataTypes.STRING,
+      tipeCatatanTrial: DataTypes.STRING,
     },
     {
       sequelize,

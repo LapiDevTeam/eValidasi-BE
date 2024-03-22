@@ -60,6 +60,10 @@ router.get(
   "/get-komposisiNamaBahan/:id",
   ControllerCatatanTrial.getKomposisiNamaBahan
 );
+router.get(
+  "/get-filter-catatan-trial-padat",
+  ControllerCatatanTrial.getFilterCatatanTrialPadat
+);
 router.delete(
   "/delete-catatan-trial/:id",
   ControllerCatatanTrial.deleteCatatanTrial

@@ -1578,6 +1578,8 @@ class ControllerProtokolTrialSkalaLab {
       if (dataApprove.recordset1.length === 0) status = "Approved";
       if (is_approve === false) status = "Reject";
 
+      console.log(is_approve, "<<< iNI IS APPROVE");
+
       await t_protokolSkalaLab_status.create({
         ProtokolTrialSkalaLabID: id,
         approver_no: apprNo,
@@ -1592,8 +1594,8 @@ class ControllerProtokolTrialSkalaLab {
       await ProtokolTrialSkalaLab.update(
         {
           status: status,
-          // alasan_reject: keterangan_reject,
-          // user_id,
+          alasan_reject: keterangan_reject,
+          user_id,
           // delegated_to,
         },
         {

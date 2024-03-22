@@ -88,19 +88,21 @@ class ControllerCatatanTrial {
         productKompetitor,
         statusB,
         statusA,
+        filter,
+        tipeCatatanTrial,
       } = req.body;
 
-      if (!tanggalTrial) {
-        throw new MyError(400, "tanggalTrial is required !");
-      } else if (!kodeTrial) {
-        throw new MyError(400, "kodeTrial is require !");
-      } else if (!trialKe) {
-        throw new MyError(400, " is required !");
-      } else if (!bentukSediaan) {
-        throw new MyError(400, "Bentuk Sediaan is required !");
-      } else if (!productKompetitor) {
-        throw new MyError(400, "productKompetitor is required !");
-      }
+      // if (!tanggalTrial) {
+      //   throw new MyError(400, "tanggalTrial is required !");
+      // } else if (!kodeTrial) {
+      //   throw new MyError(400, "kodeTrial is require !");
+      // } else if (!trialKe) {
+      //   throw new MyError(400, " is required !");
+      // } else if (!bentukSediaan) {
+      //   throw new MyError(400, "Bentuk Sediaan is required !");
+      // } else if (!productKompetitor) {
+      //   throw new MyError(400, "productKompetitor is required !");
+      // }
 
       const createCatatanTrial = await CatatanTrial.create({
         tanggalTrial,
@@ -111,6 +113,8 @@ class ControllerCatatanTrial {
         productKompetitor,
         statusB,
         statusA,
+        filter,
+        tipeCatatanTrial,
       });
 
       res.status(201).json({
@@ -511,6 +515,22 @@ class ControllerCatatanTrial {
       // }
 
       res.status(200).json(komposisi);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getFilterCatatanTrialPadat(req, res) {
+    try {
+      const catatanTrialPadat = await CatatanTrial.findAll({
+        where: { tipeCatatanTrial: "catatan trial padat" },
+      });
+
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(catatanTrialPadat);
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });

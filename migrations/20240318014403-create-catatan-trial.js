@@ -42,6 +42,12 @@ module.exports = {
       tindakLanjut: {
         type: Sequelize.TEXT,
       },
+      filter: {
+        type: Sequelize.STRING,
+      },
+      tipeCatatanTrial: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
