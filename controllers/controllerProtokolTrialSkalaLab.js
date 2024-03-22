@@ -1576,7 +1576,12 @@ class ControllerProtokolTrialSkalaLab {
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
       if (dataApprove.recordset1.length === 0) status = "Approved";
-      if (is_approve === false) status = "Reject";
+      if (is_approve === false) {
+        status = "Reject";
+        await t_protokolSkalaLab_status.destroy({
+          where: { ProtokolTrialSkalaLabID: +id },
+        });
+      }
 
       console.log(is_approve, "<<< iNI IS APPROVE");
 

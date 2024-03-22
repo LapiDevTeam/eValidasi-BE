@@ -25,6 +25,10 @@ router.post(
   ControllerCatatanTrial.createProsesCatatanTrialPadat
 );
 router.post(
+  "/create-proses-catatan-trial-penyalutan",
+  ControllerCatatanTrial.createProsesCatatanTrialPenyalutan
+);
+router.post(
   "/create-formula-catatan-trial",
   ControllerCatatanTrial.createFormulaCatatanTrial
 );
@@ -63,6 +67,22 @@ router.get(
 router.get(
   "/get-filter-catatan-trial-padat",
   ControllerCatatanTrial.getFilterCatatanTrialPadat
+);
+router.get(
+  "/catatan-trial-cair/:id",
+  ControllerCatatanTrial.getCatatanTrialCairDetails
+);
+router.get(
+  "/catatan-trial-padat/:id",
+  ControllerCatatanTrial.getCatatanTrialPadatDetails
+);
+router.get(
+  "/catatan-trial-steril/:id",
+  ControllerCatatanTrial.getCatatanTrialSterilDetails
+);
+router.get(
+  "/catatan-trial-penyalutan/:id",
+  ControllerCatatanTrial.getCatatanTrialPenyalutanDetails
 );
 router.delete(
   "/delete-catatan-trial/:id",

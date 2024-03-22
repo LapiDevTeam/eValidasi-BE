@@ -4,9 +4,7 @@ const {
   PerhitunganZatAktif,
   MetodePembuatan,
   ProsesCatatanTrialPadat,
-  Pembahasan,
-  Kesimpulan,
-  TindakLanjut,
+  ProsesCatatanTrialPenyalutan,
   FormulaCatatanTrial,
   PengamatanAwalCair,
   PengamatanLanjutan,
@@ -221,6 +219,30 @@ class ControllerCatatanTrial {
       res.status(201).json({
         message: "Success Create metode pembuatan",
         data: createMetodePembuatan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createProsesCatatanTrialPenyalutan(req, res, next) {
+    try {
+      const { tanggal, jam, turretSpeed, suhu, bobot, CatatanTrialID } =
+        req.body;
+
+      const createProsesCatatanTrialPenyalutan =
+        await ProsesCatatanTrialPenyalutan.create({
+          tanggal,
+          jam,
+          turretSpeed,
+          suhu,
+          bobot,
+          CatatanTrialID,
+        });
+
+      res.status(201).json({
+        message: "Success Create proses Catatna trial Penyalutan",
+        data: createProsesCatatanTrialPenyalutan,
       });
     } catch (err) {
       console.error(err);
@@ -589,6 +611,176 @@ class ControllerCatatanTrial {
       });
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async getCatatanTrialCairDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailCair = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+      const komposisiCair = await KomposisiCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const perhitunganZatAktifCair = await PerhitunganZatAktif.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const formulaCair = await FormulaCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const metodePembuatanCair = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanAwalCair = await PengamatanAwalCair.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanLanjutanCair = await PengamatanLanjutan.findAll({
+        where: { CatatanTrialID: id },
+      });
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({
+        catatanTrialDetailCair,
+        komposisiCair,
+        perhitunganZatAktifCair,
+        formulaCair,
+        metodePembuatanCair,
+        pengamatanAwalCair,
+        pengamatanLanjutanCair,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  }
+  static async getCatatanTrialPadatDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailPadat = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+      const komposisiPadat = await KomposisiCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const perhitunganZatAktifPadat = await PerhitunganZatAktif.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const formulaPadat = await FormulaCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const metodePembuatanPadat = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const prosesCatatanTrialPadat = await ProsesCatatanTrialPadat.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanAwalPadat = await PengamatanAwalPadat.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanLanjutanPadat = await PengamatanLanjutan.findAll({
+        where: { CatatanTrialID: id },
+      });
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({
+        catatanTrialDetailPadat,
+        komposisiPadat,
+        perhitunganZatAktifPadat,
+        formulaPadat,
+        metodePembuatanPadat,
+        prosesCatatanTrialPadat,
+        pengamatanAwalPadat,
+        pengamatanLanjutanPadat,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  }
+  static async getCatatanTrialSterilDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailSteril = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+      const komposisiSteril = await KomposisiCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const perhitunganZatAktifSteril = await PerhitunganZatAktif.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const formulaSteril = await FormulaCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const metodePembuatanSteril = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanAwalSteril = await PengamatanAwalSteril.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanLanjutanSteril = await PengamatanLanjutan.findAll({
+        where: { CatatanTrialID: id },
+      });
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({
+        catatanTrialDetailSteril,
+        komposisiSteril,
+        perhitunganZatAktifSteril,
+        formulaSteril,
+        metodePembuatanSteril,
+        prosesCatatanTrialSteril,
+        pengamatanAwalSteril,
+        pengamatanLanjutanSteril,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  }
+  static async getCatatanTrialPenyalutanDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailPenyalutan = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+
+      const formulaPenyalutan = await FormulaCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const prosesPenyalutan = await ProsesCatatanTrialPenyalutan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const metodePembuatanPenyalutan = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanAwalPenyalutan = await PengamatanAwalPadat.findAll({
+        where: { CatatanTrialID: id },
+      });
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({
+        catatanTrialDetailPenyalutan,
+        formulaPenyalutan,
+        metodePembuatanPenyalutan,
+        prosesPenyalutan,
+        pengamatanAwalPenyalutan,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
   static async deleteCatatanTrial(req, res) {
