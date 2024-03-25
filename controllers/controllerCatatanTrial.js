@@ -103,16 +103,16 @@ class ControllerCatatanTrial {
       // }
 
       const createCatatanTrial = await CatatanTrial.create({
-        tanggalTrial,
-        namaProduk,
-        kodeTrial,
-        trialKe,
-        bentukSediaan,
-        productKompetitor,
-        statusB,
-        statusA,
-        filter,
-        tipeCatatanTrial,
+        tanggalTrial: tanggalTrial || "",
+        namaProduk: namaProduk || "",
+        kodeTrial: kodeTrial || "",
+        trialKe: trialKe || "",
+        bentukSediaan: bentukSediaan || "",
+        productKompetitor: productKompetitor || "",
+        statusB: statusB || "",
+        statusA: statusA || "",
+        filter: filter || "",
+        tipeCatatanTrial: tipeCatatanTrial || "",
       });
 
       res.status(201).json({
@@ -120,6 +120,7 @@ class ControllerCatatanTrial {
         data: createCatatanTrial,
       });
     } catch (err) {
+      console.log(err, "<< er");
       next(err);
     }
   }
@@ -611,6 +612,25 @@ class ControllerCatatanTrial {
       });
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async getCatatanTrialDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailCair = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({
+        catatanTrialDetailCair,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
   static async getCatatanTrialCairDetails(req, res, next) {

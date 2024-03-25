@@ -68,6 +68,7 @@ router.get(
   "/get-filter-catatan-trial-padat",
   ControllerCatatanTrial.getFilterCatatanTrialPadat
 );
+router.get("/catatan-trial/:id", ControllerCatatanTrial.getCatatanTrialDetails);
 router.get(
   "/catatan-trial-cair/:id",
   ControllerCatatanTrial.getCatatanTrialCairDetails
