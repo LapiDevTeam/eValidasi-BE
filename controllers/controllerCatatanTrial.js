@@ -648,16 +648,16 @@ class ControllerCatatanTrial {
       const perhitunganZatAktifCair = await PerhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaCair = await FormulaCatatanTrial.findAll({
+      const formulaCair = await FormulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
       const metodePembuatanCair = await MetodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalCair = await PengamatanAwalCair.findAll({
+      const pengamatanAwalCair = await PengamatanAwalCair.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanCair = await PengamatanLanjutan.findAll({
+      const pengamatanLanjutanCair = await PengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
 
