@@ -10,6 +10,7 @@ const {
   PengamatanLanjutan,
   PengamatanAwalPadat,
   PengamatanAwalSteril,
+  PengamatanAwalPenyalutan,
 } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
@@ -444,6 +445,64 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
+  static async createPengamatanAwalPenyalutan(req, res, next) {
+    try {
+      const {
+        spesifikasiWeightGain,
+        settingWeightGain,
+        evaluasiWeightGain,
+        spesifikasiPemerian,
+        settingPemerian,
+        evaluasiPemerian,
+        spesifikasiKeseragamanBobot,
+        settingKeseragamanBobot,
+        evaluasiKeseragamanBobot,
+        spesifikasiKetebalan,
+        settingKetebalan,
+        evaluasiKetebalan,
+        rataRataKetebalan,
+        spesifikasiDimensi,
+        settingDimensi,
+        evaluasiDimensi,
+        spesifikasiWaktuHancur,
+        settingWaktuHancur,
+        evaluasiWaktuHancur,
+        CatatanTrialID,
+      } = req.body;
+
+      const createPengamatanAwalPenyalutan =
+        await PengamatanAwalPenyalutan.create({
+          spesifikasiWeightGain,
+          settingWeightGain,
+          evaluasiWeightGain,
+          spesifikasiPemerian,
+          settingPemerian,
+          evaluasiPemerian,
+          spesifikasiKeseragamanBobot,
+          settingKeseragamanBobot,
+          evaluasiKeseragamanBobot,
+          spesifikasiKetebalan,
+          settingKetebalan,
+          evaluasiKetebalan,
+          rataRataKetebalan,
+          spesifikasiDimensi,
+          settingDimensi,
+          evaluasiDimensi,
+          spesifikasiWaktuHancur,
+          settingWaktuHancur,
+          evaluasiWaktuHancur,
+          CatatanTrialID,
+        });
+
+      res.status(201).json({
+        message: "Success Create pengamatan awal Penyalutan",
+        data: createPengamatanAwalPenyalutan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
   static async createPengamatanLanjutan(req, res, next) {
     try {
       const { kodeTrialHeaders, content, CatatanTrialID } = req.body;
@@ -691,7 +750,7 @@ class ControllerCatatanTrial {
       const perhitunganZatAktifPadat = await PerhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaPadat = await FormulaCatatanTrial.findAll({
+      const formulaPadat = await FormulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
       const metodePembuatanPadat = await MetodePembuatan.findAll({
@@ -700,10 +759,10 @@ class ControllerCatatanTrial {
       const prosesCatatanTrialPadat = await ProsesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPadat = await PengamatanAwalPadat.findAll({
+      const pengamatanAwalPadat = await PengamatanAwalPadat.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanPadat = await PengamatanLanjutan.findAll({
+      const pengamatanLanjutanPadat = await PengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
 
@@ -738,16 +797,16 @@ class ControllerCatatanTrial {
       const perhitunganZatAktifSteril = await PerhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaSteril = await FormulaCatatanTrial.findAll({
+      const formulaSteril = await FormulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
       const metodePembuatanSteril = await MetodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalSteril = await PengamatanAwalSteril.findAll({
+      const pengamatanAwalSteril = await PengamatanAwalSteril.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanSteril = await PengamatanLanjutan.findAll({
+      const pengamatanLanjutanSteril = await PengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
 
@@ -758,7 +817,7 @@ class ControllerCatatanTrial {
         perhitunganZatAktifSteril,
         formulaSteril,
         metodePembuatanSteril,
-        prosesCatatanTrialSteril,
+        // prosesCatatanTrialSteril,
         pengamatanAwalSteril,
         pengamatanLanjutanSteril,
       });
@@ -777,7 +836,7 @@ class ControllerCatatanTrial {
         },
       });
 
-      const formulaPenyalutan = await FormulaCatatanTrial.findAll({
+      const formulaPenyalutan = await FormulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
       const prosesPenyalutan = await ProsesCatatanTrialPenyalutan.findAll({

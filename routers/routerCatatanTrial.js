@@ -45,6 +45,10 @@ router.post(
   ControllerCatatanTrial.createPengamatanAwalPadat
 );
 router.post(
+  "/create-pengamatan-awal-penyalutan",
+  ControllerCatatanTrial.createPengamatanAwalPenyalutan
+);
+router.post(
   "/create-pengamatan-lanjutan",
   ControllerCatatanTrial.createPengamatanLanjutan
 );
