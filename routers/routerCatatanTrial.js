@@ -155,5 +155,13 @@ router.delete(
   "/delete-pengamatanLanjutan/:id",
   ControllerCatatanTrial.deletePengamatanLanjutan
 );
+router.delete(
+  "/delete-prosesPenyalutan/:id",
+  ControllerCatatanTrial.deleteProsesPenyalutan
+);
+router.delete(
+  "/delete-pengamatanAwalPenyalutan/:id",
+  ControllerCatatanTrial.deletePengamatanAwalPenyalutan
+);
 
 module.exports = router;

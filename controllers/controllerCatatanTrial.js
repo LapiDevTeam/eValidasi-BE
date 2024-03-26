@@ -833,7 +833,7 @@ class ControllerCatatanTrial {
       const metodePembuatanPenyalutan = await MetodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPenyalutan = await PengamatanAwalPadat.findAll({
+      const pengamatanAwalPenyalutan = await PengamatanAwalPenyalutan.findOne({
         where: { CatatanTrialID: id },
       });
 
@@ -1328,6 +1328,50 @@ class ControllerCatatanTrial {
 
       if (pengamatanlanjutan.length > 0) {
         await PengamatanLanjutan.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deleteProsesPenyalutan(req, res) {
+    try {
+      const { id } = req.params;
+
+      const proses = await ProsesCatatanTrialPenyalutan.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (proses.length > 0) {
+        await ProsesCatatanTrialPenyalutan.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deletePengamatanAwalPenyalutan(req, res) {
+    try {
+      const { id } = req.params;
+
+      const pengamatanAwalPenyalutan = await PengamatanAwalPenyalutan.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (pengamatanAwalPenyalutan.length > 0) {
+        await PengamatanAwalPenyalutan.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
