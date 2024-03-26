@@ -91,18 +91,6 @@ class ControllerCatatanTrial {
         tipeCatatanTrial,
       } = req.body;
 
-      // if (!tanggalTrial) {
-      //   throw new MyError(400, "tanggalTrial is required !");
-      // } else if (!kodeTrial) {
-      //   throw new MyError(400, "kodeTrial is require !");
-      // } else if (!trialKe) {
-      //   throw new MyError(400, " is required !");
-      // } else if (!bentukSediaan) {
-      //   throw new MyError(400, "Bentuk Sediaan is required !");
-      // } else if (!productKompetitor) {
-      //   throw new MyError(400, "productKompetitor is required !");
-      // }
-
       const createCatatanTrial = await CatatanTrial.create({
         tanggalTrial: tanggalTrial || "",
         namaProduk: namaProduk || "",
@@ -719,7 +707,7 @@ class ControllerCatatanTrial {
       const pengamatanLanjutanCair = await PengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
-
+      console.log(perhitunganZatAktifCair, " << zat cair");
       // if (isApprove.message) throw new MyError(400, isApprove.message);
       res.status(200).json({
         catatanTrialDetailCair,
@@ -871,6 +859,482 @@ class ControllerCatatanTrial {
       });
 
       res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async updateCatatanTrial(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        tanggalTrial,
+        namaProduk,
+        kodeTrial,
+        trialKe,
+        bentukSediaan,
+        productKompetitor,
+        statusB,
+        statusA,
+        filter,
+        tipeCatatanTrial,
+      } = req.body;
+
+      const [updatedRowsCount] = await CatatanTrial.update(
+        {
+          tanggalTrial: tanggalTrial || "",
+          namaProduk: namaProduk || "",
+          kodeTrial: kodeTrial || "",
+          trialKe: trialKe || "",
+          bentukSediaan: bentukSediaan || "",
+          productKompetitor: productKompetitor || "",
+          statusB: statusB || "",
+          statusA: statusA || "",
+          filter: filter || "",
+          tipeCatatanTrial: tipeCatatanTrial || "",
+        },
+        {
+          where: { id: id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updateKomposisiCatatanTrial(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const { kode, namaBahanBaku, principle, jumlahTiapSediaan } = req.body;
+      console.log(namaBahanBaku, "< << NAMA");
+      const [updatedRowsCount] = await KomposisiCatatanTrial.update(
+        {
+          kode: kode || "",
+          namaBahanBaku: namaBahanBaku || "",
+          principle: principle || "",
+          jumlahTiapSediaan: jumlahTiapSediaan || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "komposisi Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "komposisi Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updatePerhitunganZatAktif(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const { padaEtiket, bahanBakuYangDigunakan, perhitunganBahanBaku } =
+        req.body;
+
+      const [updatedRowsCount] = await PerhitunganZatAktif.update(
+        {
+          padaEtiket: padaEtiket || "",
+          bahanBakuYangDigunakan: bahanBakuYangDigunakan || "",
+          perhitunganBahanBaku: perhitunganBahanBaku || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "perhitungan zat aktif Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "perhitungan zat aktif Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updateFormulaCatatanTrial(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        tujuanTrial,
+        tiapSediaan,
+        besarBets,
+        satuan,
+        bentukSediaan,
+        detailFormula,
+      } = req.body;
+
+      const [updatedRowsCount] = await FormulaCatatanTrial.update(
+        {
+          tujuanTrial: tujuanTrial || "",
+          tiapSediaan: tiapSediaan || "",
+          besarBets: besarBets || "",
+          satuan: satuan || "",
+          bentukSediaan: bentukSediaan || "",
+          detailFormula: detailFormula || "",
+        },
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "formula Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "formula Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updateMetodePembuatan(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const { aktivitas, pengamatan } = req.body;
+
+      const [updatedRowsCount] = await MetodePembuatan.update(
+        {
+          aktivitas: aktivitas || "",
+          pengamatan: pengamatan || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "metode Pembuatan Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "metode Pembuatan Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updatePengamatanAwalCair(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratViskositas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianViskositas,
+      } = req.body;
+
+      const [updatedRowsCount] = await PengamatanAwalCair.update(
+        {
+          syaratPemerian: syaratPemerian || "",
+          syaratPh: syaratPh || "",
+          syaratBj: syaratBj || "",
+          syaratViskositas: syaratViskositas || "",
+          hasilPengujianPemerian: hasilPengujianPemerian || "",
+          hasilPengujianPh: hasilPengujianPh || "",
+          hasilPengujianBj: hasilPengujianBj || "",
+          hasilPengujianViskositas: hasilPengujianViskositas || "",
+        },
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "pengamatan awal cair Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "pengamatan awal cair Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updatePengamatanAwalSteril(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        syaratPemerian,
+        syaratPh,
+        syaratBj,
+        syaratOsmolaritas,
+        hasilPengujianPemerian,
+        hasilPengujianPh,
+        hasilPengujianBj,
+        hasilPengujianOsmolaritas,
+      } = req.body;
+
+      const [updatedRowsCount] = await PengamatanAwalSteril.update(
+        {
+          syaratPemerian: syaratPemerian || "",
+          syaratPh: syaratPh || "",
+          syaratBj: syaratBj || "",
+          syaratOsmolaritas: syaratOsmolaritas || "",
+          hasilPengujianPemerian: hasilPengujianPemerian || "",
+          hasilPengujianPh: hasilPengujianPh || "",
+          hasilPengujianBj: hasilPengujianBj || "",
+          hasilPengujianOsmolaritas: hasilPengujianOsmolaritas || "",
+        },
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "pengamatan awal steril Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "pengamatan awal steril Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+
+  static async updatePengamatanAwalLanjutan(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const { kodeTrialHeaders, content } = req.body;
+
+      const [updatedRowsCount] = await PengamatanLanjutan.update(
+        {
+          kodeTrialHeaders: kodeTrialHeaders || "",
+          content: content || "",
+        },
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "pengamatan lanjutan Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "pengamatan lanjutan Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async updateProsesCatatanTrialPadat(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        speed,
+        mainPressure,
+        prePressure,
+        settingBobot,
+        kekerasan,
+        tebal,
+        abrasi,
+        wh,
+        keterangan,
+      } = req.body;
+
+      const [updatedRowsCount] = await ProsesCatatanTrialPadat.update(
+        {
+          speed: speed || "",
+          mainPressure: mainPressure || "",
+          speed: speed || "",
+          prePressure: prePressure || "",
+          settingBobot: settingBobot || "",
+          kekerasan: kekerasan || "",
+          tebal: tebal || "",
+          abrasi: abrasi || "",
+          wh: wh || "",
+          keterangan: keterangan || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "proses padat Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "proses padat Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async deleteProsesCatatanTrialPadat(req, res) {
+    try {
+      const { id } = req.params;
+
+      const proses = await ProsesCatatanTrialPadat.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (proses.length > 0) {
+        await ProsesCatatanTrialPadat.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deleteKomposisiCatatanTrial(req, res) {
+    try {
+      const { id } = req.params;
+
+      const komposisi = await KomposisiCatatanTrial.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (komposisi.length > 0) {
+        await KomposisiCatatanTrial.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deleteFormulaCatatanTrial(req, res) {
+    try {
+      const { id } = req.params;
+
+      const formula = await FormulaCatatanTrial.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (formula.length > 0) {
+        await FormulaCatatanTrial.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deleteMetodePembuatan(req, res) {
+    try {
+      const { id } = req.params;
+
+      const metode = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (metode.length > 0) {
+        await MetodePembuatan.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deletePengamatanAwalPadat(req, res) {
+    try {
+      const { id } = req.params;
+
+      const pengamatanAwalPadat = await PengamatanAwalPadat.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (pengamatanAwalPadat.length > 0) {
+        await PengamatanAwalPadat.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
+  static async deletePengamatanLanjutan(req, res) {
+    try {
+      const { id } = req.params;
+
+      const pengamatanlanjutan = await PengamatanLanjutan.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      if (pengamatanlanjutan.length > 0) {
+        await PengamatanLanjutan.destroy({
+          where: { CatatanTrialID: +id }, // Corrected the where clause
+        });
+
+        res.status(200).send({ msg: "succeed" });
+      } else {
+        res.status(200).send({ msg: "" });
+      }
     } catch (err) {
       console.log(err);
       res.status(500).send({ msg: "error" });

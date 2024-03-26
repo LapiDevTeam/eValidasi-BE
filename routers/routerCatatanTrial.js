@@ -53,6 +53,42 @@ router.post(
   ControllerCatatanTrial.createPengamatanLanjutan
 );
 router.put(
+  "/update-catatanTrial/:id",
+  ControllerCatatanTrial.updateCatatanTrial
+);
+router.put(
+  "/update-komposisiCatatanTrial/:id",
+  ControllerCatatanTrial.updateKomposisiCatatanTrial
+);
+router.put(
+  "/update-perhitunganZatAktif/:id",
+  ControllerCatatanTrial.updatePerhitunganZatAktif
+);
+router.put(
+  "/update-formulaCatatanTrial/:id",
+  ControllerCatatanTrial.updateFormulaCatatanTrial
+);
+router.put(
+  "/update-metodePembuatan/:id",
+  ControllerCatatanTrial.updateMetodePembuatan
+);
+router.put(
+  "/update-pengamatanAwalCair/:id",
+  ControllerCatatanTrial.updatePengamatanAwalCair
+);
+router.put(
+  "/update-pengamatanAwalSteril/:id",
+  ControllerCatatanTrial.updatePengamatanAwalSteril
+);
+router.put(
+  "/update-pengamatanAwalLanjutan/:id",
+  ControllerCatatanTrial.updatePengamatanAwalLanjutan
+);
+router.put(
+  "/update-prosesCatatanTrialPadat/:id",
+  ControllerCatatanTrial.updateProsesCatatanTrialPadat
+);
+router.put(
   "/update-pembahasan/:CatatanTrialID",
   ControllerCatatanTrial.updatePembahasan
 );
@@ -94,6 +130,30 @@ router.get(
 router.delete(
   "/delete-catatan-trial/:id",
   ControllerCatatanTrial.deleteCatatanTrial
+);
+router.delete(
+  "/delete-prosesCatatanTrialPadat/:id",
+  ControllerCatatanTrial.deleteProsesCatatanTrialPadat
+);
+router.delete(
+  "/delete-komposisiCatatanTrial/:id",
+  ControllerCatatanTrial.deleteKomposisiCatatanTrial
+);
+router.delete(
+  "/delete-formulaCatatanTrial/:id",
+  ControllerCatatanTrial.deleteFormulaCatatanTrial
+);
+router.delete(
+  "/delete-metodePembuatan/:id",
+  ControllerCatatanTrial.deleteMetodePembuatan
+);
+router.delete(
+  "/delete-pengamatanAwalPadat/:id",
+  ControllerCatatanTrial.deletePengamatanAwalPadat
+);
+router.delete(
+  "/delete-pengamatanLanjutan/:id",
+  ControllerCatatanTrial.deletePengamatanLanjutan
 );
 
 module.exports = router;
