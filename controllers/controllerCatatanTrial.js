@@ -665,16 +665,14 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const catatanTrialDetailCair = await CatatanTrial.findOne({
+      const catatanTrial = await CatatanTrial.findOne({
         where: {
           id,
         },
       });
 
       // if (isApprove.message) throw new MyError(400, isApprove.message);
-      res.status(200).json({
-        catatanTrialDetailCair,
-      });
+      res.status(200).json(catatanTrial);
     } catch (error) {
       console.log(error);
       next(error);
@@ -726,6 +724,8 @@ class ControllerCatatanTrial {
   static async getCatatanTrialPadatDetails(req, res, next) {
     try {
       const { id } = req.params;
+
+      console.log("xixixixiix");
 
       const catatanTrialDetailPadat = await CatatanTrial.findOne({
         where: {
