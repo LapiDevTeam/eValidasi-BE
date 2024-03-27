@@ -11,6 +11,7 @@ const configMssql = {
 const {
   t_protokolSkalaLab_status,
   t_productBrief_status,
+  t_catatanTrial_status,
 } = require("../models/index");
 
 //check table status protokol
@@ -39,8 +40,21 @@ const checkStatusProtokol = async (id) => {
   if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
   return apprNo;
 };
+const checkStatusCatatanTrial = async (id) => {
+  let apprNo = 1;
+  const checkStatus = await t_catatanTrial_status.findAll({
+    where: {
+      CatatanTrialID: id,
+      is_approve: true,
+    },
+    order: [["approver_no", "DESC"]],
+  });
+  if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
+  return apprNo;
+};
 
 module.exports = {
   checkStatusProductBrief,
   checkStatusProtokol,
+  checkStatusCatatanTrial,
 };

@@ -51,6 +51,10 @@ module.exports = (sequelize, DataTypes) => {
       CatatanTrial.hasMany(models.PengamatanAwalSteril, {
         foreignKey: "CatatanTrialID",
       });
+      CatatanTrial.hasMany(models.t_catatanTrial_status, {
+        foreignKey: "CatatanTrialID",
+        as: "approver_data",
+      });
     }
   }
   CatatanTrial.init(
@@ -61,13 +65,13 @@ module.exports = (sequelize, DataTypes) => {
       trialKe: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
       productKompetitor: DataTypes.STRING,
-      statusB: DataTypes.STRING,
-      statusA: DataTypes.STRING,
+      status: DataTypes.STRING,
       pembahasan: DataTypes.TEXT,
       kesimpulan: DataTypes.TEXT,
       tindakLanjut: DataTypes.TEXT,
       filter: DataTypes.STRING,
       tipeCatatanTrial: DataTypes.STRING,
+      pic: DataTypes.STRING,
     },
     {
       sequelize,

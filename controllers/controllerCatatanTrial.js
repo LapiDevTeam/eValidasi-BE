@@ -11,11 +11,15 @@ const {
   PengamatanAwalPadat,
   PengamatanAwalSteril,
   PengamatanAwalPenyalutan,
+  t_catatanTrial_status,
 } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
+const { checkStatusCatatanTrial } = require("../helpers/checkStatus");
+const { getStatusCatatanTrial } = require("../helpers/statusCatatanTrial");
+const { isApproveValidation } = require("../helpers/approver");
 
 class ControllerCatatanTrial {
   static async findAllNamaProduct01(req, res) {
@@ -78,6 +82,8 @@ class ControllerCatatanTrial {
   }
   static async createCatatanTrial(req, res, next) {
     try {
+      const { nama_user, bagian_user } = req.user;
+      console.log(req.user, "<<");
       const {
         tanggalTrial,
         namaProduk,
@@ -89,6 +95,7 @@ class ControllerCatatanTrial {
         statusA,
         filter,
         tipeCatatanTrial,
+        pic,
       } = req.body;
 
       const createCatatanTrial = await CatatanTrial.create({
@@ -102,6 +109,7 @@ class ControllerCatatanTrial {
         statusA: statusA || "",
         filter: filter || "",
         tipeCatatanTrial: tipeCatatanTrial || "",
+        pic: nama_user || "",
       });
 
       res.status(201).json({
@@ -662,17 +670,64 @@ class ControllerCatatanTrial {
     }
   }
   static async getCatatanTrialDetails(req, res, next) {
+    console.log("xixixi");
     try {
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      console.log(req.user, "< req user");
       const { id } = req.params;
+      // console.log(id, "<< req uer");
+      let catatanTrialDetails;
+      if (+joblevel_id_user === 1 || bagian_user === "RD1") {
+        console.log(id, "<< id");
+        catatanTrialDetails = await CatatanTrial?.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_catatanTrial_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_catatanTrial_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(catatanTrialDetails, "<< detil");
+      } else {
+        console.log("test");
+        catatanTrialDetails = await CatatanTrial.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_catatanTrial_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_catatanTrial_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+      const apprDeptId = "RD1";
+      const apprNo = await checkStatusCatatanTrial(id);
 
-      const catatanTrial = await CatatanTrial.findOne({
-        where: {
-          id,
-        },
-      });
-
-      // if (isApprove.message) throw new MyError(400, isApprove.message);
-      res.status(200).json(catatanTrial);
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "catatanTrial",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({ catatanTrialDetails, isApprove });
     } catch (error) {
       console.log(error);
       next(error);
@@ -1382,6 +1437,79 @@ class ControllerCatatanTrial {
     } catch (err) {
       console.log(err);
       res.status(500).send({ msg: "error" });
+    }
+  }
+  static async approveCatatanTrial(req, res, next) {
+    try {
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findCatatanTrial = await CatatanTrial.findByPk(+id);
+      if (!findCatatanTrial)
+        throw new MyError(404, "Form CatatanTrial tidak ditemukan");
+      const apprNo = await checkStatusCatatanTrial(id);
+
+      const dataApprove = await approverRecordset(
+        // findProtokol.nama_pegawai,
+        "catatanTrial",
+        // findProtokol.rdSelection,
+        "RD1",
+        apprNo,
+        user_id,
+        nama_user
+      );
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let status;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        status = getStatusCatatanTrial(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
+      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (is_approve === false) {
+        status = "Reject";
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+      }
+
+      console.log(is_approve, "<<< iNI IS APPROVE");
+
+      await t_catatanTrial_status.create({
+        CatatanTrialID: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await CatatanTrial.update(
+        {
+          status: status,
+          alasan_reject: keterangan_reject,
+          user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
     }
   }
 }

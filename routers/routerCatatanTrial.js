@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const ControllerCatatanTrial = require("../controllers/controllerCatatanTrial");
-// const { authentication } = require("../middlewares/authentication");
+const { authentication } = require("../middlewares/authentication");
 
 router.get("/all-namaProduk01", ControllerCatatanTrial.findAllNamaProduct01);
 router.get("/all-namaProduk02", ControllerCatatanTrial.findAllNamaProduct02);
 router.get("/all-catatan-trial", ControllerCatatanTrial.findAllCatatanTrial);
-router.post("/create-catatanTrial", ControllerCatatanTrial.createCatatanTrial);
+router.post(
+  "/create-catatanTrial",
+  authentication,
+  ControllerCatatanTrial.createCatatanTrial
+);
 router.get("/all-namaBahanBaku", ControllerCatatanTrial.findNamaBahanBaku);
 router.post(
   "/create-komposisi-catatanTrial",
@@ -109,7 +113,11 @@ router.get(
   ControllerCatatanTrial.getFilterCatatanTrialPadat
 );
 
-router.get("/catatan-trial/:id", ControllerCatatanTrial.getCatatanTrialDetails);
+router.get(
+  "/catatan-trial/:id",
+  authentication,
+  ControllerCatatanTrial.getCatatanTrialDetails
+);
 router.get(
   "/catatan-trial-cair/:id",
   ControllerCatatanTrial.getCatatanTrialCairDetails
@@ -162,6 +170,11 @@ router.delete(
 router.delete(
   "/delete-pengamatanAwalPenyalutan/:id",
   ControllerCatatanTrial.deletePengamatanAwalPenyalutan
+);
+router.put(
+  "/approve-catatanTrial/:id",
+  authentication,
+  ControllerCatatanTrial.approveCatatanTrial
 );
 
 module.exports = router;

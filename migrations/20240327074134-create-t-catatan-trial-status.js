@@ -2,51 +2,42 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("CatatanTrial", {
+    await queryInterface.createTable("t_catatanTrial_status", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      tanggalTrial: {
-        type: Sequelize.DATE,
+      CatatanTrialID: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "CatatanTrial",
+          key: "id",
+        },
       },
-      namaProduk: {
+      approver_no: {
+        type: Sequelize.INTEGER,
+      },
+      is_approve: {
+        type: Sequelize.BOOLEAN,
+      },
+      approver_name: {
         type: Sequelize.STRING,
       },
-      kodeTrial: {
+      approver_joblevel_id: {
         type: Sequelize.STRING,
       },
-      trialKe: {
+      approver_inisial: {
         type: Sequelize.STRING,
       },
-      bentukSediaan: {
-        type: Sequelize.STRING,
-      },
-      productKompetitor: {
-        type: Sequelize.STRING,
-      },
-      status: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
-      },
-      pembahasan: {
+      keterangan_reject: {
         type: Sequelize.TEXT,
       },
-      kesimpulan: {
-        type: Sequelize.TEXT,
-      },
-      tindakLanjut: {
-        type: Sequelize.TEXT,
-      },
-      filter: {
+      user_id: {
         type: Sequelize.STRING,
       },
-      tipeCatatanTrial: {
-        type: Sequelize.STRING,
-      },
-      pic: {
+      delegated_to: {
         type: Sequelize.STRING,
       },
       createdAt: {
@@ -60,6 +51,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("CatatanTrial");
+    await queryInterface.dropTable("t_catatanTrial_status");
   },
 };
