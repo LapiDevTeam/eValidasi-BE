@@ -49,6 +49,9 @@ module.exports = {
       pic: {
         type: Sequelize.STRING,
       },
+      bagian: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

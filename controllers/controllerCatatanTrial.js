@@ -19,7 +19,10 @@ const { Op } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
 const { checkStatusCatatanTrial } = require("../helpers/checkStatus");
 const { getStatusCatatanTrial } = require("../helpers/statusCatatanTrial");
-const { isApproveValidation } = require("../helpers/approver");
+const {
+  isApproveValidation,
+  approverRecordset,
+} = require("../helpers/approver");
 
 class ControllerCatatanTrial {
   static async findAllNamaProduct01(req, res) {
@@ -110,6 +113,7 @@ class ControllerCatatanTrial {
         filter: filter || "",
         tipeCatatanTrial: tipeCatatanTrial || "",
         pic: nama_user || "",
+        bagian: bagian_user || "",
       });
 
       res.status(201).json({
@@ -677,7 +681,7 @@ class ControllerCatatanTrial {
       const { id } = req.params;
       // console.log(id, "<< req uer");
       let catatanTrialDetails;
-      if (+joblevel_id_user === 1 || bagian_user === "RD1") {
+      if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
         console.log(id, "<< id");
         catatanTrialDetails = await CatatanTrial?.findOne({
           where: {
@@ -713,8 +717,9 @@ class ControllerCatatanTrial {
           ],
         });
       }
-      const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
-      const apprDeptId = "RD1";
+      console.log(catatanTrialDetails, "<<< DETAILS");
+      // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+      const apprDeptId = catatanTrialDetails.bagian;
       const apprNo = await checkStatusCatatanTrial(id);
 
       const isApprove = await isApproveValidation(
@@ -1458,8 +1463,7 @@ class ControllerCatatanTrial {
       const dataApprove = await approverRecordset(
         // findProtokol.nama_pegawai,
         "catatanTrial",
-        // findProtokol.rdSelection,
-        "RD1",
+        findCatatanTrial.bagian,
         apprNo,
         user_id,
         nama_user
@@ -1473,13 +1477,16 @@ class ControllerCatatanTrial {
         status = getStatusCatatanTrial(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (dataApprove.recordset1.length === 0) status = "Closed";
       if (is_approve === false) {
         status = "Reject";
         await t_catatanTrial_status.destroy({
           where: { CatatanTrialID: +id },
         });
       }
+
+      console.log(status, "<< STAUTS");
+      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
 
       console.log(is_approve, "<<< iNI IS APPROVE");
 

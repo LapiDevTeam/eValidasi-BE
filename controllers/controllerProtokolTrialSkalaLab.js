@@ -1583,6 +1583,8 @@ class ControllerProtokolTrialSkalaLab {
         });
       }
 
+      console.log(dataApprove, "<< ASDASDASDAS");
+
       console.log(is_approve, "<<< iNI IS APPROVE");
 
       await t_protokolSkalaLab_status.create({
