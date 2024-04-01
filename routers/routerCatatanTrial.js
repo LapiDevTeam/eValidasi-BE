@@ -109,6 +109,18 @@ router.get(
   ControllerCatatanTrial.getKomposisiNamaBahan
 );
 router.get(
+  "/get-bentukSediaanCategoryCair",
+  ControllerCatatanTrial.getBentukSediaanCategoryCair
+);
+router.get(
+  "/get-bentukSediaanCategoryPadat",
+  ControllerCatatanTrial.getBentukSediaanCategoryPadat
+);
+router.get(
+  "/get-bentukSediaanCategorySteril",
+  ControllerCatatanTrial.getBentukSediaanCategorySteril
+);
+router.get(
   "/get-filter-catatan-trial-padat",
   ControllerCatatanTrial.getFilterCatatanTrialPadat
 );

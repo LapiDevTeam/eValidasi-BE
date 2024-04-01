@@ -12,10 +12,11 @@ const {
   PengamatanAwalSteril,
   PengamatanAwalPenyalutan,
   t_catatanTrial_status,
+  m_bentuk_sediaan,
 } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
 const { checkStatusCatatanTrial } = require("../helpers/checkStatus");
 const { getStatusCatatanTrial } = require("../helpers/statusCatatanTrial");
@@ -618,6 +619,62 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  static async getBentukSediaanCategoryCair(req, res) {
+    try {
+      const bentukSediaanCair = await m_bentuk_sediaan.findAll({
+        where: { category: "cair" },
+        attributes: ["bentukSediaan", "category"], // Selecting only 'bentukSediaan' and 'category'
+      });
+
+      // Assuming you want to throw an error if the data is empty
+      if (bentukSediaanCair.length === 0) {
+        throw new Error("No 'cair' categories found");
+      }
+
+      res.status(200).json(bentukSediaanCair);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async getBentukSediaanCategoryPadat(req, res) {
+    try {
+      const bentukSediaanPadat = await m_bentuk_sediaan.findAll({
+        where: { category: "padat" },
+        attributes: ["bentukSediaan", "category"], // Selecting only 'bentukSediaan' and 'category'
+      });
+
+      // Assuming you want to throw an error if the data is empty
+      if (bentukSediaanPadat.length === 0) {
+        throw new Error("No 'Padat' categories found");
+      }
+
+      res.status(200).json(bentukSediaanPadat);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getBentukSediaanCategorySteril(req, res) {
+    try {
+      const bentukSediaanSteril = await m_bentuk_sediaan.findAll({
+        where: { category: "steril" },
+        attributes: ["bentukSediaan", "category"], // Selecting only 'bentukSediaan' and 'category'
+      });
+
+      // Assuming you want to throw an error if the data is empty
+      if (bentukSediaanSteril.length === 0) {
+        throw new Error("No 'Steril' categories found");
+      }
+
+      res.status(200).json(bentukSediaanSteril);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async findAllCatatanTrial(req, res) {
     try {
       const {
