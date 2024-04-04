@@ -32,6 +32,18 @@
       "category":"cair"
     },
     {
+      "bentukSediaan": "sirup",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "sirup kering",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "suspensi",
+      "category":"cair"
+    },
+    {
       "bentukSediaan": "pelarut",
       "category":"steril"
     },
