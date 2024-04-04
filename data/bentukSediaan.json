@@ -1,0 +1,54 @@
+[
+    {
+      "bentukSediaan": "tablet",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "tablet effervescent",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "tablet kunyah",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "tablet salut enterik",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "tablet salut selaput",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "tablet salut selaput lepas lambat",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "drops",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "gel",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "pelarut",
+      "category":"steril"
+    },
+    {
+      "bentukSediaan": "infus",
+      "category":"steril"
+    },
+    {
+      "bentukSediaan": "injeksi",
+      "category":"steril"
+    },
+    {
+      "bentukSediaan": "injeksi cair",
+      "category":"steril"
+    },
+    {
+      "bentukSediaan": "injeksi serbuk",
+      "category":"steril"
+    }
+]

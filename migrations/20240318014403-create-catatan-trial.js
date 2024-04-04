@@ -52,6 +52,9 @@ module.exports = {
       bagian: {
         type: Sequelize.STRING,
       },
+      alasan_reject: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

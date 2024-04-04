@@ -73,6 +73,7 @@ module.exports = (sequelize, DataTypes) => {
       tipeCatatanTrial: DataTypes.STRING,
       pic: DataTypes.STRING,
       bagian: DataTypes.STRING,
+      alasan_reject: DataTypes.STRING,
     },
     {
       sequelize,
