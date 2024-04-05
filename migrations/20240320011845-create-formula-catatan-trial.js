@@ -18,6 +18,9 @@ module.exports = {
       besarBets: {
         type: Sequelize.INTEGER,
       },
+      overmaat: {
+        type: Sequelize.INTEGER,
+      },
       satuan: {
         type: Sequelize.STRING,
       },

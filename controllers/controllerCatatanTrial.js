@@ -296,6 +296,7 @@ class ControllerCatatanTrial {
         tujuanTrial,
         tiapSediaan,
         besarBets,
+        overmaat,
         satuan,
         bentukSediaan,
         detailFormula,
@@ -306,6 +307,7 @@ class ControllerCatatanTrial {
         tujuanTrial: tujuanTrial,
         tiapSediaan: tiapSediaan,
         besarBets: besarBets,
+        overmaat: overmaat,
         satuan: satuan,
         bentukSediaan: bentukSediaan,
         detailFormula: detailFormula,
@@ -521,6 +523,27 @@ class ControllerCatatanTrial {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async updatePerhitunganBatasBahanTambahan(req, res) {
+    try {
+      const { CatatanTrialID } = req.params;
+      const { perhitunganBatasBahanTambahan } = req.body;
+      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
+
+      if (!findCatatanTrialID) throw { name: "NotFound" };
+      const updatePerhitunganBatasBahanTambahan = await CatatanTrial.update(
+        { perhitunganBatasBahanTambahan: perhitunganBatasBahanTambahan },
+        {
+          where: {
+            id: findCatatanTrialID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updatePerhitunganBatasBahanTambahan);
+    } catch (err) {
+      console.log(err);
     }
   }
   static async updatePembahasan(req, res) {

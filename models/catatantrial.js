@@ -66,6 +66,7 @@ module.exports = (sequelize, DataTypes) => {
       bentukSediaan: DataTypes.STRING,
       productKompetitor: DataTypes.STRING,
       status: DataTypes.STRING,
+      perhitunganBatasBahanTambahan: DataTypes.TEXT,
       pembahasan: DataTypes.TEXT,
       kesimpulan: DataTypes.TEXT,
       tindakLanjut: DataTypes.TEXT,

@@ -93,6 +93,10 @@ router.put(
   ControllerCatatanTrial.updateProsesCatatanTrialPadat
 );
 router.put(
+  "/update-perhitunganBatasBahanTambahan/:CatatanTrialID",
+  ControllerCatatanTrial.updatePerhitunganBatasBahanTambahan
+);
+router.put(
   "/update-pembahasan/:CatatanTrialID",
   ControllerCatatanTrial.updatePembahasan
 );

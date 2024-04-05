@@ -4,6 +4,10 @@
       "category":"padat"
     },
     {
+      "bentukSediaan": "kaplet",
+      "category":"padat"
+    },
+    {
       "bentukSediaan": "tablet effervescent",
       "category":"padat"
     },
@@ -16,7 +20,15 @@
       "category":"padat"
     },
     {
+      "bentukSediaan": "kaplet salut enterik",
+      "category":"padat"
+    },
+    {
       "bentukSediaan": "tablet salut selaput",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "kaplet salut selaput",
       "category":"padat"
     },
     {
@@ -24,11 +36,27 @@
       "category":"padat"
     },
     {
-      "bentukSediaan": "drops",
-      "category":"cair"
+      "bentukSediaan": "kaplet salut selaput lepas lambat",
+      "category":"padat"
     },
     {
-      "bentukSediaan": "gel",
+      "bentukSediaan": "kapsul",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "kapsul lepas tunda",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "kapsul lunak",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "serbuk",
+      "category":"padat"
+    },
+    {
+      "bentukSediaan": "larutan",
       "category":"cair"
     },
     {
@@ -44,15 +72,27 @@
       "category":"cair"
     },
     {
+      "bentukSediaan": "drops",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "gel",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "emulsi",
+      "category":"cair"
+    },
+    {
+      "bentukSediaan": "cairan inhaler",
+      "category":"steril"
+    },
+    {
       "bentukSediaan": "pelarut",
       "category":"steril"
     },
     {
       "bentukSediaan": "infus",
-      "category":"steril"
-    },
-    {
-      "bentukSediaan": "injeksi",
       "category":"steril"
     },
     {

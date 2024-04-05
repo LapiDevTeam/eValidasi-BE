@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       tujuanTrial: DataTypes.STRING,
       tiapSediaan: DataTypes.STRING,
       besarBets: DataTypes.INTEGER,
+      overmaat: DataTypes.INTEGER,
       satuan: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
       detailFormula: DataTypes.JSONB,

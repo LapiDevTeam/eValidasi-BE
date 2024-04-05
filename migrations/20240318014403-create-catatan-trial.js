@@ -31,6 +31,9 @@ module.exports = {
         type: Sequelize.STRING,
         defaultValue: "Draft",
       },
+      perhitunganBatasBahanTambahan: {
+        type: Sequelize.TEXT,
+      },
       pembahasan: {
         type: Sequelize.TEXT,
       },
