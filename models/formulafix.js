@@ -22,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
       alasan: DataTypes.STRING,
       formulaA: DataTypes.JSONB,
       formulaB: DataTypes.JSONB,
+      formulaC: DataTypes.JSONB,
     },
     {
       sequelize,

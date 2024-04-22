@@ -36,6 +36,9 @@ module.exports = {
       formulaB: {
         type: Sequelize.JSONB,
       },
+      formulaC: {
+        type: Sequelize.JSONB,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

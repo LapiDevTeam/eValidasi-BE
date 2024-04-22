@@ -10,4 +10,6 @@ router.post(
   ControllerFormulaFix.createFormulaFix
 );
 
+router.get("/all-formula-fix", ControllerFormulaFix.findAllFormulaFix);
+
 module.exports = router;
