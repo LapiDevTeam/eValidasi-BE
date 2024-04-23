@@ -1,10 +1,10 @@
-const { FormulaFix } = require("../models/index");
+const { FormulaFix, t_formulaFix_status } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
-// const { checkStatusCatatanTrial } = require("../helpers/checkStatus");
-// const { getStatusCatatanTrial } = require("../helpers/statusCatatanTrial");
+const { checkStatusFormulaFix } = require("../helpers/checkStatus");
+const { getStatusFormulaFix } = require("../helpers/statusFormulaFix");
 const {
   isApproveValidation,
   approverRecordset,
@@ -116,6 +116,214 @@ class ControllerFormulaFix {
         totalPage: size ? Math.ceil(formula.count / limit) : "",
         formula,
       });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  // static async getFormulaFixDetails(req, res, next) {
+  //   try {
+  //     const { id } = req.params;
+
+  //     const formulaFixDetails = await FormulaFix.findOne({
+  //       where: {
+  //         id,
+  //       },
+  //     });
+
+  //     res.status(200).json(formulaFixDetails);
+  //   } catch (error) {
+  //     console.log(error);
+  //     next(error);
+  //   }
+  // }
+  static async getFormulaFixDetails(req, res, next) {
+    console.log("xixixi");
+    try {
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      console.log(req.user, "< req user");
+      const { id } = req.params;
+      // console.log(id, "<< req uer");
+      let formulaFixDetails;
+      if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
+        console.log(id, "<< id");
+        formulaFixDetails = await FormulaFix?.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_formulaFix_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_formulaFix_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(formulaFixDetails, "<< detil");
+      } else {
+        console.log("test");
+        formulaFixDetails = await FormulaFix.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_formulaFix_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_formulaFix_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      console.log(formulaFixDetails, "<<< DETAILS");
+      // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+      const apprDeptId = formulaFixDetails.bagian;
+      const apprNo = await checkStatusFormulaFix(id);
+
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "formulaFix",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+
+      res
+        .status(200)
+        .json({ ...(formulaFixDetails?.dataValues || {}), isApprove });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  }
+  static async updateFormulaFix(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        namaProduk,
+        filter,
+        komposisi,
+        bentukSediaan,
+        nomorBets,
+        revisi,
+        alasan,
+        formulaA,
+        formulaB,
+        formulaC,
+      } = req.body;
+
+      const [updatedRowsCount] = await FormulaFix.update(
+        {
+          namaProduk: namaProduk || "",
+          filter: filter || "",
+          komposisi: komposisi || "",
+          bentukSediaan: bentukSediaan || "",
+          nomorBets: nomorBets || "",
+          revisi: revisi || "",
+          alasan: alasan || "",
+          formulaA: formulaA || "",
+          formulaB: formulaB || "",
+          formulaC: formulaC || "",
+        },
+        {
+          where: { id: id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Formula Fix updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "Formula Fix not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async approveFormulaFix(req, res, next) {
+    try {
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findFormulaFix = await FormulaFix.findByPk(+id);
+      if (!findFormulaFix)
+        throw new MyError(404, "Form formula fix tidak ditemukan");
+      const apprNo = await checkStatusFormulaFix(id);
+
+      const dataApprove = await approverRecordset(
+        // findProtokol.nama_pegawai,
+        "formulaFix",
+        findFormulaFix.bagian,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let status;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        status = getStatusFormulaFix(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
+      if (dataApprove.recordset1.length === 0) status = "Closed";
+      if (is_approve === false) {
+        status = "Reject";
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+      }
+
+      console.log(status, "<< STAUTS");
+      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
+
+      console.log(is_approve, "<<< iNI IS APPROVE");
+
+      await t_formulaFix_status.create({
+        FormulaFixID: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await FormulaFix.update(
+        {
+          status: status,
+          alasan_reject: keterangan_reject,
+          user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
     }

@@ -39,6 +39,19 @@ module.exports = {
       formulaC: {
         type: Sequelize.JSONB,
       },
+      pic: {
+        type: Sequelize.STRING,
+      },
+      bagian: {
+        type: Sequelize.STRING,
+      },
+      alasan_reject: {
+        type: Sequelize.STRING,
+      },
+      status: {
+        type: Sequelize.STRING,
+        defaultValue: "Draft",
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

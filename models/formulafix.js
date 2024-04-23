@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      FormulaFix.hasMany(models.t_formulaFix_status, {
+        foreignKey: "FormulaFixID",
+        as: "approver_data",
+      });
     }
   }
   FormulaFix.init(
@@ -23,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
       formulaA: DataTypes.JSONB,
       formulaB: DataTypes.JSONB,
       formulaC: DataTypes.JSONB,
+      pic: DataTypes.STRING,
+      bagian: DataTypes.STRING,
+      alasan_reject: DataTypes.STRING,
+      status: DataTypes.STRING,
     },
     {
       sequelize,

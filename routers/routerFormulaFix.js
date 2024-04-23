@@ -11,5 +11,16 @@ router.post(
 );
 
 router.get("/all-formula-fix", ControllerFormulaFix.findAllFormulaFix);
+router.get(
+  "/formula-fix/:id",
+  authentication,
+  ControllerFormulaFix.getFormulaFixDetails
+);
+router.put("/update-formulaFix/:id", ControllerFormulaFix.updateFormulaFix);
+router.put(
+  "/approve-formulaFix/:id",
+  authentication,
+  ControllerFormulaFix.approveFormulaFix
+);
 
 module.exports = router;
