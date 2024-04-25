@@ -328,6 +328,20 @@ class ControllerFormulaFix {
       console.log(err);
     }
   }
+  static async deleteFormulaFix(req, res) {
+    try {
+      const { id } = req.params;
+
+      await FormulaFix.destroy({
+        where: { id: +id }, // Corrected the where clause
+      });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
 }
 
 module.exports = ControllerFormulaFix;

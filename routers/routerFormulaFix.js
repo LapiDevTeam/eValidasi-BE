@@ -22,5 +22,6 @@ router.put(
   authentication,
   ControllerFormulaFix.approveFormulaFix
 );
+router.delete("/delete-formula-fix/:id", ControllerFormulaFix.deleteFormulaFix);
 
 module.exports = router;
