@@ -325,27 +325,10 @@ class ControllerCatatanTrial {
   }
   static async createPengamatanAwalCair(req, res, next) {
     try {
-      const {
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratViskositas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianViskositas,
-        CatatanTrialID,
-      } = req.body;
+      const { pengamatanAwalCair, CatatanTrialID } = req.body;
 
       const createPengamatanAwalCair = await PengamatanAwalCair.create({
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratViskositas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianViskositas,
+        pengamatanAwalCair: pengamatanAwalCair,
         CatatanTrialID,
       });
 
@@ -847,13 +830,14 @@ class ControllerCatatanTrial {
       });
       console.log(perhitunganZatAktifCair, " << zat cair");
       // if (isApprove.message) throw new MyError(400, isApprove.message);
+      console.log(pengamatanAwalCair, "<< PENGAMATAN AWAL CAIR");
       res.status(200).json({
         catatanTrialDetailCair,
         komposisiCair,
         perhitunganZatAktifCair,
         formulaCair,
         metodePembuatanCair,
-        pengamatanAwalCair,
+        pengamatanAwalCair: pengamatanAwalCair?.dataValues?.pengamatanAwalCair,
         pengamatanLanjutanCair,
       });
     } catch (error) {
@@ -1183,50 +1167,34 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
+
   static async updatePengamatanAwalCair(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
       console.log(id, "<< IDIDIDIDID");
-      const {
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratViskositas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianViskositas,
-      } = req.body;
 
-      const [updatedRowsCount] = await PengamatanAwalCair.update(
-        {
-          syaratPemerian: syaratPemerian || "",
-          syaratPh: syaratPh || "",
-          syaratBj: syaratBj || "",
-          syaratViskositas: syaratViskositas || "",
-          hasilPengujianPemerian: hasilPengujianPemerian || "",
-          hasilPengujianPh: hasilPengujianPh || "",
-          hasilPengujianBj: hasilPengujianBj || "",
-          hasilPengujianViskositas: hasilPengujianViskositas || "",
-        },
-        {
-          where: { CatatanTrialID: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "pengamatan awal cair Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "pengamatan awal cair Catatan Trial not found",
-        });
-      }
+      const pengamatanAwalCairData = req.body.data; // Access req.body.data
+      console.log(pengamatanAwalCairData, "<< REQ body");
+
+      const updatePromises = pengamatanAwalCairData.map(async (data) => {
+        const { params, hasil, syarat } = data;
+        await PengamatanAwalCair.update(
+          { hasil: hasil || "", params: params || "", syarat: syarat || "" },
+          { where: { CatatanTrialID: +id, params: params } }
+        );
+      });
+
+      await Promise.all(updatePromises);
+
+      res.status(201).json({
+        message: "pengamatan awal cair Catatan Trial updated successfully",
+      });
     } catch (err) {
       console.log(err, "<< er");
       next(err);
     }
   }
+
   static async updatePengamatanAwalSteril(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
