@@ -16,14 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   PengamatanAwalSteril.init(
     {
-      syaratPemerian: DataTypes.STRING,
-      hasilPengujianPemerian: DataTypes.STRING,
-      syaratPh: DataTypes.STRING,
-      hasilPengujianPh: DataTypes.STRING,
-      syaratBj: DataTypes.STRING,
-      hasilPengujianBj: DataTypes.STRING,
-      syaratOsmolaritas: DataTypes.STRING,
-      hasilPengujianOsmolaritas: DataTypes.STRING,
+      pengamatanAwalSteril: DataTypes.JSONB,
       CatatanTrialID: DataTypes.INTEGER,
     },
     {

@@ -9,29 +9,8 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      syaratPemerian: {
-        type: Sequelize.STRING,
-      },
-      hasilPengujianPemerian: {
-        type: Sequelize.STRING,
-      },
-      syaratPh: {
-        type: Sequelize.STRING,
-      },
-      hasilPengujianPh: {
-        type: Sequelize.STRING,
-      },
-      syaratBj: {
-        type: Sequelize.STRING,
-      },
-      hasilPengujianBj: {
-        type: Sequelize.STRING,
-      },
-      syaratOsmolaritas: {
-        type: Sequelize.STRING,
-      },
-      hasilPengujianOsmolaritas: {
-        type: Sequelize.STRING,
+      pengamatanAwalSteril: {
+        type: Sequelize.JSONB,
       },
       CatatanTrialID: {
         type: Sequelize.INTEGER,

@@ -343,32 +343,15 @@ class ControllerCatatanTrial {
   }
   static async createPengamatanAwalSteril(req, res, next) {
     try {
-      const {
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratOsmolaritas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianOsmolaritas,
-        CatatanTrialID,
-      } = req.body;
+      const { pengamatanAwalSteril, CatatanTrialID } = req.body;
 
       const createPengamatanAwalSteril = await PengamatanAwalSteril.create({
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratOsmolaritas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianOsmolaritas,
+        pengamatanAwalSteril: pengamatanAwalSteril,
         CatatanTrialID,
       });
 
       res.status(201).json({
-        message: "Success Create pengamatan awal steril",
+        message: "Success Create proses Catatna trial steril",
         data: createPengamatanAwalSteril,
       });
     } catch (err) {
@@ -845,6 +828,51 @@ class ControllerCatatanTrial {
       next(error);
     }
   }
+  static async getCatatanTrialSterilDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const catatanTrialDetailSteril = await CatatanTrial.findOne({
+        where: {
+          id,
+        },
+      });
+      const komposisiSteril = await KomposisiCatatanTrial.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const perhitunganZatAktifSteril = await PerhitunganZatAktif.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const formulaSteril = await FormulaCatatanTrial.findOne({
+        where: { CatatanTrialID: id },
+      });
+      const metodePembuatanSteril = await MetodePembuatan.findAll({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanAwalSteril = await PengamatanAwalSteril.findOne({
+        where: { CatatanTrialID: id },
+      });
+      const pengamatanLanjutanSteril = await PengamatanLanjutan.findOne({
+        where: { CatatanTrialID: id },
+      });
+      console.log(perhitunganZatAktifSteril, " << zat Steril");
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      console.log(pengamatanAwalSteril, "<< PENGAMATAN AWAL Steril");
+      res.status(200).json({
+        catatanTrialDetailSteril,
+        komposisiSteril,
+        perhitunganZatAktifSteril,
+        formulaSteril,
+        metodePembuatanSteril,
+        pengamatanAwalSteril:
+          pengamatanAwalSteril?.dataValues?.pengamatanAwalSteril,
+        pengamatanLanjutanSteril,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
+    }
+  }
   static async getCatatanTrialPadatDetails(req, res, next) {
     try {
       const { id } = req.params;
@@ -894,50 +922,7 @@ class ControllerCatatanTrial {
       next(error);
     }
   }
-  static async getCatatanTrialSterilDetails(req, res, next) {
-    try {
-      const { id } = req.params;
 
-      const catatanTrialDetailSteril = await CatatanTrial.findOne({
-        where: {
-          id,
-        },
-      });
-      const komposisiSteril = await KomposisiCatatanTrial.findAll({
-        where: { CatatanTrialID: id },
-      });
-      const perhitunganZatAktifSteril = await PerhitunganZatAktif.findAll({
-        where: { CatatanTrialID: id },
-      });
-      const formulaSteril = await FormulaCatatanTrial.findOne({
-        where: { CatatanTrialID: id },
-      });
-      const metodePembuatanSteril = await MetodePembuatan.findAll({
-        where: { CatatanTrialID: id },
-      });
-      const pengamatanAwalSteril = await PengamatanAwalSteril.findOne({
-        where: { CatatanTrialID: id },
-      });
-      const pengamatanLanjutanSteril = await PengamatanLanjutan.findOne({
-        where: { CatatanTrialID: id },
-      });
-
-      // if (isApprove.message) throw new MyError(400, isApprove.message);
-      res.status(200).json({
-        catatanTrialDetailSteril,
-        komposisiSteril,
-        perhitunganZatAktifSteril,
-        formulaSteril,
-        metodePembuatanSteril,
-        // prosesCatatanTrialSteril,
-        pengamatanAwalSteril,
-        pengamatanLanjutanSteril,
-      });
-    } catch (error) {
-      console.log(error);
-      next(error);
-    }
-  }
   static async getCatatanTrialPenyalutanDetails(req, res, next) {
     try {
       const { id } = req.params;
@@ -1176,15 +1161,14 @@ class ControllerCatatanTrial {
       const pengamatanAwalCairData = req.body.data; // Access req.body.data
       console.log(pengamatanAwalCairData, "<< REQ body");
 
-      const updatePromises = pengamatanAwalCairData.map(async (data) => {
-        const { params, hasil, syarat } = data;
-        await PengamatanAwalCair.update(
-          { hasil: hasil || "", params: params || "", syarat: syarat || "" },
-          { where: { CatatanTrialID: +id, params: params } }
-        );
-      });
-
-      await Promise.all(updatePromises);
+      const updatedPengamatanCair = PengamatanAwalCair.update(
+        {
+          pengamatanAwalCair: pengamatanAwalCairData || null,
+        },
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
 
       res.status(201).json({
         message: "pengamatan awal cair Catatan Trial updated successfully",
@@ -1199,47 +1183,27 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
       console.log(id, "<< IDIDIDIDID");
-      const {
-        syaratPemerian,
-        syaratPh,
-        syaratBj,
-        syaratOsmolaritas,
-        hasilPengujianPemerian,
-        hasilPengujianPh,
-        hasilPengujianBj,
-        hasilPengujianOsmolaritas,
-      } = req.body;
 
-      const [updatedRowsCount] = await PengamatanAwalSteril.update(
+      const pengamatanAwalSterilData = req.body.data; // Access req.body.data
+      console.log(pengamatanAwalSterilData, "<< REQ body");
+
+      const updatedPengamatanSteril = PengamatanAwalSteril.update(
         {
-          syaratPemerian: syaratPemerian || "",
-          syaratPh: syaratPh || "",
-          syaratBj: syaratBj || "",
-          syaratOsmolaritas: syaratOsmolaritas || "",
-          hasilPengujianPemerian: hasilPengujianPemerian || "",
-          hasilPengujianPh: hasilPengujianPh || "",
-          hasilPengujianBj: hasilPengujianBj || "",
-          hasilPengujianOsmolaritas: hasilPengujianOsmolaritas || "",
+          pengamatanAwalSteril: pengamatanAwalSterilData || null,
         },
         {
           where: { CatatanTrialID: +id },
         }
       );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "pengamatan awal steril Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "pengamatan awal steril Catatan Trial not found",
-        });
-      }
+
+      res.status(201).json({
+        message: "pengamatan awal steril Catatan Trial updated successfully",
+      });
     } catch (err) {
       console.log(err, "<< er");
       next(err);
     }
   }
-
   static async updatePengamatanAwalLanjutan(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
