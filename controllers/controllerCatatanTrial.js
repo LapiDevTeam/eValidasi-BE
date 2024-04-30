@@ -720,12 +720,11 @@ class ControllerCatatanTrial {
     }
   }
   static async getCatatanTrialDetails(req, res, next) {
-    console.log("xixixi");
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-      console.log(req.user, "< req user");
+
       const { id } = req.params;
-      // console.log(id, "<< req uer");
+
       let catatanTrialDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
         console.log(id, "<< id");
