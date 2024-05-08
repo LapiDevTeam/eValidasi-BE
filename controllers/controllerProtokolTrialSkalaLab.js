@@ -116,7 +116,7 @@ class ControllerProtokolTrialSkalaLab {
 
       let newRevisi;
 
-      // console.log(existingProtokol.dataValues, "exis");
+      console.log(existingProtokol, "exis 111111");
       if (
         existingProtokol &&
         existingProtokol.dataValues.status === "Approved"

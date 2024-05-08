@@ -141,6 +141,7 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
+
   static async editStudiPraformulasi(req, res, next) {
     const { id } = req.params;
     try {

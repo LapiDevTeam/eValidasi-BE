@@ -39,6 +39,9 @@ module.exports = {
       hasilStudiPraformulasiNo: {
         type: Sequelize.STRING,
       },
+      protokolPenelitianNo: {
+        type: Sequelize.STRING,
+      },
       status: {
         type: Sequelize.STRING,
       },
