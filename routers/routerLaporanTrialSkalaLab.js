@@ -7,6 +7,27 @@ router.post(
   "/laporan-trial-skala-lab",
   ControllerLaporanTrialSkalaLab.createLaporanTrialSkalaLab
 );
+router.post(
+  "/aktivitas-dan-waktu-pencapaian",
+  ControllerLaporanTrialSkalaLab.createAktivitasDanWaktuPencapaian
+);
+
+router.post(
+  "/create-kesimpulan-formula",
+  ControllerLaporanTrialSkalaLab.createKesimpulanFormula
+);
+router.post(
+  "/create-ringkasan-hasil-studi-cpp",
+  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
+);
+router.post(
+  "/create-kesimpulan-proses-terpilih",
+  ControllerLaporanTrialSkalaLab.createKesimpulanProsesTerpilih
+);
+router.post(
+  "/create-usulan-penelitian-produk",
+  ControllerLaporanTrialSkalaLab.createUsulanPenelitianProduk
+);
 
 router.delete(
   "/delete-laporan-trial-skala-lab/:id",

@@ -1,4 +1,11 @@
-const { LaporanTrialSkalaLab } = require("../models/index");
+const {
+  LaporanTrialSkalaLab,
+  AktivitasDanWaktuPencapaian,
+  KesimpulanFormulaTerpilih,
+  RingkasanHasilStudiCpp,
+  KesimpulanProsesTerpilih,
+  UsulanPenelitianProduk,
+} = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
@@ -189,6 +196,145 @@ class ControllerLaporanTrialSkalaLab {
       res.status(200).json(updateDokumenAcuan);
     } catch (err) {
       console.log(err);
+    }
+  }
+
+  static async createAktivitasDanWaktuPencapaian(req, res, next) {
+    try {
+      const {
+        rencanaTersediaBahanAwal,
+        pencapaianTersediaBahanAwal,
+        rencanaOptimasiFormula,
+        pencapaianOptimasiFormula,
+        rencanaStabilitaSkalaLab,
+        pencapaianStabilitaSkalaLab,
+        LaporanTrialSkalaLabID,
+      } = req.body;
+
+      const createAktivitasDanWaktuPencapaian =
+        await AktivitasDanWaktuPencapaian.create({
+          rencanaTersediaBahanAwal,
+          pencapaianTersediaBahanAwal,
+          rencanaOptimasiFormula,
+          pencapaianOptimasiFormula,
+          rencanaStabilitaSkalaLab,
+          pencapaianStabilitaSkalaLab,
+          LaporanTrialSkalaLabID,
+        });
+
+      res.status(201).json({
+        message: "Success create aktivitas dan waktu pencapaian",
+        data: createAktivitasDanWaktuPencapaian,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
+  static async createKesimpulanFormula(req, res, next) {
+    try {
+      const {
+        komposisi,
+        jumlah,
+        apakahAdaPadaKomposisiOriginator,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      } = req.body;
+
+      const createKesimpulanFormula = await KesimpulanFormulaTerpilih.create({
+        komposisi,
+        jumlah,
+        apakahAdaPadaKomposisiOriginator,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success Create kesimpulan formula",
+        data: createKesimpulanFormula,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createRingkasanHasilStudiCpp(req, res, next) {
+    try {
+      const {
+        prosesParameter,
+        CqaYangDiStudi,
+        rangeStudi,
+        controlStrategy,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      } = req.body;
+
+      const createRingkasanHasilStudiCpp = await RingkasanHasilStudiCpp.create({
+        prosesParameter,
+        CqaYangDiStudi,
+        rangeStudi,
+        controlStrategy,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success Create ringkasan hasil studi cpp",
+        data: createRingkasanHasilStudiCpp,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createKesimpulanProsesTerpilih(req, res, next) {
+    try {
+      const { tahapanProses, parameter, justifikasi, LaporanTrialSkalaLabID } =
+        req.body;
+
+      const createKesimpulanProsesTerpilih =
+        await KesimpulanProsesTerpilih.create({
+          tahapanProses,
+          parameter,
+          justifikasi,
+          LaporanTrialSkalaLabID,
+        });
+
+      res.status(201).json({
+        message: "Success Create kesimpulan proses terpilih",
+        data: createKesimpulanProsesTerpilih,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUsulanPenelitianProduk(req, res, next) {
+    try {
+      const {
+        faktor,
+        parameter,
+        usulanSkalaPilot,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      } = req.body;
+
+      const createUsulanPenelitianProduk = await UsulanPenelitianProduk.create({
+        faktor,
+        parameter,
+        usulanSkalaPilot,
+        justifikasi,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success Create usulan penelitian produk",
+        data: createUsulanPenelitianProduk,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
 }
