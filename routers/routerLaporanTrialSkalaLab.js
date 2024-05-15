@@ -28,6 +28,22 @@ router.post(
   "/create-usulan-penelitian-produk",
   ControllerLaporanTrialSkalaLab.createUsulanPenelitianProduk
 );
+router.post(
+  "/create-update-assessment",
+  ControllerLaporanTrialSkalaLab.createUpdateAssessment
+);
+router.post(
+  "/create-update-assessment-bahan-aktif",
+  ControllerLaporanTrialSkalaLab.createUpdateAssessmentBahanAktif
+);
+router.post(
+  "/create-update-assessment-bahan-tambahan",
+  ControllerLaporanTrialSkalaLab.createUpdateAssessmentBahanTambahan
+);
+router.post(
+  "/create-update-assessment-kemasan",
+  ControllerLaporanTrialSkalaLab.createUpdateAssessmentKemasan
+);
 
 router.delete(
   "/delete-laporan-trial-skala-lab/:id",

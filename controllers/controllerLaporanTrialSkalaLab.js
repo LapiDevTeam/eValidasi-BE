@@ -5,6 +5,10 @@ const {
   RingkasanHasilStudiCpp,
   KesimpulanProsesTerpilih,
   UsulanPenelitianProduk,
+  UpdateRiskAssessment,
+  UpdateRiskAssessmentBahanAktif,
+  UpdateRiskAssessmentBahanTambahan,
+  UpdateRiskAssessmentKemasan,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -331,6 +335,84 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({
         message: "Success Create usulan penelitian produk",
         data: createUsulanPenelitianProduk,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUpdateAssessment(req, res, next) {
+    try {
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+
+      const createUpdateAssessment = await UpdateRiskAssessment.create({
+        cqaHeader: cqaHeader,
+        rows: rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success createUpdateAssessment",
+        data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUpdateAssessmentBahanAktif(req, res, next) {
+    try {
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+
+      const createUpdateAssessment =
+        await UpdateRiskAssessmentBahanAktif.create({
+          cqaHeader: cqaHeader,
+          rows: rows,
+          LaporanTrialSkalaLabID,
+        });
+
+      res.status(201).json({
+        message: "Success createUpdateAssessment",
+        data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUpdateAssessmentBahanTambahan(req, res, next) {
+    try {
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+
+      const createUpdateAssessment =
+        await UpdateRiskAssessmentBahanTambahan.create({
+          cqaHeader: cqaHeader,
+          rows: rows,
+          LaporanTrialSkalaLabID,
+        });
+
+      res.status(201).json({
+        message: "Success createUpdateAssessment",
+        data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async createUpdateAssessmentKemasan(req, res, next) {
+    try {
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+
+      const createUpdateAssessment = await UpdateRiskAssessmentKemasan.create({
+        cqaHeader: cqaHeader,
+        rows: rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success createUpdateAssessment",
+        data: createUpdateAssessment,
       });
     } catch (err) {
       console.error(err);
