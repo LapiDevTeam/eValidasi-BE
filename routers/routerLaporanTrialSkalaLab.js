@@ -54,6 +54,10 @@ router.get(
   "/all-laporan-trial-skala-lab",
   ControllerLaporanTrialSkalaLab.findAllLaporanTrialSkalaLab
 );
+router.get(
+  "/laporan-trial-skala-lab/:id",
+  ControllerLaporanTrialSkalaLab.getLaporanTrialSkalaLabDetails
+);
 
 router.put(
   "/update-dokumenacuan-laporan/:LaporanTrialSkalaLabID",

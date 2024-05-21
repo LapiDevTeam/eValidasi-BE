@@ -419,6 +419,87 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+  static async getLaporanTrialSkalaLabDetails(req, res, next) {
+    try {
+      const { id } = req.params;
+      const laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab.findOne({
+        where: {
+          id,
+          // bagian: bagian_user,
+        },
+      });
+      const aktivitasDanWaktuPencapaian =
+        await AktivitasDanWaktuPencapaian.findOne({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
+      const kesimpulanFormulaTerpilih = await KesimpulanFormulaTerpilih.findAll(
+        {
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        }
+      );
+      const kesimpulanProsesTerpilih = await KesimpulanProsesTerpilih.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+      const ringkasanHasilStudiCpp = await RingkasanHasilStudiCpp.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+      const usulanPenelitianProduk = await UsulanPenelitianProduk.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+      const updateRiskAssessment = await UpdateRiskAssessment.findOne({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+      const updateRiskAssessmentBahanAktif =
+        await UpdateRiskAssessmentBahanAktif.findOne({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
+      const updateRiskAssessmentBahanTambahan =
+        await UpdateRiskAssessmentBahanTambahan.findOne({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
+      const updateRiskAssessmentKemasan =
+        await UpdateRiskAssessmentKemasan.findOne({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
+      if (!laporanTrialSkalaLabDetails) {
+        return res.status(404).json({ message: "Laporan not found" });
+      }
+      res.status(200).json({
+        laporanTrialSkalaLabDetails,
+        aktivitasDanWaktuPencapaian,
+        kesimpulanFormulaTerpilih,
+        ringkasanHasilStudiCpp,
+        kesimpulanFormulaTerpilih,
+        kesimpulanProsesTerpilih,
+        usulanPenelitianProduk,
+        updateRiskAssessment,
+        updateRiskAssessmentBahanAktif,
+        updateRiskAssessmentBahanTambahan,
+        updateRiskAssessmentKemasan,
+      });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
 }
 
 module.exports = ControllerLaporanTrialSkalaLab;
