@@ -10,13 +10,17 @@ const {
   UpdateRiskAssessmentBahanTambahan,
   UpdateRiskAssessmentKemasan,
   RingkasanHasilStudiCma,
+  t_laporanTrialSkalaLab_status,
   sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const { AsyncLocalStorage } = require("async_hooks");
-const { checkStatusProtokol } = require("../helpers/checkStatus");
+const {
+  checkStatusProtokol,
+  checkStatusLaporanTrialSkalaLab,
+} = require("../helpers/checkStatus");
 const {
   getStatusProtokolSkalaLab,
 } = require("../helpers/statusProtokolSkalaLab");
@@ -24,6 +28,9 @@ const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
+const {
+  getStatusLaporanTrialSkalaLab,
+} = require("../helpers/statusLaporanTrialSkalaLab");
 
 class ControllerLaporanTrialSkalaLab {
   static async findAllLaporanTrialSkalaLab(req, res) {
@@ -87,6 +94,7 @@ class ControllerLaporanTrialSkalaLab {
 
   static async createLaporanTrialSkalaLab(req, res, next) {
     // console.log("MASUKK PAK EKO");
+    const { nama_user, bagian_user } = req.user;
     try {
       const {
         nomor,
@@ -150,6 +158,8 @@ class ControllerLaporanTrialSkalaLab {
         ProductBriefId,
         status,
         rdSelection,
+        pic: nama_user || "",
+        bagian: bagian_user || "",
       });
 
       res.status(201).json({
@@ -295,21 +305,42 @@ class ControllerLaporanTrialSkalaLab {
     }
   }
   static async createRingkasanHasilStudiCma(req, res, next) {
+    const transaction = await sequelize.transaction();
     try {
-      const { content, LaporanTrialSkalaLabID } = req.body;
+      const { data } = req.body;
+      const { id } = req.params;
 
-      const createCMA = await RingkasanHasilStudiCma.create({
-        content: content,
-        LaporanTrialSkalaLabID,
+      await Promise.all(
+        data?.map(async (newItem) => {
+          const createCMA = await RingkasanHasilStudiCma.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id || null,
+            },
+            { transaction }
+          );
+          return createCMA?.id;
+        })
+      );
+
+      await transaction.commit();
+
+      const newData = await RingkasanHasilStudiCma.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
       });
 
       res.status(201).json({
         message: "Success createUpdateAssessment",
-        data: createCMA,
+        data: newData,
       });
     } catch (err) {
-      console.error(err);
-      next(err);
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
   static async createKesimpulanProsesTerpilih(req, res, next) {
@@ -441,13 +472,72 @@ class ControllerLaporanTrialSkalaLab {
   }
   static async getLaporanTrialSkalaLabDetails(req, res, next) {
     try {
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
       const { id } = req.params;
-      const laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab.findOne({
-        where: {
-          id,
-          // bagian: bagian_user,
-        },
-      });
+
+      let laporanTrialSkalaLabDetails;
+      if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
+        console.log(id, "<< id");
+        laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab?.findOne({
+          where: {
+            id,
+          },
+          include: {
+            model: t_laporanTrialSkalaLab_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_laporanTrialSkalaLab_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(laporanTrialSkalaLabDetails, "<< detil");
+      } else {
+        console.log("test");
+        laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_laporanTrialSkalaLab_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_laporanTrialSkalaLab_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      console.log(laporanTrialSkalaLabDetails, "<<< DETAILS");
+      // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+      const apprDeptId = laporanTrialSkalaLabDetails.bagian;
+      const apprNo = await checkStatusLaporanTrialSkalaLab(id);
+      console.log(apprNo, "< < DEBt ID");
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "laporanTrialSkalaLab",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+
+      // res
+      //   .status(200)
+      //   .json({
+      //     ...(laporanTrialSkalaLabDetails?.dataValues || {}),
+      //     isApprove,
+      //   });
+
       const aktivitasDanWaktuPencapaian =
         await AktivitasDanWaktuPencapaian.findOne({
           where: {
@@ -521,6 +611,8 @@ class ControllerLaporanTrialSkalaLab {
         updateRiskAssessmentBahanAktif,
         updateRiskAssessmentBahanTambahan,
         updateRiskAssessmentKemasan,
+        ...(laporanTrialSkalaLabDetails?.dataValues || {}),
+        isApprove,
       });
     } catch (err) {
       console.log(err);
@@ -628,10 +720,10 @@ class ControllerLaporanTrialSkalaLab {
   }
 
   static async editUsulan(req, res) {
+    const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
       const { id } = req.params;
-      const transaction = await sequelize.transaction();
 
       const prevUsulan = await UsulanPenelitianProduk.findAll({
         where: {
@@ -707,6 +799,82 @@ class ControllerLaporanTrialSkalaLab {
       if (transaction) {
         await transaction.rollback();
       }
+    }
+  }
+
+  static async approveLaporanTrialSkalaLab(req, res, next) {
+    try {
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findLaporanTrialSkalaLab = await LaporanTrialSkalaLab.findByPk(+id);
+      if (!findLaporanTrialSkalaLab)
+        throw new MyError(404, "Form laporan trial skala lab tidak ditemukan");
+      const apprNo = await checkStatusLaporanTrialSkalaLab(id);
+
+      const dataApprove = await approverRecordset(
+        // findProtokol.nama_pegawai,
+        "laporanTrialSkalaLab",
+        findLaporanTrialSkalaLab.bagian,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let status;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        status = getStatusLaporanTrialSkalaLab(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
+      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (is_approve === false) {
+        status = "Reject";
+        await t_laporanTrialSkalaLab_status.destroy({
+          where: { LaporanTrialSkalaLabID: +id },
+        });
+      }
+
+      console.log(status, "<< STAUTS");
+      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
+
+      console.log(is_approve, "<<< iNI IS APPROVE");
+
+      await t_laporanTrialSkalaLab_status.create({
+        LaporanTrialSkalaLabID: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await LaporanTrialSkalaLab.update(
+        {
+          status: status,
+          alasan_reject: keterangan_reject,
+          user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
     }
   }
 }

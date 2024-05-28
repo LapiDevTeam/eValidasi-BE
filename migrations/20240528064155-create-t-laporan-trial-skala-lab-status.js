@@ -2,18 +2,12 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("RingkasanHasilStudiCma", {
+    await queryInterface.createTable("t_laporanTrialSkalaLab_status", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
-      },
-      title: {
-        type: Sequelize.STRING,
-      },
-      content: {
-        type: Sequelize.JSONB,
       },
       LaporanTrialSkalaLabID: {
         type: Sequelize.INTEGER,
@@ -21,8 +15,30 @@ module.exports = {
           model: "LaporanTrialSkalaLab",
           key: "id",
         },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
+      },
+      approver_no: {
+        type: Sequelize.INTEGER,
+      },
+      is_approve: {
+        type: Sequelize.BOOLEAN,
+      },
+      approver_name: {
+        type: Sequelize.STRING,
+      },
+      approver_joblevel_id: {
+        type: Sequelize.STRING,
+      },
+      approver_inisial: {
+        type: Sequelize.STRING,
+      },
+      keterangan_reject: {
+        type: Sequelize.STRING,
+      },
+      user_id: {
+        type: Sequelize.STRING,
+      },
+      delegated_to: {
+        type: Sequelize.STRING,
       },
       createdAt: {
         allowNull: false,
@@ -35,6 +51,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("RingkasanHasilStudiCma");
+    await queryInterface.dropTable("t_laporanTrialSkalaLab_status");
   },
 };

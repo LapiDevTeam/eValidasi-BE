@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   RingkasanHasilStudiCma.init(
     {
+      title: DataTypes.STRING,
       content: DataTypes.JSONB,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
     },

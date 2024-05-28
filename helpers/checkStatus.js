@@ -13,6 +13,7 @@ const {
   t_productBrief_status,
   t_catatanTrial_status,
   t_formulaFix_status,
+  t_laporanTrialSkalaLab_status,
 } = require("../models/index");
 
 //check table status protokol
@@ -65,10 +66,23 @@ const checkStatusFormulaFix = async (id) => {
   if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
   return apprNo;
 };
+const checkStatusLaporanTrialSkalaLab = async (id) => {
+  let apprNo = 1;
+  const checkStatus = await t_laporanTrialSkalaLab_status.findAll({
+    where: {
+      LaporanTrialSkalaLabID: id,
+      is_approve: true,
+    },
+    order: [["approver_no", "DESC"]],
+  });
+  if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
+  return apprNo;
+};
 
 module.exports = {
   checkStatusProductBrief,
   checkStatusProtokol,
   checkStatusCatatanTrial,
   checkStatusFormulaFix,
+  checkStatusLaporanTrialSkalaLab,
 };

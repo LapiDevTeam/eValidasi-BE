@@ -39,6 +39,10 @@ module.exports = (sequelize, DataTypes) => {
       LaporanTrialSkalaLab.hasMany(models.UpdateRiskAssessmentKemasan, {
         foreignKey: "LaporanTrialSkalaLabID",
       });
+      LaporanTrialSkalaLab.hasMany(models.t_laporanTrialSkalaLab_status, {
+        foreignKey: "LaporanTrialSkalaLabID",
+        as: "approver_data",
+      });
     }
   }
   LaporanTrialSkalaLab.init(
@@ -58,6 +62,8 @@ module.exports = (sequelize, DataTypes) => {
       rdSelection: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
       alasan_reject: DataTypes.STRING,
+      pic: DataTypes.STRING,
+      bagian: DataTypes.STRING,
     },
     {
       sequelize,

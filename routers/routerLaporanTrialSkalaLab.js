@@ -5,6 +5,7 @@ const { authentication } = require("../middlewares/authentication");
 
 router.post(
   "/laporan-trial-skala-lab",
+  authentication,
   ControllerLaporanTrialSkalaLab.createLaporanTrialSkalaLab
 );
 router.post(
@@ -21,7 +22,7 @@ router.post(
   ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
 );
 router.post(
-  "/create-ringkasan-hasil-studi-cma",
+  "/create-ringkasan-hasil-studi-cma/:id",
   ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCma
 );
 router.post(
@@ -60,6 +61,7 @@ router.get(
 );
 router.get(
   "/laporan-trial-skala-lab/:id",
+  authentication,
   ControllerLaporanTrialSkalaLab.getLaporanTrialSkalaLabDetails
 );
 
@@ -74,5 +76,9 @@ router.put(
 );
 
 router.put("/edit-usulan/:id", ControllerLaporanTrialSkalaLab.editUsulan);
-
+router.put(
+  "/approve-laporanTrialSkalaLab/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.approveLaporanTrialSkalaLab
+);
 module.exports = router;
