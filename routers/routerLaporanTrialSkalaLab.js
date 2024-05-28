@@ -21,6 +21,10 @@ router.post(
   ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
 );
 router.post(
+  "/create-ringkasan-hasil-studi-cma",
+  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCma
+);
+router.post(
   "/create-kesimpulan-proses-terpilih",
   ControllerLaporanTrialSkalaLab.createKesimpulanProsesTerpilih
 );
@@ -68,47 +72,7 @@ router.put(
   "/edit-laporan-trial-skala-lab/:id",
   ControllerLaporanTrialSkalaLab.editLaporanTrialSkalaLab
 );
-router.put(
-  "/edit-aktivitas-dan-waktu-pencapaian/:id",
-  ControllerLaporanTrialSkalaLab.editAktivitasDanWaktuPencapaian
-);
-router.put(
-  "/edit-kesimpulan-formula-terpilih/:id",
-  ControllerLaporanTrialSkalaLab.editKesimpulanFormulaTerpilih
-);
 
-router.delete(
-  "/delete-kesimpulan-formula-terpilih/:id",
-  ControllerLaporanTrialSkalaLab.deleteKesimpulanFormulaTerpilih
-);
-router.delete(
-  "/delete-bahan-aktif/:id",
-  ControllerLaporanTrialSkalaLab.deleteBahanAktif
-);
-router.delete(
-  "/delete-bahan-tambahan/:id",
-  ControllerLaporanTrialSkalaLab.deleteBahanTambahan
-);
-router.delete(
-  "/delete-bahan-Kemasan/:id",
-  ControllerLaporanTrialSkalaLab.deleteBahanKemasan
-);
-router.delete(
-  "/delete-ringkasan-cpp/:id",
-  ControllerLaporanTrialSkalaLab.deleteRingkasanCpp
-);
-router.delete(
-  "/delete-kesimpulan-proses/:id",
-  ControllerLaporanTrialSkalaLab.deleteKesimpulanProses
-);
-router.delete(
-  "/delete-update-risk/:id",
-  ControllerLaporanTrialSkalaLab.deleteUpdateRisk
-);
-router.delete(
-  "/delete-usulan/:id",
-  ControllerLaporanTrialSkalaLab.deleteUsulan
-);
 router.put("/edit-usulan/:id", ControllerLaporanTrialSkalaLab.editUsulan);
 
 module.exports = router;

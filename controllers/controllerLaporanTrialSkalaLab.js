@@ -9,6 +9,7 @@ const {
   UpdateRiskAssessmentBahanAktif,
   UpdateRiskAssessmentBahanTambahan,
   UpdateRiskAssessmentKemasan,
+  RingkasanHasilStudiCma,
   sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
@@ -293,6 +294,24 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+  static async createRingkasanHasilStudiCma(req, res, next) {
+    try {
+      const { content, LaporanTrialSkalaLabID } = req.body;
+
+      const createCMA = await RingkasanHasilStudiCma.create({
+        content: content,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success createUpdateAssessment",
+        data: createCMA,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
   static async createKesimpulanProsesTerpilih(req, res, next) {
     try {
       const { tahapanProses, parameter, justifikasi, LaporanTrialSkalaLabID } =
@@ -452,6 +471,12 @@ class ControllerLaporanTrialSkalaLab {
           LaporanTrialSkalaLabID: id,
         },
       });
+      const ringkasanHasilStudiCma = await RingkasanHasilStudiCma.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+
       const usulanPenelitianProduk = await UsulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
@@ -488,6 +513,7 @@ class ControllerLaporanTrialSkalaLab {
         aktivitasDanWaktuPencapaian,
         kesimpulanFormulaTerpilih,
         ringkasanHasilStudiCpp,
+        ringkasanHasilStudiCma,
         kesimpulanFormulaTerpilih,
         kesimpulanProsesTerpilih,
         usulanPenelitianProduk,
@@ -600,262 +626,7 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
-  static async editAktivitasDanWaktuPencapaian(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        rencanaTersediaBahanAwal,
-        pencapaianTersediaBahanAwal,
-        rencanaOptimasiFormula,
-        pencapaianOptimasiFormula,
-        rencanaStabilitaSkalaLab,
-        pencapaianStabilitaSkalaLab,
-        // LaporanTrialSkalaLabID,
-      } = req.body;
 
-      const [updatedRowsCount] = await AktivitasDanWaktuPencapaian.update(
-        {
-          rencanaTersediaBahanAwal,
-          pencapaianTersediaBahanAwal,
-          rencanaOptimasiFormula,
-          pencapaianOptimasiFormula,
-          rencanaStabilitaSkalaLab,
-          pencapaianStabilitaSkalaLab,
-          // LaporanTrialSkalaLabID,
-        },
-        {
-          where: { LaporanTrialSkalaLabID: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "aktivitas dan waktu pencapaian updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "aktivitas dan waktu pencapaian not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-
-  static async editKesimpulanFormulaTerpilih(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const {
-        komposisi,
-        jumlah,
-        apakahAdaPadaKomposisiOriginator,
-        justifikasi,
-      } = req.body;
-
-      const [updatedRowsCount] = await KesimpulanFormulaTerpilih.update(
-        {
-          komposisi: komposisi || "",
-          jumlah: jumlah || "",
-          apakahAdaPadaKomposisiOriginator:
-            apakahAdaPadaKomposisiOriginator || "",
-          justifikasi: justifikasi || "",
-        },
-        {
-          where: { id: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "kesimpulanFormulaTerpilih updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "kesimpulanFormulaTerpilih not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
-  static async deleteKesimpulanFormulaTerpilih(req, res) {
-    try {
-      const { id } = req.params;
-
-      const kesimpulanFormula = await KesimpulanFormulaTerpilih.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (kesimpulanFormula.length > 0) {
-        await KesimpulanFormulaTerpilih.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteBahanAktif(req, res) {
-    try {
-      const { id } = req.params;
-
-      const bahanAktif = await UpdateRiskAssessmentBahanAktif.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (bahanAktif.length > 0) {
-        await UpdateRiskAssessmentBahanAktif.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteBahanTambahan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const bahanTambahan = await UpdateRiskAssessmentBahanTambahan.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (bahanTambahan.length > 0) {
-        await UpdateRiskAssessmentBahanTambahan.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteBahanKemasan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const bahanKemasan = await UpdateRiskAssessmentKemasan.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (bahanKemasan.length > 0) {
-        await UpdateRiskAssessmentKemasan.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteRingkasanCpp(req, res) {
-    try {
-      const { id } = req.params;
-
-      const ringkasanCpp = await RingkasanHasilStudiCpp.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (ringkasanCpp.length > 0) {
-        await RingkasanHasilStudiCpp.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteKesimpulanProses(req, res) {
-    try {
-      const { id } = req.params;
-
-      const kesimpulanProses = await KesimpulanProsesTerpilih.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (kesimpulanProses.length > 0) {
-        await KesimpulanProsesTerpilih.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteUpdateRisk(req, res) {
-    try {
-      const { id } = req.params;
-
-      const updateRisk = await UpdateRiskAssessment.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (updateRisk.length > 0) {
-        await UpdateRiskAssessment.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteUsulan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const usulan = await UsulanPenelitianProduk.findAll({
-        where: { LaporanTrialSkalaLabID: +id },
-      });
-
-      if (usulan.length > 0) {
-        await UsulanPenelitianProduk.destroy({
-          where: { LaporanTrialSkalaLabID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
   static async editUsulan(req, res) {
     try {
       const { data } = req.body;
