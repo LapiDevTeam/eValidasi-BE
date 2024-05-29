@@ -234,7 +234,7 @@ class ControllerProductBrief {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
       console.log(req.user, "< req user");
       const { id } = req.params;
-      // console.log(id, "<< req uer");
+      console.log(bagian_user, "<< bagian user");
       let productBriefDetail;
       if (+joblevel_id_user === 1 || bagian_user === "RD1") {
         console.log(id, "<< id");
@@ -257,7 +257,7 @@ class ControllerProductBrief {
         productBriefDetail = await ProductBrief.findOne({
           where: {
             id,
-            bagian: bagian_user,
+            rdSelection: bagian_user,
           },
           include: {
             model: t_productBrief_status,
@@ -272,6 +272,9 @@ class ControllerProductBrief {
           ],
         });
       }
+
+      console.log(productBriefDetail, "<< product brief Detail");
+
       const apprApplicationCode = productBriefDetail.apprAplicationCode;
       const apprDeptId = productBriefDetail.rdSelection;
       const apprNo = await checkStatusProductBrief(id);

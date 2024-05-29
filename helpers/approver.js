@@ -27,8 +27,9 @@ const isApproveValidation = async (
       apprNo,
       user_id,
       //   nama_user,
-      "<<< DATAAAA"
+      "<<< DATAAAasdasdasdasdasdaA"
     );
+    console.log(user_id, "< uaer id");
     const pool = await sql.connect(configMssql);
 
     const request = pool.request();
