@@ -232,11 +232,22 @@ class ControllerProductBrief {
     console.log("xixixi");
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+
+      // const user = req.user;
+      // const user_id = user?.user?.log_NIK;
+      // const bagian_user = user?.user?.emp_DeptID;
+      // const nama_user = user?.user?.Nama;
+      // const joblevel_id_user = user?.user?.Job_LevelID;
+
       console.log(req.user, "< req user");
       const { id } = req.params;
       console.log(bagian_user, "<< bagian user");
       let productBriefDetail;
-      if (+joblevel_id_user === 1 || bagian_user === "RD1") {
+      if (
+        +joblevel_id_user === 1 ||
+        bagian_user === "HD" ||
+        bagian_user === "RD"
+      ) {
         console.log(id, "<< id");
         productBriefDetail = await ProductBrief?.findOne({
           where: {
@@ -372,6 +383,17 @@ class ControllerProductBrief {
         inisial_user,
         delegated_to,
       } = req.user;
+
+      // const user = req.user;
+
+      // const user_id = user?.user?.log_NIK;
+      // const nama_user = user?.user?.Nama;
+      // const joblevel_id_user = user?.user?.Job_LevelID;
+      // const inisial_user = user?.user?.Inisial_Name;
+      // const delegated_to = user?.delegatedTo
+      //   ? delegatedTo?.log_NIK
+      //   : user?.log_NIK;
+
       // console.log(req.user, "< reqq");
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;

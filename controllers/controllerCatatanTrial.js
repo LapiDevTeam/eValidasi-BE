@@ -86,7 +86,8 @@ class ControllerCatatanTrial {
   }
   static async createCatatanTrial(req, res, next) {
     try {
-      const { nama_user, bagian_user } = req.user;
+      const user = req.user;
+
       console.log(req.user, "<<");
       const {
         tanggalTrial,
@@ -113,8 +114,8 @@ class ControllerCatatanTrial {
         statusA: statusA || "",
         filter: filter || "",
         tipeCatatanTrial: tipeCatatanTrial || "",
-        pic: nama_user || "",
-        bagian: bagian_user || "",
+        pic: user?.user?.Nama || "",
+        bagian: user?.user?.emp_DeptID || "",
       });
 
       res.status(201).json({
@@ -721,7 +722,10 @@ class ControllerCatatanTrial {
   }
   static async getCatatanTrialDetails(req, res, next) {
     try {
-      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      // const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      const user = req.user;
+
+      const user_id = user?.user?.log_NIK;
 
       const { id } = req.params;
 
