@@ -37,7 +37,7 @@ router.post(
   "/create-kontrol-bahan",
   ControllerStudiPraformulasi.createKontrolBahan
 );
-router.post("/create-kemasan", ControllerStudiPraformulasi.createKemasan);
+router.post("/create-kemasan/:id", ControllerStudiPraformulasi.createKemasan);
 router.post(
   "/create-fisikakimia",
   ControllerStudiPraformulasi.createFisikaKimia

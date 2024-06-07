@@ -8,7 +8,7 @@ const {
   Kemasan,
   UjiInkompatibilitas,
   KontrolBahan,
-  Sequelize,
+  sequelize,
   StudiPaten,
   KarakteristikBahanAktif,
   KarakteristikBahanKemasan,
@@ -139,6 +139,89 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+
+  // static async createKemasan(req, res, next) {
+  //   try {
+  //     const {
+  //       StudiPraformulasiID,
+  //       namaProduk,
+  //       manufacturer,
+  //       noBatch,
+  //       tanggalProduksi,
+  //       tanggalKadarluarsa,
+  //       sumberPustaka,
+  //       bentukSediaan,
+  //       detailSediaan,
+  //     } = req.body;
+
+  //     const createKemasan = await Kemasan.create({
+  //       StudiPraformulasiID: StudiPraformulasiID,
+  //       namaProduk: namaProduk,
+  //       manufacturer: manufacturer,
+  //       noBatch: noBatch,
+  //       tanggalProduksi: tanggalProduksi,
+  //       tanggalKadarluarsa: tanggalKadarluarsa,
+  //       sumberPustaka: sumberPustaka,
+  //       bentukSediaan: bentukSediaan,
+  //       detailSediaan: detailSediaan,
+  //     });
+
+  //     res.status(201).json({
+  //       message: "Success Create kemasan",
+  //       data: createKemasan,
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     next(err);
+  //   }
+  // }
+  static async createKemasan(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          const createKemasan = await Kemasan.create(
+            {
+              namaProduk: newItem?.namaProduk || "",
+              manufacturer: newItem?.manufacturer || "",
+              noBatch: newItem?.noBatch || "",
+              tanggalProduksi: newItem?.tanggalProduksi || "",
+              tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+              sumberPustaka: newItem?.sumberPustaka || "",
+              bentukSediaan: newItem?.bentukSediaan || "",
+              detailSediaan: newItem?.detailSediaan || [],
+
+              StudiPraformulasiID: +id || null,
+            },
+            { transaction }
+          );
+          return createKemasan?.id;
+        })
+      );
+
+      await transaction.commit();
+
+      const newData = await Kemasan.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      res.status(201).json({
+        message: "Success createKEmasan",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
 
@@ -386,41 +469,7 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-  static async createKemasan(req, res, next) {
-    try {
-      const {
-        StudiPraformulasiID,
-        namaProduk,
-        manufacturer,
-        noBatch,
-        tanggalProduksi,
-        tanggalKadarluarsa,
-        sumberPustaka,
-        bentukSediaan,
-        detailSediaan,
-      } = req.body;
 
-      const createKemasan = await Kemasan.create({
-        StudiPraformulasiID: StudiPraformulasiID,
-        namaProduk: namaProduk,
-        manufacturer: manufacturer,
-        noBatch: noBatch,
-        tanggalProduksi: tanggalProduksi,
-        tanggalKadarluarsa: tanggalKadarluarsa,
-        sumberPustaka: sumberPustaka,
-        bentukSediaan: bentukSediaan,
-        detailSediaan: detailSediaan,
-      });
-
-      res.status(201).json({
-        message: "Success Create kemasan",
-        data: createKemasan,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async deleteKemasan(req, res) {
     try {
       const { id } = req.params;

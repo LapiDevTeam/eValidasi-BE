@@ -8,6 +8,7 @@ router.post(
   ControllerProtokolTrialSkalaLab.createProtokolTrialSkalaLab
 );
 router.post("/create-cqa", ControllerProtokolTrialSkalaLab.createCqa);
+router.post("/create-qtpp/:id", ControllerProtokolTrialSkalaLab.createQtpp);
 router.post(
   "/create-formula-protokol",
   ControllerProtokolTrialSkalaLab.createFormulaProtokol
@@ -61,6 +62,7 @@ router.get(
   authentication,
   ControllerProtokolTrialSkalaLab.getProtokolSkalaLabDetails
 );
+router.get("/qtpp/:id", ControllerProtokolTrialSkalaLab.getQtpp);
 router.get("/cqa/:id", ControllerProtokolTrialSkalaLab.getCqa);
 router.get("/cpp/:id", ControllerProtokolTrialSkalaLab.getCpp);
 router.get("/formula-protokol/:id", ControllerProtokolTrialSkalaLab.getFormula);

@@ -4,6 +4,7 @@ const {
   FormulaProtokol,
   ProsesPembuatan,
   Cpp,
+  Qtpp,
   RencanaAktivitas,
   OriginatorAtauKompetitor,
   KebutuhanPeralatanDanMesin,
@@ -14,6 +15,7 @@ const {
   MappingProcess,
   KemasanProtokolSkalaLab,
   t_protokolSkalaLab_status,
+  sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -199,6 +201,50 @@ class ControllerProtokolTrialSkalaLab {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+  static async createQtpp(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      console.log("asdasdsadasdasdsa12312");
+      const { data } = req.body;
+
+      const { id } = req.params;
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          const createQtpp = await Qtpp.create(
+            {
+              bentukSediaan: newItem?.bentukSediaan || "",
+              targetBentukSediaan: newItem?.targetBentukSediaan || "",
+              justifikasiBentukSediaan: newItem?.justifikasiBentukSediaan || "",
+              detailSediaan: newItem?.detailSediaan || [],
+
+              ProtokolTrialSkalaLabID: +id || null,
+            },
+            { transaction }
+          );
+          return createQtpp?.id;
+        })
+      );
+
+      await transaction.commit();
+
+      const newData = await Qtpp.findAll({
+        where: {
+          ProtokolTrialSkalaLabID: id,
+        },
+      });
+
+      res.status(201).json({
+        message: "Success createQtpp",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
   static async createCpp(req, res, next) {
@@ -817,6 +863,26 @@ class ControllerProtokolTrialSkalaLab {
       // }
 
       res.status(200).json(cqaDetails);
+    } catch (err) {
+      console.error(err, 333333333333);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async getQtpp(req, res) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const qtpp = await Qtpp.findAll({
+        where: {
+          ProtokolTrialSkalaLabID: id,
+        },
+      });
+
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(qtpp);
     } catch (err) {
       console.error(err, 333333333333);
       res.status(err.statusCode || 500).json({ error: err.message });
