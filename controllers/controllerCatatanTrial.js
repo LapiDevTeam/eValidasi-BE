@@ -722,10 +722,10 @@ class ControllerCatatanTrial {
   }
   static async getCatatanTrialDetails(req, res, next) {
     try {
-      // const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-      const user = req.user;
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      // const user = req.user;
 
-      const user_id = user?.user?.log_NIK;
+      // const user_id = user?.user?.log_NIK;
 
       const { id } = req.params;
 

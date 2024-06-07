@@ -725,6 +725,8 @@ class ControllerLaporanTrialSkalaLab {
       const { data } = req.body;
       const { id } = req.params;
 
+      console.log(id, "<<<<<");
+
       const prevUsulan = await UsulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
@@ -748,7 +750,7 @@ class ControllerLaporanTrialSkalaLab {
                 parameter: newItem?.parameter || "",
                 usulanSkalaPilot: newItem?.usulanSkalaPilot || "",
                 justifikasi: newItem?.justifikasi || "",
-                LaporanTrialSkalaLabID: newItem?.LaporanTrialSkalaLabID || null,
+                LaporanTrialSkalaLabID: +id || null,
               },
               { transaction }
             );
@@ -762,7 +764,7 @@ class ControllerLaporanTrialSkalaLab {
                 parameter: newItem?.parameter || "",
                 usulanSkalaPilot: newItem?.usulanSkalaPilot || "",
                 justifikasi: newItem?.justifikasi || "",
-                LaporanTrialSkalaLabID: newItem?.LaporanTrialSkalaLabID || null,
+                LaporanTrialSkalaLabID: +id || null,
               },
               { where: { id: +newItem?.id }, transaction }
             );
@@ -786,7 +788,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const newData = await UsulanPenelitianProduk.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID: +id,
         },
       });
 
