@@ -29,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
       bahanAktifDanDosis: DataTypes.JSONB,
       rdSelection: DataTypes.STRING,
       status: DataTypes.STRING,
+      alasan_reject: DataTypes.STRING,
     },
     {
       sequelize,

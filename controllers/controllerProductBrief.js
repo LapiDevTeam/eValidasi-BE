@@ -58,7 +58,7 @@ class ControllerProductBrief {
       });
 
       res.status(201).json({
-        message: "Success Create CUY",
+        message: "Data has been saved !",
       });
     } catch (err) {
       next(err);
@@ -98,7 +98,7 @@ class ControllerProductBrief {
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
-          message: "Product brief updated successfully",
+          message: "Data has been saved !",
         });
       } else {
         res.status(404).json({
@@ -229,26 +229,17 @@ class ControllerProductBrief {
     }
   }
   static async getProductBriefDetails(req, res, next) {
-    console.log("xixixi");
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
 
-      // const user = req.user;
-      // const user_id = user?.user?.log_NIK;
-      // const bagian_user = user?.user?.emp_DeptID;
-      // const nama_user = user?.user?.Nama;
-      // const joblevel_id_user = user?.user?.Job_LevelID;
-
-      console.log(req.user, "< req user");
       const { id } = req.params;
-      console.log(bagian_user, "<< bagian user");
+
       let productBriefDetail;
       if (
         +joblevel_id_user === 1 ||
         bagian_user === "HD" ||
         bagian_user === "RD"
       ) {
-        console.log(id, "<< id");
         productBriefDetail = await ProductBrief?.findOne({
           where: {
             id,
@@ -262,9 +253,7 @@ class ControllerProductBrief {
             ],
           ],
         });
-        console.log(productBriefDetail, "<< detil");
       } else {
-        console.log("test");
         productBriefDetail = await ProductBrief.findOne({
           where: {
             id,
@@ -284,8 +273,6 @@ class ControllerProductBrief {
         });
       }
 
-      console.log(productBriefDetail, "<< product brief Detail");
-
       const apprApplicationCode = productBriefDetail.apprAplicationCode;
       const apprDeptId = productBriefDetail.rdSelection;
       const apprNo = await checkStatusProductBrief(id);
@@ -298,7 +285,7 @@ class ControllerProductBrief {
         user_id
         // nama_user
       );
-      console.log(isApprove, "<< asdasda");
+
       if (isApprove.message) throw new MyError(400, isApprove.message);
       res.status(200).json({ productBriefDetail, isApprove });
     } catch (error) {
@@ -355,7 +342,7 @@ class ControllerProductBrief {
   static async updateStatus(req, res) {
     try {
       const { ProductBriefID } = req.params;
-      console.log(ProductBriefID, "<< ID");
+
       const { status } = req.body;
       const findProductBriefID = await ProductBrief.findByPk(+ProductBriefID);
 
@@ -384,26 +371,13 @@ class ControllerProductBrief {
         delegated_to,
       } = req.user;
 
-      // const user = req.user;
-
-      // const user_id = user?.user?.log_NIK;
-      // const nama_user = user?.user?.Nama;
-      // const joblevel_id_user = user?.user?.Job_LevelID;
-      // const inisial_user = user?.user?.Inisial_Name;
-      // const delegated_to = user?.delegatedTo
-      //   ? delegatedTo?.log_NIK
-      //   : user?.log_NIK;
-
-      // console.log(req.user, "< reqq");
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
       const findProductBrief = await ProductBrief?.findByPk(+id);
-      console.log(findProductBrief, " <find product brief");
+
       if (!findProductBrief)
         throw new MyError(404, "Form ProductBrief tidak ditemukan");
       const apprNo = await checkStatusProductBrief(id);
-
-      console.log(apprNo, "<< apprNo");
 
       const dataApprove = await approverRecordset(
         // findProductBrief.nama_pegawai,
@@ -413,7 +387,7 @@ class ControllerProductBrief {
         user_id,
         nama_user
       );
-      console.log(dataApprove, "<< DATA approve");
+
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
       let status;
       if (
@@ -421,8 +395,7 @@ class ControllerProductBrief {
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
         status = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
-      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<DATSASDASd");
-      console.log(status, "<< STATUS");
+
       if (dataApprove.recordset1.length === 0) status = "Approved";
       if (is_approve === false) status = "Reject";
 
@@ -440,7 +413,7 @@ class ControllerProductBrief {
       await ProductBrief.update(
         {
           status: status,
-          // alasan_reject: keterangan_reject,
+          alasan_reject: keterangan_reject,
           // user_id,
           // delegated_to,
         },

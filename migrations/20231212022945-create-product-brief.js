@@ -38,6 +38,9 @@ module.exports = {
         type: Sequelize.STRING,
         defaultValue: "Draft",
       },
+      alasan_reject: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
