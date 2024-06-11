@@ -41,6 +41,9 @@ module.exports = {
       alasan_reject: {
         type: Sequelize.STRING,
       },
+      alasan_reject: {
+        type: Sequelize.TEXT,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

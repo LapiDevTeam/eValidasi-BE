@@ -30,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       rdSelection: DataTypes.STRING,
       status: DataTypes.STRING,
       alasan_reject: DataTypes.STRING,
+      upload: DataTypes.TEXT,
     },
     {
       sequelize,

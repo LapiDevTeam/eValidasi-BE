@@ -24,6 +24,7 @@ class ControllerProductBrief {
         bahanAktifDanDosis,
         rdSelection,
         status,
+        upload,
       } = req.body;
 
       if (!productBrief) {
@@ -55,6 +56,7 @@ class ControllerProductBrief {
         bahanAktifDanDosis: bahanAktifDanDosis,
         rdSelection: rdSelection,
         status: status,
+        upload: upload,
       });
 
       res.status(201).json({
