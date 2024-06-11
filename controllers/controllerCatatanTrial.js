@@ -86,9 +86,9 @@ class ControllerCatatanTrial {
   }
   static async createCatatanTrial(req, res, next) {
     try {
-      const user = req.user;
-
-      console.log(req.user, "<<");
+      // const user = req.user;
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      // console.log(req.user, "<<");
       const {
         tanggalTrial,
         namaProduk,
@@ -114,8 +114,8 @@ class ControllerCatatanTrial {
         statusA: statusA || "",
         filter: filter || "",
         tipeCatatanTrial: tipeCatatanTrial || "",
-        pic: user?.user?.Nama || "",
-        bagian: user?.user?.emp_DeptID || "",
+        pic: nama_user || "",
+        bagian: bagian_user || "",
       });
 
       res.status(201).json({
@@ -769,6 +769,7 @@ class ControllerCatatanTrial {
       console.log(catatanTrialDetails, "<<< DETAILS");
       // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
       const apprDeptId = catatanTrialDetails.bagian;
+      console.log(apprDeptId, "<DEBTID");
       const apprNo = await checkStatusCatatanTrial(id);
 
       const isApprove = await isApproveValidation(
