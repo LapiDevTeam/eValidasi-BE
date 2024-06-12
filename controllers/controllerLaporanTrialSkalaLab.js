@@ -1,15 +1,15 @@
 const {
-  LaporanTrialSkalaLab,
-  AktivitasDanWaktuPencapaian,
-  KesimpulanFormulaTerpilih,
-  RingkasanHasilStudiCpp,
-  KesimpulanProsesTerpilih,
-  UsulanPenelitianProduk,
-  UpdateRiskAssessment,
-  UpdateRiskAssessmentBahanAktif,
-  UpdateRiskAssessmentBahanTambahan,
-  UpdateRiskAssessmentKemasan,
-  RingkasanHasilStudiCma,
+  t_laporanTrialSkalaLab,
+  t_aktivitasDanWaktuPencapaian,
+  t_kesimpulanFormulaTerpilih,
+  t_ringkasanHasilStudiCpp,
+  t_kesimpulanProsesTerpilih,
+  t_usulanPenelitianProduk,
+  t_updateRiskAssessment,
+  t_updateRiskAssessmentBahanAktif,
+  t_updateRiskAssessmentBahanTambahan,
+  t_updateRiskAssessmentKemasan,
+  t_ringkasanHasilStudiCma,
   t_laporanTrialSkalaLab_status,
   sequelize,
 } = require("../models/index");
@@ -59,7 +59,7 @@ class ControllerLaporanTrialSkalaLab {
           [Op.iLike]: `%${tujuan}%`,
         };
 
-      const studi = await LaporanTrialSkalaLab.findAndCountAll({
+      const studi = await t_laporanTrialSkalaLab.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -81,7 +81,7 @@ class ControllerLaporanTrialSkalaLab {
     try {
       const { id } = req.params;
 
-      await LaporanTrialSkalaLab.destroy({
+      await t_laporanTrialSkalaLab.destroy({
         where: { id: id }, // Corrected the where clause
       });
 
@@ -115,7 +115,7 @@ class ControllerLaporanTrialSkalaLab {
 
       console.log(namaProduk, " NAMAPRODUK");
 
-      const existingLaporan = await LaporanTrialSkalaLab.findOne({
+      const existingLaporan = await t_laporanTrialSkalaLab.findOne({
         where: {
           namaProduk: namaProduk,
         },
@@ -143,7 +143,7 @@ class ControllerLaporanTrialSkalaLab {
       }
 
       // const newRevisi = existingLaporan.revisi + 1;
-      const createLaporanTrialSkalaLab = await LaporanTrialSkalaLab.create({
+      const createLaporanTrialSkalaLab = await t_laporanTrialSkalaLab.create({
         nomor,
         tanggal,
         revisi: newRevisi,
@@ -188,14 +188,14 @@ class ControllerLaporanTrialSkalaLab {
         protokolPenelitianNo,
         lainlain,
       } = req.body;
-      const findLaporanTrialSkalaLabID = await LaporanTrialSkalaLab.findByPk(
+      const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
         +LaporanTrialSkalaLabID
       );
 
       console.log(findLaporanTrialSkalaLabID, "< IDDDDDDD ");
 
       if (!findLaporanTrialSkalaLabID) throw { name: "NotFound" };
-      const updateDokumenAcuan = await LaporanTrialSkalaLab.update(
+      const updateDokumenAcuan = await t_laporanTrialSkalaLab.update(
         {
           productBriefNo: productBriefNo,
           hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
@@ -228,7 +228,7 @@ class ControllerLaporanTrialSkalaLab {
       } = req.body;
 
       const createAktivitasDanWaktuPencapaian =
-        await AktivitasDanWaktuPencapaian.create({
+        await t_aktivitasDanWaktuPencapaian.create({
           rencanaTersediaBahanAwal,
           pencapaianTersediaBahanAwal,
           rencanaOptimasiFormula,
@@ -258,7 +258,7 @@ class ControllerLaporanTrialSkalaLab {
         LaporanTrialSkalaLabID,
       } = req.body;
 
-      const createKesimpulanFormula = await KesimpulanFormulaTerpilih.create({
+      const createKesimpulanFormula = await t_kesimpulanFormulaTerpilih.create({
         komposisi,
         jumlah,
         apakahAdaPadaKomposisiOriginator,
@@ -286,14 +286,15 @@ class ControllerLaporanTrialSkalaLab {
         LaporanTrialSkalaLabID,
       } = req.body;
 
-      const createRingkasanHasilStudiCpp = await RingkasanHasilStudiCpp.create({
-        prosesParameter,
-        CqaYangDiStudi,
-        rangeStudi,
-        controlStrategy,
-        justifikasi,
-        LaporanTrialSkalaLabID,
-      });
+      const createRingkasanHasilStudiCpp =
+        await t_ringkasanHasilStudiCpp.create({
+          prosesParameter,
+          CqaYangDiStudi,
+          rangeStudi,
+          controlStrategy,
+          justifikasi,
+          LaporanTrialSkalaLabID,
+        });
 
       res.status(201).json({
         message: "Success Create ringkasan hasil studi cpp",
@@ -312,7 +313,7 @@ class ControllerLaporanTrialSkalaLab {
 
       await Promise.all(
         data?.map(async (newItem) => {
-          const createCMA = await RingkasanHasilStudiCma.create(
+          const createCMA = await t_ringkasanHasilStudiCma.create(
             {
               title: newItem?.title || "",
               content: newItem?.content || [],
@@ -326,7 +327,7 @@ class ControllerLaporanTrialSkalaLab {
 
       await transaction.commit();
 
-      const newData = await RingkasanHasilStudiCma.findAll({
+      const newData = await t_ringkasanHasilStudiCma.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
@@ -349,7 +350,7 @@ class ControllerLaporanTrialSkalaLab {
         req.body;
 
       const createKesimpulanProsesTerpilih =
-        await KesimpulanProsesTerpilih.create({
+        await t_kesimpulanProsesTerpilih.create({
           tahapanProses,
           parameter,
           justifikasi,
@@ -375,13 +376,14 @@ class ControllerLaporanTrialSkalaLab {
         LaporanTrialSkalaLabID,
       } = req.body;
 
-      const createUsulanPenelitianProduk = await UsulanPenelitianProduk.create({
-        faktor,
-        parameter,
-        usulanSkalaPilot,
-        justifikasi,
-        LaporanTrialSkalaLabID,
-      });
+      const createUsulanPenelitianProduk =
+        await t_usulanPenelitianProduk.create({
+          faktor,
+          parameter,
+          usulanSkalaPilot,
+          justifikasi,
+          LaporanTrialSkalaLabID,
+        });
 
       res.status(201).json({
         message: "Success Create usulan penelitian produk",
@@ -396,7 +398,7 @@ class ControllerLaporanTrialSkalaLab {
     try {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
 
-      const createUpdateAssessment = await UpdateRiskAssessment.create({
+      const createUpdateAssessment = await t_updateRiskAssessment.create({
         cqaHeader: cqaHeader,
         rows: rows,
         LaporanTrialSkalaLabID,
@@ -416,7 +418,7 @@ class ControllerLaporanTrialSkalaLab {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
 
       const createUpdateAssessment =
-        await UpdateRiskAssessmentBahanAktif.create({
+        await t_updateRiskAssessmentBahanAktif.create({
           cqaHeader: cqaHeader,
           rows: rows,
           LaporanTrialSkalaLabID,
@@ -436,7 +438,7 @@ class ControllerLaporanTrialSkalaLab {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
 
       const createUpdateAssessment =
-        await UpdateRiskAssessmentBahanTambahan.create({
+        await t_updateRiskAssessmentBahanTambahan.create({
           cqaHeader: cqaHeader,
           rows: rows,
           LaporanTrialSkalaLabID,
@@ -455,11 +457,13 @@ class ControllerLaporanTrialSkalaLab {
     try {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
 
-      const createUpdateAssessment = await UpdateRiskAssessmentKemasan.create({
-        cqaHeader: cqaHeader,
-        rows: rows,
-        LaporanTrialSkalaLabID,
-      });
+      const createUpdateAssessment = await t_updateRiskAssessmentKemasan.create(
+        {
+          cqaHeader: cqaHeader,
+          rows: rows,
+          LaporanTrialSkalaLabID,
+        }
+      );
 
       res.status(201).json({
         message: "Success createUpdateAssessment",
@@ -478,7 +482,7 @@ class ControllerLaporanTrialSkalaLab {
       let laporanTrialSkalaLabDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
         console.log(id, "<< id");
-        laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab?.findOne({
+        laporanTrialSkalaLabDetails = await t_laporanTrialSkalaLab?.findOne({
           where: {
             id,
           },
@@ -497,7 +501,7 @@ class ControllerLaporanTrialSkalaLab {
         console.log(laporanTrialSkalaLabDetails, "<< detil");
       } else {
         console.log("test");
-        laporanTrialSkalaLabDetails = await LaporanTrialSkalaLab.findOne({
+        laporanTrialSkalaLabDetails = await t_laporanTrialSkalaLab.findOne({
           where: {
             id,
             bagian: bagian_user,
@@ -539,58 +543,59 @@ class ControllerLaporanTrialSkalaLab {
       //   });
 
       const aktivitasDanWaktuPencapaian =
-        await AktivitasDanWaktuPencapaian.findOne({
+        await t_aktivitasDanWaktuPencapaian.findOne({
           where: {
             LaporanTrialSkalaLabID: id,
           },
         });
-      const kesimpulanFormulaTerpilih = await KesimpulanFormulaTerpilih.findAll(
+      const kesimpulanFormulaTerpilih =
+        await t_kesimpulanFormulaTerpilih.findAll({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
+      const kesimpulanProsesTerpilih = await t_kesimpulanProsesTerpilih.findAll(
         {
           where: {
             LaporanTrialSkalaLabID: id,
           },
         }
       );
-      const kesimpulanProsesTerpilih = await KesimpulanProsesTerpilih.findAll({
+      const ringkasanHasilStudiCpp = await t_ringkasanHasilStudiCpp.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
       });
-      const ringkasanHasilStudiCpp = await RingkasanHasilStudiCpp.findAll({
-        where: {
-          LaporanTrialSkalaLabID: id,
-        },
-      });
-      const ringkasanHasilStudiCma = await RingkasanHasilStudiCma.findAll({
+      const ringkasanHasilStudiCma = await t_ringkasanHasilStudiCma.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
       });
 
-      const usulanPenelitianProduk = await UsulanPenelitianProduk.findAll({
+      const usulanPenelitianProduk = await t_usulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
       });
-      const updateRiskAssessment = await UpdateRiskAssessment.findOne({
+      const updateRiskAssessment = await t_updateRiskAssessment.findOne({
         where: {
           LaporanTrialSkalaLabID: id,
         },
       });
       const updateRiskAssessmentBahanAktif =
-        await UpdateRiskAssessmentBahanAktif.findOne({
+        await t_updateRiskAssessmentBahanAktif.findOne({
           where: {
             LaporanTrialSkalaLabID: id,
           },
         });
       const updateRiskAssessmentBahanTambahan =
-        await UpdateRiskAssessmentBahanTambahan.findOne({
+        await t_updateRiskAssessmentBahanTambahan.findOne({
           where: {
             LaporanTrialSkalaLabID: id,
           },
         });
       const updateRiskAssessmentKemasan =
-        await UpdateRiskAssessmentKemasan.findOne({
+        await t_updateRiskAssessmentKemasan.findOne({
           where: {
             LaporanTrialSkalaLabID: id,
           },
@@ -691,11 +696,11 @@ class ControllerLaporanTrialSkalaLab {
         obj.rdSelection = rdSelection;
       }
 
-      const proto = await LaporanTrialSkalaLab.findByPk(+id);
+      const proto = await t_laporanTrialSkalaLab.findByPk(+id);
       // const protoNo = studi.addendumKe;
       // console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
 
-      const [updatedRowsCount] = await LaporanTrialSkalaLab.update(
+      const [updatedRowsCount] = await t_laporanTrialSkalaLab.update(
         {
           ...obj,
         },
@@ -727,7 +732,7 @@ class ControllerLaporanTrialSkalaLab {
 
       console.log(id, "<<<<<");
 
-      const prevUsulan = await UsulanPenelitianProduk.findAll({
+      const prevUsulan = await t_usulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
@@ -744,7 +749,7 @@ class ControllerLaporanTrialSkalaLab {
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
-            const created = await UsulanPenelitianProduk.create(
+            const created = await t_usulanPenelitianProduk.create(
               {
                 faktor: newItem?.faktor || "",
                 parameter: newItem?.parameter || "",
@@ -758,7 +763,7 @@ class ControllerLaporanTrialSkalaLab {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            await UsulanPenelitianProduk.update(
+            await t_usulanPenelitianProduk.update(
               {
                 faktor: newItem?.faktor || "",
                 parameter: newItem?.parameter || "",
@@ -778,7 +783,7 @@ class ControllerLaporanTrialSkalaLab {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
-        await UsulanPenelitianProduk.destroy({
+        await t_usulanPenelitianProduk.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
         });
@@ -786,7 +791,7 @@ class ControllerLaporanTrialSkalaLab {
 
       await transaction.commit();
 
-      const newData = await UsulanPenelitianProduk.findAll({
+      const newData = await t_usulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: +id,
         },
@@ -815,7 +820,9 @@ class ControllerLaporanTrialSkalaLab {
       } = req.user;
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findLaporanTrialSkalaLab = await LaporanTrialSkalaLab.findByPk(+id);
+      const findLaporanTrialSkalaLab = await t_laporanTrialSkalaLab.findByPk(
+        +id
+      );
       if (!findLaporanTrialSkalaLab)
         throw new MyError(404, "Form laporan trial skala lab tidak ditemukan");
       const apprNo = await checkStatusLaporanTrialSkalaLab(id);
@@ -861,7 +868,7 @@ class ControllerLaporanTrialSkalaLab {
         user_id,
         delegated_to,
       });
-      await LaporanTrialSkalaLab.update(
+      await t_laporanTrialSkalaLab.update(
         {
           status: status,
           alasan_reject: keterangan_reject,

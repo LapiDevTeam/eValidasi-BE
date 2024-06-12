@@ -1,4 +1,4 @@
-const { FormulaFix, t_formulaFix_status } = require("../models/index");
+const { t_formulaFix, t_formulaFix_status } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
@@ -15,7 +15,6 @@ class ControllerFormulaFix {
     try {
       const { nama_user, bagian_user } = req.user;
 
-      console.log(req.user, "<<");
       const {
         namaProduk,
         filter,
@@ -29,7 +28,7 @@ class ControllerFormulaFix {
         formulaC,
       } = req.body;
 
-      const createFormulaFix = await FormulaFix.create({
+      const createFormulaFix = await t_formulaFix.create({
         namaProduk: namaProduk || "",
         filter: filter || "",
         komposisi: komposisi || "",
@@ -103,7 +102,7 @@ class ControllerFormulaFix {
           [Op.iLike]: `%${formulaC}%`,
         };
 
-      const formula = await FormulaFix.findAndCountAll({
+      const formula = await t_formulaFix.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -138,7 +137,6 @@ class ControllerFormulaFix {
   //   }
   // }
   static async getFormulaFixDetails(req, res, next) {
-    console.log("xixixi");
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
       console.log(req.user, "< req user");
@@ -147,7 +145,7 @@ class ControllerFormulaFix {
       let formulaFixDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
         console.log(id, "<< id");
-        formulaFixDetails = await FormulaFix?.findOne({
+        formulaFixDetails = await t_formulaFix?.findOne({
           where: {
             id,
           },
@@ -163,7 +161,7 @@ class ControllerFormulaFix {
         console.log(formulaFixDetails, "<< detil");
       } else {
         console.log("test");
-        formulaFixDetails = await FormulaFix.findOne({
+        formulaFixDetails = await t_formulaFix.findOne({
           where: {
             id,
             bagian: bagian_user,
@@ -222,7 +220,7 @@ class ControllerFormulaFix {
         formulaC,
       } = req.body;
 
-      const [updatedRowsCount] = await FormulaFix.update(
+      const [updatedRowsCount] = await t_formulaFix.update(
         {
           namaProduk: namaProduk || "",
           filter: filter || "",
@@ -264,7 +262,7 @@ class ControllerFormulaFix {
       } = req.user;
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findFormulaFix = await FormulaFix.findByPk(+id);
+      const findFormulaFix = await t_formulaFix.findByPk(+id);
       if (!findFormulaFix)
         throw new MyError(404, "Form formula fix tidak ditemukan");
       const apprNo = await checkStatusFormulaFix(id);
@@ -310,7 +308,7 @@ class ControllerFormulaFix {
         user_id,
         delegated_to,
       });
-      await FormulaFix.update(
+      await t_formulaFix.update(
         {
           status: status,
           alasan_reject: keterangan_reject,
@@ -332,7 +330,7 @@ class ControllerFormulaFix {
     try {
       const { id } = req.params;
 
-      await FormulaFix.destroy({
+      await t_formulaFix.destroy({
         where: { id: +id }, // Corrected the where clause
       });
 

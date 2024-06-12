@@ -1,16 +1,16 @@
 const {
-  CatatanTrial,
-  KomposisiCatatanTrial,
-  PerhitunganZatAktif,
-  MetodePembuatan,
-  ProsesCatatanTrialPadat,
-  ProsesCatatanTrialPenyalutan,
-  FormulaCatatanTrial,
-  PengamatanAwalCair,
-  PengamatanLanjutan,
-  PengamatanAwalPadat,
-  PengamatanAwalSteril,
-  PengamatanAwalPenyalutan,
+  t_catatanTrial,
+  t_komposisiCatatanTrial,
+  t_perhitunganZatAktif,
+  t_metodePembuatan,
+  t_prosesCatatanTrialPadat,
+  t_prosesCatatanTrialPenyalutan,
+  t_formulaCatatanTrial,
+  t_pengamatanAwalCair,
+  t_pengamatanLanjutan,
+  t_pengamatanAwalPadat,
+  t_pengamatanAwalSteril,
+  t_pengamatanAwalPenyalutan,
   t_catatanTrial_status,
   m_bentuk_sediaan,
 } = require("../models/index");
@@ -103,7 +103,7 @@ class ControllerCatatanTrial {
         pic,
       } = req.body;
 
-      const createCatatanTrial = await CatatanTrial.create({
+      const createCatatanTrial = await t_catatanTrial.create({
         tanggalTrial: tanggalTrial || "",
         namaProduk: namaProduk || "",
         kodeTrial: kodeTrial || "",
@@ -168,7 +168,7 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
-      const createKomposisi = await KomposisiCatatanTrial.create({
+      const createKomposisi = await t_komposisiCatatanTrial.create({
         kode,
         namaBahanBaku,
         principle,
@@ -194,7 +194,7 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
-      const createPerhitunganZatAktif = await PerhitunganZatAktif.create({
+      const createPerhitunganZatAktif = await t_perhitunganZatAktif.create({
         padaEtiket,
         bahanBakuYangDigunakan,
         perhitunganBahanBaku,
@@ -214,7 +214,7 @@ class ControllerCatatanTrial {
     try {
       const { aktivitas, pengamatan, CatatanTrialID } = req.body;
 
-      const createMetodePembuatan = await MetodePembuatan.create({
+      const createMetodePembuatan = await t_metodePembuatan.create({
         aktivitas,
         pengamatan,
         CatatanTrialID,
@@ -235,7 +235,7 @@ class ControllerCatatanTrial {
         req.body;
 
       const createProsesCatatanTrialPenyalutan =
-        await ProsesCatatanTrialPenyalutan.create({
+        await t_prosesCatatanTrialPenyalutan.create({
           tanggal,
           jam,
           turretSpeed,
@@ -269,7 +269,7 @@ class ControllerCatatanTrial {
       } = req.body;
 
       const createProsesCatatanTrialPadat =
-        await ProsesCatatanTrialPadat.create({
+        await t_prosesCatatanTrialPadat.create({
           speed,
           mainPressure,
           prePressure,
@@ -304,7 +304,7 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
-      const createFormula = await FormulaCatatanTrial.create({
+      const createFormula = await t_formulaCatatanTrial.create({
         tujuanTrial: tujuanTrial,
         tiapSediaan: tiapSediaan,
         besarBets: besarBets,
@@ -328,7 +328,7 @@ class ControllerCatatanTrial {
     try {
       const { pengamatanAwalCair, CatatanTrialID } = req.body;
 
-      const createPengamatanAwalCair = await PengamatanAwalCair.create({
+      const createPengamatanAwalCair = await t_pengamatanAwalCair.create({
         pengamatanAwalCair: pengamatanAwalCair,
         CatatanTrialID,
       });
@@ -346,7 +346,7 @@ class ControllerCatatanTrial {
     try {
       const { pengamatanAwalSteril, CatatanTrialID } = req.body;
 
-      const createPengamatanAwalSteril = await PengamatanAwalSteril.create({
+      const createPengamatanAwalSteril = await t_pengamatanAwalSteril.create({
         pengamatanAwalSteril: pengamatanAwalSteril,
         CatatanTrialID,
       });
@@ -384,7 +384,7 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
-      const createPengamatanAwalPadat = await PengamatanAwalPadat.create({
+      const createPengamatanAwalPadat = await t_pengamatanAwalPadat.create({
         spesifikasiPemerian,
         settingPemerian,
         evaluasiPemerian,
@@ -441,7 +441,7 @@ class ControllerCatatanTrial {
       } = req.body;
 
       const createPengamatanAwalPenyalutan =
-        await PengamatanAwalPenyalutan.create({
+        await t_pengamatanAwalPenyalutan.create({
           spesifikasiWeightGain,
           settingWeightGain,
           evaluasiWeightGain,
@@ -477,7 +477,7 @@ class ControllerCatatanTrial {
     try {
       const { kodeTrialHeaders, content, CatatanTrialID } = req.body;
 
-      const createPengamatanLanjutan = await PengamatanLanjutan.create({
+      const createPengamatanLanjutan = await t_pengamatanLanjutan.create({
         kodeTrialHeaders,
         content,
         CatatanTrialID,
@@ -496,10 +496,10 @@ class ControllerCatatanTrial {
     try {
       const { CatatanTrialID } = req.params;
       const { perhitunganBatasBahanTambahan } = req.body;
-      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
+      const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
-      const updatePerhitunganBatasBahanTambahan = await CatatanTrial.update(
+      const updatePerhitunganBatasBahanTambahan = await t_catatanTrial.update(
         { perhitunganBatasBahanTambahan: perhitunganBatasBahanTambahan },
         {
           where: {
@@ -517,10 +517,10 @@ class ControllerCatatanTrial {
     try {
       const { CatatanTrialID } = req.params;
       const { pembahasan } = req.body;
-      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
+      const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
-      const updatePembahasan = await CatatanTrial.update(
+      const updatePembahasan = await t_catatanTrial.update(
         { pembahasan: pembahasan },
         {
           where: {
@@ -538,10 +538,10 @@ class ControllerCatatanTrial {
     try {
       const { CatatanTrialID } = req.params;
       const { kesimpulan } = req.body;
-      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
+      const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
-      const updateKesimpulan = await CatatanTrial.update(
+      const updateKesimpulan = await t_catatanTrial.update(
         { kesimpulan: kesimpulan },
         {
           where: {
@@ -559,10 +559,10 @@ class ControllerCatatanTrial {
     try {
       const { CatatanTrialID } = req.params;
       const { tindakLanjut } = req.body;
-      const findCatatanTrialID = await CatatanTrial.findByPk(+CatatanTrialID);
+      const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
-      const updateTindakLanjut = await CatatanTrial.update(
+      const updateTindakLanjut = await t_catatanTrial.update(
         { tindakLanjut: tindakLanjut },
         {
           where: {
@@ -579,7 +579,7 @@ class ControllerCatatanTrial {
   static async getKomposisiNamaBahan(req, res) {
     const { id } = req.params;
     try {
-      const komposisi = await KomposisiCatatanTrial.findAll({
+      const komposisi = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
 
@@ -595,7 +595,7 @@ class ControllerCatatanTrial {
   }
   static async getFilterCatatanTrialPadat(req, res) {
     try {
-      const catatanTrialPadat = await CatatanTrial.findAll({
+      const catatanTrialPadat = await t_catatanTrial.findAll({
         where: { tipeCatatanTrial: "catatan trial padat" },
       });
 
@@ -703,7 +703,7 @@ class ControllerCatatanTrial {
           [Op.iLike]: `%${statusA}%`,
         };
 
-      const brief = await CatatanTrial.findAndCountAll({
+      const brief = await t_catatanTrial.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -732,7 +732,7 @@ class ControllerCatatanTrial {
       let catatanTrialDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
         console.log(id, "<< id");
-        catatanTrialDetails = await CatatanTrial?.findOne({
+        catatanTrialDetails = await t_catatanTrial?.findOne({
           where: {
             id,
           },
@@ -748,7 +748,7 @@ class ControllerCatatanTrial {
         console.log(catatanTrialDetails, "<< detil");
       } else {
         console.log("test");
-        catatanTrialDetails = await CatatanTrial.findOne({
+        catatanTrialDetails = await t_catatanTrial.findOne({
           where: {
             id,
             bagian: bagian_user,
@@ -792,27 +792,27 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const catatanTrialDetailCair = await CatatanTrial.findOne({
+      const catatanTrialDetailCair = await t_catatanTrial.findOne({
         where: {
           id,
         },
       });
-      const komposisiCair = await KomposisiCatatanTrial.findAll({
+      const komposisiCair = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
       });
-      const perhitunganZatAktifCair = await PerhitunganZatAktif.findAll({
+      const perhitunganZatAktifCair = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaCair = await FormulaCatatanTrial.findOne({
+      const formulaCair = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanCair = await MetodePembuatan.findAll({
+      const metodePembuatanCair = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalCair = await PengamatanAwalCair.findOne({
+      const pengamatanAwalCair = await t_pengamatanAwalCair.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanCair = await PengamatanLanjutan.findOne({
+      const pengamatanLanjutanCair = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
       console.log(perhitunganZatAktifCair, " << zat cair");
@@ -836,27 +836,27 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const catatanTrialDetailSteril = await CatatanTrial.findOne({
+      const catatanTrialDetailSteril = await t_catatanTrial.findOne({
         where: {
           id,
         },
       });
-      const komposisiSteril = await KomposisiCatatanTrial.findAll({
+      const komposisiSteril = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
       });
-      const perhitunganZatAktifSteril = await PerhitunganZatAktif.findAll({
+      const perhitunganZatAktifSteril = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaSteril = await FormulaCatatanTrial.findOne({
+      const formulaSteril = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanSteril = await MetodePembuatan.findAll({
+      const metodePembuatanSteril = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalSteril = await PengamatanAwalSteril.findOne({
+      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanSteril = await PengamatanLanjutan.findOne({
+      const pengamatanLanjutanSteril = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
       console.log(perhitunganZatAktifSteril, " << zat Steril");
@@ -883,30 +883,30 @@ class ControllerCatatanTrial {
 
       console.log("xixixixiix");
 
-      const catatanTrialDetailPadat = await CatatanTrial.findOne({
+      const catatanTrialDetailPadat = await t_catatanTrial.findOne({
         where: {
           id,
         },
       });
-      const komposisiPadat = await KomposisiCatatanTrial.findAll({
+      const komposisiPadat = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
       });
-      const perhitunganZatAktifPadat = await PerhitunganZatAktif.findAll({
+      const perhitunganZatAktifPadat = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
       });
-      const formulaPadat = await FormulaCatatanTrial.findOne({
+      const formulaPadat = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanPadat = await MetodePembuatan.findAll({
+      const metodePembuatanPadat = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const prosesCatatanTrialPadat = await ProsesCatatanTrialPadat.findAll({
+      const prosesCatatanTrialPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPadat = await PengamatanAwalPadat.findOne({
+      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findOne({
         where: { CatatanTrialID: id },
       });
-      const pengamatanLanjutanPadat = await PengamatanLanjutan.findOne({
+      const pengamatanLanjutanPadat = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
 
@@ -931,24 +931,26 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const catatanTrialDetailPenyalutan = await CatatanTrial.findOne({
+      const catatanTrialDetailPenyalutan = await t_catatanTrial.findOne({
         where: {
           id,
         },
       });
 
-      const formulaPenyalutan = await FormulaCatatanTrial.findOne({
+      const formulaPenyalutan = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const prosesPenyalutan = await ProsesCatatanTrialPenyalutan.findAll({
+      const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findAll({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanPenyalutan = await MetodePembuatan.findAll({
+      const metodePembuatanPenyalutan = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPenyalutan = await PengamatanAwalPenyalutan.findOne({
-        where: { CatatanTrialID: id },
-      });
+      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findOne(
+        {
+          where: { CatatanTrialID: id },
+        }
+      );
 
       // if (isApprove.message) throw new MyError(400, isApprove.message);
       res.status(200).json({
@@ -994,7 +996,7 @@ class ControllerCatatanTrial {
         tipeCatatanTrial,
       } = req.body;
 
-      const [updatedRowsCount] = await CatatanTrial.update(
+      const [updatedRowsCount] = await t_catatanTrial.update(
         {
           tanggalTrial: tanggalTrial || "",
           namaProduk: namaProduk || "",
@@ -1031,7 +1033,7 @@ class ControllerCatatanTrial {
       console.log(id, "<< IDIDIDIDID");
       const { kode, namaBahanBaku, principle, jumlahTiapSediaan } = req.body;
       console.log(namaBahanBaku, "< << NAMA");
-      const [updatedRowsCount] = await KomposisiCatatanTrial.update(
+      const [updatedRowsCount] = await t_komposisiCatatanTrial.update(
         {
           kode: kode || "",
           namaBahanBaku: namaBahanBaku || "",
@@ -1063,7 +1065,7 @@ class ControllerCatatanTrial {
       const { padaEtiket, bahanBakuYangDigunakan, perhitunganBahanBaku } =
         req.body;
 
-      const [updatedRowsCount] = await PerhitunganZatAktif.update(
+      const [updatedRowsCount] = await t_perhitunganZatAktif.update(
         {
           padaEtiket: padaEtiket || "",
           bahanBakuYangDigunakan: bahanBakuYangDigunakan || "",
@@ -1100,7 +1102,7 @@ class ControllerCatatanTrial {
         detailFormula,
       } = req.body;
 
-      const [updatedRowsCount] = await FormulaCatatanTrial.update(
+      const [updatedRowsCount] = await t_formulaCatatanTrial.update(
         {
           tujuanTrial: tujuanTrial || "",
           tiapSediaan: tiapSediaan || "",
@@ -1133,7 +1135,7 @@ class ControllerCatatanTrial {
       console.log(id, "<< IDIDIDIDID");
       const { aktivitas, pengamatan } = req.body;
 
-      const [updatedRowsCount] = await MetodePembuatan.update(
+      const [updatedRowsCount] = await t_metodePembuatan.update(
         {
           aktivitas: aktivitas || "",
           pengamatan: pengamatan || "",
@@ -1165,7 +1167,7 @@ class ControllerCatatanTrial {
       const pengamatanAwalCairData = req.body.data; // Access req.body.data
       console.log(pengamatanAwalCairData, "<< REQ body");
 
-      const updatedPengamatanCair = PengamatanAwalCair.update(
+      const updatedPengamatanCair = t_pengamatanAwalCair.update(
         {
           pengamatanAwalCair: pengamatanAwalCairData || null,
         },
@@ -1191,7 +1193,7 @@ class ControllerCatatanTrial {
       const pengamatanAwalSterilData = req.body.data; // Access req.body.data
       console.log(pengamatanAwalSterilData, "<< REQ body");
 
-      const updatedPengamatanSteril = PengamatanAwalSteril.update(
+      const updatedPengamatanSteril = t_pengamatanAwalSteril.update(
         {
           pengamatanAwalSteril: pengamatanAwalSterilData || null,
         },
@@ -1214,7 +1216,7 @@ class ControllerCatatanTrial {
       console.log(id, "<< IDIDIDIDID");
       const { kodeTrialHeaders, content } = req.body;
 
-      const [updatedRowsCount] = await PengamatanLanjutan.update(
+      const [updatedRowsCount] = await t_pengamatanLanjutan.update(
         {
           kodeTrialHeaders: kodeTrialHeaders || "",
           content: content || "",
@@ -1253,7 +1255,7 @@ class ControllerCatatanTrial {
         keterangan,
       } = req.body;
 
-      const [updatedRowsCount] = await ProsesCatatanTrialPadat.update(
+      const [updatedRowsCount] = await t_prosesCatatanTrialPadat.update(
         {
           speed: speed || "",
           mainPressure: mainPressure || "",
@@ -1288,12 +1290,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const proses = await ProsesCatatanTrialPadat.findAll({
+      const proses = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (proses.length > 0) {
-        await ProsesCatatanTrialPadat.destroy({
+        await t_prosesCatatanTrialPadat.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1310,12 +1312,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const komposisi = await KomposisiCatatanTrial.findAll({
+      const komposisi = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (komposisi.length > 0) {
-        await KomposisiCatatanTrial.destroy({
+        await t_komposisiCatatanTrial.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1332,12 +1334,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const formula = await FormulaCatatanTrial.findAll({
+      const formula = await t_formulaCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (formula.length > 0) {
-        await FormulaCatatanTrial.destroy({
+        await t_formulaCatatanTrial.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1354,7 +1356,7 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const metode = await MetodePembuatan.findAll({
+      const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: +id },
       });
 
@@ -1376,12 +1378,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const pengamatanAwalPadat = await PengamatanAwalPadat.findAll({
+      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (pengamatanAwalPadat.length > 0) {
-        await PengamatanAwalPadat.destroy({
+        await t_pengamatanAwalPadat.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1398,12 +1400,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const pengamatanlanjutan = await PengamatanLanjutan.findAll({
+      const pengamatanlanjutan = await t_pengamatanLanjutan.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (pengamatanlanjutan.length > 0) {
-        await PengamatanLanjutan.destroy({
+        await t_pengamatanLanjutan.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1420,12 +1422,12 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const proses = await ProsesCatatanTrialPenyalutan.findAll({
+      const proses = await t_prosesCatatanTrialPenyalutan.findAll({
         where: { CatatanTrialID: +id },
       });
 
       if (proses.length > 0) {
-        await ProsesCatatanTrialPenyalutan.destroy({
+        await t_prosesCatatanTrialPenyalutan.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1442,12 +1444,14 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      const pengamatanAwalPenyalutan = await PengamatanAwalPenyalutan.findAll({
-        where: { CatatanTrialID: +id },
-      });
+      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
+        {
+          where: { CatatanTrialID: +id },
+        }
+      );
 
       if (pengamatanAwalPenyalutan.length > 0) {
-        await PengamatanAwalPenyalutan.destroy({
+        await t_pengamatanAwalPenyalutan.destroy({
           where: { CatatanTrialID: +id }, // Corrected the where clause
         });
 
@@ -1471,7 +1475,7 @@ class ControllerCatatanTrial {
       } = req.user;
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findCatatanTrial = await CatatanTrial.findByPk(+id);
+      const findCatatanTrial = await t_catatanTrial.findByPk(+id);
       if (!findCatatanTrial)
         throw new MyError(404, "Form CatatanTrial tidak ditemukan");
       const apprNo = await checkStatusCatatanTrial(id);
@@ -1517,7 +1521,7 @@ class ControllerCatatanTrial {
         user_id,
         delegated_to,
       });
-      await CatatanTrial.update(
+      await t_catatanTrial.update(
         {
           status: status,
           alasan_reject: keterangan_reject,

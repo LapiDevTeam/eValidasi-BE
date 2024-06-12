@@ -12,7 +12,7 @@ module.exports = {
       FormulaFixID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "FormulaFix",
+          model: "t_formulaFix",
           key: "id",
         },
       },

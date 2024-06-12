@@ -1,4 +1,4 @@
-const { ProductBrief, t_productBrief_status } = require("../models/index");
+const { t_productBrief, t_productBrief_status } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
@@ -25,7 +25,34 @@ class ControllerProductBrief {
         rdSelection,
         status,
         upload,
+        revisi,
       } = req.body;
+
+      const existingProtokol = await t_productBrief.findOne({
+        where: {
+          productBrief: productBrief,
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      let newRevisi;
+
+      if (
+        existingProtokol &&
+        existingProtokol.dataValues.status === "Approved"
+      ) {
+        newRevisi = existingProtokol.revisi + 1;
+      } else if (
+        existingProtokol &&
+        existingProtokol.dataValues.status !== "Approved"
+      ) {
+        throw new MyError(
+          404,
+          "Product Brief masih Draft, menunggu status menjadi approved"
+        );
+      } else {
+        newRevisi = 0;
+      }
 
       if (!productBrief) {
         throw new MyError(400, "Product Brief is required !");
@@ -46,7 +73,7 @@ class ControllerProductBrief {
         );
       }
 
-      const createProductBrief = await ProductBrief.create({
+      const createProductBrief = await t_productBrief.create({
         productBrief: productBrief,
         kode: kode,
         nama: nama,
@@ -57,12 +84,15 @@ class ControllerProductBrief {
         rdSelection: rdSelection,
         status: status,
         upload: upload,
+        revisi: newRevisi,
       });
 
       res.status(201).json({
         message: "Data has been saved !",
+        // data: createProductBrief,
       });
     } catch (err) {
+      console.log(err);
       next(err);
     }
   }
@@ -79,9 +109,10 @@ class ControllerProductBrief {
         bahanAktifDanDosis,
         rdSelection,
         status,
+        upload,
       } = req.body;
 
-      const [updatedRowsCount] = await ProductBrief.update(
+      const [updatedRowsCount] = await t_productBrief.update(
         {
           productBrief: productBrief,
           kode: kode,
@@ -92,6 +123,7 @@ class ControllerProductBrief {
           bahanAktifDanDosis: bahanAktifDanDosis,
           rdSelection: rdSelection,
           status: status,
+          upload: upload,
         },
         {
           where: { id: id },
@@ -213,7 +245,7 @@ class ControllerProductBrief {
           [Op.iLike]: `%${status}%`,
         };
 
-      const brief = await ProductBrief.findAndCountAll({
+      const brief = await t_productBrief.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -242,7 +274,7 @@ class ControllerProductBrief {
         bagian_user === "HD" ||
         bagian_user === "RD"
       ) {
-        productBriefDetail = await ProductBrief?.findOne({
+        productBriefDetail = await t_productBrief?.findOne({
           where: {
             id,
           },
@@ -256,7 +288,7 @@ class ControllerProductBrief {
           ],
         });
       } else {
-        productBriefDetail = await ProductBrief.findOne({
+        productBriefDetail = await t_productBrief.findOne({
           where: {
             id,
             rdSelection: bagian_user,
@@ -297,7 +329,7 @@ class ControllerProductBrief {
   }
   static async getNoProductBrief(req, res) {
     try {
-      const noProductBrief = await ProductBrief.findAll({
+      const noProductBrief = await t_productBrief.findAll({
         attributes: ["productBrief"], // Replace 'columnName' with the actual name of the column you want
       });
       if (!noProductBrief) throw new MyError(400, "notFound!");
@@ -311,7 +343,7 @@ class ControllerProductBrief {
     try {
       const { id } = req.params;
 
-      await ProductBrief.destroy({
+      await t_productBrief.destroy({
         where: { id: id }, // Corrected the where clause
       });
 
@@ -331,8 +363,6 @@ class ControllerProductBrief {
         html: "<b>Hellowwww world? Hai hai</b>", // html body
       });
 
-      console.log("Message sent: %s", info.messageId);
-
       res.status(200).json({
         message: "Success Mail",
       });
@@ -346,10 +376,10 @@ class ControllerProductBrief {
       const { ProductBriefID } = req.params;
 
       const { status } = req.body;
-      const findProductBriefID = await ProductBrief.findByPk(+ProductBriefID);
+      const findProductBriefID = await t_productBrief.findByPk(+ProductBriefID);
 
       if (!findProductBriefID) throw { name: "NotFound" };
-      const updateStatus = await ProductBrief.update(
+      const updateStatus = await t_productBrief.update(
         { status: status },
         {
           where: {
@@ -375,7 +405,7 @@ class ControllerProductBrief {
 
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findProductBrief = await ProductBrief?.findByPk(+id);
+      const findProductBrief = await t_productBrief?.findByPk(+id);
 
       if (!findProductBrief)
         throw new MyError(404, "Form ProductBrief tidak ditemukan");
@@ -412,7 +442,7 @@ class ControllerProductBrief {
         user_id,
         delegated_to,
       });
-      await ProductBrief.update(
+      await t_productBrief.update(
         {
           status: status,
           alasan_reject: keterangan_reject,

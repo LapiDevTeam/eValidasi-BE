@@ -1,0 +1,35 @@
+"use strict";
+const { Model } = require("sequelize");
+module.exports = (sequelize, DataTypes) => {
+  class t_formulaCatatanTrial extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      // define association here
+      t_formulaCatatanTrial.belongsTo(models.t_catatanTrial, {
+        foreignKey: "CatatanTrialID",
+      });
+    }
+  }
+  t_formulaCatatanTrial.init(
+    {
+      tujuanTrial: DataTypes.STRING,
+      tiapSediaan: DataTypes.STRING,
+      besarBets: DataTypes.INTEGER,
+      overmaat: DataTypes.INTEGER,
+      satuan: DataTypes.STRING,
+      bentukSediaan: DataTypes.STRING,
+      detailFormula: DataTypes.JSONB,
+      CatatanTrialID: DataTypes.INTEGER,
+    },
+    {
+      sequelize,
+      modelName: "t_formulaCatatanTrial",
+      freezeTableName: true,
+    }
+  );
+  return t_formulaCatatanTrial;
+};

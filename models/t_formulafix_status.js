@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_formulaFix_status.belongsTo(models.FormulaFix, {
+      t_formulaFix_status.belongsTo(models.t_formulaFix, {
         foreignKey: "FormulaFixID",
       });
     }

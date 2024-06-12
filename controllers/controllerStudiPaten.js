@@ -4,7 +4,7 @@ const {
   DeskripsiProduct,
   FarmalogiKlinis,
   Stabilita,
-  StudiPaten,
+  t_studiPaten,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -23,7 +23,7 @@ class ControllerStudiPaten {
         StudiPraformulasiID,
       } = req.body;
 
-      const createStudiPaten = await StudiPaten.create({
+      const createStudiPaten = await t_studiPaten.create({
         nomorPaten,
         judulPaten,
         filingDate,
@@ -46,7 +46,7 @@ class ControllerStudiPaten {
   static async getStudiPaten(req, res) {
     const { id } = req.params;
     try {
-      const studipatenDetails = await StudiPaten.findAll({
+      const studipatenDetails = await t_studiPaten.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -73,7 +73,7 @@ class ControllerStudiPaten {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await StudiPaten.update(
+      const [updatedRowsCount] = await t_studiPaten.update(
         {
           nomorPaten,
           judulPaten,
@@ -108,12 +108,12 @@ class ControllerStudiPaten {
 
       console.log(id, 898989);
 
-      const studipaten = await StudiPaten.findAll({
+      const studipaten = await t_studiPaten.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
       if (studipaten.length > 0) {
-        await StudiPaten.destroy({
+        await t_studiPaten.destroy({
           where: { StudiPraformulasiID: +id }, // Corrected the where clause
         });
 

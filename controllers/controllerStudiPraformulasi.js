@@ -1,18 +1,18 @@
 const {
-  StudiPraformulasi,
-  ProductBrief,
-  DeskripsiProduct,
-  FarmalogiKlinis,
-  Stabilita,
-  Formula,
-  Kemasan,
-  UjiInkompatibilitas,
-  KontrolBahan,
+  t_studiPraformulasi,
+  t_productBrief,
+  t_deskripsiProduct,
+  t_farmalogiKlinis,
+  t_stabilita,
+  t_formula,
+  t_kemasan,
+  t_ujiInkompatibilitas,
+  t_kontrolBahan,
   sequelize,
   StudiPaten,
-  KarakteristikBahanAktif,
-  KarakteristikBahanKemasan,
-  KarakteristikFisikakimia,
+  t_karakteristikBahanAktif,
+  t_karakteristikBahanKemasan,
+  t_karakteristikFisikakimia,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -71,7 +71,7 @@ class ControllerStudiPraformulasi {
           [Op.iLike]: `%${ProductBriefId}%`,
         };
 
-      const studi = await StudiPraformulasi.findAndCountAll({
+      const studi = await t_studiPraformulasi.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -92,7 +92,7 @@ class ControllerStudiPraformulasi {
     try {
       const { id } = req.params;
 
-      await StudiPraformulasi.destroy({
+      await t_studiPraformulasi.destroy({
         where: { id: id }, // Corrected the where clause
       });
 
@@ -118,7 +118,7 @@ class ControllerStudiPraformulasi {
         rdSelection,
       } = req.body;
 
-      const createdStudiPraformulasi = await StudiPraformulasi.create({
+      const createdStudiPraformulasi = await t_studiPraformulasi.create({
         nomor,
         tanggalPenyusunan,
         namaProduk,
@@ -186,7 +186,7 @@ class ControllerStudiPraformulasi {
 
       await Promise.all(
         data?.map(async (newItem) => {
-          const createKemasan = await Kemasan.create(
+          const createKemasan = await t_kemasan.create(
             {
               namaProduk: newItem?.namaProduk || "",
               manufacturer: newItem?.manufacturer || "",
@@ -207,7 +207,7 @@ class ControllerStudiPraformulasi {
 
       await transaction.commit();
 
-      const newData = await Kemasan.findAll({
+      const newData = await t_kemasan.findAll({
         where: {
           StudiPraformulasiID: id,
         },
@@ -286,11 +286,11 @@ class ControllerStudiPraformulasi {
         obj.kesimpulan = kesimpulan;
       }
 
-      const studi = await StudiPraformulasi.findByPk(+id);
+      const studi = await t_studiPraformulasi.findByPk(+id);
       const studiNo = studi.addendumKe;
       console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
 
-      const [updatedRowsCount] = await StudiPraformulasi.update(
+      const [updatedRowsCount] = await t_studiPraformulasi.update(
         {
           ...obj,
           addendumKe: studiNo + 1,
@@ -331,7 +331,7 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      const createDeskripsiProduct = await DeskripsiProduct.create({
+      const createDeskripsiProduct = await t_deskripsiProduct.create({
         namaStudi,
         namaProduk,
         manufacturer,
@@ -359,14 +359,14 @@ class ControllerStudiPraformulasi {
 
       console.log(id, 898989);
 
-      const deskripsi = await DeskripsiProduct.findAll({
+      const deskripsi = await t_deskripsiProduct.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
       console.log(deskripsi, "<<<des");
 
       if (deskripsi.length > 0) {
-        await DeskripsiProduct.destroy({
+        await t_deskripsiProduct.destroy({
           where: { StudiPraformulasiID: +id }, // Corrected the where clause
         });
 
@@ -393,7 +393,7 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      const createFarmalogiKlinis = await FarmalogiKlinis.create({
+      const createFarmalogiKlinis = await t_farmalogiKlinis.create({
         indikasi,
         mekanismeAksi,
         efekSamping,
@@ -420,14 +420,14 @@ class ControllerStudiPraformulasi {
 
       console.log(id, 898989);
 
-      const farm = await FarmalogiKlinis.findAll({
+      const farm = await t_farmalogiKlinis.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
       console.log(farm, "<<<des");
 
       if (farm.length > 0) {
-        await FarmalogiKlinis.destroy({
+        await t_farmalogiKlinis.destroy({
           where: { StudiPraformulasiID: +id }, // Corrected the where clause
         });
 
@@ -451,7 +451,7 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      const createFormula = await Formula.create({
+      const createFormula = await t_formula.create({
         bahanTambahan,
         kandungan,
         fungsi,
@@ -476,7 +476,7 @@ class ControllerStudiPraformulasi {
 
       console.log(id, 898989);
 
-      const kemasan = await Kemasan.findAll({
+      const kemasan = await t_kemasan.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -510,7 +510,7 @@ class ControllerStudiPraformulasi {
         detailSediaan,
       } = req.body;
 
-      const [updatedRowsCount] = await Kemasan.update(
+      const [updatedRowsCount] = await t_kemasan.update(
         {
           namaProduk,
           manufacturer,
@@ -557,7 +557,7 @@ class ControllerStudiPraformulasi {
 
       console.log(req.body);
 
-      const createFisikaKimia = await KarakteristikFisikakimia.create({
+      const createFisikaKimia = await t_karakteristikFisikakimia.create({
         StudiPraformulasiID: StudiPraformulasiID,
         namaProduk: namaProduk,
         manufacturer,
@@ -591,7 +591,7 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      const createStabilita = await Stabilita.create({
+      const createStabilita = await t_stabilita.create({
         namaProduk,
         kondisiPenyimpanan,
         kondisiKhusus,
@@ -616,7 +616,7 @@ class ControllerStudiPraformulasi {
 
       console.log(id, 898989);
 
-      const stabilita = await Stabilita.findAll({
+      const stabilita = await t_stabilita.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -636,7 +636,7 @@ class ControllerStudiPraformulasi {
   }
   static async getProductBrief(req, res) {
     try {
-      const noProductBrief = await ProductBrief.findAll({
+      const noProductBrief = await t_productBrief.findAll({
         attributes: [
           "id",
           "productBrief",
@@ -658,12 +658,12 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { tujuan } = req.body;
-      const findStudiPraformulasiID = await StudiPraformulasi.findByPk(
+      const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
 
       if (!findStudiPraformulasiID) throw { name: "NotFound" };
-      const updateTujuan = await StudiPraformulasi.update(
+      const updateTujuan = await t_studiPraformulasi.update(
         { tujuan: tujuan },
         {
           where: {
@@ -681,12 +681,12 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { kesimpulan } = req.body;
-      const findStudiPraformulasiID = await StudiPraformulasi.findByPk(
+      const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
 
       if (!findStudiPraformulasiID) throw { name: "NotFound" };
-      const createKesimpulan = await StudiPraformulasi.update(
+      const createKesimpulan = await t_studiPraformulasi.update(
         { kesimpulan: kesimpulan },
         {
           where: {
@@ -704,12 +704,12 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { productBriefNo } = req.body;
-      const findStudiPraformulasiID = await StudiPraformulasi.findByPk(
+      const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
 
       if (!findStudiPraformulasiID) throw { name: "NotFound" };
-      const updateDokumenAcuan = await StudiPraformulasi.update(
+      const updateDokumenAcuan = await t_studiPraformulasi.update(
         { productBriefNo: productBriefNo },
         {
           where: {
@@ -748,7 +748,7 @@ class ControllerStudiPraformulasi {
   static async getStudiPraformulasiDetails(req, res) {
     const { id } = req.params;
     try {
-      const studiDetails = await StudiPraformulasi.findByPk(id);
+      const studiDetails = await t_studiPraformulasi.findByPk(id);
       if (!studiDetails) throw new MyError(400, "notFound!");
       // console.log(studiDetails, "<<");
       res.status(200).json(studiDetails);
@@ -759,7 +759,7 @@ class ControllerStudiPraformulasi {
   static async getDeskripsiProductDetails(req, res) {
     const { id } = req.params;
     try {
-      const desDetails = await DeskripsiProduct.findAll({
+      const desDetails = await t_deskripsiProduct.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -789,7 +789,7 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await DeskripsiProduct.update(
+      const [updatedRowsCount] = await t_deskripsiProduct.update(
         {
           namaStudi,
           namaProduk,
@@ -823,7 +823,7 @@ class ControllerStudiPraformulasi {
   static async getFarmakologiKlinisDetails(req, res) {
     const { id } = req.params;
     try {
-      const farmakologiDetail = await FarmalogiKlinis.findAll({
+      const farmakologiDetail = await t_farmalogiKlinis.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -852,7 +852,7 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await FarmalogiKlinis.update(
+      const [updatedRowsCount] = await t_farmalogiKlinis.update(
         {
           indikasi,
           mekanismeAksi,
@@ -885,7 +885,7 @@ class ControllerStudiPraformulasi {
   static async getFormulaDetails(req, res) {
     const { id } = req.params;
     try {
-      const formulaDetail = await Formula.findAll({
+      const formulaDetail = await t_formula.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -910,7 +910,7 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await Formula.update(
+      const [updatedRowsCount] = await t_formula.update(
         {
           bahanTambahan,
           kandungan,
@@ -940,7 +940,7 @@ class ControllerStudiPraformulasi {
   static async getStabilitaDetails(req, res) {
     const { id } = req.params;
     try {
-      const stabilitaDetails = await Stabilita.findAll({
+      const stabilitaDetails = await t_stabilita.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -958,7 +958,7 @@ class ControllerStudiPraformulasi {
   static async getUjiKompatibilitas(req, res) {
     const { id } = req.params;
     try {
-      const uji = await UjiInkompatibilitas.findAll({
+      const uji = await t_ujiInkompatibilitas.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -966,7 +966,7 @@ class ControllerStudiPraformulasi {
         throw new MyError(404, "Not found!");
       }
 
-      const kontrolBahan = await KontrolBahan.findAll({
+      const kontrolBahan = await t_kontrolBahan.findAll({
         where: { UjiInkompatibilitasID: uji[0].id },
       });
 
@@ -991,7 +991,7 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await Stabilita.update(
+      const [updatedRowsCount] = await t_stabilita.update(
         {
           namaProduk,
           kondisiPenyimpanan,
@@ -1022,7 +1022,7 @@ class ControllerStudiPraformulasi {
   static async getKemasanDetails(req, res) {
     const { id } = req.params;
     try {
-      const kemasanDetails = await Kemasan.findAll({
+      const kemasanDetails = await t_kemasan.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -1040,7 +1040,7 @@ class ControllerStudiPraformulasi {
   static async getKarakteristikFisikaKimia(req, res) {
     const { id } = req.params;
     try {
-      const fisikaKimiaDetails = await KarakteristikFisikakimia.findAll({
+      const fisikaKimiaDetails = await t_karakteristikFisikakimia.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -1070,7 +1070,7 @@ class ControllerStudiPraformulasi {
         detailSediaan,
       } = req.body;
 
-      const [updatedRowsCount] = await KarakteristikFisikakimia.update(
+      const [updatedRowsCount] = await t_karakteristikFisikakimia.update(
         {
           namaProduk,
           manufacturer,
@@ -1108,7 +1108,7 @@ class ControllerStudiPraformulasi {
 
       console.log(StudiPraformulasiID, " !@#@!#!@321");
 
-      const createUjiInkomptabilitas = await UjiInkompatibilitas.create({
+      const createUjiInkomptabilitas = await t_ujiInkompatibilitas.create({
         namaBahan,
         kondisi1,
         kondisi2,
@@ -1135,7 +1135,7 @@ class ControllerStudiPraformulasi {
         UjiInkompatibilitasID,
       } = req.body;
 
-      const kontrolbahan = await KontrolBahan.create({
+      const kontrolbahan = await t_kontrolBahan.create({
         namaBahan,
         parameter1,
         parameter2,

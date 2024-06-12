@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_catatanTrial_status.belongsTo(models.CatatanTrial, {
+      t_catatanTrial_status.belongsTo(models.t_catatanTrial, {
         foreignKey: "CatatanTrialID",
       });
     }

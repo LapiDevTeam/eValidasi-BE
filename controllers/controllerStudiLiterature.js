@@ -1,13 +1,13 @@
 const {
-  StudiPraformulasi,
-  ProductBrief,
-  DeskripsiProduct,
-  FarmalogiKlinis,
-  Stabilita,
-  StudiPaten,
-  KarakteristikBahanAktif,
-  KarakteristikBahanKemasan,
-  KarakteristikBahanTambahan,
+  t_studiPraformulasi,
+  t_productBrief,
+  t_deskripsiProduct,
+  t_farmalogiKlinis,
+  t_stabilita,
+  t_studiPaten,
+  t_karakteristikBahanAktif,
+  t_karakteristikBahanKemasan,
+  t_karakteristikBahanTambahan,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -24,7 +24,7 @@ class ControllerStudiLiterature {
         StudiPraformulasiID,
       } = req.body;
       const createKarakteristikBahanAktif =
-        await KarakteristikBahanAktif.create({
+        await t_karakteristikBahanAktif.create({
           namaBahan,
           parameter,
           hasilTinjauan,
@@ -52,7 +52,7 @@ class ControllerStudiLiterature {
         StudiPraformulasiID,
       } = req.body;
       const createKarakteristikBahanKemasan =
-        await KarakteristikBahanKemasan.create({
+        await t_karakteristikBahanKemasan.create({
           namaBahan,
           parameter,
           hasilTinjauan,
@@ -83,7 +83,7 @@ class ControllerStudiLiterature {
       console.log(req.body, " <<< req bodyu");
 
       const createKarakteristikBahanTambahan =
-        await KarakteristikBahanTambahan.create({
+        await t_karakteristikBahanTambahan.create({
           namaBahan,
           parameter,
           hasilTinjauan,
@@ -104,7 +104,7 @@ class ControllerStudiLiterature {
   static async getKarakteristikBahanAktif(req, res) {
     const { id } = req.params;
     try {
-      const bahanAktifDetails = await KarakteristikBahanAktif.findAll({
+      const bahanAktifDetails = await t_karakteristikBahanAktif.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -125,7 +125,7 @@ class ControllerStudiLiterature {
       const { namaBahan, parameter, hasilTinjauan, tableIndex, sumberPustaka } =
         req.body;
 
-      const [updatedRowsCount] = await KarakteristikBahanAktif.update(
+      const [updatedRowsCount] = await t_karakteristikBahanAktif.update(
         {
           namaBahan,
           parameter,
@@ -155,7 +155,7 @@ class ControllerStudiLiterature {
   static async getKarakteristikBahanKemasan(req, res) {
     const { id } = req.params;
     try {
-      const bahanKemasDetail = await KarakteristikBahanKemasan.findAll({
+      const bahanKemasDetail = await t_karakteristikBahanKemasan.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -175,7 +175,7 @@ class ControllerStudiLiterature {
     try {
       const { namaBahan, parameter, hasilTinjauan, sumberPustaka } = req.body;
 
-      const [updatedRowsCount] = await KarakteristikBahanKemasan.update(
+      const [updatedRowsCount] = await t_karakteristikBahanKemasan.update(
         {
           namaBahan,
           parameter,
@@ -204,7 +204,7 @@ class ControllerStudiLiterature {
   static async getKarakteristikBahanTambahan(req, res) {
     const { id } = req.params;
     try {
-      const bahanTamabahanDetails = await KarakteristikBahanTambahan.findAll({
+      const bahanTamabahanDetails = await t_karakteristikBahanTambahan.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
@@ -224,7 +224,7 @@ class ControllerStudiLiterature {
     try {
       const { namaBahan, parameter, hasilTinjauan, sumberPustaka } = req.body;
 
-      const [updatedRowsCount] = await KarakteristikBahanTambahan.update(
+      const [updatedRowsCount] = await t_karakteristikBahanTambahan.update(
         {
           namaBahan,
           parameter,

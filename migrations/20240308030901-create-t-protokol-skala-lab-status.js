@@ -12,7 +12,7 @@ module.exports = {
       ProtokolTrialSkalaLabID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "ProtokolTrialSkalaLab",
+          model: "t_protokolTrialSkalaLab",
           key: "id",
         },
       },

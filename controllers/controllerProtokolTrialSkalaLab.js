@@ -1,19 +1,19 @@
 const {
-  ProtokolTrialSkalaLab,
-  Cqa,
-  FormulaProtokol,
-  ProsesPembuatan,
-  Cpp,
-  Qtpp,
-  RencanaAktivitas,
-  OriginatorAtauKompetitor,
-  KebutuhanPeralatanDanMesin,
-  Material,
-  ZatAktif,
-  BahanTambahan,
-  KemasanPrimer,
-  MappingProcess,
-  KemasanProtokolSkalaLab,
+  t_protokolTrialSkalaLab,
+  t_cqa,
+  t_formulaProtokol,
+  t_prosesPembuatan,
+  t_cpp,
+  t_qtpp,
+  t_rencanaAktivitas,
+  t_originatorAtauKompetitor,
+  t_kebutuhanPeralatanDanMesin,
+  t_material,
+  t_zatAktif,
+  t_bahanTambahan,
+  t_kemasanPrimer,
+  t_mappingProcess,
+  t_kemasanProtokolSkalaLab,
   t_protokolSkalaLab_status,
   sequelize,
 } = require("../models/index");
@@ -57,7 +57,7 @@ class ControllerProtokolTrialSkalaLab {
           [Op.iLike]: `%${tujuan}%`,
         };
 
-      const studi = await ProtokolTrialSkalaLab.findAndCountAll({
+      const studi = await t_protokolTrialSkalaLab.findAndCountAll({
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -78,7 +78,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const { id } = req.params;
 
-      await ProtokolTrialSkalaLab.destroy({
+      await t_protokolTrialSkalaLab.destroy({
         where: { id: id }, // Corrected the where clause
       });
 
@@ -109,7 +109,7 @@ class ControllerProtokolTrialSkalaLab {
 
       console.log(namaProduk, " NAMAPRODUK");
 
-      const existingProtokol = await ProtokolTrialSkalaLab.findOne({
+      const existingProtokol = await t_protokolTrialSkalaLab.findOne({
         where: {
           namaProduk: namaProduk,
         },
@@ -137,22 +137,24 @@ class ControllerProtokolTrialSkalaLab {
       }
 
       // const newRevisi = existingProtokol.revisi + 1;
-      const createdProtokolTrialSkalaLab = await ProtokolTrialSkalaLab.create({
-        nomor,
-        tanggal,
-        revisi: newRevisi,
-        namaProduk,
-        komposisi,
-        kemasan,
-        alasan,
-        tujuan,
-        productBriefNo,
-        hasilStudiPraformulasiNo,
-        lainlain,
-        ProductBriefId,
-        status,
-        rdSelection,
-      });
+      const createdProtokolTrialSkalaLab = await t_protokolTrialSkalaLab.create(
+        {
+          nomor,
+          tanggal,
+          revisi: newRevisi,
+          namaProduk,
+          komposisi,
+          kemasan,
+          alasan,
+          tujuan,
+          productBriefNo,
+          hasilStudiPraformulasiNo,
+          lainlain,
+          ProductBriefId,
+          status,
+          rdSelection,
+        }
+      );
 
       res.status(201).json({
         message: "Success Create Protokol Trial Skala Lab with Revised Revisi",
@@ -183,7 +185,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createCqa = await Cqa.create({
+      const createCqa = await t_cqa.create({
         qttpElements,
         target,
         safety,
@@ -213,7 +215,7 @@ class ControllerProtokolTrialSkalaLab {
 
       await Promise.all(
         data?.map(async (newItem) => {
-          const createQtpp = await Qtpp.create(
+          const createQtpp = await t_qtpp.create(
             {
               bentukSediaan: newItem?.bentukSediaan || "",
               targetBentukSediaan: newItem?.targetBentukSediaan || "",
@@ -230,7 +232,7 @@ class ControllerProtokolTrialSkalaLab {
 
       await transaction.commit();
 
-      const newData = await Qtpp.findAll({
+      const newData = await t_qtpp.findAll({
         where: {
           ProtokolTrialSkalaLabID: id,
         },
@@ -257,7 +259,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createCpp = await Cpp.create({
+      const createCpp = await t_cpp.create({
         parameterProcess,
         pengaruhKeCqa,
         apakahTermasukCpp,
@@ -284,7 +286,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createFormulaProtokol = await FormulaProtokol.create({
+      const createFormulaProtokol = await t_formulaProtokol.create({
         komposisi,
         fungsi,
         apakahAdaPadaKomposisiOriginatorKompetitor,
@@ -305,7 +307,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const { prosesPembuatan, ProtokolTrialSkalaLabID } = req.body;
 
-      const createProsesPembuatan = await ProsesPembuatan.create({
+      const createProsesPembuatan = await t_prosesPembuatan.create({
         prosesPembuatan,
         ProtokolTrialSkalaLabID,
       });
@@ -328,7 +330,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createRencanaAktivitas = await RencanaAktivitas.create({
+      const createRencanaAktivitas = await t_rencanaAktivitas.create({
         tersediaBahanAwal,
         optimasiFormulaDanProses,
         stabilitaSkalaLab,
@@ -360,7 +362,7 @@ class ControllerProtokolTrialSkalaLab {
       } = req.body;
 
       const createOriginatorAtauKompetitor =
-        await OriginatorAtauKompetitor.create({
+        await t_originatorAtauKompetitor.create({
           originator,
           source,
           harga,
@@ -388,7 +390,7 @@ class ControllerProtokolTrialSkalaLab {
         req.body;
 
       const createKebutuhanPeralatanDanMesin =
-        await KebutuhanPeralatanDanMesin.create({
+        await t_kebutuhanPeralatanDanMesin.create({
           peralatanDanMesin,
           fungsi,
           kapasitas,
@@ -429,7 +431,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createMaterial = await Material.create({
+      const createMaterial = await t_material.create({
         jumlahPenelitianAnalisaMaterial,
         kebutuhanAnalisaMaterial: +kebutuhanAnalisaMaterial,
         biayaAnalisaMaterial: +biayaAnalisaMaterial,
@@ -472,7 +474,7 @@ class ControllerProtokolTrialSkalaLab {
         tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
-      const createZatAktif = await ZatAktif.create({
+      const createZatAktif = await t_zatAktif.create({
         materialAttributes,
         pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
@@ -501,7 +503,7 @@ class ControllerProtokolTrialSkalaLab {
         tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
-      const createBahanTambahan = await BahanTambahan.create({
+      const createBahanTambahan = await t_bahanTambahan.create({
         bahanTambahan,
         pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
@@ -529,7 +531,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createMappingProcess = await MappingProcess.create({
+      const createMappingProcess = await t_mappingProcess.create({
         processParameters,
         materialAttributes,
         manufacturingProcess,
@@ -556,7 +558,7 @@ class ControllerProtokolTrialSkalaLab {
         tableIndex,
         ProtokolTrialSkalaLabID,
       } = req.body;
-      const createKemasanPrimer = await KemasanPrimer.create({
+      const createKemasanPrimer = await t_kemasanPrimer.create({
         materialAttributes,
         pengaruhKeCqa,
         apakahVariabelDapatDimodifikasi,
@@ -578,12 +580,11 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const { ProtokolTrialSkalaLabID } = req.params;
       const { tujuan } = req.body;
-      const findProtokolTrialSkalaLabID = await ProtokolTrialSkalaLab.findByPk(
-        +ProtokolTrialSkalaLabID
-      );
+      const findProtokolTrialSkalaLabID =
+        await t_protokolTrialSkalaLab.findByPk(+ProtokolTrialSkalaLabID);
 
       if (!findProtokolTrialSkalaLabID) throw { name: "NotFound" };
-      const updateTujuan = await ProtokolTrialSkalaLab.update(
+      const updateTujuan = await t_protokolTrialSkalaLab.update(
         { tujuan: tujuan },
         {
           where: {
@@ -608,7 +609,7 @@ class ControllerProtokolTrialSkalaLab {
         ProtokolTrialSkalaLabID,
       } = req.body;
 
-      const createKemasan = await KemasanProtokolSkalaLab.create({
+      const createKemasan = await t_kemasanProtokolSkalaLab.create({
         parameterBentukSediaan: parameterBentukSediaan,
         samaDenganOriginatorAtauKompetitorBentukSediaan:
           samaDenganOriginatorAtauKompetitorBentukSediaan,
@@ -634,7 +635,7 @@ class ControllerProtokolTrialSkalaLab {
       // console.log(id, "<< req uer");
       let protokolTrialSkalaLabDetail;
       if (+joblevel_id_user === 1 || bagian_user === "RD1") {
-        protokolTrialSkalaLabDetail = await ProtokolTrialSkalaLab.findOne({
+        protokolTrialSkalaLabDetail = await t_protokolTrialSkalaLab.findOne({
           where: {
             id,
           },
@@ -648,7 +649,7 @@ class ControllerProtokolTrialSkalaLab {
           ],
         });
       } else {
-        protokolTrialSkalaLabDetail = await ProtokolTrialSkalaLab.findOne({
+        protokolTrialSkalaLabDetail = await t_protokolTrialSkalaLab.findOne({
           where: {
             id,
             // bagian: bagian_user,
@@ -762,11 +763,11 @@ class ControllerProtokolTrialSkalaLab {
         obj.ProductBriefId = ProductBriefIs;
       }
 
-      const proto = await ProtokolTrialSkalaLab.findByPk(+id);
+      const proto = await t_protokolTrialSkalaLab.findByPk(+id);
       // const protoNo = studi.addendumKe;
       // console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
 
-      const [updatedRowsCount] = await ProtokolTrialSkalaLab.update(
+      const [updatedRowsCount] = await t_protokolTrialSkalaLab.update(
         {
           ...obj,
         },
@@ -794,7 +795,7 @@ class ControllerProtokolTrialSkalaLab {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1); // Mendapatkan tanggal kemarin
 
-      const protokolRevisi = await ProtokolTrialSkalaLab.findAll({
+      const protokolRevisi = await t_protokolTrialSkalaLab.findAll({
         attributes: ["nomor", "id", "status", "tanggalPengesahan", "revisi"],
         where: {
           status: "Approve",
@@ -819,7 +820,7 @@ class ControllerProtokolTrialSkalaLab {
 
       // console.log(revisiTerakhirPerNomor, "<<< revisi terakhir");
 
-      const protokol = await ProtokolTrialSkalaLab.findAll({
+      const protokol = await t_protokolTrialSkalaLab.findAll({
         where: {
           status: "Draft",
           tanggalPengesahan: {
@@ -834,7 +835,7 @@ class ControllerProtokolTrialSkalaLab {
         console.log(entry.dataValues, "<< entry revisi");
         // const nomor = entry.dataValues.nomor;
         // const revisiTerakhir = revisiTerakhirPerNomor[nomor] || 0;
-        await ProtokolTrialSkalaLab.update(
+        await t_protokolTrialSkalaLab.update(
           { status: "Approve" },
           { where: { id: entry.id } }
         );
@@ -852,7 +853,7 @@ class ControllerProtokolTrialSkalaLab {
     const { id } = req.params;
     console.log(id, "< id");
     try {
-      const cqaDetails = await Cqa.findAll({
+      const cqaDetails = await t_cqa.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
@@ -872,7 +873,7 @@ class ControllerProtokolTrialSkalaLab {
     const { id } = req.params;
     console.log(id, "< id");
     try {
-      const qtpp = await Qtpp.findAll({
+      const qtpp = await t_qtpp.findAll({
         where: {
           ProtokolTrialSkalaLabID: id,
         },
@@ -891,7 +892,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getCpp(req, res) {
     const { id } = req.params;
     try {
-      const cppDetails = await Cpp.findAll({
+      const cppDetails = await t_cpp.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -908,7 +909,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getFormula(req, res) {
     const { id } = req.params;
     try {
-      const formulaDetails = await FormulaProtokol.findAll({
+      const formulaDetails = await t_formulaProtokol.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -925,7 +926,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getProsesPembuatan(req, res) {
     const { id } = req.params;
     try {
-      const pembuatanDetails = await ProsesPembuatan.findAll({
+      const pembuatanDetails = await t_prosesPembuatan.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -942,7 +943,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getRencanaAktivitas(req, res) {
     const { id } = req.params;
     try {
-      const rencanaDetails = await RencanaAktivitas.findAll({
+      const rencanaDetails = await t_rencanaAktivitas.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -959,7 +960,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getMaterial(req, res) {
     const { id } = req.params;
     try {
-      const materialDetails = await Material.findAll({
+      const materialDetails = await t_material.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -976,7 +977,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getOriginatorKompetitor(req, res) {
     const { id } = req.params;
     try {
-      const originatorDetails = await OriginatorAtauKompetitor.findAll({
+      const originatorDetails = await t_originatorAtauKompetitor.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -993,7 +994,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getKebutuhanPeralatan(req, res) {
     const { id } = req.params;
     try {
-      const kebutuhanDetails = await KebutuhanPeralatanDanMesin.findAll({
+      const kebutuhanDetails = await t_kebutuhanPeralatanDanMesin.findAll({
         where: { ProtokolTrialSkalaLabID: id },
       });
 
@@ -1010,7 +1011,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getZatAktif(req, res) {
     const { id } = req.params;
     try {
-      const zatAktifDetails = await ZatAktif.findAll({
+      const zatAktifDetails = await t_zatAktif.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
@@ -1027,7 +1028,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getBahanTambahan(req, res) {
     const { id } = req.params;
     try {
-      const bahanTambahanDetails = await BahanTambahan.findAll({
+      const bahanTambahanDetails = await t_bahanTambahan.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
@@ -1044,7 +1045,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getKemasanPrimer(req, res) {
     const { id } = req.params;
     try {
-      const kemasanPrimerDetails = await KemasanPrimer.findAll({
+      const kemasanPrimerDetails = await t_kemasanPrimer.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
       });
 
@@ -1061,7 +1062,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getCqaFilterYes(req, res) {
     const { id } = req.params;
     try {
-      const cqaDetails = await Cqa.findAll({
+      const cqaDetails = await t_cqa.findAll({
         where: { ProtokolTrialSkalaLabID: +id, apakahIniKritikalCqa: "Yes" },
       });
 
@@ -1078,7 +1079,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getKemasanProtokol(req, res) {
     const { id } = req.params;
     try {
-      const kemasanProtokolDetails = await KemasanProtokolSkalaLab.findAll({
+      const kemasanProtokolDetails = await t_kemasanProtokolSkalaLab.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
         order: [["createdAt", "ASC"]], // Order by createdAt descending
       });
@@ -1096,7 +1097,7 @@ class ControllerProtokolTrialSkalaLab {
   static async getMappingProcess(req, res) {
     const { id } = req.params;
     try {
-      const mappingDetails = await MappingProcess.findAll({
+      const mappingDetails = await t_mappingProcess.findAll({
         where: { ProtokolTrialSkalaLabID: +id },
         order: [["createdAt", "ASC"]], // Order by createdAt descending
       });
@@ -1122,7 +1123,7 @@ class ControllerProtokolTrialSkalaLab {
         qualityAttributes,
       } = req.body;
 
-      const [updatedRowsCount] = await MappingProcess.update(
+      const [updatedRowsCount] = await t_mappingProcess.update(
         {
           processParameters,
           materialAttributes,
@@ -1161,7 +1162,7 @@ class ControllerProtokolTrialSkalaLab {
         justifikasi,
       } = req.body;
 
-      const [updatedRowsCount] = await Cqa.update(
+      const [updatedRowsCount] = await t_cqa.update(
         {
           qttpElements,
           target,
@@ -1200,7 +1201,7 @@ class ControllerProtokolTrialSkalaLab {
         justifikasi,
       } = req.body;
 
-      const [updatedRowsCount] = await Cpp.update(
+      const [updatedRowsCount] = await t_cpp.update(
         {
           parameterProcess,
           pengaruhKeCqa,
@@ -1238,7 +1239,7 @@ class ControllerProtokolTrialSkalaLab {
         justifikasi,
       } = req.body;
 
-      const [updatedRowsCount] = await ZatAktif.update(
+      const [updatedRowsCount] = await t_zatAktif.update(
         {
           materialAttributes,
           pengaruhKeCqa,
@@ -1277,7 +1278,7 @@ class ControllerProtokolTrialSkalaLab {
         justifikasi,
       } = req.body;
 
-      const [updatedRowsCount] = await KemasanPrimer.update(
+      const [updatedRowsCount] = await t_kemasanPrimer.update(
         {
           materialAttributes,
           pengaruhKeCqa,
@@ -1370,7 +1371,7 @@ class ControllerProtokolTrialSkalaLab {
         source,
       } = req.body;
 
-      const [updatedRowsCount] = await Material.update(
+      const [updatedRowsCount] = await t_material.update(
         {
           jumlahPenelitianAnalisaMaterial,
           kebutuhanAnalisaMaterial,
@@ -1424,7 +1425,7 @@ class ControllerProtokolTrialSkalaLab {
         perkiraanHargaPembelianMaterial,
       } = req.body;
 
-      const [updatedRowsCount] = await OriginatorAtauKompetitor.update(
+      const [updatedRowsCount] = await t_originatorAtauKompetitor.update(
         {
           originator,
           source,
@@ -1459,7 +1460,7 @@ class ControllerProtokolTrialSkalaLab {
     try {
       const { peralatanDanMesin, fungsi, kapasitas } = req.body;
 
-      const [updatedRowsCount] = await KebutuhanPeralatanDanMesin.update(
+      const [updatedRowsCount] = await t_kebutuhanPeralatanDanMesin.update(
         {
           peralatanDanMesin,
           fungsi,
@@ -1495,7 +1496,7 @@ class ControllerProtokolTrialSkalaLab {
         justifikasi,
       } = req.body;
 
-      const [updatedRowsCount] = await FormulaProtokol.update(
+      const [updatedRowsCount] = await t_formulaProtokol.update(
         {
           komposisi,
           fungsi,
@@ -1528,7 +1529,7 @@ class ControllerProtokolTrialSkalaLab {
       const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
         req.body;
 
-      const [updatedRowsCount] = await RencanaAktivitas.update(
+      const [updatedRowsCount] = await t_rencanaAktivitas.update(
         {
           tersediaBahanAwal,
           optimasiFormulaDanProses,
@@ -1565,7 +1566,7 @@ class ControllerProtokolTrialSkalaLab {
           .json({ error: "Field 'prosesPembuatan' is required." });
       }
 
-      const updateProsesPembuatan = await ProsesPembuatan.update(
+      const updateProsesPembuatan = await t_prosesPembuatan.update(
         { prosesPembuatan },
         { where: { ProtokolTrialSkalaLabID: +id } }
       );
@@ -1582,14 +1583,13 @@ class ControllerProtokolTrialSkalaLab {
       const { ProtokolTrialSkalaLabID } = req.params;
       console.log(ProtokolTrialSkalaLabID, "<!@312312312");
       const { productBriefNo, hasilStudiPraformulasiNo, lainlain } = req.body;
-      const findProtokolTrialSkalaLabID = await ProtokolTrialSkalaLab.findByPk(
-        +ProtokolTrialSkalaLabID
-      );
+      const findProtokolTrialSkalaLabID =
+        await t_protokolTrialSkalaLab.findByPk(+ProtokolTrialSkalaLabID);
 
       console.log(findProtokolTrialSkalaLabID, "< IDDDDDDD ");
 
       if (!findProtokolTrialSkalaLabID) throw { name: "NotFound" };
-      const updateDokumenAcuan = await ProtokolTrialSkalaLab.update(
+      const updateDokumenAcuan = await t_protokolTrialSkalaLab.update(
         {
           productBriefNo: productBriefNo,
           hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
@@ -1619,7 +1619,7 @@ class ControllerProtokolTrialSkalaLab {
       } = req.user;
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
-      const findProtokol = await ProtokolTrialSkalaLab.findByPk(+id);
+      const findProtokol = await t_protokolTrialSkalaLab.findByPk(+id);
       if (!findProtokol)
         throw new MyError(404, "Form Protokol tidak ditemukan");
       const apprNo = await checkStatusProtokol(id);
@@ -1664,7 +1664,7 @@ class ControllerProtokolTrialSkalaLab {
         user_id,
         delegated_to,
       });
-      await ProtokolTrialSkalaLab.update(
+      await t_protokolTrialSkalaLab.update(
         {
           status: status,
           alasan_reject: keterangan_reject,

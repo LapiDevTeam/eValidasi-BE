@@ -1,0 +1,34 @@
+"use strict";
+const { Model } = require("sequelize");
+module.exports = (sequelize, DataTypes) => {
+  class t_kemasanPrimer extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      // define association here
+      t_kemasanPrimer.belongsTo(models.t_protokolTrialSkalaLab, {
+        foreignKey: "ProtokolTrialSkalaLabID",
+      });
+    }
+  }
+  t_kemasanPrimer.init(
+    {
+      materialAttributes: DataTypes.STRING,
+      pengaruhKeCqa: DataTypes.JSONB,
+      apakahVariabelDapatDimodifikasi: DataTypes.STRING,
+      apakahTermasukCma: DataTypes.STRING,
+      justifikasi: DataTypes.STRING,
+      tableIndex: DataTypes.INTEGER,
+      ProtokolTrialSkalaLabID: DataTypes.INTEGER,
+    },
+    {
+      sequelize,
+      modelName: "t_kemasanPrimer",
+      freezeTableName: true,
+    }
+  );
+  return t_kemasanPrimer;
+};
