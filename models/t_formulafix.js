@@ -31,6 +31,9 @@ module.exports = (sequelize, DataTypes) => {
       bagian: DataTypes.STRING,
       alasan_reject: DataTypes.STRING,
       status: DataTypes.STRING,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

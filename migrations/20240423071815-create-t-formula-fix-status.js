@@ -40,6 +40,15 @@ module.exports = {
       delegated_to: {
         type: Sequelize.STRING,
       },
+      user_id: {
+        type: Sequelize.STRING,
+      },
+      delegated_to: {
+        type: Sequelize.STRING,
+      },
+      flag_update: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

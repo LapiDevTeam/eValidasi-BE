@@ -21,6 +21,9 @@ module.exports = (sequelize, DataTypes) => {
       parameter2: DataTypes.STRING,
       parameter3: DataTypes.STRING,
       UjiInkompatibilitasID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

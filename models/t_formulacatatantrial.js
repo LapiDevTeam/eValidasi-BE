@@ -22,8 +22,12 @@ module.exports = (sequelize, DataTypes) => {
       overmaat: DataTypes.INTEGER,
       satuan: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
+      kodeTrials: DataTypes.JSONB,
       detailFormula: DataTypes.JSONB,
       CatatanTrialID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

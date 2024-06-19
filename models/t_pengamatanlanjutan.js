@@ -19,6 +19,9 @@ module.exports = (sequelize, DataTypes) => {
       kodeTrialHeaders: DataTypes.JSONB,
       content: DataTypes.JSONB,
       CatatanTrialID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

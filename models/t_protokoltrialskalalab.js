@@ -67,6 +67,9 @@ module.exports = (sequelize, DataTypes) => {
       rdSelection: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
       alasan_reject: DataTypes.STRING,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

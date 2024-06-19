@@ -1,7 +1,5 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class t_studiPraformulasi_status extends Model {
     /**
@@ -13,19 +11,23 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  t_studiPraformulasi_status.init({
-    StudiPraformulasiId: DataTypes.INTEGER,
-    approver_no: DataTypes.INTEGER,
-    is_approve: DataTypes.BOOLEAN,
-    approver_name: DataTypes.STRING,
-    approver_joblevel_id: DataTypes.STRING,
-    approver_inisial: DataTypes.STRING,
-    keterangan_reject: DataTypes.TEXT,
-    user_id: DataTypes.STRING,
-    delegated_to: DataTypes.STRING
-  }, {
-    sequelize,
-    modelName: 't_studiPraformulasi_status',
-  });
+  t_studiPraformulasi_status.init(
+    {
+      StudiPraformulasiId: DataTypes.INTEGER,
+      approver_no: DataTypes.INTEGER,
+      is_approve: DataTypes.BOOLEAN,
+      approver_name: DataTypes.STRING,
+      approver_joblevel_id: DataTypes.STRING,
+      approver_inisial: DataTypes.STRING,
+      keterangan_reject: DataTypes.TEXT,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
+    },
+    {
+      sequelize,
+      modelName: "t_studiPraformulasi_status",
+    }
+  );
   return t_studiPraformulasi_status;
 };

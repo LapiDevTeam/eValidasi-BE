@@ -15,6 +15,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       bentukSediaan: DataTypes.STRING,
       category: DataTypes.STRING,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

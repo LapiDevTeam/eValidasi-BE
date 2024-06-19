@@ -300,6 +300,7 @@ class ControllerCatatanTrial {
         overmaat,
         satuan,
         bentukSediaan,
+        kodeTrials,
         detailFormula,
         CatatanTrialID,
       } = req.body;
@@ -311,6 +312,7 @@ class ControllerCatatanTrial {
         overmaat: overmaat,
         satuan: satuan,
         bentukSediaan: bentukSediaan,
+        kodeTrials: kodeTrials,
         detailFormula: detailFormula,
         CatatanTrialID: +CatatanTrialID,
       });
@@ -1099,6 +1101,7 @@ class ControllerCatatanTrial {
         besarBets,
         satuan,
         bentukSediaan,
+        kodeTrials,
         detailFormula,
       } = req.body;
 
@@ -1109,6 +1112,7 @@ class ControllerCatatanTrial {
           besarBets: besarBets || "",
           satuan: satuan || "",
           bentukSediaan: bentukSediaan || "",
+          kodeTrials: kodeTrials || "",
           detailFormula: detailFormula || "",
         },
         {

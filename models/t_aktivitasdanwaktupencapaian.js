@@ -23,6 +23,9 @@ module.exports = (sequelize, DataTypes) => {
       rencanaStabilitaSkalaLab: DataTypes.STRING,
       pencapaianStabilitaSkalaLab: DataTypes.STRING,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

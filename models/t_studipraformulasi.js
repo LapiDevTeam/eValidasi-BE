@@ -45,6 +45,9 @@ module.exports = (sequelize, DataTypes) => {
       kesimpulan: DataTypes.STRING,
       status: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

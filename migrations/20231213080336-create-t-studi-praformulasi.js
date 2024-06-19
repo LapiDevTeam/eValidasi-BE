@@ -3,6 +3,12 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("t_studiPraformulasi", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -56,6 +62,15 @@ module.exports = {
         defaultValue: "Draft",
       },
       rdSelection: {
+        type: Sequelize.STRING,
+      },
+      user_id: {
+        type: Sequelize.STRING,
+      },
+      delegated_to: {
+        type: Sequelize.STRING,
+      },
+      flag_update: {
         type: Sequelize.STRING,
       },
       createdAt: {

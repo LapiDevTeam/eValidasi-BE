@@ -27,6 +27,9 @@ module.exports = {
       bentukSediaan: {
         type: Sequelize.STRING,
       },
+      kodeTrials: {
+        type: Sequelize.JSONB,
+      },
       detailFormula: {
         type: Sequelize.JSONB,
       },
@@ -36,6 +39,15 @@ module.exports = {
           model: "t_catatanTrial",
           key: "id",
         },
+      },
+      user_id: {
+        type: Sequelize.STRING,
+      },
+      delegated_to: {
+        type: Sequelize.STRING,
+      },
+      flag_update: {
+        type: Sequelize.STRING,
       },
       createdAt: {
         allowNull: false,

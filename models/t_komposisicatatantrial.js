@@ -21,6 +21,9 @@ module.exports = (sequelize, DataTypes) => {
       principle: DataTypes.STRING,
       jumlahTiapSediaan: DataTypes.STRING,
       CatatanTrialID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

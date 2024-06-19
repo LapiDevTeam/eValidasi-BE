@@ -24,6 +24,9 @@ module.exports = (sequelize, DataTypes) => {
       infringePaten: DataTypes.STRING,
       sumberPustaka: DataTypes.STRING,
       StudiPraformulasiID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,

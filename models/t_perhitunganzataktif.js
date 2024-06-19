@@ -20,6 +20,9 @@ module.exports = (sequelize, DataTypes) => {
       bahanBakuYangDigunakan: DataTypes.STRING,
       perhitunganBahanBaku: DataTypes.STRING,
       CatatanTrialID: DataTypes.INTEGER,
+      user_id: DataTypes.STRING,
+      delegated_to: DataTypes.STRING,
+      flag_update: DataTypes.STRING,
     },
     {
       sequelize,
