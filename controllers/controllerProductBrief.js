@@ -13,6 +13,8 @@ const {
 
 class ControllerProductBrief {
   static async createProductBrief(req, res, next) {
+    const { user_id, delegated_to, nama_user, joblevel_id_user, inisial_user } =
+      req.user;
     try {
       const {
         productBrief,
@@ -85,6 +87,8 @@ class ControllerProductBrief {
         status: status,
         upload: upload,
         revisi: newRevisi,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -108,7 +112,7 @@ class ControllerProductBrief {
         ruangLingkup,
         bahanAktifDanDosis,
         rdSelection,
-        status,
+        status = "Draft",
         upload,
       } = req.body;
 
@@ -122,7 +126,7 @@ class ControllerProductBrief {
           ruangLingkup: ruangLingkup,
           bahanAktifDanDosis: bahanAktifDanDosis,
           rdSelection: rdSelection,
-          status: status,
+          status: "Draft",
           upload: upload,
         },
         {
@@ -327,6 +331,35 @@ class ControllerProductBrief {
       next(error);
     }
   }
+
+  static async getHistoryProductBrief(req, res, next) {
+    try {
+      const { id } = req.params;
+      console.log(id);
+      // find prosedur pengolahan table
+      const productBrief = await t_productBrief.findByPk(+id);
+
+      if (!productBrief) {
+        console.log("NotFound");
+        res.status(404).json({ error: "Not Found" });
+      } else {
+        // find approval history table
+        const approvalHistory = await t_productBrief_status.findAll({
+          where: {
+            ProductBriefId: +id,
+          },
+          order: [["createdAt", "DESC"]],
+        });
+
+        console.log(approvalHistory, "12213213213");
+        res.status(200).json({ approvals: approvalHistory });
+      }
+    } catch (error) {
+      next(error);
+      console.log(error);
+    }
+  }
+
   static async getNoProductBrief(req, res) {
     try {
       const noProductBrief = await t_productBrief.findAll({
@@ -397,10 +430,10 @@ class ControllerProductBrief {
     try {
       const {
         user_id,
+        delegated_to,
         nama_user,
         joblevel_id_user,
         inisial_user,
-        delegated_to,
       } = req.user;
 
       const { is_approve, keterangan_reject = null } = req.body;

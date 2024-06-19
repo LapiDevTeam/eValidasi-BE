@@ -579,6 +579,54 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
+  static async createFisikaKimia(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          const createFisikaKimia = await t_karakteristikFisikakimia.create(
+            {
+              namaProduk: newItem?.namaProduk || "",
+              manufacturer: newItem?.manufacturer || "",
+              noBatch: newItem?.noBatch || "",
+              het: newItem?.het || "",
+              tanggalProduksi: newItem?.tanggalProduksi || "",
+              tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+              sumberPustaka: newItem?.sumberPustaka || "",
+              bentukSediaan: newItem?.bentukSediaan || "",
+              detailSediaan: newItem?.detailSediaan || [],
+
+              StudiPraformulasiID: +id || null,
+            },
+            { transaction }
+          );
+          return createFisikaKimia?.id;
+        })
+      );
+
+      await transaction.commit();
+
+      const newData = await t_karakteristikFisikakimia.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      res.status(201).json({
+        message: "Success createFisikaKimia",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
   static async createStabilita(req, res, next) {
     try {
       const {
@@ -1044,11 +1092,10 @@ class ControllerStudiPraformulasi {
         where: { StudiPraformulasiID: id },
       });
 
+      console.log(fisikaKimiaDetails, "<<");
       if (!fisikaKimiaDetails || fisikaKimiaDetails.length === 0) {
         throw new MyError(404, "Not found!");
       }
-
-      // console.log(fisikaKimiaDetails, "<<");
       res.status(200).json(fisikaKimiaDetails);
     } catch (err) {
       console.error(err);

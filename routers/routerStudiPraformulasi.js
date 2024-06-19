@@ -39,7 +39,7 @@ router.post(
 );
 router.post("/create-kemasan/:id", ControllerStudiPraformulasi.createKemasan);
 router.post(
-  "/create-fisikakimia",
+  "/create-fisikakimia/:id",
   ControllerStudiPraformulasi.createFisikaKimia
 );
 router.put(
