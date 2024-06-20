@@ -161,6 +161,10 @@ router.put(
   ControllerProtokolTrialSkalaLab.editMappingProcess
 );
 router.put(
+  "/edit-kemasan-protokol/:id",
+  ControllerProtokolTrialSkalaLab.editKemasanProtokol
+);
+router.put(
   "/approve-protokol/:id",
   authentication,
   ControllerProtokolTrialSkalaLab.approveProtokol

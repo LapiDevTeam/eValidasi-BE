@@ -628,6 +628,7 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
+
   static async getProtokolSkalaLabDetails(req, res, next) {
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
@@ -1575,6 +1576,47 @@ class ControllerProtokolTrialSkalaLab {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  static async editKemasanProtokol(req, res, next) {
+    try {
+      const { id } = req.params;
+      console.log(id, "<< ID");
+      const {
+        parameterBentukSediaan,
+        samaDenganOriginatorAtauKompetitorBentukSediaan,
+        justifikasiBentukSediaan,
+        detailSediaan,
+        tableIndex,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      const createKemasan = await t_kemasanProtokolSkalaLab.update(
+        {
+          parameterBentukSediaan: parameterBentukSediaan,
+          samaDenganOriginatorAtauKompetitorBentukSediaan:
+            samaDenganOriginatorAtauKompetitorBentukSediaan,
+          justifikasiBentukSediaan: justifikasiBentukSediaan,
+          detailSediaan: detailSediaan,
+          tableIndex: +tableIndex,
+          ProtokolTrialSkalaLabID: ProtokolTrialSkalaLabID,
+        },
+        {
+          where: {
+            id: id,
+          },
+          returning: true,
+        }
+      );
+
+      res.status(201).json({
+        message: "Success Create kemasan skala lab",
+        data: createKemasan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
     }
   }
 
