@@ -11,6 +11,7 @@ const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
+const { log } = require("console");
 
 class ControllerProductBrief {
   static async createProductBrief(req, res, next) {
@@ -255,8 +256,8 @@ class ControllerProductBrief {
   }
   static async findAllProductBrief(req, res) {
     try {
-      const { page } = req.query;
       const {
+        page,
         productBrief,
         kode,
         nama,
@@ -266,7 +267,19 @@ class ControllerProductBrief {
         bahanAktifDanDosis,
         rdSelection,
         status,
-      } = req.body;
+      } = req.query;
+      console.log(req.query, " << Query");
+      // const {
+      //   productBrief,
+      //   kode,
+      //   nama,
+      //   kemasan,
+      //   bentukSediaan,
+      //   ruangLingkup,
+      //   bahanAktifDanDosis,
+      //   rdSelection,
+      //   status,
+      // } = req.body;
       const size = page ? 7 : "";
 
       const { limit, offset } = getPagination(page, size);
