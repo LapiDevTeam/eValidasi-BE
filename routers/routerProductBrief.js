@@ -2,10 +2,13 @@ const express = require("express");
 const router = express.Router();
 const ControllerProductBrief = require("../controllers/controllerProductBrief");
 const { authentication } = require("../middlewares/authentication");
-
+const multer = require("multer");
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 router.post(
   "/product-brief",
   authentication,
+  upload.single("image"),
   ControllerProductBrief.createProductBrief
 );
 router.get("/all-sediaans", ControllerProductBrief.findAllSediaan);

@@ -42,7 +42,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       upload: {
-        type: Sequelize.TEXT,
+        type: Sequelize.JSONB,
       },
       revisi: {
         type: Sequelize.INTEGER,

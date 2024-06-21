@@ -6,6 +6,7 @@ const getPagination = require("../helpers/getPagination");
 const { transporter } = require("../config/configNodeMailer");
 const { checkStatusProductBrief } = require("../helpers/checkStatus");
 const { getStatus } = require("../helpers/statusProductBrief");
+const multer = require("multer");
 const {
   approverRecordset,
   isApproveValidation,
@@ -38,6 +39,7 @@ class ControllerProductBrief {
       });
 
       let newRevisi;
+      let newUpload = upload.filter((item) => item.trim() !== "");
 
       if (
         existingProtokol &&
@@ -85,21 +87,60 @@ class ControllerProductBrief {
         bahanAktifDanDosis: bahanAktifDanDosis,
         rdSelection: rdSelection,
         status: status,
-        upload: upload,
+        upload: newUpload,
         revisi: newRevisi,
         user_id,
         delegated_to,
       });
-
-      res.status(201).json({
-        message: "Data has been saved !",
-        // data: createProductBrief,
-      });
+      res
+        .status(201)
+        .json({ message: "Success Create", id: createProductBrief.id });
     } catch (err) {
       console.log(err);
       next(err);
     }
   }
+  // static async createProductBrief(req, res, next) {
+  //   console.log("hi");
+  //   console.log(req.files, "<< file");
+  //   console.log(req.file, "<< file");
+
+  //   try {
+  //     const {
+  //       productBrief,
+  //       kode,
+  //       nama,
+  //       kemasan,
+  //       bentukSediaan,
+  //       ruangLingkup,
+  //       bahanAktifDanDosis,
+  //       rdSelection,
+  //       status,
+  //       upload,
+  //       revisi,
+  //     } = req.body;
+
+  //     const createProductBrief = await t_productBrief.create({
+  //       productBrief: "",
+  //       kode: "",
+  //       nama: "nama",
+  //       kemasan: "kemasan",
+  //       bentukSediaan: "bentukSediaan",
+  //       ruangLingkup: "ruangLingkup",
+  //       bahanAktifDanDosis: [],
+  //       rdSelection: "rdSelection",
+  //       status: "status",
+  //       upload: upload,
+  //       revisi: 1,
+  //     });
+  //     res
+  //       .status(201)
+  //       .json({ message: "Success Create", id: createProductBrief.id });
+  //   } catch (err) {
+  //     console.log(err);
+  //     next(err);
+  //   }
+  // }
   static async editProductBrief(req, res, next) {
     const { id } = req.params;
     try {
@@ -116,6 +157,8 @@ class ControllerProductBrief {
         upload,
       } = req.body;
 
+      let newUpload = upload.filter((item) => item.trim() !== "");
+
       const [updatedRowsCount] = await t_productBrief.update(
         {
           productBrief: productBrief,
@@ -127,7 +170,7 @@ class ControllerProductBrief {
           bahanAktifDanDosis: bahanAktifDanDosis,
           rdSelection: rdSelection,
           status: "Draft",
-          upload: upload,
+          upload: newUpload,
         },
         {
           where: { id: id },
@@ -144,6 +187,7 @@ class ControllerProductBrief {
         });
       }
     } catch (err) {
+      console.log(err, "<<<< ERRROR");
       next(err);
     }
   }
