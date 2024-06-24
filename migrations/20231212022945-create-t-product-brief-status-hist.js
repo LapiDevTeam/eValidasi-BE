@@ -2,33 +2,36 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_ujiInkompatibilitas", {
+    await queryInterface.createTable("t_productBrief_status_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
-        type: Sequelize.STRING,
-      },
-      kondisi1: {
-        type: Sequelize.STRING,
-      },
-      kondisi2: {
-        type: Sequelize.STRING,
-      },
-      kondisi3: {
-        type: Sequelize.STRING,
-      },
-      StudiPraformulasiID: {
+      ProductBriefId: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_studiPraformulasi",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
+      },
+      approver_no: {
+        type: Sequelize.INTEGER,
+      },
+      is_approve: {
+        type: Sequelize.BOOLEAN,
+      },
+      approver_name: {
+        type: Sequelize.STRING,
+      },
+      approver_joblevel_id: {
+        type: Sequelize.STRING,
+      },
+      approver_inisial: {
+        type: Sequelize.STRING,
+      },
+      keterangan_reject: {
+        type: Sequelize.TEXT,
       },
       user_id: {
         type: Sequelize.STRING,
@@ -39,7 +42,6 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
-
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -51,6 +53,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_ujiInkompatibilitas");
+    await queryInterface.dropTable("t_productBrief_status_hist");
   },
 };

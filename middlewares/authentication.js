@@ -2,62 +2,10 @@ const decrypt = require("../helpers/crypto");
 const MyError = require("../helpers/errors");
 const axios = require("axios");
 
-// const authentication = async (req, res, next) => {
-//   try {
-//     const { authentication } = req.headers;
-//     console.log(authentication, "<< authen");
-//     if (!authentication) throw new MyError(401, "Not Authentication");
-//     if (authentication) {
-//       const response = await axios.get(
-//         "http://192.168.1.24/api/lms/v1/decode",
-//         {
-//           headers: {
-//             access_token: authentication,
-//           },
-//         }
-//       );
-
-//       console.log(response.data, "<< result");
-
-//       const result = response.data;
-
-//       let auth;
-//       if (result?.delegatedTo) {
-//         auth = {
-//           user_id: result?.user?.log_NIK || "",
-//           nama_user: result?.user?.Nama || "",
-//           inisial_user: result?.user?.Inisial_Name || "",
-//           jabatan_user: result?.user?.emp_JobLevelID || "",
-//           joblevel_id_user: result?.user?.Job_LevelID,
-//           bagian_user: result?.user?.emp_DeptID || "",
-//           delegated_to: result?.delegatedAs?.log_NIK || "",
-//         };
-//       } else {
-//         auth = {
-//           user_id: result?.user?.log_NIK || "",
-//           nama_user: result?.user?.Nama || "",
-//           inisial_user: result?.user?.Inisial_Name || "",
-//           jabatan_user: result?.user?.emp_JobLevelID || "",
-//           joblevel_id_user: result?.user?.Job_LevelID,
-//           bagian_user: result?.user?.emp_DeptID || "",
-//           delegated_to: result?.user?.log_NIK || "",
-//         };
-//       }
-
-//       req.user = auth;
-
-//       console.log(auth, "< REQSADAS USEr");
-//     }
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 const authentication = async (req, res, next) => {
   try {
     const { authentication } = req.headers;
-
+    console.log(authentication, "<< authen");
     if (!authentication) throw new MyError(401, "Not Authentication");
     if (authentication) {
       const response = await fetch("http://192.168.1.24/api/lms/v1/decode", {

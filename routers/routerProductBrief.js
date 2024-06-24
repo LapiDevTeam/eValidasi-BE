@@ -8,7 +8,6 @@ const upload = multer({ storage: storage });
 router.post(
   "/product-brief",
   authentication,
-  upload.single("image"),
   ControllerProductBrief.createProductBrief
 );
 router.get("/all-sediaans", ControllerProductBrief.findAllSediaan);
@@ -31,6 +30,7 @@ router.put(
 router.get("/get-no-product-brief", ControllerProductBrief.getNoProductBrief);
 router.delete(
   "/delete-product-brief/:id",
+  authentication,
   ControllerProductBrief.deleteProductBrief
 );
 router.get("/testnodemailer", ControllerProductBrief.nodeMailer);

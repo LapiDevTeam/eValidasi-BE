@@ -2,16 +2,18 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_productBrief", {
+    await queryInterface.createTable("t_productBrief_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       productBrief: {
         type: Sequelize.STRING,
-        allowNull: false,
       },
       kode: {
         type: Sequelize.STRING,
@@ -34,9 +36,8 @@ module.exports = {
       rdSelection: {
         type: Sequelize.STRING,
       },
-      status: {
+      statusDokumen: {
         type: Sequelize.STRING,
-        defaultValue: "Draft",
       },
       alasan_reject: {
         type: Sequelize.STRING,
@@ -67,6 +68,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_productBrief");
+    await queryInterface.dropTable("t_productBrief_hist");
   },
 };

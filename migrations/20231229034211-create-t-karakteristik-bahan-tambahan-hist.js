@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_ujiInkompatibilitas", {
+    await queryInterface.createTable("t_karakteristikBahanTambahan_hist", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -12,19 +12,22 @@ module.exports = {
       namaBahan: {
         type: Sequelize.STRING,
       },
-      kondisi1: {
+      parameter: {
         type: Sequelize.STRING,
       },
-      kondisi2: {
+      hasilTinjauan: {
         type: Sequelize.STRING,
       },
-      kondisi3: {
+      sumberPustaka: {
         type: Sequelize.STRING,
+      },
+      tableIndex: {
+        type: Sequelize.INTEGER,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_studiPraformulasi",
+          model: "t_studiPraformulasi_hist",
           key: "id",
         },
         onDelete: "CASCADE",
@@ -39,7 +42,6 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
-
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -51,6 +53,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_ujiInkompatibilitas");
+    await queryInterface.dropTable("t_karakteristikBahanTambahan_hist");
   },
 };

@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_ujiInkompatibilitas", {
+    await queryInterface.createTable("t_ujiInkompatibilitas_hist", {
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -24,7 +24,7 @@ module.exports = {
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_studiPraformulasi",
+          model: "t_studiPraformulasi_hist",
           key: "id",
         },
         onDelete: "CASCADE",
@@ -51,6 +51,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_ujiInkompatibilitas");
+    await queryInterface.dropTable("t_ujiInkompatibilitas_hist");
   },
 };

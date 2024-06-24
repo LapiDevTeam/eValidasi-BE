@@ -2,29 +2,47 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_ujiInkompatibilitas", {
+    await queryInterface.createTable("t_deskripsiProduct_hist", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
+      namaStudi: {
         type: Sequelize.STRING,
       },
-      kondisi1: {
+      namaProduk: {
         type: Sequelize.STRING,
       },
-      kondisi2: {
+      manufacturer: {
         type: Sequelize.STRING,
       },
-      kondisi3: {
+      bentukSediaan: {
+        type: Sequelize.STRING,
+      },
+      dosage: {
+        type: Sequelize.STRING,
+      },
+      labelClaim: {
+        type: Sequelize.STRING,
+      },
+      rutePemberian: {
+        type: Sequelize.STRING,
+      },
+      aturanPakai: {
+        type: Sequelize.STRING,
+      },
+      sumberPustaka: {
+        type: Sequelize.STRING,
+      },
+      note: {
         type: Sequelize.STRING,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_studiPraformulasi",
+          model: "t_studiPraformulasi_hist",
           key: "id",
         },
         onDelete: "CASCADE",
@@ -39,7 +57,6 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
-
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -51,6 +68,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_ujiInkompatibilitas");
+    await queryInterface.dropTable("t_deskripsiProduct_hist");
   },
 };

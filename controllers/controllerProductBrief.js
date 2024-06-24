@@ -27,7 +27,7 @@ class ControllerProductBrief {
         ruangLingkup,
         bahanAktifDanDosis,
         rdSelection,
-        status,
+        statusDokumen,
         upload,
         revisi,
       } = req.body;
@@ -44,12 +44,12 @@ class ControllerProductBrief {
 
       if (
         existingProtokol &&
-        existingProtokol.dataValues.status === "Approved"
+        existingProtokol.dataValues.statusDokumen === "Approved"
       ) {
         newRevisi = existingProtokol.revisi + 1;
       } else if (
         existingProtokol &&
-        existingProtokol.dataValues.status !== "Approved"
+        existingProtokol.dataValues.statusDokumen !== "Approved"
       ) {
         throw new MyError(
           404,
@@ -87,7 +87,7 @@ class ControllerProductBrief {
         ruangLingkup: ruangLingkup,
         bahanAktifDanDosis: bahanAktifDanDosis,
         rdSelection: rdSelection,
-        status: status,
+        statusDokumen: statusDokumen,
         upload: newUpload,
         revisi: newRevisi,
         user_id,
@@ -101,47 +101,7 @@ class ControllerProductBrief {
       next(err);
     }
   }
-  // static async createProductBrief(req, res, next) {
-  //   console.log("hi");
-  //   console.log(req.files, "<< file");
-  //   console.log(req.file, "<< file");
 
-  //   try {
-  //     const {
-  //       productBrief,
-  //       kode,
-  //       nama,
-  //       kemasan,
-  //       bentukSediaan,
-  //       ruangLingkup,
-  //       bahanAktifDanDosis,
-  //       rdSelection,
-  //       status,
-  //       upload,
-  //       revisi,
-  //     } = req.body;
-
-  //     const createProductBrief = await t_productBrief.create({
-  //       productBrief: "",
-  //       kode: "",
-  //       nama: "nama",
-  //       kemasan: "kemasan",
-  //       bentukSediaan: "bentukSediaan",
-  //       ruangLingkup: "ruangLingkup",
-  //       bahanAktifDanDosis: [],
-  //       rdSelection: "rdSelection",
-  //       status: "status",
-  //       upload: upload,
-  //       revisi: 1,
-  //     });
-  //     res
-  //       .status(201)
-  //       .json({ message: "Success Create", id: createProductBrief.id });
-  //   } catch (err) {
-  //     console.log(err);
-  //     next(err);
-  //   }
-  // }
   static async editProductBrief(req, res, next) {
     const { id } = req.params;
     try {
@@ -154,7 +114,7 @@ class ControllerProductBrief {
         ruangLingkup,
         bahanAktifDanDosis,
         rdSelection,
-        status = "Draft",
+        statusDokumen = "Draft",
         upload,
       } = req.body;
 
@@ -170,7 +130,7 @@ class ControllerProductBrief {
           ruangLingkup: ruangLingkup,
           bahanAktifDanDosis: bahanAktifDanDosis,
           rdSelection: rdSelection,
-          status: "Draft",
+          statusDokumen: "Draft",
           upload: newUpload,
         },
         {
@@ -266,20 +226,9 @@ class ControllerProductBrief {
         ruangLingkup,
         bahanAktifDanDosis,
         rdSelection,
-        status,
+        statusDokumen,
       } = req.query;
-      console.log(req.query, " << Query");
-      // const {
-      //   productBrief,
-      //   kode,
-      //   nama,
-      //   kemasan,
-      //   bentukSediaan,
-      //   ruangLingkup,
-      //   bahanAktifDanDosis,
-      //   rdSelection,
-      //   status,
-      // } = req.body;
+
       const size = page ? 7 : "";
 
       const { limit, offset } = getPagination(page, size);
@@ -301,9 +250,9 @@ class ControllerProductBrief {
         searchParams.rdSelection = {
           [Op.iLike]: `%${rdSelection}%`,
         };
-      if (status)
-        searchParams.status = {
-          [Op.iLike]: `%${status}%`,
+      if (statusDokumen)
+        searchParams.statusDokumen = {
+          [Op.iLike]: `%${statusDokumen}%`,
         };
 
       const brief = await t_productBrief.findAndCountAll({
@@ -325,64 +274,51 @@ class ControllerProductBrief {
   }
   static async getProductBriefDetails(req, res, next) {
     try {
+      //find product brief yang idnya req.params
+      // cari rdSelectionnya
+      //compare req.user bagian_user dengan rdSelection
+      //kalau beda return error 403, kalau sama balikin datanya
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
 
       const { id } = req.params;
 
-      let productBriefDetail;
+      let productBriefDetail = await t_productBrief.findOne({
+        where: {
+          id,
+          // rdSelection: bagian_user,
+        },
+        include: {
+          model: t_productBrief_status,
+          as: "approver_data",
+        },
+        order: [
+          [
+            { model: t_productBrief_status, as: "approver_data" },
+            "approver_no",
+            "ASC",
+          ],
+        ],
+      });
+
       if (
-        +joblevel_id_user === 1 ||
         bagian_user === "HD" ||
-        bagian_user === "RD"
+        productBriefDetail?.rdSelection === bagian_user
       ) {
-        productBriefDetail = await t_productBrief?.findOne({
-          where: {
-            id,
-          },
-          include: { model: t_productBrief_status, as: "approver_data" },
-          order: [
-            [
-              { model: t_productBrief_status, as: "approver_data" },
-              "approver_no",
-              "ASC",
-            ],
-          ],
-        });
+        const apprDeptId = productBriefDetail.rdSelection;
+        const apprNo = await checkStatusProductBrief(id);
+
+        const isApprove = await isApproveValidation(
+          "productBrief",
+          apprDeptId,
+          apprNo,
+          user_id
+        );
+
+        if (isApprove.message) throw new MyError(400, isApprove.message);
+        res.status(200).json({ productBriefDetail, isApprove });
       } else {
-        productBriefDetail = await t_productBrief.findOne({
-          where: {
-            id,
-            rdSelection: bagian_user,
-          },
-          include: {
-            model: t_productBrief_status,
-            as: "approver_data",
-          },
-          order: [
-            [
-              { model: t_productBrief_status, as: "approver_data" },
-              "approver_no",
-              "ASC",
-            ],
-          ],
-        });
+        throw new MyError(403, "tidak sesuai dengan rdSelection");
       }
-
-      const apprApplicationCode = productBriefDetail.apprAplicationCode;
-      const apprDeptId = productBriefDetail.rdSelection;
-      const apprNo = await checkStatusProductBrief(id);
-
-      const isApprove = await isApproveValidation(
-        // productBriefDetail.nama_pegawai,
-        "productBrief",
-        apprDeptId,
-        apprNo,
-        user_id
-        // nama_user
-      );
-
-      if (isApprove.message) throw new MyError(400, isApprove.message);
-      res.status(200).json({ productBriefDetail, isApprove });
     } catch (error) {
       console.log(error);
       next(error);
@@ -392,12 +328,11 @@ class ControllerProductBrief {
   static async getHistoryProductBrief(req, res, next) {
     try {
       const { id } = req.params;
-      console.log(id);
+
       // find prosedur pengolahan table
       const productBrief = await t_productBrief.findByPk(+id);
 
       if (!productBrief) {
-        console.log("NotFound");
         res.status(404).json({ error: "Not Found" });
       } else {
         // find approval history table
@@ -408,7 +343,6 @@ class ControllerProductBrief {
           order: [["createdAt", "DESC"]],
         });
 
-        console.log(approvalHistory, "12213213213");
         res.status(200).json({ approvals: approvalHistory });
       }
     } catch (error) {
@@ -431,8 +365,44 @@ class ControllerProductBrief {
   }
   static async deleteProductBrief(req, res) {
     try {
-      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
 
+      const { id } = req.params;
+      const flag_update = "UPDATE FOR DELETE";
+      const findProductBrief = await t_productBrief.findByPk(+id);
+      if (!findProductBrief)
+        throw new MyError(404, "Form Product Brief tidak di temukan");
+
+      await t_productBrief_status.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { ProductBriefId: +id },
+        }
+      );
+      await t_productBrief_status.destroy({
+        where: { ProductBriefId: +id },
+      });
+
+      await t_productBrief.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { id: +id },
+        }
+      );
       await t_productBrief.destroy({
         where: { id: id }, // Corrected the where clause
       });
@@ -465,12 +435,12 @@ class ControllerProductBrief {
     try {
       const { ProductBriefID } = req.params;
 
-      const { status } = req.body;
+      const { statusDokumen } = req.body;
       const findProductBriefID = await t_productBrief.findByPk(+ProductBriefID);
 
       if (!findProductBriefID) throw { name: "NotFound" };
       const updateStatus = await t_productBrief.update(
-        { status: status },
+        { statusDokumen: statusDokumen },
         {
           where: {
             id: findProductBriefID.id,
@@ -502,7 +472,6 @@ class ControllerProductBrief {
       const apprNo = await checkStatusProductBrief(id);
 
       const dataApprove = await approverRecordset(
-        // findProductBrief.nama_pegawai,
         "productBrief",
         findProductBrief.rdSelection,
         apprNo,
@@ -511,15 +480,17 @@ class ControllerProductBrief {
       );
 
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
-      let status;
+      let statusDokumen;
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        status = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+        statusDokumen = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
 
-      if (dataApprove.recordset1.length === 0) status = "Approved";
-      if (is_approve === false) status = "Reject";
+      console.log(statusDokumen, "<< dok");
+
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
+      if (is_approve === false) statusDokumen = "Reject";
 
       await t_productBrief_status.create({
         ProductBriefId: id,
@@ -534,7 +505,7 @@ class ControllerProductBrief {
       });
       await t_productBrief.update(
         {
-          status: status,
+          statusDokumen: statusDokumen,
           alasan_reject: keterangan_reject,
           // user_id,
           // delegated_to,

@@ -2,50 +2,61 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_productBrief", {
+    await queryInterface.createTable("t_studiPraformulasi_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      productBrief: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      kode: {
+      nomor: {
         type: Sequelize.STRING,
       },
-      nama: {
+      tanggalPenyusunan: {
+        type: Sequelize.DATE,
+      },
+      tanggalAddendum: {
+        type: Sequelize.DATE,
+      },
+      addendumKe: {
+        type: Sequelize.INTEGER,
+      },
+      namaProduk: {
         type: Sequelize.STRING,
+      },
+      komposisi: {
+        type: Sequelize.JSONB,
       },
       kemasan: {
         type: Sequelize.STRING,
       },
-      bentukSediaan: {
+      alasan: {
         type: Sequelize.STRING,
       },
-      ruangLingkup: {
+      tujuan: {
         type: Sequelize.STRING,
       },
-      bahanAktifDanDosis: {
-        type: Sequelize.JSONB,
-      },
-      rdSelection: {
+      productBriefNo: {
         type: Sequelize.STRING,
       },
-      statusDokumen: {
+      ProductBriefId: {
+        type: Sequelize.INTEGER,
+      },
+      kesimpulan: {
+        type: Sequelize.STRING,
+      },
+      status: {
         type: Sequelize.STRING,
         defaultValue: "Draft",
       },
-      alasan_reject: {
+      rdSelection: {
         type: Sequelize.STRING,
-      },
-      upload: {
-        type: Sequelize.JSONB,
-      },
-      revisi: {
-        type: Sequelize.INTEGER,
       },
       user_id: {
         type: Sequelize.STRING,
@@ -67,6 +78,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_productBrief");
+    await queryInterface.dropTable("t_studiPraformulasi_hist");
   },
 };
