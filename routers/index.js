@@ -8,6 +8,7 @@ const routerProtokolTrialSkalaLab = require("./routerProtokolTrialSkalaLab");
 const routerCatatanTrial = require("./routerCatatanTrial");
 const routerFormulaFix = require("./routerFormulaFix");
 const routerLaporanTrialSkalaLab = require("./routerLaporanTrialSkalaLab");
+const routerAuditTrail = require("./routerAuditTrail");
 const { authentication } = require("../middlewares/authentication");
 
 router.get("/current-user", authentication, (req, res) => {
@@ -35,5 +36,6 @@ router.use("/", routerProtokolTrialSkalaLab);
 router.use("/", routerCatatanTrial);
 router.use("/", routerFormulaFix);
 router.use("/", routerLaporanTrialSkalaLab);
+router.use("/", routerAuditTrail);
 
 module.exports = router;
