@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_deskripsiProduct_hist extends Model {
+  class t_catatanTrial_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,35 +9,37 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_deskripsiProduct_hist.belongsTo(models.t_studiPraformulasi_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
     }
   }
-  t_deskripsiProduct_hist.init(
+  t_catatanTrial_hist.init(
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      namaStudi: DataTypes.STRING,
+      tanggalTrial: DataTypes.DATE,
       namaProduk: DataTypes.STRING,
-      manufacturer: DataTypes.STRING,
+      // kodeTrial: DataTypes.STRING,
+      trialKe: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
-      dosage: DataTypes.STRING,
-      labelClaim: DataTypes.STRING,
-      rutePemberian: DataTypes.STRING,
-      aturanPakai: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
-      note: DataTypes.STRING,
-      StudiPraformulasiID: DataTypes.INTEGER,
+      productKompetitor: DataTypes.STRING,
+      status: DataTypes.STRING,
+      perhitunganBatasBahanTambahan: DataTypes.TEXT,
+      pembahasan: DataTypes.TEXT,
+      kesimpulan: DataTypes.TEXT,
+      tindakLanjut: DataTypes.TEXT,
+      filter: DataTypes.STRING,
+      tipeCatatanTrial: DataTypes.STRING,
+      pic: DataTypes.STRING,
+      bagian: DataTypes.STRING,
+      alasan_reject: DataTypes.STRING,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "t_deskripsiProduct_hist",
+      modelName: "t_catatanTrial_hist",
       freezeTableName: true,
     }
   );
-  return t_deskripsiProduct_hist;
+  return t_catatanTrial_hist;
 };

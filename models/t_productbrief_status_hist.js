@@ -15,6 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       ProductBriefId: DataTypes.INTEGER,
       approver_no: DataTypes.INTEGER,
       is_approve: DataTypes.BOOLEAN,

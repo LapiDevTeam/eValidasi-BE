@@ -9,13 +9,12 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_ujiInkompatibilitas_hist.hasMany(models.t_kontrolBahan_hist, {
-        foreignKey: "UjiInkompatibilitasID",
-      });
     }
   }
   t_ujiInkompatibilitas_hist.init(
     {
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       namaBahan: DataTypes.STRING,
       kondisi1: DataTypes.STRING,
       kondisi2: DataTypes.STRING,

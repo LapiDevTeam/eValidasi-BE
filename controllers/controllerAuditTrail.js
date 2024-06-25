@@ -1,77 +1,86 @@
-const { t_productbrief_hist } = require("../models/index");
 const ExcelJS = require("exceljs");
-
+const {
+  t_productBrief_hist,
+  t_productBrief_status,
+} = require("../models/index");
+const sql = require("mssql");
+const MyError = require("../helpers/errors");
+const { Op } = require("sequelize");
+const getPagination = require("../helpers/getPagination");
+const { transporter } = require("../config/configNodeMailer");
+const { checkStatusProductBrief } = require("../helpers/checkStatus");
+const { getStatus } = require("../helpers/statusProductBrief");
+const multer = require("multer");
+const {
+  approverRecordset,
+  isApproveValidation,
+} = require("../helpers/approver");
+const { log } = require("console");
 class ControllerAuditTrail {
   static async downloadExcelAuditProductBrief(req, res, next) {
     try {
-      //   const { productId, productName } = req.query;
-
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
 
-      //   let queryFillter = {};
-
-      //   if (productId) queryFillter.productId = { [Op.iLike]: `%${productId}%` };
-      //   if (productName)
-      //     queryFillter.productName = { [Op.iLike]: `%${productName}%` };
-
-      const dataAudit = await t_productbrief_hist.findAll({
+      const dataAudit = await t_productBrief_hist.findAll({
         order: [["id", "DESC"]],
       });
 
+      if (dataAudit.length === 0) {
+        res.status(404).send("No data available");
+        return;
+      }
+
       dataAudit.forEach((el) => {
         el.tanggal = el?.tanggal
-          .toISOString()
+          ?.toISOString()
           .replace(/T/, " ")
           .replace(/\..+/, "");
         el.createdAt = el?.createdAt
-          .toISOString()
+          ?.toISOString()
           .replace(/T/, " ")
           .replace(/\..+/, "");
         el.updatedAt = el?.updatedAt
-          .toISOString()
+          ?.toISOString()
           .replace(/T/, " ")
           .replace(/\..+/, "");
         el.changeDate = el?.changeDate
-          .toISOString()
+          ?.toISOString()
           .replace(/T/, " ")
           .replace(/\..+/, "");
-        return el;
       });
 
       const headers = Object.keys(dataAudit[0]);
-      const arr = ["Excel Report", `print on ${"21/01/2024"}`, ""];
+      const currentDate = new Date().toLocaleDateString("en-GB");
 
-      for (let i = 0; i < 3; i++) {
-        worksheet.addRow([arr[i]]);
-      }
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
 
       headers.forEach((header, index) => {
-        const cell = worksheet.getCell(4, index + 1);
+        const cell = worksheet.getRow(4).getCell(index + 1);
         cell.value = header;
-        cell.style = { font: { bold: true } };
+        cell.font = { bold: true };
         worksheet.getColumn(index + 1).width = 20;
       });
 
       dataAudit.forEach((row, rowIndex) => {
         const rowNumber = rowIndex + 5;
-        Object.keys(row).forEach((key, colIndex) => {
-          worksheet.getCell(rowNumber, colIndex + 1).value = row[key];
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
         });
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
-      // res.attachment(`auditTrail-minor-hist-(${formatDateIndonesia}).xlsx`);
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="auditTrail-ijin-hist-(${"21/01/2024"}).xlsx"`
+        `attachment; filename="product-brief-(${currentDate}).xlsx"`
       );
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
 
-      // Send the Excel file as download
       res.send(buffer);
     } catch (error) {
       next(error);

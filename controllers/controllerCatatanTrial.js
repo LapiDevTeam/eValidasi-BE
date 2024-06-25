@@ -13,6 +13,7 @@ const {
   t_pengamatanAwalPenyalutan,
   t_catatanTrial_status,
   m_bentuk_sediaan,
+  sequelize,
 } = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
@@ -86,13 +87,11 @@ class ControllerCatatanTrial {
   }
   static async createCatatanTrial(req, res, next) {
     try {
-      // const user = req.user;
-      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-      // console.log(req.user, "<<");
+      const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+
       const {
         tanggalTrial,
         namaProduk,
-        kodeTrial,
         trialKe,
         bentukSediaan,
         productKompetitor,
@@ -100,13 +99,11 @@ class ControllerCatatanTrial {
         statusA,
         filter,
         tipeCatatanTrial,
-        pic,
       } = req.body;
 
       const createCatatanTrial = await t_catatanTrial.create({
         tanggalTrial: tanggalTrial || "",
         namaProduk: namaProduk || "",
-        kodeTrial: kodeTrial || "",
         trialKe: trialKe || "",
         bentukSediaan: bentukSediaan || "",
         productKompetitor: productKompetitor || "",
@@ -116,6 +113,8 @@ class ControllerCatatanTrial {
         tipeCatatanTrial: tipeCatatanTrial || "",
         pic: nama_user || "",
         bagian: bagian_user || "",
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -158,66 +157,391 @@ class ControllerCatatanTrial {
       console.log(err);
     }
   }
-  static async createKomposisiCatatanTrial(req, res, next) {
+
+  static async handleSaveKomposisiCatatanTrial(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_komposisiCatatanTrial.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_komposisiCatatanTrial.create(
+              {
+                kode: newItem?.kode || "",
+                namaBahanBaku: newItem?.namaBahanBaku || "",
+                principle: newItem?.principle || "",
+                jumlahTiapSediaan: newItem?.jumlahTiapSediaan || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_komposisiCatatanTrial.update(
+              {
+                kode: newItem?.kode || "",
+                namaBahanBaku: newItem?.namaBahanBaku || "",
+                principle: newItem?.principle || "",
+                jumlahTiapSediaan: newItem?.jumlahTiapSediaan || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_komposisiCatatanTrial.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_komposisiCatatanTrial.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSavePerhitunganZatAktif(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevPerhitunganZatAktif = await t_perhitunganZatAktif.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevPerhitunganZatAktif.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_perhitunganZatAktif.create(
+              {
+                padaEtiket: newItem?.padaEtiket || "",
+                bahanBakuYangDigunakan: newItem?.bahanBakuYangDigunakan || "",
+                perhitunganBahanBaku: newItem?.perhitunganBahanBaku || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_perhitunganZatAktif.update(
+              {
+                padaEtiket: newItem?.padaEtiket || "",
+                bahanBakuYangDigunakan: newItem?.bahanBakuYangDigunakan || "",
+                perhitunganBahanBaku: newItem?.perhitunganBahanBaku || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_perhitunganZatAktif.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_perhitunganZatAktif.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async createFormulaCatatanTrial(req, res, next) {
     try {
       const {
-        kode,
-        namaBahanBaku,
-        principle,
-        jumlahTiapSediaan,
+        tujuanTrial,
+        tiapSediaan,
+        besarBets,
+        overmaat,
+        satuan,
+        bentukSediaan,
+        kodeTrials,
+        detailFormula,
         CatatanTrialID,
       } = req.body;
 
-      const createKomposisi = await t_komposisiCatatanTrial.create({
-        kode,
-        namaBahanBaku,
-        principle,
-        jumlahTiapSediaan,
-        CatatanTrialID,
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      const createFormula = await t_formulaCatatanTrial.create({
+        tujuanTrial: tujuanTrial,
+        tiapSediaan: tiapSediaan,
+        besarBets: besarBets,
+        overmaat: overmaat,
+        satuan: satuan,
+        bentukSediaan: bentukSediaan,
+        kodeTrials: kodeTrials,
+        detailFormula: detailFormula,
+        CatatanTrialID: +CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
-        message: "Success Create komposisiCatatanTrial",
-        data: createKomposisi,
+        message: "Success Create Formula Catatan Trial",
+        data: createFormula,
       });
     } catch (err) {
       console.error(err);
       next(err);
     }
   }
-  static async createPerhitunganZatAktif(req, res, next) {
+
+  static async updateFormulaCatatanTrial(req, res, next) {
     try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
       const {
-        padaEtiket,
-        bahanBakuYangDigunakan,
-        perhitunganBahanBaku,
-        CatatanTrialID,
+        tujuanTrial,
+        tiapSediaan,
+        besarBets,
+        overmaat,
+        satuan,
+        bentukSediaan,
+        kodeTrials,
+        detailFormula,
       } = req.body;
 
-      const createPerhitunganZatAktif = await t_perhitunganZatAktif.create({
-        padaEtiket,
-        bahanBakuYangDigunakan,
-        perhitunganBahanBaku,
-        CatatanTrialID,
-      });
+      console.log(req.body, "<< reqbody");
 
-      res.status(201).json({
-        message: "Success Create perhitungan zat aktif",
-        data: createPerhitunganZatAktif,
-      });
+      const [updatedRowsCount] = await t_formulaCatatanTrial.update(
+        {
+          tujuanTrial: tujuanTrial || "",
+          tiapSediaan: tiapSediaan || "",
+          besarBets: +besarBets || null,
+          overmaat: +overmaat || null,
+          satuan: satuan || "",
+          bentukSediaan: bentukSediaan || "",
+          kodeTrials: kodeTrials || "",
+          detailFormula: detailFormula || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+
+      console.log();
+
+      if (updatedRowsCount > 0) {
+        console.log("if");
+        res.status(201).json({
+          message: "formula Catatan Trial updated successfully",
+        });
+      } else {
+        console.log("else");
+        res.status(404).json({
+          message: "formula Catatan Trial not found",
+        });
+      }
     } catch (err) {
-      console.error(err);
+      console.log(err, "<<<< ERROR");
       next(err);
     }
   }
+
+  // static async createKomposisiCatatanTrial(req, res, next) {
+  //   try {
+  //     const {
+  //       kode,
+  //       namaBahanBaku,
+  //       principle,
+  //       jumlahTiapSediaan,
+  //       CatatanTrialID,
+  //     } = req.body;
+
+  //     const {
+  //       user_id,
+  //       delegated_to,
+  //       nama_user,
+  //       joblevel_id_user,
+  //       inisial_user,
+  //       bagian_user,
+  //     } = req.user;
+
+  //     const createKomposisi = await t_komposisiCatatanTrial.create({
+  //       kode,
+  //       namaBahanBaku,
+  //       principle,
+  //       jumlahTiapSediaan,
+  //       CatatanTrialID,
+  //       user_id,
+  //       delegated_to,
+  //     });
+
+  //     res.status(201).json({
+  //       message: "Success Create komposisiCatatanTrial",
+  //       data: createKomposisi,
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     next(err);
+  //   }
+  // }
+
+  //
+
+  // static async createPerhitunganZatAktif(req, res, next) {
+  //   try {
+  //     const {
+  //       padaEtiket,
+  //       bahanBakuYangDigunakan,
+  //       perhitunganBahanBaku,
+  //       CatatanTrialID,
+  //     } = req.body;
+
+  //     const {
+  //       user_id,
+  //       delegated_to,
+  //       nama_user,
+  //       joblevel_id_user,
+  //       inisial_user,
+  //       bagian_user,
+  //     } = req.user;
+
+  //     const createPerhitunganZatAktif = await t_perhitunganZatAktif.create({
+  //       padaEtiket,
+  //       bahanBakuYangDigunakan,
+  //       perhitunganBahanBaku,
+  //       CatatanTrialID,
+  //       user_id,
+  //       delegated_to,
+  //     });
+
+  //     res.status(201).json({
+  //       message: "Success Create perhitungan zat aktif",
+  //       data: createPerhitunganZatAktif,
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     next(err);
+  //   }
+  // }
+
   static async createMetodePembuatan(req, res, next) {
     try {
       const { aktivitas, pengamatan, CatatanTrialID } = req.body;
-
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const createMetodePembuatan = await t_metodePembuatan.create({
         aktivitas,
         pengamatan,
         CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -234,6 +558,15 @@ class ControllerCatatanTrial {
       const { tanggal, jam, turretSpeed, suhu, bobot, CatatanTrialID } =
         req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createProsesCatatanTrialPenyalutan =
         await t_prosesCatatanTrialPenyalutan.create({
           tanggal,
@@ -242,6 +575,8 @@ class ControllerCatatanTrial {
           suhu,
           bobot,
           CatatanTrialID,
+          user_id,
+          delegated_to,
         });
 
       res.status(201).json({
@@ -268,6 +603,15 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createProsesCatatanTrialPadat =
         await t_prosesCatatanTrialPadat.create({
           speed,
@@ -280,6 +624,8 @@ class ControllerCatatanTrial {
           wh,
           keterangan,
           CatatanTrialID,
+          user_id,
+          delegated_to,
         });
 
       res.status(201).json({
@@ -291,48 +637,23 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-  static async createFormulaCatatanTrial(req, res, next) {
-    try {
-      const {
-        tujuanTrial,
-        tiapSediaan,
-        besarBets,
-        overmaat,
-        satuan,
-        bentukSediaan,
-        kodeTrials,
-        detailFormula,
-        CatatanTrialID,
-      } = req.body;
 
-      const createFormula = await t_formulaCatatanTrial.create({
-        tujuanTrial: tujuanTrial,
-        tiapSediaan: tiapSediaan,
-        besarBets: besarBets,
-        overmaat: overmaat,
-        satuan: satuan,
-        bentukSediaan: bentukSediaan,
-        kodeTrials: kodeTrials,
-        detailFormula: detailFormula,
-        CatatanTrialID: +CatatanTrialID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Formula Catatan Trial",
-        data: createFormula,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async createPengamatanAwalCair(req, res, next) {
     try {
       const { pengamatanAwalCair, CatatanTrialID } = req.body;
-
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const createPengamatanAwalCair = await t_pengamatanAwalCair.create({
         pengamatanAwalCair: pengamatanAwalCair,
         CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -347,10 +668,19 @@ class ControllerCatatanTrial {
   static async createPengamatanAwalSteril(req, res, next) {
     try {
       const { pengamatanAwalSteril, CatatanTrialID } = req.body;
-
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const createPengamatanAwalSteril = await t_pengamatanAwalSteril.create({
         pengamatanAwalSteril: pengamatanAwalSteril,
         CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -385,7 +715,14 @@ class ControllerCatatanTrial {
         evaluasiUkuran,
         CatatanTrialID,
       } = req.body;
-
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const createPengamatanAwalPadat = await t_pengamatanAwalPadat.create({
         spesifikasiPemerian,
         settingPemerian,
@@ -406,6 +743,8 @@ class ControllerCatatanTrial {
         settingUkuran,
         evaluasiUkuran,
         CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -442,6 +781,15 @@ class ControllerCatatanTrial {
         CatatanTrialID,
       } = req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createPengamatanAwalPenyalutan =
         await t_pengamatanAwalPenyalutan.create({
           spesifikasiWeightGain,
@@ -464,6 +812,8 @@ class ControllerCatatanTrial {
           settingWaktuHancur,
           evaluasiWaktuHancur,
           CatatanTrialID,
+          user_id,
+          delegated_to,
         });
 
       res.status(201).json({
@@ -479,10 +829,21 @@ class ControllerCatatanTrial {
     try {
       const { kodeTrialHeaders, content, CatatanTrialID } = req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createPengamatanLanjutan = await t_pengamatanLanjutan.create({
         kodeTrialHeaders,
         content,
         CatatanTrialID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -971,7 +1332,7 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      await CatatanTrial.destroy({
+      await t_catatanTrial.destroy({
         where: { id: +id }, // Corrected the where clause
       });
 
@@ -1091,48 +1452,7 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-  static async updateFormulaCatatanTrial(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const {
-        tujuanTrial,
-        tiapSediaan,
-        besarBets,
-        satuan,
-        bentukSediaan,
-        kodeTrials,
-        detailFormula,
-      } = req.body;
 
-      const [updatedRowsCount] = await t_formulaCatatanTrial.update(
-        {
-          tujuanTrial: tujuanTrial || "",
-          tiapSediaan: tiapSediaan || "",
-          besarBets: besarBets || "",
-          satuan: satuan || "",
-          bentukSediaan: bentukSediaan || "",
-          kodeTrials: kodeTrials || "",
-          detailFormula: detailFormula || "",
-        },
-        {
-          where: { CatatanTrialID: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "formula Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "formula Catatan Trial not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
   static async updateMetodePembuatan(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL

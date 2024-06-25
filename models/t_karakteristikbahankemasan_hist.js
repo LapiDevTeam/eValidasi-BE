@@ -9,16 +9,12 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_karakteristikBahanKemasan_hist.belongsTo(
-        models.t_studiPraformulasi_hist,
-        {
-          foreignKey: "StudiPraformulasiID",
-        }
-      );
     }
   }
   t_karakteristikBahanKemasan_hist.init(
     {
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       namaBahan: DataTypes.STRING,
       parameter: DataTypes.STRING,
       hasilTinjauan: DataTypes.STRING,

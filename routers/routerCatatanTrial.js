@@ -12,16 +12,46 @@ router.post(
   ControllerCatatanTrial.createCatatanTrial
 );
 router.get("/all-namaBahanBaku", ControllerCatatanTrial.findNamaBahanBaku);
-router.post(
-  "/create-komposisi-catatanTrial",
-  ControllerCatatanTrial.createKomposisiCatatanTrial
+
+// save dan edit komposisi catatan trial
+router.put(
+  "/handle-komposisi-catatan-trial/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveKomposisiCatatanTrial
 );
-router.post(
-  "/create-perhitungan-zatAktif",
-  ControllerCatatanTrial.createPerhitunganZatAktif
+
+// save dan edit perhitungan zat aktif
+router.put(
+  "/handle-perhitungan-zat-aktif/:id",
+  authentication,
+  ControllerCatatanTrial.handleSavePerhitunganZatAktif
 );
+
+// formula catatan trial
+router.post(
+  "/create-formula-catatan-trial",
+  authentication,
+  ControllerCatatanTrial.createFormulaCatatanTrial
+);
+
+router.put(
+  "/update-formulaCatatanTrial/:id",
+  ControllerCatatanTrial.updateFormulaCatatanTrial
+);
+
+// router.post(
+//   "/create-komposisi-catatanTrial",
+//   authentication,
+//   ControllerCatatanTrial.createKomposisiCatatanTrial
+// );
+// router.post(
+//   "/create-perhitungan-zatAktif",
+//   authentication,
+//   ControllerCatatanTrial.createPerhitunganZatAktif
+// );
 router.post(
   "/create-metode-pembuatan",
+  authentication,
   ControllerCatatanTrial.createMetodePembuatan
 );
 router.post(
@@ -32,46 +62,45 @@ router.post(
   "/create-proses-catatan-trial-penyalutan",
   ControllerCatatanTrial.createProsesCatatanTrialPenyalutan
 );
-router.post(
-  "/create-formula-catatan-trial",
-  ControllerCatatanTrial.createFormulaCatatanTrial
-);
+
 router.post(
   "/create-pengamatan-awal-cair",
+  authentication,
   ControllerCatatanTrial.createPengamatanAwalCair
 );
 router.post(
   "/create-pengamatan-awal-steril",
+  authentication,
   ControllerCatatanTrial.createPengamatanAwalSteril
 );
 router.post(
   "/create-pengamatan-awal-padat",
+  authentication,
   ControllerCatatanTrial.createPengamatanAwalPadat
 );
 router.post(
   "/create-pengamatan-awal-penyalutan",
+  authentication,
   ControllerCatatanTrial.createPengamatanAwalPenyalutan
 );
 router.post(
   "/create-pengamatan-lanjutan",
+  authentication,
   ControllerCatatanTrial.createPengamatanLanjutan
 );
 router.put(
   "/update-catatanTrial/:id",
   ControllerCatatanTrial.updateCatatanTrial
 );
-router.put(
-  "/update-komposisiCatatanTrial/:id",
-  ControllerCatatanTrial.updateKomposisiCatatanTrial
-);
-router.put(
-  "/update-perhitunganZatAktif/:id",
-  ControllerCatatanTrial.updatePerhitunganZatAktif
-);
-router.put(
-  "/update-formulaCatatanTrial/:id",
-  ControllerCatatanTrial.updateFormulaCatatanTrial
-);
+// router.put(
+//   "/update-komposisiCatatanTrial/:id",
+//   ControllerCatatanTrial.updateKomposisiCatatanTrial
+// );
+// router.put(
+//   "/update-perhitunganZatAktif/:id",
+//   ControllerCatatanTrial.updatePerhitunganZatAktif
+// );
+
 router.put(
   "/update-metodePembuatan/:id",
   ControllerCatatanTrial.updateMetodePembuatan

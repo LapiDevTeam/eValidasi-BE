@@ -16,6 +16,8 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_farmalogiKlinis_hist.init(
     {
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       indikasi: DataTypes.STRING,
       mekanismeAksi: DataTypes.STRING,
       efekSamping: DataTypes.STRING,

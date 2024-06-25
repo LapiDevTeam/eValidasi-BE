@@ -2,61 +2,45 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_catatanTrial", {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER,
+    await queryInterface.createTable("t_prosesCatatanTrialPadat_hist", {
+      status: {
+        type: Sequelize.STRING,
       },
-      tanggalTrial: {
+      changeDate: {
         type: Sequelize.DATE,
       },
-      namaProduk: {
+      id: {
+        type: Sequelize.INTEGER,
+      },
+      speed: {
         type: Sequelize.STRING,
       },
-      // kodeTrial: {
-      //   type: Sequelize.STRING,
-      // },
-      trialKe: {
+      mainPressure: {
         type: Sequelize.STRING,
       },
-      bentukSediaan: {
+      prePressure: {
         type: Sequelize.STRING,
       },
-      productKompetitor: {
+      settingBobot: {
         type: Sequelize.STRING,
       },
-      statusDokumen: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
-      },
-      perhitunganBatasBahanTambahan: {
-        type: Sequelize.TEXT,
-      },
-      pembahasan: {
-        type: Sequelize.TEXT,
-      },
-      kesimpulan: {
-        type: Sequelize.TEXT,
-      },
-      tindakLanjut: {
-        type: Sequelize.TEXT,
-      },
-      filter: {
+      kekerasan: {
         type: Sequelize.STRING,
       },
-      tipeCatatanTrial: {
+      tebal: {
         type: Sequelize.STRING,
       },
-      pic: {
+      abrasi: {
         type: Sequelize.STRING,
       },
-      bagian: {
+      wh: {
         type: Sequelize.STRING,
       },
-      alasan_reject: {
+      keterangan: {
         type: Sequelize.STRING,
+      },
+      CatatanTrialID: {
+        type: Sequelize.INTEGER,
       },
       user_id: {
         type: Sequelize.STRING,
@@ -68,16 +52,14 @@ module.exports = {
         type: Sequelize.STRING,
       },
       createdAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
       updatedAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_catatanTrial");
+    await queryInterface.dropTable("t_prosesCatatanTrialPadat_hist");
   },
 };

@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_formula_hist extends Model {
+  class t_prosesCatatanTrialPadat_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,30 +9,31 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_formula_hist.belongsTo(models.t_studiPraformulasi_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
     }
   }
-  t_formula_hist.init(
+  t_prosesCatatanTrialPadat_hist.init(
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      bahanTambahan: DataTypes.STRING,
-      kandungan: DataTypes.STRING,
-      fungsi: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
-      prosesPembuatan: DataTypes.STRING,
-      StudiPraformulasiID: DataTypes.INTEGER,
+      speed: DataTypes.STRING,
+      mainPressure: DataTypes.STRING,
+      prePressure: DataTypes.STRING,
+      settingBobot: DataTypes.STRING,
+      kekerasan: DataTypes.STRING,
+      tebal: DataTypes.STRING,
+      abrasi: DataTypes.STRING,
+      wh: DataTypes.STRING,
+      keterangan: DataTypes.STRING,
+      CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "t_formula_hist",
+      modelName: "t_prosesCatatanTrialPadat_hist",
       freezeTableName: true,
     }
   );
-  return t_formula_hist;
+  return t_prosesCatatanTrialPadat_hist;
 };

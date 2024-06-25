@@ -61,11 +61,11 @@ module.exports = (sequelize, DataTypes) => {
     {
       tanggalTrial: DataTypes.DATE,
       namaProduk: DataTypes.STRING,
-      kodeTrial: DataTypes.STRING,
+      // kodeTrial: DataTypes.STRING,
       trialKe: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
       productKompetitor: DataTypes.STRING,
-      status: DataTypes.STRING,
+      statusDokumen: DataTypes.STRING,
       perhitunganBatasBahanTambahan: DataTypes.TEXT,
       pembahasan: DataTypes.TEXT,
       kesimpulan: DataTypes.TEXT,
