@@ -316,7 +316,7 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      console.log(data, "<<<<<");
 
       const prevPerhitunganZatAktif = await t_perhitunganZatAktif.findAll({
         where: {
