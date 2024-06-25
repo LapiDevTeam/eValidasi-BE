@@ -26,6 +26,12 @@ router.put(
   authentication,
   ControllerCatatanTrial.handleSavePerhitunganZatAktif
 );
+// save dan edit metode pembuatan
+router.put(
+  "/handle-metode-pembuatan/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveMetodePembuatan
+);
 
 // formula catatan trial
 router.post(
@@ -39,6 +45,43 @@ router.put(
   ControllerCatatanTrial.updateFormulaCatatanTrial
 );
 
+// pengamatan awal cair
+router.post(
+  "/create-pengamatan-awal-cair",
+  authentication,
+  ControllerCatatanTrial.createPengamatanAwalCair
+);
+
+router.put(
+  "/update-pengamatanAwalCair/:id",
+  ControllerCatatanTrial.updatePengamatanAwalCair
+);
+
+// pengamatan awal padat
+router.post(
+  "/create-pengamatan-awal-padat",
+  authentication,
+  ControllerCatatanTrial.createPengamatanAwalPadat
+);
+
+router.put(
+  "/update-pengamatanAwalPadat/:id",
+  ControllerCatatanTrial.updatePengamatanAwalPadat
+);
+
+// save dan edit proses padat
+router.put(
+  "/handle-proses-catatan-trial-padat/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveProsesCatatanTrialPadat
+);
+// save dan edit proses padat
+router.put(
+  "/handle-proses-catatan-trial-penyalutan/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveProsesCatatanTrialPenyalutan
+);
+
 // router.post(
 //   "/create-komposisi-catatanTrial",
 //   authentication,
@@ -49,35 +92,28 @@ router.put(
 //   authentication,
 //   ControllerCatatanTrial.createPerhitunganZatAktif
 // );
-router.post(
-  "/create-metode-pembuatan",
-  authentication,
-  ControllerCatatanTrial.createMetodePembuatan
-);
-router.post(
-  "/create-proses-catatan-trial-padat",
-  ControllerCatatanTrial.createProsesCatatanTrialPadat
-);
-router.post(
-  "/create-proses-catatan-trial-penyalutan",
-  ControllerCatatanTrial.createProsesCatatanTrialPenyalutan
-);
+// router.post(
+//   "/create-metode-pembuatan",
+//   authentication,
+//   ControllerCatatanTrial.createMetodePembuatan
+// );
+// router.post(
+//   "/create-proses-catatan-trial-padat",
+//   authentication,
+//   ControllerCatatanTrial.createProsesCatatanTrialPadat
+// );
+// router.post(
+//   "/create-proses-catatan-trial-penyalutan",
+//   authentication,
+//   ControllerCatatanTrial.createProsesCatatanTrialPenyalutan
+// );
 
-router.post(
-  "/create-pengamatan-awal-cair",
-  authentication,
-  ControllerCatatanTrial.createPengamatanAwalCair
-);
 router.post(
   "/create-pengamatan-awal-steril",
   authentication,
   ControllerCatatanTrial.createPengamatanAwalSteril
 );
-router.post(
-  "/create-pengamatan-awal-padat",
-  authentication,
-  ControllerCatatanTrial.createPengamatanAwalPadat
-);
+
 router.post(
   "/create-pengamatan-awal-penyalutan",
   authentication,
@@ -105,10 +141,7 @@ router.put(
   "/update-metodePembuatan/:id",
   ControllerCatatanTrial.updateMetodePembuatan
 );
-router.put(
-  "/update-pengamatanAwalCair/:id",
-  ControllerCatatanTrial.updatePengamatanAwalCair
-);
+
 router.put(
   "/update-pengamatanAwalSteril/:id",
   ControllerCatatanTrial.updatePengamatanAwalSteril
