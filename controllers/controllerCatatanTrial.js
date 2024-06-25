@@ -126,6 +126,54 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
+  static async updateCatatanTrial(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        tanggalTrial,
+        namaProduk,
+        kodeTrial,
+        trialKe,
+        bentukSediaan,
+        productKompetitor,
+        statusB,
+        statusA,
+        filter,
+        tipeCatatanTrial,
+      } = req.body;
+
+      const [updatedRowsCount] = await t_catatanTrial.update(
+        {
+          tanggalTrial: tanggalTrial || "",
+          namaProduk: namaProduk || "",
+          kodeTrial: kodeTrial || "",
+          trialKe: trialKe || "",
+          bentukSediaan: bentukSediaan || "",
+          productKompetitor: productKompetitor || "",
+          statusB: statusB || "",
+          statusA: statusA || "",
+          filter: filter || "",
+          tipeCatatanTrial: tipeCatatanTrial || "",
+        },
+        {
+          where: { id: id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Catatan Trial updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "Catatan Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
   static async findNamaBahanBaku(req, res) {
     try {
       const config = {
@@ -798,6 +846,60 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
+  // handle post dan edit pengamatan awal steril
+
+  static async createPengamatanAwalSteril(req, res, next) {
+    try {
+      const { pengamatanAwalSteril, CatatanTrialID } = req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+      const createPengamatanAwalSteril = await t_pengamatanAwalSteril.create({
+        pengamatanAwalSteril: pengamatanAwalSteril,
+        CatatanTrialID,
+        user_id,
+        delegated_to,
+      });
+
+      res.status(201).json({
+        message: "Success Create proses Catatna trial steril",
+        data: createPengamatanAwalSteril,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async updatePengamatanAwalSteril(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+
+      const pengamatanAwalSterilData = req.body.data; // Access req.body.data
+      console.log(pengamatanAwalSterilData, "<< REQ body");
+
+      const updatedPengamatanSteril = t_pengamatanAwalSteril.update(
+        {
+          pengamatanAwalSteril: pengamatanAwalSterilData || null,
+        },
+        {
+          where: { id: +id },
+        }
+      );
+
+      res.status(201).json({
+        message: "pengamatan awal steril Catatan Trial updated successfully",
+      });
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
 
   // handle post dan edit pengamatan awal padat
   static async createPengamatanAwalPadat(req, res, next) {
@@ -864,7 +966,6 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-
   static async updatePengamatanAwalPadat(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
@@ -994,6 +1095,148 @@ class ControllerCatatanTrial {
       }
     } catch (err) {
       console.log(err, "<< er");
+      next(err);
+    }
+  }
+
+  // handle post dan edit pengamatan awal penyalutan
+  static async createPengamatanAwalPenyalutan(req, res, next) {
+    try {
+      const {
+        spesifikasiWeightGain,
+        settingWeightGain,
+        evaluasiWeightGain,
+        spesifikasiPemerian,
+        settingPemerian,
+        evaluasiPemerian,
+        spesifikasiKeseragamanBobot,
+        settingKeseragamanBobot,
+        evaluasiKeseragamanBobot,
+        spesifikasiKetebalan,
+        settingKetebalan,
+        evaluasiKetebalan,
+        rataRataKetebalan,
+        spesifikasiDimensi,
+        settingDimensi,
+        evaluasiDimensi,
+        spesifikasiWaktuHancur,
+        settingWaktuHancur,
+        evaluasiWaktuHancur,
+        CatatanTrialID,
+      } = req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+      const createPengamatanAwalPenyalutan =
+        await t_pengamatanAwalPenyalutan.create({
+          spesifikasiWeightGain,
+          settingWeightGain,
+          evaluasiWeightGain,
+          spesifikasiPemerian,
+          settingPemerian,
+          evaluasiPemerian,
+          spesifikasiKeseragamanBobot,
+          settingKeseragamanBobot,
+          evaluasiKeseragamanBobot,
+          spesifikasiKetebalan,
+          settingKetebalan,
+          evaluasiKetebalan,
+          rataRataKetebalan,
+          spesifikasiDimensi,
+          settingDimensi,
+          evaluasiDimensi,
+          spesifikasiWaktuHancur,
+          settingWaktuHancur,
+          evaluasiWaktuHancur,
+          CatatanTrialID,
+          user_id,
+          delegated_to,
+        });
+
+      res.status(201).json({
+        message: "Success Create pengamatan awal penyalutan",
+        data: createPengamatanAwalPenyalutan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async updatePengamatanAwalPenyalutan(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const {
+        spesifikasiWeightGain,
+        settingWeightGain,
+        evaluasiWeightGain,
+        spesifikasiPemerian,
+        settingPemerian,
+        evaluasiPemerian,
+        spesifikasiKeseragamanBobot,
+        settingKeseragamanBobot,
+        evaluasiKeseragamanBobot,
+        spesifikasiKetebalan,
+        settingKetebalan,
+        evaluasiKetebalan,
+        rataRataKetebalan,
+        spesifikasiDimensi,
+        settingDimensi,
+        evaluasiDimensi,
+        spesifikasiWaktuHancur,
+        settingWaktuHancur,
+        evaluasiWaktuHancur,
+      } = req.body;
+
+      console.log(req.body, "<< reqbody");
+
+      const [updatedRowsCount] = await t_pengamatanAwalPenyalutan.update(
+        {
+          spesifikasiWeightGain: spesifikasiWeightGain || "",
+          settingWeightGain: settingWeightGain || "",
+          evaluasiWeightGain: evaluasiWeightGain || "",
+          spesifikasiPemerian: spesifikasiPemerian || "",
+          settingPemerian: settingPemerian || "",
+          evaluasiPemerian: evaluasiPemerian || "",
+          spesifikasiKeseragamanBobot: spesifikasiKeseragamanBobot || "",
+          settingKeseragamanBobot: settingKeseragamanBobot || "",
+          evaluasiKeseragamanBobot: evaluasiKeseragamanBobot || "",
+          spesifikasiKetebalan: spesifikasiKetebalan || "",
+          settingKetebalan: settingKetebalan || "",
+          evaluasiKetebalan: evaluasiKetebalan || [],
+          rataRataKetebalan: rataRataKetebalan || "",
+          spesifikasiDimensi: spesifikasiDimensi || "",
+          settingDimensi: settingDimensi || "",
+          evaluasiDimensi: evaluasiDimensi || "",
+          spesifikasiWaktuHancur: spesifikasiWaktuHancur || "",
+          settingWaktuHancur: settingWaktuHancur || "",
+          evaluasiWaktuHancur: evaluasiWaktuHancur || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+
+      console.log();
+
+      if (updatedRowsCount > 0) {
+        console.log("if");
+        res.status(201).json({
+          message: "pengamatan awal penyalutan updated successfully",
+        });
+      } else {
+        console.log("else");
+        res.status(404).json({
+          message: "pengamatan awal penyalutan not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<<<< ERROR");
       next(err);
     }
   }
@@ -1158,296 +1401,7 @@ class ControllerCatatanTrial {
     }
   }
 
-  //////////////////////////////////////////////////////////
-
-  // static async createKomposisiCatatanTrial(req, res, next) {
-  //   try {
-  //     const {
-  //       kode,
-  //       namaBahanBaku,
-  //       principle,
-  //       jumlahTiapSediaan,
-  //       CatatanTrialID,
-  //     } = req.body;
-
-  //     const {
-  //       user_id,
-  //       delegated_to,
-  //       nama_user,
-  //       joblevel_id_user,
-  //       inisial_user,
-  //       bagian_user,
-  //     } = req.user;
-
-  //     const createKomposisi = await t_komposisiCatatanTrial.create({
-  //       kode,
-  //       namaBahanBaku,
-  //       principle,
-  //       jumlahTiapSediaan,
-  //       CatatanTrialID,
-  //       user_id,
-  //       delegated_to,
-  //     });
-
-  //     res.status(201).json({
-  //       message: "Success Create komposisiCatatanTrial",
-  //       data: createKomposisi,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-
-  //
-
-  // static async createPerhitunganZatAktif(req, res, next) {
-  //   try {
-  //     const {
-  //       padaEtiket,
-  //       bahanBakuYangDigunakan,
-  //       perhitunganBahanBaku,
-  //       CatatanTrialID,
-  //     } = req.body;
-
-  //     const {
-  //       user_id,
-  //       delegated_to,
-  //       nama_user,
-  //       joblevel_id_user,
-  //       inisial_user,
-  //       bagian_user,
-  //     } = req.user;
-
-  //     const createPerhitunganZatAktif = await t_perhitunganZatAktif.create({
-  //       padaEtiket,
-  //       bahanBakuYangDigunakan,
-  //       perhitunganBahanBaku,
-  //       CatatanTrialID,
-  //       user_id,
-  //       delegated_to,
-  //     });
-
-  //     res.status(201).json({
-  //       message: "Success Create perhitungan zat aktif",
-  //       data: createPerhitunganZatAktif,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-
-  // static async createMetodePembuatan(req, res, next) {
-  //   try {
-  //     const { aktivitas, pengamatan, CatatanTrialID } = req.body;
-  //     const {
-  //       user_id,
-  //       delegated_to,
-  //       nama_user,
-  //       joblevel_id_user,
-  //       inisial_user,
-  //       bagian_user,
-  //     } = req.user;
-  //     const createMetodePembuatan = await t_metodePembuatan.create({
-  //       aktivitas,
-  //       pengamatan,
-  //       CatatanTrialID,
-  //       user_id,
-  //       delegated_to,
-  //     });
-
-  //     res.status(201).json({
-  //       message: "Success Create metode pembuatan",
-  //       data: createMetodePembuatan,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-  // static async createProsesCatatanTrialPenyalutan(req, res, next) {
-  //   try {
-  //     const { tanggal, jam, turretSpeed, suhu, bobot, CatatanTrialID } =
-  //       req.body;
-
-  //     const {
-  //       user_id,
-  //       delegated_to,
-  //       nama_user,
-  //       joblevel_id_user,
-  //       inisial_user,
-  //       bagian_user,
-  //     } = req.user;
-
-  //     const createProsesCatatanTrialPenyalutan =
-  //       await t_prosesCatatanTrialPenyalutan.create({
-  //         tanggal,
-  //         jam,
-  //         turretSpeed,
-  //         suhu,
-  //         bobot,
-  //         CatatanTrialID,
-  //         user_id,
-  //         delegated_to,
-  //       });
-
-  //     res.status(201).json({
-  //       message: "Success Create proses Catatna trial Penyalutan",
-  //       data: createProsesCatatanTrialPenyalutan,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-  // static async createProsesCatatanTrialPadat(req, res, next) {
-  //   try {
-  //     const {
-  //       speed,
-  //       mainPressure,
-  //       prePressure,
-  //       settingBobot,
-  //       kekerasan,
-  //       tebal,
-  //       abrasi,
-  //       wh,
-  //       keterangan,
-  //       CatatanTrialID,
-  //     } = req.body;
-
-  //     const {
-  //       user_id,
-  //       delegated_to,
-  //       nama_user,
-  //       joblevel_id_user,
-  //       inisial_user,
-  //       bagian_user,
-  //     } = req.user;
-
-  //     const createProsesCatatanTrialPadat =
-  //       await t_prosesCatatanTrialPadat.create({
-  //         speed,
-  //         mainPressure,
-  //         prePressure,
-  //         settingBobot,
-  //         kekerasan,
-  //         tebal,
-  //         abrasi,
-  //         wh,
-  //         keterangan,
-  //         CatatanTrialID,
-  //         user_id,
-  //         delegated_to,
-  //       });
-
-  //     res.status(201).json({
-  //       message: "Success Create proses Catatna trial padat",
-  //       data: createProsesCatatanTrialPadat,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-
-  static async createPengamatanAwalSteril(req, res, next) {
-    try {
-      const { pengamatanAwalSteril, CatatanTrialID } = req.body;
-      const {
-        user_id,
-        delegated_to,
-        nama_user,
-        joblevel_id_user,
-        inisial_user,
-        bagian_user,
-      } = req.user;
-      const createPengamatanAwalSteril = await t_pengamatanAwalSteril.create({
-        pengamatanAwalSteril: pengamatanAwalSteril,
-        CatatanTrialID,
-        user_id,
-        delegated_to,
-      });
-
-      res.status(201).json({
-        message: "Success Create proses Catatna trial steril",
-        data: createPengamatanAwalSteril,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createPengamatanAwalPenyalutan(req, res, next) {
-    try {
-      const {
-        spesifikasiWeightGain,
-        settingWeightGain,
-        evaluasiWeightGain,
-        spesifikasiPemerian,
-        settingPemerian,
-        evaluasiPemerian,
-        spesifikasiKeseragamanBobot,
-        settingKeseragamanBobot,
-        evaluasiKeseragamanBobot,
-        spesifikasiKetebalan,
-        settingKetebalan,
-        evaluasiKetebalan,
-        rataRataKetebalan,
-        spesifikasiDimensi,
-        settingDimensi,
-        evaluasiDimensi,
-        spesifikasiWaktuHancur,
-        settingWaktuHancur,
-        evaluasiWaktuHancur,
-        CatatanTrialID,
-      } = req.body;
-
-      const {
-        user_id,
-        delegated_to,
-        nama_user,
-        joblevel_id_user,
-        inisial_user,
-        bagian_user,
-      } = req.user;
-
-      const createPengamatanAwalPenyalutan =
-        await t_pengamatanAwalPenyalutan.create({
-          spesifikasiWeightGain,
-          settingWeightGain,
-          evaluasiWeightGain,
-          spesifikasiPemerian,
-          settingPemerian,
-          evaluasiPemerian,
-          spesifikasiKeseragamanBobot,
-          settingKeseragamanBobot,
-          evaluasiKeseragamanBobot,
-          spesifikasiKetebalan,
-          settingKetebalan,
-          evaluasiKetebalan,
-          rataRataKetebalan,
-          spesifikasiDimensi,
-          settingDimensi,
-          evaluasiDimensi,
-          spesifikasiWaktuHancur,
-          settingWaktuHancur,
-          evaluasiWaktuHancur,
-          CatatanTrialID,
-          user_id,
-          delegated_to,
-        });
-
-      res.status(201).json({
-        message: "Success Create pengamatan awal Penyalutan",
-        data: createPengamatanAwalPenyalutan,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-
+  // get komposisi nama nahan
   static async getKomposisiNamaBahan(req, res) {
     const { id } = req.params;
     try {
@@ -1465,6 +1419,7 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  // get catatan trial padat saja
   static async getFilterCatatanTrialPadat(req, res) {
     try {
       const catatanTrialPadat = await t_catatanTrial.findAll({
@@ -1481,6 +1436,7 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  //  get bentuk sediaan cair
   static async getBentukSediaanCategoryCair(req, res) {
     try {
       const bentukSediaanCair = await m_bentuk_sediaan.findAll({
@@ -1499,6 +1455,7 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  //get bentuk sediaan padat
   static async getBentukSediaanCategoryPadat(req, res) {
     try {
       const bentukSediaanPadat = await m_bentuk_sediaan.findAll({
@@ -1517,6 +1474,7 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  // get bentuk sediaan steril
   static async getBentukSediaanCategorySteril(req, res) {
     try {
       const bentukSediaanSteril = await m_bentuk_sediaan.findAll({
@@ -1535,6 +1493,7 @@ class ControllerCatatanTrial {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+  // list all catatan trial
   static async findAllCatatanTrial(req, res) {
     try {
       const {
@@ -1695,7 +1654,7 @@ class ControllerCatatanTrial {
         perhitunganZatAktifCair,
         formulaCair,
         metodePembuatanCair,
-        pengamatanAwalCair: pengamatanAwalCair?.dataValues?.pengamatanAwalCair,
+        pengamatanAwalCair,
         pengamatanLanjutanCair,
       });
     } catch (error) {
@@ -1739,8 +1698,7 @@ class ControllerCatatanTrial {
         perhitunganZatAktifSteril,
         formulaSteril,
         metodePembuatanSteril,
-        pengamatanAwalSteril:
-          pengamatanAwalSteril?.dataValues?.pengamatanAwalSteril,
+        pengamatanAwalSteril,
         pengamatanLanjutanSteril,
       });
     } catch (error) {
@@ -1835,86 +1793,7 @@ class ControllerCatatanTrial {
       next(error);
     }
   }
-
-  static async updateCatatanTrial(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const {
-        tanggalTrial,
-        namaProduk,
-        kodeTrial,
-        trialKe,
-        bentukSediaan,
-        productKompetitor,
-        statusB,
-        statusA,
-        filter,
-        tipeCatatanTrial,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_catatanTrial.update(
-        {
-          tanggalTrial: tanggalTrial || "",
-          namaProduk: namaProduk || "",
-          kodeTrial: kodeTrial || "",
-          trialKe: trialKe || "",
-          bentukSediaan: bentukSediaan || "",
-          productKompetitor: productKompetitor || "",
-          statusB: statusB || "",
-          statusA: statusA || "",
-          filter: filter || "",
-          tipeCatatanTrial: tipeCatatanTrial || "",
-        },
-        {
-          where: { id: id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "Catatan Trial not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
-  static async updateKomposisiCatatanTrial(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const { kode, namaBahanBaku, principle, jumlahTiapSediaan } = req.body;
-      console.log(namaBahanBaku, "< << NAMA");
-      const [updatedRowsCount] = await t_komposisiCatatanTrial.update(
-        {
-          kode: kode || "",
-          namaBahanBaku: namaBahanBaku || "",
-          principle: principle || "",
-          jumlahTiapSediaan: jumlahTiapSediaan || "",
-        },
-        {
-          where: { id: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "komposisi Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "komposisi Catatan Trial not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
+  // update perhitungan
   static async updatePerhitunganZatAktif(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
@@ -1946,108 +1825,7 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-  static async updateMetodePembuatan(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const { aktivitas, pengamatan } = req.body;
-
-      const [updatedRowsCount] = await t_metodePembuatan.update(
-        {
-          aktivitas: aktivitas || "",
-          pengamatan: pengamatan || "",
-        },
-        {
-          where: { id: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "metode Pembuatan Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "metode Pembuatan Catatan Trial not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
-  static async updatePengamatanAwalSteril(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-
-      const pengamatanAwalSterilData = req.body.data; // Access req.body.data
-      console.log(pengamatanAwalSterilData, "<< REQ body");
-
-      const updatedPengamatanSteril = t_pengamatanAwalSteril.update(
-        {
-          pengamatanAwalSteril: pengamatanAwalSterilData || null,
-        },
-        {
-          where: { CatatanTrialID: +id },
-        }
-      );
-
-      res.status(201).json({
-        message: "pengamatan awal steril Catatan Trial updated successfully",
-      });
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
-  static async updateProsesCatatanTrialPadat(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
-      const {
-        speed,
-        mainPressure,
-        prePressure,
-        settingBobot,
-        kekerasan,
-        tebal,
-        abrasi,
-        wh,
-        keterangan,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_prosesCatatanTrialPadat.update(
-        {
-          speed: speed || "",
-          mainPressure: mainPressure || "",
-          speed: speed || "",
-          prePressure: prePressure || "",
-          settingBobot: settingBobot || "",
-          kekerasan: kekerasan || "",
-          tebal: tebal || "",
-          abrasi: abrasi || "",
-          wh: wh || "",
-          keterangan: keterangan || "",
-        },
-        {
-          where: { id: +id },
-        }
-      );
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "proses padat Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "proses padat Catatan Trial not found",
-        });
-      }
-    } catch (err) {
-      console.log(err, "<< er");
-      next(err);
-    }
-  }
-
+  // delete ccatatan trial perlu diperbaiki untuk delete all yang bersangkutan dengan catatanrialID
   static async deleteCatatanTrial(req, res) {
     try {
       const { id } = req.params;
@@ -2057,184 +1835,6 @@ class ControllerCatatanTrial {
       });
 
       res.status(200).send({ msg: "succeed" });
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteProsesCatatanTrialPadat(req, res) {
-    try {
-      const { id } = req.params;
-
-      const proses = await t_prosesCatatanTrialPadat.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (proses.length > 0) {
-        await t_prosesCatatanTrialPadat.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteKomposisiCatatanTrial(req, res) {
-    try {
-      const { id } = req.params;
-
-      const komposisi = await t_komposisiCatatanTrial.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (komposisi.length > 0) {
-        await t_komposisiCatatanTrial.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteFormulaCatatanTrial(req, res) {
-    try {
-      const { id } = req.params;
-
-      const formula = await t_formulaCatatanTrial.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (formula.length > 0) {
-        await t_formulaCatatanTrial.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteMetodePembuatan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const metode = await t_metodePembuatan.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (metode.length > 0) {
-        await MetodePembuatan.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deletePengamatanAwalPadat(req, res) {
-    try {
-      const { id } = req.params;
-
-      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (pengamatanAwalPadat.length > 0) {
-        await t_pengamatanAwalPadat.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deletePengamatanLanjutan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const pengamatanlanjutan = await t_pengamatanLanjutan.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (pengamatanlanjutan.length > 0) {
-        await t_pengamatanLanjutan.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deleteProsesPenyalutan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const proses = await t_prosesCatatanTrialPenyalutan.findAll({
-        where: { CatatanTrialID: +id },
-      });
-
-      if (proses.length > 0) {
-        await t_prosesCatatanTrialPenyalutan.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async deletePengamatanAwalPenyalutan(req, res) {
-    try {
-      const { id } = req.params;
-
-      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
-        {
-          where: { CatatanTrialID: +id },
-        }
-      );
-
-      if (pengamatanAwalPenyalutan.length > 0) {
-        await t_pengamatanAwalPenyalutan.destroy({
-          where: { CatatanTrialID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
     } catch (err) {
       console.log(err);
       res.status(500).send({ msg: "error" });
