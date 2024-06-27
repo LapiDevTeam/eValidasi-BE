@@ -1498,38 +1498,36 @@ class ControllerCatatanTrial {
     try {
       const {
         page,
-        tanggalTrial,
         namaProduk,
-        kodeTrial,
         trialKe,
-        bentukSediaan,
-        productKompetitor,
-        statusB,
-        statusA,
-      } = req.body;
-      const size = page ? 15 : "";
+        tipeCatatanTrial,
+        pic,
+        bagian,
+
+        statusDokumen,
+        alasan,
+      } = req.query;
+      const size = page ? 5 : "";
 
       const { limit, offset } = getPagination(page, size);
 
       const searchParams = {};
-      if (tanggalTrial)
-        searchParams.tanggalTrial = { [Op.iLike]: `%${tanggalTrial}%` };
       if (namaProduk)
         searchParams.namaProduk = { [Op.iLike]: `%${namaProduk}%` };
-      if (kodeTrial) searchParams.kodeTrial = { [Op.iLike]: `%${kodeTrial}%` };
       if (trialKe) searchParams.trialKe = { [Op.iLike]: `%${trialKe}%` };
-      if (bentukSediaan) searchParams.bentukSediaan = +bentukSediaan;
-      if (productKompetitor)
-        searchParams.productKompetitor = {
-          [Op.iLike]: `%${productKompetitor}%`,
+      if (tipeCatatanTrial)
+        searchParams.tipeCatatanTrial = { [Op.iLike]: `%${tipeCatatanTrial}%` };
+      if (namaProduk) if (pic) searchParams.pic = { [Op.iLike]: `%${pic}%` };
+
+      if (bagian) searchParams.bagian = { [Op.iLike]: `%${bagian}%` };
+
+      if (statusDokumen)
+        searchParams.statusDokumen = {
+          [Op.iLike]: `%${statusDokumen}%`,
         };
-      if (statusB)
-        searchParams.statusB = {
-          [Op.iLike]: `%${statusB}%`,
-        };
-      if (statusA)
-        searchParams.statusA = {
-          [Op.iLike]: `%${statusA}%`,
+      if (alasan)
+        searchParams.alasan = {
+          [Op.iLike]: `%${alasan}%`,
         };
 
       const brief = await t_catatanTrial.findAndCountAll({
@@ -1791,6 +1789,33 @@ class ControllerCatatanTrial {
     } catch (error) {
       console.log(error);
       next(error);
+    }
+  }
+
+  // get history
+  static async getHistoryCatatanTrial(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      // find prosedur pengolahan table
+      const catatanTrial = await t_catatanTrial.findByPk(+id);
+
+      if (!catatanTrial) {
+        res.status(404).json({ error: "Not Found" });
+      } else {
+        // find approval history table
+        const approvalHistory = await t_catatanTrial_status.findAll({
+          where: {
+            CatatanTrialID: +id,
+          },
+          order: [["createdAt", "DESC"]],
+        });
+
+        res.status(200).json({ approvals: approvalHistory });
+      }
+    } catch (error) {
+      next(error);
+      console.log(error);
     }
   }
   // update perhitungan

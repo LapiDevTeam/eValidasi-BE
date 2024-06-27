@@ -193,4 +193,9 @@ router.delete(
   ControllerCatatanTrial.deleteCatatanTrial
 );
 
+router.get(
+  "/catatan-trial/history/:id",
+  ControllerCatatanTrial.getHistoryCatatanTrial
+);
+
 module.exports = router;
