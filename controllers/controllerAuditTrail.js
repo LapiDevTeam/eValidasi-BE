@@ -15,6 +15,7 @@ const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
+const { sequelize } = require("../models/index");
 const { log } = require("console");
 class ControllerAuditTrail {
   static async downloadExcelAuditProductBrief(req, res, next) {
@@ -22,16 +23,12 @@ class ControllerAuditTrail {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
 
-      const dataAudit = await t_productBrief_hist.findAll({
-        order: [["id", "DESC"]],
-      });
+      const dataAudit = await sequelize.query(
+        `SELECT id , "productBrief" , kode , nama  , kemasan , "bentukSediaan" , "ruangLingkup" ,"bahanAktifDanDosis"  ,"rdSelection" , "statusDokumen" , alasan_reject ,revisi  , user_id ,delegated_to , flag_update ,"createdAt" , "updatedAt" , status  , "changeDate" FROM "t_productBrief_hist"`,
+        { type: sequelize.QueryTypes.SELECT }
+      );
 
-      if (dataAudit.length === 0) {
-        res.status(404).send("No data available");
-        return;
-      }
-
-      dataAudit.forEach((el) => {
+      dataAudit?.forEach((el) => {
         el.tanggal = el?.tanggal
           ?.toISOString()
           .replace(/T/, " ")
