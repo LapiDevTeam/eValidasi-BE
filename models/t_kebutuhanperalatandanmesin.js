@@ -9,8 +9,8 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_kebutuhanPeralatanDanMesin.belongsTo(models.t_protokolTrialSkalaLab, {
-        foreignKey: "ProtokolTrialSkalaLabID",
+      t_kebutuhanPeralatanDanMesin.belongsTo(models.t_studiPraformulasi, {
+        foreignKey: "StudiPraformulasiID",
       });
     }
   }
@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       peralatanDanMesin: DataTypes.STRING,
       fungsi: DataTypes.STRING,
       kapasitas: DataTypes.STRING,
-      ProtokolTrialSkalaLabID: DataTypes.INTEGER,
+      StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

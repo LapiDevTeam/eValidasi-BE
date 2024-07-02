@@ -27,6 +27,46 @@ module.exports = (sequelize, DataTypes) => {
       t_studiPraformulasi.hasMany(models.t_studiPaten, {
         foreignKey: "StudiPraformulasiID",
       });
+      t_studiPraformulasi.hasMany(models.t_qtpp, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_cqa, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_formulaProtokol, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_prosesPembuatan, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_kemasanProtokolSkalaLab, {
+        foreignKey: "StudiPraformulasiID",
+      });
+
+      t_studiPraformulasi.hasMany(models.t_zatAktif, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_bahanTambahan, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_kemasanPrimer, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_cpp, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_rencanaAktivitas, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_originatorAtauKompetitor, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_material, {
+        foreignKey: "StudiPraformulasiID",
+      });
+      t_studiPraformulasi.hasMany(models.t_kebutuhanPeralatanDanMesin, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
   t_studiPraformulasi.init(

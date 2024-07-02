@@ -9,42 +9,43 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_protokolTrialSkalaLab.hasMany(models.t_cqa, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_formulaProtokol, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_prosesPembuatan, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_cpp, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_rencanaAktivitas, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_originatorAtauKompetitor, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_kebutuhanPeralatanDanMesin, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_material, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_zatAktif, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_bahanTambahan, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_kemasanPrimer, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
-      t_protokolTrialSkalaLab.hasMany(models.t_kemasanProtokolSkalaLab, {
-        foreignKey: "ProtokolTrialSkalaLabID",
-      });
+      // t_protokolTrialSkalaLab.hasMany(models.t_cqa, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_formulaProtokol, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_prosesPembuatan, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_cpp, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_rencanaAktivitas, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_originatorAtauKompetitor, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_material, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_kebutuhanPeralatanDanMesin, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+
+      // t_protokolTrialSkalaLab.hasMany(models.t_zatAktif, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_bahanTambahan, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_kemasanPrimer, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
+      // t_protokolTrialSkalaLab.hasMany(models.t_kemasanProtokolSkalaLab, {
+      //   foreignKey: "ProtokolTrialSkalaLabID",
+      // });
       t_protokolTrialSkalaLab.hasMany(models.t_protokolSkalaLab_status, {
         foreignKey: "ProtokolTrialSkalaLabID",
         as: "approver_data",

@@ -69,10 +69,10 @@ module.exports = {
       tableIndex: {
         type: Sequelize.INTEGER,
       },
-      ProtokolTrialSkalaLabID: {
+      StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_protokolTrialSkalaLab",
+          model: "t_studiPraformulasi",
           key: "id",
         },
         onDelete: "CASCADE",

@@ -9,8 +9,8 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_qtpp.belongsTo(models.t_protokolTrialSkalaLab, {
-        foreignKey: "ProtokolTrialSkalaLabID",
+      t_qtpp.belongsTo(models.t_studiPraformulasi, {
+        foreignKey: "StudiPraformulasiID",
       });
     }
   }
@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
       justifikasiBentukSediaan: DataTypes.STRING,
       detailSediaan: DataTypes.JSONB,
       tableIndex: DataTypes.INTEGER,
-      ProtokolTrialSkalaLabID: DataTypes.INTEGER,
+      StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

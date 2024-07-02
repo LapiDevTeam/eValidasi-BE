@@ -32,7 +32,7 @@ router.use("/", routerProductBrief);
 router.use("/", routerStudiPraformulasi);
 router.use("/", routerStudiPaten);
 router.use("/", routerStudiLiterature);
-router.use("/", routerProtokolTrialSkalaLab);
+// router.use("/", routerProtokolTrialSkalaLab);
 router.use("/", routerCatatanTrial);
 router.use("/", routerFormulaFix);
 router.use("/", routerLaporanTrialSkalaLab);

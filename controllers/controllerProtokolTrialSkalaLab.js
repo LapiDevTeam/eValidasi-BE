@@ -205,6 +205,27 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
+  static async getCqa(req, res) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const cqaDetails = await t_cqa.findAll({
+        where: { ProtokolTrialSkalaLabID: +id },
+      });
+
+      console.log(cqaDetails, "<< cqa details");
+
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(cqaDetails);
+    } catch (err) {
+      console.error(err, 333333333333);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async createQtpp(req, res, next) {
     const transaction = await sequelize.transaction();
     try {
@@ -222,7 +243,7 @@ class ControllerProtokolTrialSkalaLab {
               justifikasiBentukSediaan: newItem?.justifikasiBentukSediaan || "",
               detailSediaan: newItem?.detailSediaan || [],
 
-              ProtokolTrialSkalaLabID: +id || null,
+              StudiPraformulasiID: +id || null,
             },
             { transaction }
           );
@@ -234,7 +255,7 @@ class ControllerProtokolTrialSkalaLab {
 
       const newData = await t_qtpp.findAll({
         where: {
-          ProtokolTrialSkalaLabID: id,
+          StudiPraformulasiID: id,
         },
       });
 
@@ -249,6 +270,27 @@ class ControllerProtokolTrialSkalaLab {
       }
     }
   }
+  static async getQtpp(req, res) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const qtpp = await t_qtpp.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      // if (!cqaDetails || cqaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(qtpp);
+    } catch (err) {
+      console.error(err, 333333333333);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   static async createCpp(req, res, next) {
     try {
       const {
@@ -276,33 +318,7 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
-  static async createFormulaProtokol(req, res, next) {
-    try {
-      const {
-        komposisi,
-        fungsi,
-        apakahAdaPadaKomposisiOriginatorKompetitor,
-        justifikasi,
-        ProtokolTrialSkalaLabID,
-      } = req.body;
 
-      const createFormulaProtokol = await t_formulaProtokol.create({
-        komposisi,
-        fungsi,
-        apakahAdaPadaKomposisiOriginatorKompetitor,
-        justifikasi,
-        ProtokolTrialSkalaLabID,
-      });
-
-      res.status(201).json({
-        message: "Success Create FormulaProtokol",
-        data: createFormulaProtokol,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async createProsesPembuatan(req, res, next) {
     try {
       const { prosesPembuatan, ProtokolTrialSkalaLabID } = req.body;
@@ -319,6 +335,24 @@ class ControllerProtokolTrialSkalaLab {
     } catch (err) {
       console.error(err);
       next(err);
+    }
+  }
+
+  static async getProsesPembuatan(req, res) {
+    const { id } = req.params;
+    try {
+      const pembuatanDetails = await t_prosesPembuatan.findAll({
+        where: { ProtokolTrialSkalaLabID: id },
+      });
+
+      // if (!pembuatanDetails || pembuatanDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(pembuatanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
   static async createRencanaAktivitas(req, res, next) {
@@ -521,32 +555,6 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
-  static async createMappingProcess(req, res, next) {
-    try {
-      const {
-        processParameters,
-        materialAttributes,
-        manufacturingProcess,
-        qualityAttributes,
-        ProtokolTrialSkalaLabID,
-      } = req.body;
-
-      const createMappingProcess = await t_mappingProcess.create({
-        processParameters,
-        materialAttributes,
-        manufacturingProcess,
-        qualityAttributes,
-        ProtokolTrialSkalaLabID,
-      });
-      res.status(201).json({
-        message: "Success Create mapping process",
-        data: createMappingProcess,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async createKemasanPrimer(req, res, next) {
     try {
       const {
@@ -576,6 +584,33 @@ class ControllerProtokolTrialSkalaLab {
       next(err);
     }
   }
+  static async createMappingProcess(req, res, next) {
+    try {
+      const {
+        processParameters,
+        materialAttributes,
+        manufacturingProcess,
+        qualityAttributes,
+        ProtokolTrialSkalaLabID,
+      } = req.body;
+
+      const createMappingProcess = await t_mappingProcess.create({
+        processParameters,
+        materialAttributes,
+        manufacturingProcess,
+        qualityAttributes,
+        ProtokolTrialSkalaLabID,
+      });
+      res.status(201).json({
+        message: "Success Create mapping process",
+        data: createMappingProcess,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async updateTujuan(req, res) {
     try {
       const { ProtokolTrialSkalaLabID } = req.params;
@@ -850,46 +885,6 @@ class ControllerProtokolTrialSkalaLab {
     }
   }
 
-  static async getCqa(req, res) {
-    const { id } = req.params;
-    console.log(id, "< id");
-    try {
-      const cqaDetails = await t_cqa.findAll({
-        where: { ProtokolTrialSkalaLabID: +id },
-      });
-
-      console.log(cqaDetails, "<< cqa details");
-
-      // if (!cqaDetails || cqaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(cqaDetails);
-    } catch (err) {
-      console.error(err, 333333333333);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async getQtpp(req, res) {
-    const { id } = req.params;
-    console.log(id, "< id");
-    try {
-      const qtpp = await t_qtpp.findAll({
-        where: {
-          ProtokolTrialSkalaLabID: id,
-        },
-      });
-
-      // if (!cqaDetails || cqaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(qtpp);
-    } catch (err) {
-      console.error(err, 333333333333);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
   static async getCpp(req, res) {
     const { id } = req.params;
     try {
@@ -907,40 +902,7 @@ class ControllerProtokolTrialSkalaLab {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async getFormula(req, res) {
-    const { id } = req.params;
-    try {
-      const formulaDetails = await t_formulaProtokol.findAll({
-        where: { ProtokolTrialSkalaLabID: id },
-      });
 
-      // if (!formulaDetails || formulaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(formulaDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async getProsesPembuatan(req, res) {
-    const { id } = req.params;
-    try {
-      const pembuatanDetails = await t_prosesPembuatan.findAll({
-        where: { ProtokolTrialSkalaLabID: id },
-      });
-
-      // if (!pembuatanDetails || pembuatanDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(pembuatanDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
   static async getRencanaAktivitas(req, res) {
     const { id } = req.params;
     try {
@@ -1077,24 +1039,7 @@ class ControllerProtokolTrialSkalaLab {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async getKemasanProtokol(req, res) {
-    const { id } = req.params;
-    try {
-      const kemasanProtokolDetails = await t_kemasanProtokolSkalaLab.findAll({
-        where: { ProtokolTrialSkalaLabID: +id },
-        order: [["createdAt", "ASC"]], // Order by createdAt descending
-      });
 
-      // if (!kemasanProtokolDetails || kemasanProtokolDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(kemasanProtokolDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
   static async getMappingProcess(req, res) {
     const { id } = req.params;
     try {
@@ -1576,47 +1521,6 @@ class ControllerProtokolTrialSkalaLab {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Internal server error" });
-    }
-  }
-
-  static async editKemasanProtokol(req, res, next) {
-    try {
-      const { id } = req.params;
-      console.log(id, "<< ID");
-      const {
-        parameterBentukSediaan,
-        samaDenganOriginatorAtauKompetitorBentukSediaan,
-        justifikasiBentukSediaan,
-        detailSediaan,
-        tableIndex,
-        ProtokolTrialSkalaLabID,
-      } = req.body;
-
-      const createKemasan = await t_kemasanProtokolSkalaLab.update(
-        {
-          parameterBentukSediaan: parameterBentukSediaan,
-          samaDenganOriginatorAtauKompetitorBentukSediaan:
-            samaDenganOriginatorAtauKompetitorBentukSediaan,
-          justifikasiBentukSediaan: justifikasiBentukSediaan,
-          detailSediaan: detailSediaan,
-          tableIndex: +tableIndex,
-          ProtokolTrialSkalaLabID: ProtokolTrialSkalaLabID,
-        },
-        {
-          where: {
-            id: id,
-          },
-          returning: true,
-        }
-      );
-
-      res.status(201).json({
-        message: "Success Create kemasan skala lab",
-        data: createKemasan,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
     }
   }
 
