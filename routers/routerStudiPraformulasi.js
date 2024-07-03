@@ -1,6 +1,79 @@
 const express = require("express");
 const router = express.Router();
 const ControllerStudiPraformulasi = require("../controllers/controllerStudiPraformulasi");
+const { authentication } = require("../middlewares/authentication");
+// save dan edit deskripsi Product
+router.put(
+  "/handle-deskripsi-product/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveDeskripsiProduct
+);
+// save dan edit farmakologiKlinis
+router.put(
+  "/handle-farmakologi-klinis/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveFarmakologiKlinis
+);
+// save dan edit formula
+router.put(
+  "/handle-formula-studi/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveFormula
+);
+// save dan edit stabilita
+router.put(
+  "/handle-stabilita/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveStabilita
+);
+// save dan edit studiPaten
+router.put(
+  "/handle-studi-paten/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveStudiPaten
+);
+// save dan edit ujiinkompatibilitas
+router.put(
+  "/handle-uji-inkompatibilitas/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveUjiInkompatibilitas
+);
+// save dan edit cqa
+router.put(
+  "/handle-cqa/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveCqa
+);
+// save dan edit formula protokol
+router.put(
+  "/handle-formula-protokol/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveFormulaProtokol
+);
+// save dan edit mapping
+router.put(
+  "/handle-mapping-process/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveMappingProcess
+);
+// save dan edit material
+router.put(
+  "/handle-material/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveMaterial
+);
+// save dan edit originator / kompetitor
+router.put(
+  "/handle-originator-kompetitor/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveOriginatorKompetitor
+);
+// save dan edit kebutuhan peralatan
+router.put(
+  "/handle-kebutuhan-peralatan/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKebutuhanPeralatan
+);
 
 router.post(
   "/studi-praformulasi",

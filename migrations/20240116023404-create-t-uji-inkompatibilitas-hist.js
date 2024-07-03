@@ -21,6 +21,9 @@ module.exports = {
       kondisi3: {
         type: Sequelize.STRING,
       },
+      detailUji: {
+        type: Sequelize.JSONB,
+      },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
         references: {

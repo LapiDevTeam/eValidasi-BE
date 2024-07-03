@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       kondisi1: DataTypes.STRING,
       kondisi2: DataTypes.STRING,
       kondisi3: DataTypes.STRING,
+      detailUji: DataTypes.JSONB,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
