@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_karakteristikBahanTambahan_hist", {
+    await queryInterface.createTable("t_originatorAtauKompetitor_hist", {
       status: {
         type: Sequelize.STRING,
       },
@@ -12,16 +12,28 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
+      originator: {
         type: Sequelize.STRING,
       },
-      parameter: {
+      source: {
         type: Sequelize.STRING,
       },
-      hasilTinjauan: {
+      harga: {
         type: Sequelize.STRING,
       },
-      sumberPustaka: {
+      pemeriksaanFisikDanKimiaOriginator: {
+        type: Sequelize.STRING,
+      },
+      profilDisolusi: {
+        type: Sequelize.STRING,
+      },
+      stabilita: {
+        type: Sequelize.STRING,
+      },
+      totalKebutuhanMaterial: {
+        type: Sequelize.STRING,
+      },
+      perkiraanHargaPembelianMaterial: {
         type: Sequelize.STRING,
       },
       tableIndex: {
@@ -50,6 +62,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_karakteristikBahanTambahan_hist");
+    await queryInterface.dropTable("t_originatorAtauKompetitor_hist");
   },
 };

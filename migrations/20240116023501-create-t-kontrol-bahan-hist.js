@@ -4,9 +4,6 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("t_kontrolBahan_hist", {
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       namaBahan: {
@@ -23,12 +20,6 @@ module.exports = {
       },
       UjiInkompatibilitasID: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_ujiInkompatibilitas_hist",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,

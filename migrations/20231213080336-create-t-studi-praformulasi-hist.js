@@ -10,9 +10,6 @@ module.exports = {
         type: Sequelize.DATE,
       },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       nomor: {
@@ -51,9 +48,8 @@ module.exports = {
       kesimpulan: {
         type: Sequelize.STRING,
       },
-      status: {
+      statusDokumen: {
         type: Sequelize.STRING,
-        defaultValue: "Draft",
       },
       rdSelection: {
         type: Sequelize.STRING,

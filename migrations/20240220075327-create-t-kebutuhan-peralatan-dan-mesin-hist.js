@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_karakteristikBahanTambahan_hist", {
+    await queryInterface.createTable("t_kebutuhanPeralatanDanMesin_hist", {
       status: {
         type: Sequelize.STRING,
       },
@@ -12,20 +12,14 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
+      peralatanDanMesin: {
         type: Sequelize.STRING,
       },
-      parameter: {
+      fungsi: {
         type: Sequelize.STRING,
       },
-      hasilTinjauan: {
+      kapasitas: {
         type: Sequelize.STRING,
-      },
-      sumberPustaka: {
-        type: Sequelize.STRING,
-      },
-      tableIndex: {
-        type: Sequelize.INTEGER,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
@@ -39,6 +33,7 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
+
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -50,6 +45,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_karakteristikBahanTambahan_hist");
+    await queryInterface.dropTable("t_kebutuhanPeralatanDanMesin_hist");
   },
 };

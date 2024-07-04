@@ -2,33 +2,45 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_karakteristikBahanTambahan_hist", {
-      status: {
-        type: Sequelize.STRING,
-      },
-      changeDate: {
-        type: Sequelize.DATE,
-      },
+    await queryInterface.createTable("t_farmakologiKlinis", {
       id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
+      indikasi: {
         type: Sequelize.STRING,
       },
-      parameter: {
+      mekanismeAksi: {
         type: Sequelize.STRING,
       },
-      hasilTinjauan: {
+      efekSamping: {
+        type: Sequelize.STRING,
+      },
+      absorpsi: {
+        type: Sequelize.STRING,
+      },
+      distribusi: {
+        type: Sequelize.STRING,
+      },
+      metabolisme: {
+        type: Sequelize.STRING,
+      },
+      eliminasi: {
         type: Sequelize.STRING,
       },
       sumberPustaka: {
         type: Sequelize.STRING,
       },
-      tableIndex: {
-        type: Sequelize.INTEGER,
-      },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
+        references: {
+          model: "t_studiPraformulasi",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -50,6 +62,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_karakteristikBahanTambahan_hist");
+    await queryInterface.dropTable("t_farmakologiKlinis");
   },
 };

@@ -2,45 +2,33 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_farmalogiKlinis", {
+    await queryInterface.createTable("t_kemasanProtokolSkalaLab_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      indikasi: {
+      parameterBentukSediaan: {
         type: Sequelize.STRING,
       },
-      mekanismeAksi: {
+      samaDenganOriginatorAtauKompetitorBentukSediaan: {
         type: Sequelize.STRING,
       },
-      efekSamping: {
+      justifikasiBentukSediaan: {
         type: Sequelize.STRING,
       },
-      absorpsi: {
-        type: Sequelize.STRING,
+      detailSediaan: {
+        type: Sequelize.JSONB,
       },
-      distribusi: {
-        type: Sequelize.STRING,
-      },
-      metabolisme: {
-        type: Sequelize.STRING,
-      },
-      eliminasi: {
-        type: Sequelize.STRING,
-      },
-      sumberPustaka: {
-        type: Sequelize.STRING,
+      tableIndex: {
+        type: Sequelize.INTEGER,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_studiPraformulasi",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -62,6 +50,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_farmalogiKlinis");
+    await queryInterface.dropTable("t_kemasanProtokolSkalaLab_hist");
   },
 };

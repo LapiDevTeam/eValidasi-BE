@@ -9,9 +9,6 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_formula_hist.belongsTo(models.t_studiPraformulasi_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
     }
   }
   t_formula_hist.init(

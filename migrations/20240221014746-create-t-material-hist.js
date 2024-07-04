@@ -2,11 +2,14 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_material", {
+    await queryInterface.createTable("t_material_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       jumlahPenelitianAnalisaMaterial: {
@@ -36,6 +39,7 @@ module.exports = {
       biayaOptimasiFormulaDanProses: {
         type: Sequelize.INTEGER,
       },
+
       jumlahPenelitianStabilitaSkalaLab: {
         type: Sequelize.STRING,
       },
@@ -68,12 +72,6 @@ module.exports = {
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_studiPraformulasi",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -84,7 +82,6 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
-
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -96,6 +93,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_material");
+    await queryInterface.dropTable("t_material_hist");
   },
 };

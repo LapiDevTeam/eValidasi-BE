@@ -3,10 +3,13 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("t_deskripsiProduct_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       namaStudi: {
@@ -41,12 +44,6 @@ module.exports = {
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_studiPraformulasi_hist",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,

@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_productBrief_status_hist extends Model {
+  class t_originatorAtauKompetitor_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -11,26 +11,29 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  t_productBrief_status_hist.init(
+  t_originatorAtauKompetitor_hist.init(
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      ProductBriefId: DataTypes.INTEGER,
-      approver_no: DataTypes.INTEGER,
-      is_approve: DataTypes.BOOLEAN,
-      approver_name: DataTypes.STRING,
-      approver_joblevel_id: DataTypes.STRING,
-      approver_inisial: DataTypes.STRING,
-      keterangan_reject: DataTypes.TEXT,
+      originator: DataTypes.STRING,
+      source: DataTypes.STRING,
+      harga: DataTypes.STRING,
+      pemeriksaanFisikDanKimiaOriginator: DataTypes.STRING,
+      profilDisolusi: DataTypes.STRING,
+      stabilita: DataTypes.STRING,
+      totalKebutuhanMaterial: DataTypes.STRING,
+      perkiraanHargaPembelianMaterial: DataTypes.STRING,
+      tableIndex: DataTypes.INTEGER,
+      StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "t_productBrief_status_hist",
+      modelName: "t_originatorAtauKompetitor_hist",
       freezeTableName: true,
     }
   );
-  return t_productBrief_status_hist;
+  return t_originatorAtauKompetitor_hist;
 };

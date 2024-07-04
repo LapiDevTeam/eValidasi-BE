@@ -9,28 +9,12 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_studiPraformulasi_hist.belongsTo(models.t_productBrief_hist, {
-        foreignKey: "ProductBriefId",
-      });
-      t_studiPraformulasi_hist.hasMany(models.t_deskripsiProduct_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
-      t_studiPraformulasi_hist.hasMany(models.t_farmalogiKlinis_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
-      t_studiPraformulasi_hist.hasMany(models.t_formula_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
-      t_studiPraformulasi_hist.hasMany(models.t_stabilita_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
-      t_studiPraformulasi_hist.hasMany(models.t_studiPaten_hist, {
-        foreignKey: "StudiPraformulasiID",
-      });
     }
   }
   t_studiPraformulasi_hist.init(
     {
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       nomor: DataTypes.STRING,
       tanggalPenyusunan: DataTypes.DATE,
       tanggalAddendum: DataTypes.DATE,
@@ -43,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
       productBriefNo: DataTypes.STRING,
       ProductBriefId: DataTypes.INTEGER,
       kesimpulan: DataTypes.STRING,
-      status: DataTypes.STRING,
+      statusDokumen: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

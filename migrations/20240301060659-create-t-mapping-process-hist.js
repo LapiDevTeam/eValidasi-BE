@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_karakteristikBahanTambahan_hist", {
+    await queryInterface.createTable("t_mappingProcess_hist", {
       status: {
         type: Sequelize.STRING,
       },
@@ -12,20 +12,17 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
-      namaBahan: {
+      processParameters: {
+        type: Sequelize.TEXT,
+      },
+      materialAttributes: {
+        type: Sequelize.TEXT,
+      },
+      manufacturingProcess: {
         type: Sequelize.STRING,
       },
-      parameter: {
-        type: Sequelize.STRING,
-      },
-      hasilTinjauan: {
-        type: Sequelize.STRING,
-      },
-      sumberPustaka: {
-        type: Sequelize.STRING,
-      },
-      tableIndex: {
-        type: Sequelize.INTEGER,
+      qualityAttributes: {
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
@@ -50,6 +47,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_karakteristikBahanTambahan_hist");
+    await queryInterface.dropTable("t_mappingProcess_hist");
   },
 };

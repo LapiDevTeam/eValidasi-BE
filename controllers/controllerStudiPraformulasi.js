@@ -2,7 +2,7 @@ const {
   t_studiPraformulasi,
   t_productBrief,
   t_deskripsiProduct,
-  t_farmalogiKlinis,
+  t_farmakologiKlinis,
   t_stabilita,
   t_formula,
   t_kemasan,
@@ -131,7 +131,7 @@ class ControllerStudiPraformulasi {
         tujuan,
         productBriefNo,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
       } = req.body;
 
@@ -145,7 +145,7 @@ class ControllerStudiPraformulasi {
         tujuan,
         productBriefNo,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
       });
 
@@ -281,13 +281,13 @@ class ControllerStudiPraformulasi {
 
       console.log(id, "<<<<<");
 
-      const prevKomposisi = await t_farmalogiKlinis.findAll({
+      const prevKomposisi = await t_farmakologiKlinis.findAll({
         where: {
-          StudiPraformulasiID: id,
+          StudiPraformulasiID: +id,
         },
       });
 
-      const existing = prevKomposisi.map((item) => item?.id);
+      const existing = prevKomposisi.map((item) => +item?.id);
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
@@ -298,7 +298,7 @@ class ControllerStudiPraformulasi {
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
-            const created = await t_farmalogiKlinis.create(
+            const created = await t_farmakologiKlinis.create(
               {
                 indikasi: newItem?.indikasi || "",
                 mekanismeAksi: newItem?.mekanismeAksi || "",
@@ -318,7 +318,7 @@ class ControllerStudiPraformulasi {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            await t_farmalogiKlinis.update(
+            await t_farmakologiKlinis.update(
               {
                 indikasi: newItem?.indikasi || "",
                 mekanismeAksi: newItem?.mekanismeAksi || "",
@@ -344,7 +344,7 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
-        await t_farmalogiKlinis.destroy({
+        await t_farmakologiKlinis.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
         });
@@ -352,7 +352,7 @@ class ControllerStudiPraformulasi {
 
       await transaction.commit();
 
-      const newData = await t_farmalogiKlinis.findAll({
+      const newData = await t_farmakologiKlinis.findAll({
         where: {
           StudiPraformulasiID: +id,
         },
@@ -364,6 +364,7 @@ class ControllerStudiPraformulasi {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
@@ -387,7 +388,7 @@ class ControllerStudiPraformulasi {
 
       const prevKomposisi = await t_formula.findAll({
         where: {
-          StudiPraformulasiID: id,
+          StudiPraformulasiID: +id,
         },
       });
 
@@ -462,6 +463,7 @@ class ControllerStudiPraformulasi {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
@@ -1671,7 +1673,7 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      const createFarmalogiKlinis = await t_farmalogiKlinis.create({
+      const createFarmalogiKlinis = await t_farmakologiKlinis.create({
         indikasi,
         mekanismeAksi,
         efekSamping,
@@ -1698,14 +1700,14 @@ class ControllerStudiPraformulasi {
 
       console.log(id, 898989);
 
-      const farm = await t_farmalogiKlinis.findAll({
+      const farm = await t_farmakologiKlinis.findAll({
         where: { StudiPraformulasiID: +id },
       });
 
       console.log(farm, "<<<des");
 
       if (farm.length > 0) {
-        await t_farmalogiKlinis.destroy({
+        await t_farmakologiKlinis.destroy({
           where: { StudiPraformulasiID: +id }, // Corrected the where clause
         });
 
@@ -2149,7 +2151,7 @@ class ControllerStudiPraformulasi {
   static async getFarmakologiKlinisDetails(req, res) {
     const { id } = req.params;
     try {
-      const farmakologiDetail = await t_farmalogiKlinis.findAll({
+      const farmakologiDetail = await t_farmakologiKlinis.findAll({
         where: { StudiPraformulasiID: id },
       });
 
@@ -2178,7 +2180,7 @@ class ControllerStudiPraformulasi {
         sumberPustaka,
       } = req.body;
 
-      const [updatedRowsCount] = await t_farmalogiKlinis.update(
+      const [updatedRowsCount] = await t_farmakologiKlinis.update(
         {
           indikasi,
           mekanismeAksi,

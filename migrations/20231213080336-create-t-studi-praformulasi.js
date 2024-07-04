@@ -3,12 +3,6 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("t_studiPraformulasi", {
-      status: {
-        type: Sequelize.STRING,
-      },
-      changeDate: {
-        type: Sequelize.DATE,
-      },
       id: {
         allowNull: false,
         autoIncrement: true,
@@ -57,7 +51,7 @@ module.exports = {
       kesimpulan: {
         type: Sequelize.STRING,
       },
-      status: {
+      statusDokumen: {
         type: Sequelize.STRING,
         defaultValue: "Draft",
       },

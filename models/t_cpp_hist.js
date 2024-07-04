@@ -1,24 +1,24 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_stabilita_hist extends Model {
+  class t_cpp_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      // define association
     }
   }
-  t_stabilita_hist.init(
+  t_cpp_hist.init(
     {
-      namaProduk: DataTypes.STRING,
-      kondisiPenyimpanan: DataTypes.STRING,
-      kondisiKhusus: DataTypes.STRING,
-      hasilStudiStabilita: DataTypes.STRING,
-      masaKadaluarsa: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
+      parameterProcess: DataTypes.STRING,
+      pengaruhKeCqa: DataTypes.JSONB,
+      apakahTermasukCpp: DataTypes.STRING,
+      justifikasi: DataTypes.STRING,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
@@ -26,9 +26,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: "t_stabilita_hist",
+      modelName: "t_cpp_hist",
       freezeTableName: true,
     }
   );
-  return t_stabilita_hist;
+  return t_cpp_hist;
 };

@@ -83,7 +83,7 @@ module.exports = (sequelize, DataTypes) => {
       productBriefNo: DataTypes.STRING,
       ProductBriefId: DataTypes.INTEGER,
       kesimpulan: DataTypes.STRING,
-      status: DataTypes.STRING,
+      statusDokumen: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

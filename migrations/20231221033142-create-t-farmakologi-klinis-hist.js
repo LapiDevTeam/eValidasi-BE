@@ -2,11 +2,14 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_farmalogiKlinis_hist", {
+    await queryInterface.createTable("t_farmakologiKlinis_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       indikasi: {
@@ -35,12 +38,6 @@ module.exports = {
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
-        references: {
-          model: "t_studiPraformulasi_hist",
-          key: "id",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -62,6 +59,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_farmalogiKlinis_hist");
+    await queryInterface.dropTable("t_farmakologiKlinis_hist");
   },
 };
