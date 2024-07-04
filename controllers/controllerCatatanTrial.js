@@ -99,7 +99,10 @@ class ControllerCatatanTrial {
         statusA,
         filter,
         tipeCatatanTrial,
+        upload,
       } = req.body;
+
+      let newUpload = upload.filter((item) => item.trim() !== "");
 
       const createCatatanTrial = await t_catatanTrial.create({
         tanggalTrial: tanggalTrial || "",
@@ -113,6 +116,7 @@ class ControllerCatatanTrial {
         tipeCatatanTrial: tipeCatatanTrial || "",
         pic: nama_user || "",
         bagian: bagian_user || "",
+        upload: newUpload || [],
         user_id,
         delegated_to,
       });

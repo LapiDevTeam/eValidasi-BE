@@ -60,6 +60,9 @@ module.exports = {
       alasan_reject: {
         type: Sequelize.STRING,
       },
+      upload: {
+        type: Sequelize.JSONB,
+      },
       user_id: {
         type: Sequelize.STRING,
       },
