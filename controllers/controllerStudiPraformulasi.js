@@ -35,8 +35,12 @@ const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
 const t_ujiinkompatibilitas = require("../models/t_ujiinkompatibilitas");
 const { checkStatusStudi } = require("../helpers/checkStatus");
-const { isApproveValidation } = require("../helpers/approver");
+const {
+  isApproveValidation,
+  approverRecordset,
+} = require("../helpers/approver");
 const { fetchApproverInisial } = require("../services/mssqlService");
+const { getStatus } = require("../helpers/statusProductBrief");
 
 class ControllerStudiPraformulasi {
   // approver pemohon
@@ -101,6 +105,76 @@ class ControllerStudiPraformulasi {
           }
         );
       }
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async approveStudi(req, res, next) {
+    try {
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findStudi = await t_studiPraformulasi?.findByPk(+id);
+
+      if (!findStudi)
+        throw new MyError(404, "Form ProductBrief tidak ditemukan");
+      const apprNo = await checkStatusStudi(id);
+
+      const dataApprove = await approverRecordset(
+        "studiPraformulasi",
+        findStudi.rdSelection,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      console.log(dataApprove, "<< DATA approve");
+
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let statusDokumen;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        statusDokumen = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+
+      console.log(statusDokumen, "<< dok");
+
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
+      if (is_approve === false) statusDokumen = "Reject";
+
+      await t_studiPraformulasi_status.create({
+        StudiPraformulasiID: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
+      });
+      await t_studiPraformulasi.update(
+        {
+          statusDokumen: statusDokumen,
+          alasan_reject: keterangan_reject,
+          // user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
@@ -2225,6 +2299,17 @@ class ControllerStudiPraformulasi {
       console.log(apprDeptId, "<DEBTID");
       const apprNo = await checkStatusStudi(id);
       console.log(apprNo, "<< apprNo");
+
+      await Promise.all(
+        studi.dataValues.approver_data.map(async (el, index) => {
+          el.dataValues.approver_inisial = await fetchApproverInisial({
+            user_id: el.user_id,
+            delegated_to: el.delegated_to,
+          });
+
+          return el;
+        })
+      );
 
       const isApprove = await isApproveValidation(
         // productBriefDetail.nama_pegawai,

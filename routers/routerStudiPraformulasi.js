@@ -169,6 +169,12 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.approvePemohon
 );
+
+router.put(
+  "/approve-studi/:id",
+  authentication,
+  ControllerStudiPraformulasi.approveStudi
+);
 router.put(
   "/edit-studi-praformulasi/:id",
   ControllerStudiPraformulasi.editStudiPraformulasi
