@@ -67,6 +67,36 @@ module.exports = {
       flag_update: {
         type: Sequelize.STRING,
       },
+      is_approve_1: {
+        type: Sequelize.STRING,
+      },
+      approver_name_1: {
+        type: Sequelize.STRING,
+      },
+      approver_user_id_1: {
+        type: Sequelize.STRING,
+      },
+      approver_delegated_to_1: {
+        type: Sequelize.STRING,
+      },
+      keterangan_reject_1: {
+        type: Sequelize.STRING,
+      },
+      is_approve_2: {
+        type: Sequelize.STRING,
+      },
+      approver_name_2: {
+        type: Sequelize.STRING,
+      },
+      approver_user_id_2: {
+        type: Sequelize.STRING,
+      },
+      approver_delegated_to_2: {
+        type: Sequelize.STRING,
+      },
+      keterangan_reject_2: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

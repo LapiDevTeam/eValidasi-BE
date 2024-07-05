@@ -28,13 +28,65 @@ const {
   t_originatorAtauKompetitor,
   t_kebutuhanPeralatanDanMesin,
   t_studiPaten,
+  t_studiPraformulasi_status,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
 const t_ujiinkompatibilitas = require("../models/t_ujiinkompatibilitas");
+const { checkStatusStudi } = require("../helpers/checkStatus");
+const { isApproveValidation } = require("../helpers/approver");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerStudiPraformulasi {
+  // approver pemohon
+  static async approvePemohon(req, res, next) {
+    try {
+      const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
+        req.user;
+      console.log(req.user, "<< user");
+      const {
+        is_approve_1,
+        keterangan_reject_1,
+        is_approve_2,
+        keterangan_reject_2,
+      } = req.body;
+      const { id } = req.params;
+      const findStudiPemohon = await t_studiPraformulasi.findByPk(+id);
+      if (!findStudiPemohon)
+        throw new MyError(404, "Form CatatanTrial tidak ditemukan");
+
+      // await t_studiPraformulasi_status.create({
+      //   StudiPraformulasiID: id,
+      //   approver_no: apprNo,
+      //   is_approve,
+      //   approver_inisial: inisial_user,
+      //   approver_name: nama_user,
+      //   approver_joblevel_id: joblevel_id_user,
+      //   keterangan_reject,
+      //   user_id,
+      //   delegated_to,
+      // });
+      await t_studiPraformulasi.update(
+        {
+          is_approve_1,
+          approver_name_1: nama_user,
+          approver_user_id_1: user_id,
+          approver_delegated_to_1: delegated_to,
+          keterangan_reject_1: keterangan_reject_1,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
   static async findAllStudiPraformulasi(req, res) {
     try {
       const {
@@ -1749,7 +1801,6 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-
   static async deleteKemasan(req, res) {
     try {
       const { id } = req.params;
@@ -2073,15 +2124,82 @@ class ControllerStudiPraformulasi {
     //   res.status(500).json({ error: "Internal Server Error" });
     // }
   }
-  static async getStudiPraformulasiDetails(req, res) {
-    const { id } = req.params;
+  static async getStudiPraformulasiDetails(req, res, next) {
     try {
-      const studiDetails = await t_studiPraformulasi.findByPk(id);
-      if (!studiDetails) throw new MyError(400, "notFound!");
-      // console.log(studiDetails, "<<");
-      res.status(200).json(studiDetails);
-    } catch (err) {
-      console.log(err);
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+      const { id } = req.params;
+      let studi;
+      console.log(studi, "<< STUDI");
+      console.log(joblevel_id_user, "<< job");
+
+      if (+joblevel_id_user || bagian_user === bagian_user) {
+        studi = await t_studiPraformulasi.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_studiPraformulasi_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_studiPraformulasi_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(studi, "<<studi");
+      } else {
+        console.log("xixi");
+        studi = await t_studiPraformulasi.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_studiPraformulasi_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_studiPraformulasi_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+      console.log(studi, "<< studidetails");
+      // const apprApplicationCode = studi.apprAplicationCode;
+      // console.log(apprApplicationCode, "<< code");
+      // const apprDeptId = studi.bagian;
+      // console.log(apprDeptId, "<< BAGIAN");
+      // const apprNo = await checkStatusStudi(id);
+      // console.log(a);
+      await Promise.all(
+        studi.dataValues.approver_data.map(async (el, index) => {
+          el.dataValues.approver_inisial = await fetchApproverInisial({
+            user_id: el.user_id,
+            delegated_to: el.delegated_to,
+          });
+
+          return el;
+        })
+      );
+
+      // const isApprove = await isApproveValidation(
+      //   studi.nama_pekerja,
+      //   apprApplicationCode,
+      //   apprDeptId,
+      //   apprNo,
+      //   user_id,
+      //   nama_user
+      // );
+
+      // console.log(studi, "<<< STUDI");
+
+      // if (isApprove.message) throw new MyError(400, isApprove.message);
+      res.status(200).json({ studi });
+    } catch (error) {
+      next(error);
     }
   }
   static async getDeskripsiProductDetails(req, res) {

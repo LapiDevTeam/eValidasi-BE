@@ -102,8 +102,6 @@ class ControllerCatatanTrial {
         upload,
       } = req.body;
 
-      let newUpload = upload.filter((item) => item.trim() !== "");
-
       const createCatatanTrial = await t_catatanTrial.create({
         tanggalTrial: tanggalTrial || "",
         namaProduk: namaProduk || "",
@@ -116,7 +114,7 @@ class ControllerCatatanTrial {
         tipeCatatanTrial: tipeCatatanTrial || "",
         pic: nama_user || "",
         bagian: bagian_user || "",
-        upload: newUpload || [],
+        upload: upload || [],
         user_id,
         delegated_to,
       });
@@ -145,7 +143,10 @@ class ControllerCatatanTrial {
         statusA,
         filter,
         tipeCatatanTrial,
+        upload,
       } = req.body;
+
+      let newUpload = upload?.filter((item) => item.trim() !== "");
 
       const [updatedRowsCount] = await t_catatanTrial.update(
         {
@@ -159,6 +160,7 @@ class ControllerCatatanTrial {
           statusA: statusA || "",
           filter: filter || "",
           tipeCatatanTrial: tipeCatatanTrial || "",
+          upload: newUpload,
         },
         {
           where: { id: id },
@@ -1325,6 +1327,27 @@ class ControllerCatatanTrial {
         }
       );
       res.status(200).json(updateTindakLanjut);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async updateUpload(req, res) {
+    try {
+      const { CatatanTrialID } = req.params;
+      const { upload } = req.body;
+      const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
+
+      if (!findCatatanTrialID) throw { name: "NotFound" };
+      const updateUpload = await t_catatanTrial.update(
+        { upload: upload },
+        {
+          where: {
+            id: findCatatanTrialID.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateUpload);
     } catch (err) {
       console.log(err);
     }

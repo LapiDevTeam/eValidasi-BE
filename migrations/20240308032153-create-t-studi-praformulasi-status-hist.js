@@ -12,7 +12,7 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
-      StudiPraformulasiId: {
+      StudiPraformulasiID: {
         type: Sequelize.INTEGER,
       },
       approver_no: {

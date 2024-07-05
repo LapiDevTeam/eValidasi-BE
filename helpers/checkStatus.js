@@ -10,6 +10,7 @@ const configMssql = {
 };
 const {
   t_protokolSkalaLab_status,
+  t_studiPraformulasi_status,
   t_productBrief_status,
   t_catatanTrial_status,
   t_formulaFix_status,
@@ -22,6 +23,19 @@ const checkStatusProductBrief = async (id) => {
   const checkStatus = await t_productBrief_status.findAll({
     where: {
       ProductBriefId: id,
+      is_approve: true,
+    },
+    order: [["approver_no", "DESC"]],
+  });
+  if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
+  return apprNo;
+};
+//check table status studi
+const checkStatusStudi = async (id) => {
+  let apprNo = 1;
+  const checkStatus = await t_studiPraformulasi_status.findAll({
+    where: {
+      StudiPraformulasiID: id,
       is_approve: true,
     },
     order: [["approver_no", "DESC"]],
@@ -81,6 +95,7 @@ const checkStatusLaporanTrialSkalaLab = async (id) => {
 
 module.exports = {
   checkStatusProductBrief,
+  checkStatusStudi,
   checkStatusProtokol,
   checkStatusCatatanTrial,
   checkStatusFormulaFix,

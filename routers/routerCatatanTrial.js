@@ -134,6 +134,10 @@ router.put(
   ControllerCatatanTrial.updateTindakLanjut
 );
 router.put(
+  "/update-upload/:CatatanTrialID",
+  ControllerCatatanTrial.updateUpload
+);
+router.put(
   "/update-perhitunganBatasBahanTambahan/:CatatanTrialID",
   ControllerCatatanTrial.updatePerhitunganBatasBahanTambahan
 );

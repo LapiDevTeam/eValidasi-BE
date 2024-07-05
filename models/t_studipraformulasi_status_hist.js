@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_studiPraformulasi_status extends Model {
+  class t_studiPraformulasi_status_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -11,9 +11,9 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  t_studiPraformulasi_status.init(
+  t_studiPraformulasi_status_hist.init(
     {
-      StudiPraformulasiId: DataTypes.INTEGER,
+      StudiPraformulasiID: DataTypes.INTEGER,
       approver_no: DataTypes.INTEGER,
       is_approve: DataTypes.BOOLEAN,
       approver_name: DataTypes.STRING,
@@ -26,8 +26,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: "t_studiPraformulasi_status",
+      modelName: "t_studiPraformulasi_status_hist",
+      freezeTableName: true,
     }
   );
-  return t_studiPraformulasi_status;
+  return t_studiPraformulasi_status_hist;
 };

@@ -9,8 +9,14 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      StudiPraformulasiId: {
+      StudiPraformulasiID: {
         type: Sequelize.INTEGER,
+        references: {
+          model: "t_studiPraformulasi",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
       approver_no: {
         type: Sequelize.INTEGER,

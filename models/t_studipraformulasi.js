@@ -67,6 +67,10 @@ module.exports = (sequelize, DataTypes) => {
       t_studiPraformulasi.hasMany(models.t_kebutuhanPeralatanDanMesin, {
         foreignKey: "StudiPraformulasiID",
       });
+      t_studiPraformulasi.hasMany(models.t_studiPraformulasi_status, {
+        foreignKey: "StudiPraformulasiID",
+        as: "approver_data",
+      });
     }
   }
   t_studiPraformulasi.init(
@@ -88,6 +92,16 @@ module.exports = (sequelize, DataTypes) => {
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
+      is_approve_1: DataTypes.STRING,
+      approver_name_1: DataTypes.STRING,
+      approver_user_id_1: DataTypes.STRING,
+      approver_delegated_to_1: DataTypes.STRING,
+      keterangan_reject_1: DataTypes.STRING,
+      is_approve_2: DataTypes.STRING,
+      approver_name_2: DataTypes.STRING,
+      approver_user_id_2: DataTypes.STRING,
+      approver_delegated_to_2: DataTypes.STRING,
+      keterangan_reject_2: DataTypes.STRING,
     },
     {
       sequelize,

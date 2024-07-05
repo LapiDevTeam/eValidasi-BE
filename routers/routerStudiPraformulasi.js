@@ -142,6 +142,7 @@ router.delete(
 router.get("/download", ControllerStudiPraformulasi.testDownload);
 router.get(
   "/studi-praformulasi/:id",
+  authentication,
   ControllerStudiPraformulasi.getStudiPraformulasiDetails
 );
 router.get(
@@ -162,6 +163,11 @@ router.get(
 router.get(
   "/uji-inkompatibilitas/:id",
   ControllerStudiPraformulasi.getUjiKompatibilitas
+);
+router.put(
+  "/approve-pemohon/:id",
+  authentication,
+  ControllerStudiPraformulasi.approvePemohon
 );
 router.put(
   "/edit-studi-praformulasi/:id",

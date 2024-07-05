@@ -9,11 +9,14 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      t_studiPraformulasi_status.belongsTo(models.t_studiPraformulasi, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
   t_studiPraformulasi_status.init(
     {
-      StudiPraformulasiId: DataTypes.INTEGER,
+      StudiPraformulasiID: DataTypes.INTEGER,
       approver_no: DataTypes.INTEGER,
       is_approve: DataTypes.BOOLEAN,
       approver_name: DataTypes.STRING,
@@ -27,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "t_studiPraformulasi_status",
+      freezeTableName: true,
     }
   );
   return t_studiPraformulasi_status;
