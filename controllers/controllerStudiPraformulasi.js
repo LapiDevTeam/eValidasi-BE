@@ -47,6 +47,7 @@ class ControllerStudiPraformulasi {
       console.log(req.user, "<< user");
       const {
         is_approve_1,
+        approver_tanggal_1,
         keterangan_reject_1,
         is_approve_2,
         keterangan_reject_2,
@@ -54,7 +55,7 @@ class ControllerStudiPraformulasi {
       const { id } = req.params;
       const findStudiPemohon = await t_studiPraformulasi.findByPk(+id);
       if (!findStudiPemohon)
-        throw new MyError(404, "Form CatatanTrial tidak ditemukan");
+        throw new MyError(404, "Form studi tidak ditemukan");
 
       // await t_studiPraformulasi_status.create({
       //   StudiPraformulasiID: id,
@@ -67,20 +68,39 @@ class ControllerStudiPraformulasi {
       //   user_id,
       //   delegated_to,
       // });
-      await t_studiPraformulasi.update(
-        {
-          is_approve_1,
-          approver_name_1: nama_user,
-          approver_user_id_1: user_id,
-          approver_delegated_to_1: delegated_to,
-          keterangan_reject_1: keterangan_reject_1,
-        },
-        {
-          where: {
-            id,
+      if (bagian_user === "RD1" || bagian_user === "RD1") {
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1,
+            approver_name_1: nama_user,
+            approver_user_id_1: user_id,
+            approver_delegated_to_1: delegated_to,
+            approver_tanggal_1: new Date(),
+            keterangan_reject_1: keterangan_reject_1,
           },
-        }
-      );
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      } else if (bagian_user === "RD3") {
+        await t_studiPraformulasi.update(
+          {
+            is_approve_2,
+            approver_name_2: nama_user,
+            approver_user_id_2: user_id,
+            approver_delegated_to_2: delegated_to,
+            approver_tanggal_2: new Date(),
+            keterangan_reject_2: keterangan_reject_2,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
@@ -2167,37 +2187,61 @@ class ControllerStudiPraformulasi {
           ],
         });
       }
-      console.log(studi, "<< studidetails");
+      console.log(studi.dataValues, "<< studidetails");
       // const apprApplicationCode = studi.apprAplicationCode;
       // console.log(apprApplicationCode, "<< code");
       // const apprDeptId = studi.bagian;
       // console.log(apprDeptId, "<< BAGIAN");
       // const apprNo = await checkStatusStudi(id);
       // console.log(a);
-      await Promise.all(
-        studi.dataValues.approver_data.map(async (el, index) => {
-          el.dataValues.approver_inisial = await fetchApproverInisial({
-            user_id: el.user_id,
-            delegated_to: el.delegated_to,
-          });
 
-          return el;
-        })
+      studi.dataValues.approver_inisial_1 = await fetchApproverInisial({
+        user_id: studi.dataValues.approver_user_id_1,
+        delegated_to: studi.dataValues.approver_delegated_to_1,
+      });
+      studi.dataValues.approver_inisial_2 = await fetchApproverInisial({
+        user_id: studi.dataValues.approver_user_id_2,
+        delegated_to: studi.dataValues.approver_delegated_to_2,
+      });
+
+      console.log(
+        studi.dataValues.approver_user_id_1,
+        studi.dataValues.approver_delegated_to_1,
+        "<< 123"
       );
+      console.log(studi, "< STUDI");
+      // await Promise.all(
+      //   studi.dataValues.approver_data.map(async (el, index) => {
+      //     el.dataValues.approver_inisial = await fetchApproverInisial({
+      //       user_id: el.user_id,
+      //       delegated_to: el.delegated_to,
+      //     });
 
-      // const isApprove = await isApproveValidation(
-      //   studi.nama_pekerja,
-      //   apprApplicationCode,
-      //   apprDeptId,
-      //   apprNo,
-      //   user_id,
-      //   nama_user
+      //     return el;
+      //   })
       // );
 
-      // console.log(studi, "<<< STUDI");
+      const apprDeptId = studi?.dataValues?.rdSelection;
+      console.log(apprDeptId, "<DEBTID");
+      const apprNo = await checkStatusStudi(id);
+      console.log(apprNo, "<< apprNo");
 
-      // if (isApprove.message) throw new MyError(400, isApprove.message);
-      res.status(200).json({ studi });
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "studiPraformulasi",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+
+      if (studi) {
+        res.status(200).json({ ...studi?.toJSON(), isApprove });
+      } else {
+        res.status(200).json();
+      }
     } catch (error) {
       next(error);
     }

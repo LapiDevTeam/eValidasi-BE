@@ -75,6 +75,9 @@ module.exports = {
       approver_delegated_to_1: {
         type: Sequelize.STRING,
       },
+      approver_tanggal_1: {
+        type: Sequelize.DATE,
+      },
       keterangan_reject_1: {
         type: Sequelize.STRING,
       },
@@ -89,6 +92,9 @@ module.exports = {
       },
       approver_delegated_to_2: {
         type: Sequelize.STRING,
+      },
+      approver_tanggal_2: {
+        type: Sequelize.DATE,
       },
       keterangan_reject_2: {
         type: Sequelize.STRING,

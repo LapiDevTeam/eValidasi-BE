@@ -36,11 +36,13 @@ module.exports = (sequelize, DataTypes) => {
       approver_name_1: DataTypes.STRING,
       approver_user_id_1: DataTypes.STRING,
       approver_delegated_to_1: DataTypes.STRING,
+      approver_tanggal_1: DataTypes.DATE,
       keterangan_reject_1: DataTypes.STRING,
       is_approve_2: DataTypes.STRING,
       approver_name_2: DataTypes.STRING,
       approver_user_id_2: DataTypes.STRING,
       approver_delegated_to_2: DataTypes.STRING,
+      approver_tanggal_2: DataTypes.DATE,
       keterangan_reject_2: DataTypes.STRING,
     },
     {
