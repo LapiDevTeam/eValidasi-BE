@@ -1905,17 +1905,20 @@ class ControllerStudiPraformulasi {
       console.log(existing, " << exsting");
       console.log(newItemId, " << newItemId");
       // update
+      const dataArray = data.flat();
       await Promise.all(
-        data?.map(async (newItem) => {
+        dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
+          console.log(newItem, " << new item");
           if (!newItem?.id) {
+            console.log("<< masuk");
             const created = await t_karakteristikBahanAktif.create(
               {
                 namaBahan: newItem?.namaBahan || "",
                 parameter: newItem?.parameter || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
-                tableIndex: newItem?.tableIndex || null,
+                tableIndex: newItem?.tableIndex ?? null,
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -1926,13 +1929,14 @@ class ControllerStudiPraformulasi {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
             await t_karakteristikBahanAktif.update(
               {
                 namaBahan: newItem?.namaBahan || "",
                 parameter: newItem?.parameter || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
-                tableIndex: newItem?.tableIndex || null,
+                tableIndex: newItem?.tableIndex ?? null,
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -1962,6 +1966,7 @@ class ControllerStudiPraformulasi {
           StudiPraformulasiID: +id,
         },
       });
+      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
