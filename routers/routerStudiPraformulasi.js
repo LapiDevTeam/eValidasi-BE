@@ -74,6 +74,24 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.handleSaveKebutuhanPeralatan
 );
+// save dan edit karakteristik FisikaKimia
+router.put(
+  "/handle-karakteristik-fisikaKimia/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKarakteristikFisikaKimia
+);
+// save dan edit qtpp
+router.put(
+  "/handle-qtpp/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveQtpp
+);
+// save dan edit kemasan
+router.put(
+  "/handle-kemasan/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKemasan
+);
 
 router.post(
   "/studi-praformulasi",

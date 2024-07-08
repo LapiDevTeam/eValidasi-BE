@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       t_studiPraformulasi.hasMany(models.t_deskripsiProduct, {
         foreignKey: "StudiPraformulasiID",
       });
-      t_studiPraformulasi.hasMany(models.t_farmalogiKlinis, {
+      t_studiPraformulasi.hasMany(models.t_farmakologiKlinis, {
         foreignKey: "StudiPraformulasiID",
       });
       t_studiPraformulasi.hasMany(models.t_formula, {

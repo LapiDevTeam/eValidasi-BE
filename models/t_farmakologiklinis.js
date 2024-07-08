@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_farmalogiKlinis extends Model {
+  class t_farmakologiKlinis extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,12 +9,12 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_farmalogiKlinis.belongsTo(models.t_studiPraformulasi, {
+      t_farmakologiKlinis.belongsTo(models.t_studiPraformulasi, {
         foreignKey: "StudiPraformulasiID",
       });
     }
   }
-  t_farmalogiKlinis.init(
+  t_farmakologiKlinis.init(
     {
       indikasi: DataTypes.STRING,
       mekanismeAksi: DataTypes.STRING,
@@ -31,9 +31,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: "t_farmalogiKlinis",
+      modelName: "t_farmakologiKlinis",
       freezeTableName: true,
     }
   );
-  return t_farmalogiKlinis;
+  return t_farmakologiKlinis;
 };

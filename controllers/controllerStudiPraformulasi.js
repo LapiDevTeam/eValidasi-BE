@@ -326,6 +326,7 @@ class ControllerStudiPraformulasi {
           StudiPraformulasiID: id,
         },
       });
+      console.log(prevKomposisi, "< prev");
 
       const existing = prevKomposisi.map((item) => item?.id);
       const newItemId = data
@@ -429,11 +430,12 @@ class ControllerStudiPraformulasi {
 
       const prevKomposisi = await t_farmakologiKlinis.findAll({
         where: {
-          StudiPraformulasiID: +id,
+          StudiPraformulasiID: id,
         },
       });
+      console.log(prevKomposisi, "< prev");
 
-      const existing = prevKomposisi.map((item) => +item?.id);
+      const existing = prevKomposisi.map((item) => item?.id);
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
@@ -510,12 +512,119 @@ class ControllerStudiPraformulasi {
         data: newData,
       });
     } catch (err) {
-      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
     }
   }
+  static async handleSaveKarakteristikFisikaKimia(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_karakteristikFisikakimia.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+      console.log(prevKomposisi, "< prev");
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_karakteristikFisikakimia.create(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                manufacturer: newItem?.manufacturer || "",
+                noBatch: newItem?.noBatch || "",
+                het: newItem?.het || "",
+                tanggalProduksi: newItem?.tanggalProduksi || "",
+                tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+                bentukSediaan: newItem?.bentukSediaan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                detailSediaan: newItem?.detailSediaan || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_karakteristikFisikakimia.update(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                manufacturer: newItem?.manufacturer || "",
+                noBatch: newItem?.noBatch || "",
+                het: newItem?.het || "",
+                tanggalProduksi: newItem?.tanggalProduksi || "",
+                tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+                bentukSediaan: newItem?.bentukSediaan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                detailSediaan: newItem?.detailSediaan || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_karakteristikFisikakimia.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_karakteristikFisikakimia.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+
   static async handleSaveFormula(req, res) {
     const transaction = await sequelize.transaction();
     try {
@@ -1549,6 +1658,208 @@ class ControllerStudiPraformulasi {
       await transaction.commit();
 
       const newData = await t_kebutuhanPeralatanDanMesin.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveQtpp(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_qtpp.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_qtpp.create(
+              {
+                bentukSediaan: newItem?.bentukSediaan || "",
+                targetBentukSediaan: newItem?.targetBentukSediaan || "",
+                justifikasiBentukSediaan:
+                  newItem?.justifikasiBentukSediaan || null,
+                detailSediaan: newItem?.detailSediaan || null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_qtpp.update(
+              {
+                bentukSediaan: newItem?.bentukSediaan || "",
+                targetBentukSediaan: newItem?.targetBentukSediaan || "",
+                justifikasiBentukSediaan:
+                  newItem?.justifikasiBentukSediaan || null,
+                detailSediaan: newItem?.detailSediaan || null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_qtpp.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_qtpp.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveKemasan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_kemasan.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_kemasan.create(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                manufacturer: newItem?.manufacturer || "",
+                noBatch: newItem?.noBatch || "",
+                tanggalProduksi: newItem?.tanggalProduksi || "",
+                tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                bentukSediaan: newItem?.bentukSediaan || "",
+                detailSediaan: newItem?.detailSediaan || [],
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_kemasan.update(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                manufacturer: newItem?.manufacturer || "",
+                noBatch: newItem?.noBatch || "",
+                tanggalProduksi: newItem?.tanggalProduksi || "",
+                tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                bentukSediaan: newItem?.bentukSediaan || "",
+                detailSediaan: newItem?.detailSediaan || [],
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_kemasan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_kemasan.findAll({
         where: {
           StudiPraformulasiID: +id,
         },
