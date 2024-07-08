@@ -92,6 +92,12 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.handleSaveKemasan
 );
+// save dan edit karakteristik bahan aktif
+router.put(
+  "/handle-karakteristik-bahanAktif/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKarakteristikBahanAktif
+);
 
 router.post(
   "/studi-praformulasi",
