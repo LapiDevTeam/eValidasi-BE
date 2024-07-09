@@ -61,6 +61,12 @@ router.put(
   ControllerCatatanTrial.handleSavePengamatanAwalPenyalutan
 );
 
+router.put(
+  "/approve-pemohon-catatan-trial/:id",
+  authentication,
+  ControllerCatatanTrial.approvePemohon
+);
+
 // formula catatan trial
 router.post(
   "/create-formula-catatan-trial",

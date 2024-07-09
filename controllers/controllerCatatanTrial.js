@@ -25,8 +25,65 @@ const {
   isApproveValidation,
   approverRecordset,
 } = require("../helpers/approver");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerCatatanTrial {
+  static async approvePemohon(req, res, next) {
+    try {
+      const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
+        req.user;
+      console.log(req.user, "<< user");
+      const {
+        is_approve_1,
+        approver_tanggal_1,
+        keterangan_reject_1,
+        is_approve_2,
+        keterangan_reject_2,
+      } = req.body;
+      const { id } = req.params;
+      const findStudiPemohon = await t_catatanTrial.findByPk(+id);
+      if (!findStudiPemohon)
+        throw new MyError(404, "Form studi tidak ditemukan");
+
+      if (bagian_user === "RD1") {
+        await t_catatanTrial.update(
+          {
+            is_approve_1,
+            approver_name_1: nama_user,
+            approver_user_id_1: user_id,
+            approver_delegated_to_1: delegated_to,
+            approver_tanggal_1: new Date(),
+            keterangan_reject_1: keterangan_reject_1,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      } else if (bagian_user === "RD2") {
+        await t_catatanTrial.update(
+          {
+            is_approve_2,
+            approver_name_2: nama_user,
+            approver_user_id_2: user_id,
+            approver_delegated_to_2: delegated_to,
+            approver_tanggal_2: new Date(),
+            keterangan_reject_2: keterangan_reject_2,
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
   static async findAllNamaProduct01(req, res) {
     try {
       const config = {
@@ -2066,7 +2123,20 @@ class ControllerCatatanTrial {
             ],
           ],
         });
-        console.log(catatanTrialDetails, "<< detil");
+        console.log(catatanTrialDetails.dataValues, "<< detil");
+
+        catatanTrialDetails.dataValues.approver_inisial_1 =
+          await fetchApproverInisial({
+            user_id: catatanTrialDetails.dataValues.approver_user_id_1,
+            delegated_to:
+              catatanTrialDetails.dataValues.approver_delegated_to_1,
+          });
+        catatanTrialDetails.dataValues.approver_inisial_2 =
+          await fetchApproverInisial({
+            user_id: catatanTrialDetails.dataValues.approver_user_id_2,
+            delegated_to:
+              catatanTrialDetails.dataValues.approver_delegated_to_2,
+          });
       } else {
         console.log("test");
         catatanTrialDetails = await t_catatanTrial.findOne({
@@ -2088,10 +2158,32 @@ class ControllerCatatanTrial {
         });
       }
       console.log(catatanTrialDetails, "<<< DETAILS");
+
+      catatanTrialDetails.dataValues.approver_inisial_1 =
+        await fetchApproverInisial({
+          user_id: catatanTrialDetails.dataValues.approver_user_id_1,
+          delegated_to: catatanTrialDetails.dataValues.approver_delegated_to_1,
+        });
+      catatanTrialDetails.dataValues.approver_inisial_2 =
+        await fetchApproverInisial({
+          user_id: catatanTrialDetails.dataValues.approver_user_id_2,
+          delegated_to: catatanTrialDetails.dataValues.approver_delegated_to_2,
+        });
       // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
       const apprDeptId = catatanTrialDetails.bagian;
       console.log(apprDeptId, "<DEBTID");
       const apprNo = await checkStatusCatatanTrial(id);
+
+      await Promise.all(
+        catatanTrialDetails.dataValues.approver_data.map(async (el, index) => {
+          el.dataValues.approver_inisial = await fetchApproverInisial({
+            user_id: el.user_id,
+            delegated_to: el.delegated_to,
+          });
+
+          return el;
+        })
+      );
 
       const isApprove = await isApproveValidation(
         // productBriefDetail.nama_pegawai,

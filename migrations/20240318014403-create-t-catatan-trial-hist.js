@@ -18,9 +18,7 @@ module.exports = {
       namaProduk: {
         type: Sequelize.STRING,
       },
-      // kodeTrial: {
-      //   type: Sequelize.STRING,
-      // },
+
       trialKe: {
         type: Sequelize.STRING,
       },
@@ -51,10 +49,43 @@ module.exports = {
       tipeCatatanTrial: {
         type: Sequelize.STRING,
       },
-      pic: {
+      bagian: {
         type: Sequelize.STRING,
       },
-      bagian: {
+      is_approve_1: {
+        type: Sequelize.STRING,
+      },
+      approver_name_1: {
+        type: Sequelize.STRING,
+      },
+      approver_user_id_1: {
+        type: Sequelize.STRING,
+      },
+      approver_delegated_to_1: {
+        type: Sequelize.STRING,
+      },
+      approver_tanggal_1: {
+        type: Sequelize.DATE,
+      },
+      keterangan_reject_1: {
+        type: Sequelize.STRING,
+      },
+      is_approve_2: {
+        type: Sequelize.STRING,
+      },
+      approver_name_2: {
+        type: Sequelize.STRING,
+      },
+      approver_user_id_2: {
+        type: Sequelize.STRING,
+      },
+      approver_delegated_to_2: {
+        type: Sequelize.STRING,
+      },
+      approver_tanggal_2: {
+        type: Sequelize.DATE,
+      },
+      keterangan_reject_2: {
         type: Sequelize.STRING,
       },
       alasan_reject: {
