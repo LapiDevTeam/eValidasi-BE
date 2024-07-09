@@ -36,6 +36,30 @@ router.put(
   authentication,
   ControllerCatatanTrial.handleSaveMetodePembuatan
 );
+// save dan edit pengamatanawal cair
+router.put(
+  "/handle-pengamatan-awal-cair/:id",
+  authentication,
+  ControllerCatatanTrial.handleSavePengamatanAwalCair
+);
+// save dan edit pengamatanawal steril
+router.put(
+  "/handle-pengamatan-awal-steril/:id",
+  authentication,
+  ControllerCatatanTrial.handleSavePengamatanAwalSteril
+);
+// save dan edit pengamatanawal padat
+router.put(
+  "/handle-pengamatan-awal-padat/:id",
+  authentication,
+  ControllerCatatanTrial.handleSavePengamatanAwalPadat
+);
+// save dan edit pengamatanawal penyalutan
+router.put(
+  "/handle-pengamatan-awal-penyalutan/:id",
+  authentication,
+  ControllerCatatanTrial.handleSavePengamatanAwalPenyalutan
+);
 
 // formula catatan trial
 router.post(

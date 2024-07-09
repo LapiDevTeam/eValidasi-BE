@@ -1979,6 +1979,109 @@ class ControllerStudiPraformulasi {
       }
     }
   }
+  static async handleSavePengamatanAwalCair(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_pengamatanAwalCair.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, " << new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_pengamatanAwalCair.create(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_pengamatanAwalCair.update(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengamatanAwalCair.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengamatanAwalCair.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
 
   ///////////////////////////////
 

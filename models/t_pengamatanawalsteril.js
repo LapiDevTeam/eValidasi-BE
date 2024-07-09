@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_pengamatanAwalSteril.init(
     {
+      kodeTrial: DataTypes.STRING,
       pengamatanAwalSteril: DataTypes.JSONB,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,

@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_pengamatanAwalPenyalutan.init(
     {
+      kodeTrial: DataTypes.STRING,
       spesifikasiWeightGain: DataTypes.STRING,
       settingWeightGain: DataTypes.STRING,
       evaluasiWeightGain: DataTypes.STRING,

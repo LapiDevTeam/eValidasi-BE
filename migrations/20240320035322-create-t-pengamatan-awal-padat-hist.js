@@ -12,6 +12,9 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
+      kodeTrial: {
+        type: Sequelize.STRING,
+      },
       spesifikasiPemerian: {
         type: Sequelize.STRING,
       },

@@ -12,6 +12,9 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
+      kodeTrial: {
+        type: Sequelize.STRING,
+      },
       spesifikasiWeightGain: {
         type: Sequelize.STRING,
       },

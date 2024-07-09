@@ -9,6 +9,9 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
+      kodeTrial: {
+        type: Sequelize.STRING,
+      },
       spesifikasiWeightGain: {
         type: Sequelize.STRING,
       },

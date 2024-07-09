@@ -700,6 +700,472 @@ class ControllerCatatanTrial {
       }
     }
   }
+  static async handleSavePengamatanAwalCair(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_pengamatanAwalCair.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem.pengamatanAwalCair, " << new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_pengamatanAwalCair.create(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                pengamatanAwalCair: newItem?.pengamatanAwalCair || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_pengamatanAwalCair.update(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                pengamatanAwalCair: newItem?.pengamatanAwalCair || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengamatanAwalCair.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengamatanAwalCair.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSavePengamatanAwalSteril(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_pengamatanAwalSteril.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem.pengamatanAwalSteril, " << new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_pengamatanAwalSteril.create(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                pengamatanAwalSteril: newItem?.pengamatanAwalSteril || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_pengamatanAwalSteril.update(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                pengamatanAwalSteril: newItem?.pengamatanAwalSteril || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengamatanAwalSteril.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengamatanAwalSteril.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSavePengamatanAwalPadat(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_pengamatanAwalPadat.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem.pengamatanAwalSteril, " << new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_pengamatanAwalPadat.create(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                spesifikasiPemerian: newItem?.spesifikasiPemerian || "",
+                settingPemerian: newItem?.settingPemerian || "",
+                evaluasiPemerian: newItem?.evaluasiPemerian || "",
+                spesifikasiKeseragamanBobot:
+                  newItem?.spesifikasiKeseragamanBobot || "",
+                spesifikasiKekerasanTablet:
+                  newItem?.spesifikasiKekerasanTablet || "",
+                settingKekerasanTablet: newItem?.settingKekerasanTablet || "",
+                evaluasiKekerasanTablet: newItem?.evaluasiKekerasanTablet || [],
+                rataRataKekerasanTablet: newItem?.rataRataKekerasanTablet || "",
+                spesifikasiKerapuhan: newItem?.spesifikasiKerapuhan || "",
+                settingKerapuhan: newItem?.settingKerapuhan || "",
+                evaluasiKerapuhan: newItem?.evaluasiKerapuhan || "",
+                spesifikasiKetebalan: newItem?.spesifikasiKetebalan || "",
+                settingKetebalan: newItem?.settingKetebalan || "",
+                evaluasiKetebalan: newItem?.evaluasiKetebalan || [],
+                rataRataKetebalan: newItem?.rataRataKetebalan || "",
+                spesifikasiUkuran: newItem?.spesifikasiUkuran || "",
+                settingUkuran: newItem?.settingUkuran || "",
+                evaluasiUkuran: newItem?.evaluasiUkuran || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_pengamatanAwalPadat.update(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                spesifikasiPemerian: newItem?.spesifikasiPemerian || "",
+                settingPemerian: newItem?.settingPemerian || "",
+                evaluasiPemerian: newItem?.evaluasiPemerian || "",
+                spesifikasiKeseragamanBobot:
+                  newItem?.spesifikasiKeseragamanBobot || "",
+                spesifikasiKekerasanTablet:
+                  newItem?.spesifikasiKekerasanTablet || "",
+                settingKekerasanTablet: newItem?.settingKekerasanTablet || "",
+                evaluasiKekerasanTablet: newItem?.evaluasiKekerasanTablet || [],
+                rataRataKekerasanTablet: newItem?.rataRataKekerasanTablet || "",
+                spesifikasiKerapuhan: newItem?.spesifikasiKerapuhan || "",
+                settingKerapuhan: newItem?.settingKerapuhan || "",
+                evaluasiKerapuhan: newItem?.evaluasiKerapuhan || "",
+                spesifikasiKetebalan: newItem?.spesifikasiKetebalan || "",
+                settingKetebalan: newItem?.settingKetebalan || "",
+                evaluasiKetebalan: newItem?.evaluasiKetebalan || [],
+                rataRataKetebalan: newItem?.rataRataKetebalan || "",
+                spesifikasiUkuran: newItem?.spesifikasiUkuran || "",
+                settingUkuran: newItem?.settingUkuran || "",
+                evaluasiUkuran: newItem?.evaluasiUkuran || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengamatanAwalPadat.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengamatanAwalPadat.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSavePengamatanAwalPenyalutan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+
+      const prevKomposisi = await t_pengamatanAwalPenyalutan.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem.pengamatanAwalSteril, " << new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_pengamatanAwalPenyalutan.create(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                spesifikasiWeightGain: newItem?.spesifikasiWeightGain || "",
+                settingWeightGain: newItem?.settingWeightGain || "",
+                evaluasiWeightGain: newItem?.evaluasiWeightGain || "",
+                spesifikasiPemerian: newItem?.spesifikasiPemerian || "",
+                settingPemerian: newItem?.settingPemerian || "",
+                evaluasiPemerian: newItem?.evaluasiPemerian || "",
+                spesifikasiKeseragamanBobot:
+                  newItem?.spesifikasiKeseragamanBobot || [],
+                settingKeseragamanBobot: newItem?.rataRataKekerasanTablet || "",
+                evaluasiKeseragamanBobot:
+                  newItem?.evaluasiKeseragamanBobot || "",
+                spesifikasiKetebalan: newItem?.spesifikasiKetebalan || "",
+                settingKetebalan: newItem?.settingKetebalan || "",
+                evaluasiKetebalan: newItem?.evaluasiKetebalan || [],
+                rataRataKetebalan: newItem?.rataRataKetebalan || "",
+                spesifikasiDimensi: newItem?.spesifikasiDimensi || "",
+                settingDimensi: newItem?.settingDimensi || "",
+                evaluasiDimensi: newItem?.evaluasiDimensi || "",
+                spesifikasiWaktuHancur: newItem?.spesifikasiWaktuHancur || "",
+                settingWaktuHancur: newItem?.settingWaktuHancur || "",
+                evaluasiWaktuHancur: newItem?.evaluasiWaktuHancur || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_pengamatanAwalPenyalutan.update(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                spesifikasiWeightGain: newItem?.spesifikasiWeightGain || "",
+                settingWeightGain: newItem?.settingWeightGain || "",
+                evaluasiWeightGain: newItem?.evaluasiWeightGain || "",
+                spesifikasiPemerian: newItem?.spesifikasiPemerian || "",
+                settingPemerian: newItem?.settingPemerian || "",
+                evaluasiPemerian: newItem?.evaluasiPemerian || "",
+                spesifikasiKeseragamanBobot:
+                  newItem?.spesifikasiKeseragamanBobot || [],
+                settingKeseragamanBobot: newItem?.rataRataKekerasanTablet || "",
+                evaluasiKeseragamanBobot:
+                  newItem?.evaluasiKeseragamanBobot || "",
+                spesifikasiKetebalan: newItem?.spesifikasiKetebalan || "",
+                settingKetebalan: newItem?.settingKetebalan || "",
+                evaluasiKetebalan: newItem?.evaluasiKetebalan || [],
+                rataRataKetebalan: newItem?.rataRataKetebalan || "",
+                spesifikasiDimensi: newItem?.spesifikasiDimensi || "",
+                settingDimensi: newItem?.settingDimensi || "",
+                evaluasiDimensi: newItem?.evaluasiDimensi || "",
+                spesifikasiWaktuHancur: newItem?.spesifikasiWaktuHancur || "",
+                settingWaktuHancur: newItem?.settingWaktuHancur || "",
+                evaluasiWaktuHancur: newItem?.evaluasiWaktuHancur || "",
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengamatanAwalPenyalutan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengamatanAwalPenyalutan.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
 
   // handle post dan edit formula catatan trial
   static async createFormulaCatatanTrial(req, res, next) {
@@ -1664,7 +2130,7 @@ class ControllerCatatanTrial {
       const metodePembuatanCair = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalCair = await t_pengamatanAwalCair.findOne({
+      const pengamatanAwalCair = await t_pengamatanAwalCair.findAll({
         where: { CatatanTrialID: id },
       });
       const pengamatanLanjutanCair = await t_pengamatanLanjutan.findOne({
@@ -1708,7 +2174,7 @@ class ControllerCatatanTrial {
       const metodePembuatanSteril = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findOne({
+      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findAll({
         where: { CatatanTrialID: id },
       });
       const pengamatanLanjutanSteril = await t_pengamatanLanjutan.findOne({
@@ -1757,7 +2223,7 @@ class ControllerCatatanTrial {
       const prosesCatatanTrialPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findOne({
+      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
         where: { CatatanTrialID: id },
       });
       const pengamatanLanjutanPadat = await t_pengamatanLanjutan.findOne({
@@ -1799,7 +2265,7 @@ class ControllerCatatanTrial {
       const metodePembuatanPenyalutan = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
-      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findOne(
+      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
         {
           where: { CatatanTrialID: id },
         }

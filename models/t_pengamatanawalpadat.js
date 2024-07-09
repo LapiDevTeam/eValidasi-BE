@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_pengamatanAwalPadat.init(
     {
+      kodeTrial: DataTypes.STRING,
       spesifikasiPemerian: DataTypes.STRING,
       settingPemerian: DataTypes.STRING,
       evaluasiPemerian: DataTypes.STRING,

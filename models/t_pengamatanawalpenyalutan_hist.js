@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
+      kodeTrial: DataTypes.STRING,
       spesifikasiWeightGain: DataTypes.STRING,
       settingWeightGain: DataTypes.STRING,
       evaluasiWeightGain: DataTypes.STRING,
