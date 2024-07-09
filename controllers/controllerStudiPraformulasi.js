@@ -11,6 +11,7 @@ const {
   sequelize,
   StudiPaten,
   t_karakteristikBahanAktif,
+  t_karakteristikBahanTambahan,
   t_karakteristikBahanKemasan,
   t_karakteristikFisikakimia,
   t_qtpp,
@@ -29,6 +30,7 @@ const {
   t_kebutuhanPeralatanDanMesin,
   t_studiPaten,
   t_studiPraformulasi_status,
+  t_matrixPerbandingan,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
@@ -41,6 +43,7 @@ const {
 } = require("../helpers/approver");
 const { fetchApproverInisial } = require("../services/mssqlService");
 const { getStatus } = require("../helpers/statusProductBrief");
+const t_matrixperbandingan = require("../models/t_matrixperbandingan");
 
 class ControllerStudiPraformulasi {
   // approver pemohon
@@ -1239,6 +1242,7 @@ class ControllerStudiPraformulasi {
       } = req.user;
 
       console.log(id, "<<<<<");
+      console.log(data, "< Data map");
 
       const prevKomposisi = await t_mappingProcess.findAll({
         where: {
@@ -1891,6 +1895,7 @@ class ControllerStudiPraformulasi {
       } = req.user;
 
       console.log(id, "<<<<<");
+      console.log(data, "< DAT");
 
       const prevKomposisi = await t_karakteristikBahanAktif.findAll({
         where: {
@@ -1900,8 +1905,10 @@ class ControllerStudiPraformulasi {
 
       const existing = prevKomposisi.map((item) => item?.id);
       const newItemId = data
-        ? data.filter((item) => item?.id).map((item) => +item?.id)
-        : [];
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
       console.log(existing, " << exsting");
       console.log(newItemId, " << newItemId");
       // update
@@ -1909,16 +1916,16 @@ class ControllerStudiPraformulasi {
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, " << new item");
+          console.log(newItem, "<< new item");
           if (!newItem?.id) {
             console.log("<< masuk");
             const created = await t_karakteristikBahanAktif.create(
               {
                 namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
-                tableIndex: newItem?.tableIndex ?? null,
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -1933,10 +1940,10 @@ class ControllerStudiPraformulasi {
             await t_karakteristikBahanAktif.update(
               {
                 namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
-                tableIndex: newItem?.tableIndex ?? null,
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -1974,9 +1981,303 @@ class ControllerStudiPraformulasi {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
+    }
+  }
+  static async handleSaveKarakteristikBahanTambahan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_karakteristikBahanTambahan.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_karakteristikBahanTambahan.create(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_karakteristikBahanTambahan.update(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_karakteristikBahanTambahan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_karakteristikBahanTambahan.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveKarakteristikBahanKemasan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_karakteristikBahanKemasan.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_karakteristikBahanKemasan.create(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_karakteristikBahanKemasan.update(
+              {
+                namaBahan: newItem?.namaBahan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                parameter: newItem?.parameter || "",
+                hasilTinjauan: newItem?.hasilTinjauan || "",
+                sumberPustaka: newItem?.sumberPustaka || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_karakteristikBahanKemasan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_karakteristikBahanKemasan.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+
+  // handle post dan edit matrix perbandingan
+  static async createMatrixPerbandingan(req, res, next) {
+    try {
+      const { spesifikasiHeaders, content, StudiPraformulasiID } = req.body;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      const createMatrixPerbandingan = await t_matrixPerbandingan.create({
+        spesifikasiHeaders,
+        content,
+        StudiPraformulasiID,
+        user_id,
+        delegated_to,
+      });
+
+      res.status(201).json({
+        message: "Success Create matrix perbandingan",
+        data: createMatrixPerbandingan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async updateMatrixPerbandingan(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      console.log(id, "<< IDIDIDIDID");
+      const { spesifikasiHeaders, content } = req.body;
+
+      const [updatedRowsCount] = await t_matrixPerbandingan.update(
+        {
+          spesifikasiHeaders: spesifikasiHeaders || "",
+          content: content || "",
+        },
+        {
+          where: { id: +id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "matrix perbandingan updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "matrix perbandingan not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async getMatrixPerbandingan(req, res) {
+    const { id } = req.params;
+    try {
+      const matrixDetail = await t_matrixPerbandingan.findOne({
+        where: { StudiPraformulasiID: id },
+      });
+
+      if (!matrixDetail || matrixDetail.length === 0) {
+        throw new MyError(404, "Not found!");
+      }
+
+      // console.log(matrixDetail, "<<");
+      res.status(200).json(matrixDetail);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
 

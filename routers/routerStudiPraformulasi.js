@@ -98,6 +98,35 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.handleSaveKarakteristikBahanAktif
 );
+// save dan edit karakteristik bahan tambahan
+router.put(
+  "/handle-karakteristik-bahanTambahan/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKarakteristikBahanTambahan
+);
+// save dan edit karakteristik bahan kemasan
+router.put(
+  "/handle-karakteristik-bahanKemasan/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKarakteristikBahanKemasan
+);
+
+// matrix perbandingan
+router.post(
+  "/create-matrix-perbandingan",
+  authentication,
+  ControllerStudiPraformulasi.createMatrixPerbandingan
+);
+router.put(
+  "/update-matrix-perbandingan/:id",
+  authentication,
+  ControllerStudiPraformulasi.updateMatrixPerbandingan
+);
+router.get(
+  "/matrix-perbandingan/:id",
+  authentication,
+  ControllerStudiPraformulasi.getMatrixPerbandingan
+);
 
 router.post(
   "/studi-praformulasi",

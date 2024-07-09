@@ -71,6 +71,9 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "StudiPraformulasiID",
         as: "approver_data",
       });
+      t_studiPraformulasi.hasMany(models.t_matrixPerbandingan, {
+        foreignKey: "StudiPraformulasiID",
+      });
     }
   }
   t_studiPraformulasi.init(

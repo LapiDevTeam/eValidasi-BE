@@ -93,6 +93,24 @@ class ControllerProductBrief {
         user_id,
         delegated_to,
       });
+
+      const info = await transporter.sendMail({
+        from: '"no_reply_it " <no_reply_it@lapilabs.co.id>', // sender address
+        to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
+        subject: "Hello  test✔", // Subject line
+        text: "Hellow world?", // plain text body
+        html: `<b>
+        <html>
+        <p> Dear Bapak / Ibu di tempat,</p>
+ <p> Bersamaan dengan email ini, diberitahukan bahwa Produk Brief “${nama}” dengan nomor: ${kode} telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.</p>
+ <br>
+</p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya. </p>
+</p>eFormulation System </p>
+        </html>
+        </b>`,
+      });
+      console.log("Message sent: %s", info.messageId, "<< email");
+
       res
         .status(201)
         .json({ message: "Success Create", id: createProductBrief.id });
@@ -274,10 +292,6 @@ class ControllerProductBrief {
   }
   static async getProductBriefDetails(req, res, next) {
     try {
-      //find product brief yang idnya req.params
-      // cari rdSelectionnya
-      //compare req.user bagian_user dengan rdSelection
-      //kalau beda return error 403, kalau sama balikin datanya
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
 
       const { id } = req.params;
