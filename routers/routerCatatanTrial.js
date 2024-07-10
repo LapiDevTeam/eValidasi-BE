@@ -156,7 +156,7 @@ router.put(
   ControllerCatatanTrial.updatePembahasan
 );
 router.put(
-  "/update-kesimpulan/:CatatanTrialID",
+  "/update-kesimpulan-catatanTrial/:CatatanTrialID",
   ControllerCatatanTrial.updateKesimpulan
 );
 router.put(
