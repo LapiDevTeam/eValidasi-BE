@@ -420,6 +420,7 @@ class ControllerStudiPraformulasi {
     try {
       const { data } = req.body;
       const { id } = req.params;
+      console.log(id, "<< id");
       const {
         user_id,
         delegated_to,
@@ -428,17 +429,18 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
-
+      console.log(data, "< data");
       console.log(id, "<<<<<");
 
       const prevKomposisi = await t_farmakologiKlinis.findAll({
         where: {
-          StudiPraformulasiID: id,
+          StudiPraformulasiID: +id,
         },
       });
       console.log(prevKomposisi, "< prev");
 
       const existing = prevKomposisi.map((item) => item?.id);
+      console.log(existing, "< exis");
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
@@ -448,7 +450,11 @@ class ControllerStudiPraformulasi {
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
+          console.log(newItem, " < new item");
+          console.log(newItem?.id, " < new itemid");
+          console.log(existing?.includes(+newItem?.id), " < existing");
           if (!newItem?.id) {
+            console.log("masuk if");
             const created = await t_farmakologiKlinis.create(
               {
                 indikasi: newItem?.indikasi || "",
@@ -469,6 +475,7 @@ class ControllerStudiPraformulasi {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log(newItem, "< new item");
             await t_farmakologiKlinis.update(
               {
                 indikasi: newItem?.indikasi || "",
@@ -2201,6 +2208,119 @@ class ControllerStudiPraformulasi {
       }
     }
   }
+  static async handleSaveKemasanProtokol(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_kemasanProtokolSkalaLab.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_kemasanProtokolSkalaLab.create(
+              {
+                parameterBentukSediaan: newItem?.parameterBentukSediaan || "",
+                samaDenganOriginatorAtauKompetitorBentukSediaan:
+                  newItem?.samaDenganOriginatorAtauKompetitorBentukSediaan ||
+                  "",
+                justifikasiBentukSediaan:
+                  newItem?.justifikasiBentukSediaan || "",
+                detailSediaan: newItem?.detailSediaan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_kemasanProtokolSkalaLab.update(
+              {
+                parameterBentukSediaan: newItem?.parameterBentukSediaan || "",
+                samaDenganOriginatorAtauKompetitorBentukSediaan:
+                  newItem?.samaDenganOriginatorAtauKompetitorBentukSediaan ||
+                  "",
+                justifikasiBentukSediaan:
+                  newItem?.justifikasiBentukSediaan || "",
+                detailSediaan: newItem?.detailSediaan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_kemasanProtokolSkalaLab.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_kemasanProtokolSkalaLab.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
 
   // handle post dan edit matrix perbandingan
   static async createMatrixPerbandingan(req, res, next) {
@@ -2282,89 +2402,6 @@ class ControllerStudiPraformulasi {
   }
 
   ///////////////////////////////
-
-  // static async createKemasan(req, res, next) {
-  //   try {
-  //     const {
-  //       StudiPraformulasiID,
-  //       namaProduk,
-  //       manufacturer,
-  //       noBatch,
-  //       tanggalProduksi,
-  //       tanggalKadarluarsa,
-  //       sumberPustaka,
-  //       bentukSediaan,
-  //       detailSediaan,
-  //     } = req.body;
-
-  //     const createKemasan = await Kemasan.create({
-  //       StudiPraformulasiID: StudiPraformulasiID,
-  //       namaProduk: namaProduk,
-  //       manufacturer: manufacturer,
-  //       noBatch: noBatch,
-  //       tanggalProduksi: tanggalProduksi,
-  //       tanggalKadarluarsa: tanggalKadarluarsa,
-  //       sumberPustaka: sumberPustaka,
-  //       bentukSediaan: bentukSediaan,
-  //       detailSediaan: detailSediaan,
-  //     });
-
-  //     res.status(201).json({
-  //       message: "Success Create kemasan",
-  //       data: createKemasan,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-  static async createKemasan(req, res, next) {
-    const transaction = await sequelize.transaction();
-    try {
-      const { data } = req.body;
-
-      const { id } = req.params;
-
-      await Promise.all(
-        data?.map(async (newItem) => {
-          const createKemasan = await t_kemasan.create(
-            {
-              namaProduk: newItem?.namaProduk || "",
-              manufacturer: newItem?.manufacturer || "",
-              noBatch: newItem?.noBatch || "",
-              tanggalProduksi: newItem?.tanggalProduksi || "",
-              tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
-              sumberPustaka: newItem?.sumberPustaka || "",
-              bentukSediaan: newItem?.bentukSediaan || "",
-              detailSediaan: newItem?.detailSediaan || [],
-
-              StudiPraformulasiID: +id || null,
-            },
-            { transaction }
-          );
-          return createKemasan?.id;
-        })
-      );
-
-      await transaction.commit();
-
-      const newData = await t_kemasan.findAll({
-        where: {
-          StudiPraformulasiID: id,
-        },
-      });
-
-      res.status(201).json({
-        message: "Success createKEmasan",
-        data: newData,
-      });
-    } catch (err) {
-      console.log(err);
-      if (transaction) {
-        await transaction.rollback();
-      }
-    }
-  }
 
   static async editStudiPraformulasi(req, res, next) {
     const { id } = req.params;
@@ -2450,371 +2487,7 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-  static async createDeskripsiProduct(req, res, next) {
-    try {
-      const {
-        namaStudi,
-        namaProduk,
-        manufacturer,
-        bentukSediaan,
-        dosage,
-        labelClaim,
-        rutePemberian,
-        aturanPakai,
-        sumberPustaka,
-        StudiPraformulasiID,
-      } = req.body;
 
-      const createDeskripsiProduct = await t_deskripsiProduct.create({
-        namaStudi,
-        namaProduk,
-        manufacturer,
-        bentukSediaan,
-        dosage,
-        labelClaim,
-        rutePemberian,
-        aturanPakai,
-        sumberPustaka,
-        StudiPraformulasiID: +StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Deskripsi Product",
-        data: createDeskripsiProduct,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async deleteDeskripsiProduct(req, res) {
-    try {
-      const { id } = req.params;
-
-      console.log(id, 898989);
-
-      const deskripsi = await t_deskripsiProduct.findAll({
-        where: { StudiPraformulasiID: +id },
-      });
-
-      console.log(deskripsi, "<<<des");
-
-      if (deskripsi.length > 0) {
-        await t_deskripsiProduct.destroy({
-          where: { StudiPraformulasiID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async createFarmalogiKlinis(req, res, next) {
-    try {
-      const {
-        indikasi,
-        mekanismeAksi,
-        efekSamping,
-        absorpsi,
-        distribusi,
-        metabolisme,
-        eliminasi,
-        sumberPustaka,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createFarmalogiKlinis = await t_farmakologiKlinis.create({
-        indikasi,
-        mekanismeAksi,
-        efekSamping,
-        absorpsi,
-        distribusi,
-        metabolisme,
-        eliminasi,
-        sumberPustaka,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Farmakologi Klinis",
-        data: createFarmalogiKlinis,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async deleteFarmakologiKlinis(req, res) {
-    try {
-      const { id } = req.params;
-
-      console.log(id, 898989);
-
-      const farm = await t_farmakologiKlinis.findAll({
-        where: { StudiPraformulasiID: +id },
-      });
-
-      console.log(farm, "<<<des");
-
-      if (farm.length > 0) {
-        await t_farmakologiKlinis.destroy({
-          where: { StudiPraformulasiID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async createFormula(req, res, next) {
-    try {
-      const {
-        bahanTambahan,
-        kandungan,
-        fungsi,
-        prosesPembuatan,
-        sumberPustaka,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createFormula = await t_formula.create({
-        bahanTambahan,
-        kandungan,
-        fungsi,
-        prosesPembuatan,
-        sumberPustaka,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Formula",
-        data: createFormula,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async deleteKemasan(req, res) {
-    try {
-      const { id } = req.params;
-
-      console.log(id, 898989);
-
-      const kemasan = await t_kemasan.findAll({
-        where: { StudiPraformulasiID: +id },
-      });
-
-      console.log(kemasan, "<<<des");
-
-      if (kemasan.length > 0) {
-        await Kemasan.destroy({
-          where: { StudiPraformulasiID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
-  static async editKemasan(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        namaProduk,
-        manufacturer,
-        noBatch,
-        tanggalProduksi,
-        tanggalKadarluarsa,
-        sumberPustaka,
-        bentukSediaan,
-        detailSediaan,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_kemasan.update(
-        {
-          namaProduk,
-          manufacturer,
-          noBatch,
-          tanggalProduksi,
-          tanggalKadarluarsa,
-          sumberPustaka,
-          bentukSediaan,
-          detailSediaan,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "kemasan updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "kemasan not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createFisikaKimia(req, res, next) {
-    try {
-      const {
-        StudiPraformulasiID,
-        namaProduk,
-        manufacturer,
-        noBatch,
-        het,
-        tanggalProduksi,
-        tanggalKadarluarsa,
-        bentukSediaan,
-        sumberPustaka,
-        detailSediaan,
-      } = req.body;
-
-      console.log(req.body);
-
-      const createFisikaKimia = await t_karakteristikFisikakimia.create({
-        StudiPraformulasiID: StudiPraformulasiID,
-        namaProduk: namaProduk,
-        manufacturer,
-        noBatch,
-        het,
-        tanggalProduksi,
-        tanggalKadarluarsa,
-        bentukSediaan,
-        sumberPustaka,
-        detailSediaan,
-      });
-
-      res.status(201).json({
-        message: "Success Create fisikakimia",
-        data: createFisikaKimia,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createFisikaKimia(req, res, next) {
-    const transaction = await sequelize.transaction();
-    try {
-      const { data } = req.body;
-
-      const { id } = req.params;
-
-      await Promise.all(
-        data?.map(async (newItem) => {
-          const createFisikaKimia = await t_karakteristikFisikakimia.create(
-            {
-              namaProduk: newItem?.namaProduk || "",
-              manufacturer: newItem?.manufacturer || "",
-              noBatch: newItem?.noBatch || "",
-              het: newItem?.het || "",
-              tanggalProduksi: newItem?.tanggalProduksi || "",
-              tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
-              sumberPustaka: newItem?.sumberPustaka || "",
-              bentukSediaan: newItem?.bentukSediaan || "",
-              detailSediaan: newItem?.detailSediaan || [],
-
-              StudiPraformulasiID: +id || null,
-            },
-            { transaction }
-          );
-          return createFisikaKimia?.id;
-        })
-      );
-
-      await transaction.commit();
-
-      const newData = await t_karakteristikFisikakimia.findAll({
-        where: {
-          StudiPraformulasiID: id,
-        },
-      });
-
-      res.status(201).json({
-        message: "Success createFisikaKimia",
-        data: newData,
-      });
-    } catch (err) {
-      console.log(err);
-      if (transaction) {
-        await transaction.rollback();
-      }
-    }
-  }
-  static async createStabilita(req, res, next) {
-    try {
-      const {
-        namaProduk,
-        kondisiPenyimpanan,
-        kondisiKhusus,
-        hasilStudiStabilita,
-        masaKadaluarsa,
-        sumberPustaka,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createStabilita = await t_stabilita.create({
-        namaProduk,
-        kondisiPenyimpanan,
-        kondisiKhusus,
-        hasilStudiStabilita,
-        masaKadaluarsa,
-        sumberPustaka,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Stabilita",
-        data: createStabilita,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async deleteStabilita(req, res) {
-    try {
-      const { id } = req.params;
-
-      console.log(id, 898989);
-
-      const stabilita = await t_stabilita.findAll({
-        where: { StudiPraformulasiID: +id },
-      });
-
-      if (stabilita.length > 0) {
-        await Stabilita.destroy({
-          where: { StudiPraformulasiID: +id }, // Corrected the where clause
-        });
-
-        res.status(200).send({ msg: "succeed" });
-      } else {
-        res.status(200).send({ msg: "" });
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send({ msg: "error" });
-    }
-  }
   static async getProductBrief(req, res) {
     try {
       const noProductBrief = await t_productBrief.findAll({
@@ -2927,7 +2600,6 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
-
   static async updateDokumenAcuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;
@@ -2950,28 +2622,6 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.log(err);
     }
-  }
-  static async testDownload(req, res, next) {
-    console.log("hi");
-    // try {
-    //   // Simpan buffer foto ke database menggunakan Sequelize
-    //   const dataPhoto = await Kemasan.findOne({
-    //     where: {
-    //       id: 3,
-    //     },
-    //   });
-    //   // console.log(dataPhoto.detailSediaan.gambar, "<<");
-    //   // const byteaToBase64 = (bytea) => {
-    //   //   return Buffer.from(bytea, "binary").toString("base64");
-    //   // };
-
-    //   // const base64ImageData = byteaToBase64(dataPhoto.data);
-
-    //   res.status(201).json(dataPhoto.detailSediaan.gambar);
-    // } catch (error) {
-    //   console.error(error);
-    //   res.status(500).json({ error: "Internal Server Error" });
-    // }
   }
   static async getStudiPraformulasiDetails(req, res, next) {
     try {
@@ -3104,52 +2754,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async editDeskripsiProduct(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        namaStudi,
-        namaProduk,
-        manufacturer,
-        bentukSediaan,
-        dosage,
-        labelClaim,
-        rutePemberian,
-        aturanPakai,
-        sumberPustaka,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_deskripsiProduct.update(
-        {
-          namaStudi,
-          namaProduk,
-          manufacturer,
-          bentukSediaan,
-          dosage,
-          labelClaim,
-          rutePemberian,
-          aturanPakai,
-          sumberPustaka,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "des pro updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "des pro not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async getFarmakologiKlinisDetails(req, res) {
     const { id } = req.params;
     try {
@@ -3168,50 +2772,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async editFarmakologiKlinis(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        indikasi,
-        mekanismeAksi,
-        efekSamping,
-        absorpsi,
-        distribusi,
-        metabolisme,
-        eliminasi,
-        sumberPustaka,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_farmakologiKlinis.update(
-        {
-          indikasi,
-          mekanismeAksi,
-          efekSamping,
-          absorpsi,
-          distribusi,
-          metabolisme,
-          eliminasi,
-          sumberPustaka,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "farm updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "farm not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async getFormulaDetails(req, res) {
     const { id } = req.params;
     try {
@@ -3227,44 +2787,6 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editFormulaDetails(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        bahanTambahan,
-        kandungan,
-        fungsi,
-        prosesPembuatan,
-        sumberPustaka,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_formula.update(
-        {
-          bahanTambahan,
-          kandungan,
-          fungsi,
-          prosesPembuatan,
-          sumberPustaka,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "formula updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "formula not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
     }
   }
   static async getStabilitaDetails(req, res) {
@@ -3303,47 +2825,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-
-  static async editStabilita(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        namaProduk,
-        kondisiPenyimpanan,
-        kondisiKhusus,
-        hasilStudiStabilita,
-        masaKadaluarsa,
-        sumberPustaka,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_stabilita.update(
-        {
-          namaProduk,
-          kondisiPenyimpanan,
-          kondisiKhusus,
-          hasilStudiStabilita,
-          masaKadaluarsa,
-          sumberPustaka,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "stab updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "stab not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async getKemasanDetails(req, res) {
     const { id } = req.params;
     try {
@@ -3379,150 +2860,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async editKarakteristikFisikaKimia(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        namaProduk,
-        manufacturer,
-        noBatch,
-        het,
-        tanggalProduksi,
-        tanggalKadarluarsa,
-        bentukSediaan,
-        sumberPustaka,
-        detailSediaan,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_karakteristikFisikakimia.update(
-        {
-          namaProduk,
-          manufacturer,
-          noBatch,
-          het,
-          tanggalProduksi,
-          tanggalKadarluarsa,
-          bentukSediaan,
-          sumberPustaka,
-          detailSediaan,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "fisikaKimia updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "fisikaKimia not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createUjiInkomptabilitas(req, res, next) {
-    try {
-      const { namaBahan, kondisi1, kondisi2, kondisi3, StudiPraformulasiID } =
-        req.body;
-
-      console.log(StudiPraformulasiID, " !@#@!#!@321");
-
-      const createUjiInkomptabilitas = await t_ujiInkompatibilitas.create({
-        namaBahan,
-        kondisi1,
-        kondisi2,
-        kondisi3,
-        StudiPraformulasiID: StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create",
-        data: createUjiInkomptabilitas,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createKontrolBahan(req, res, next) {
-    try {
-      const {
-        namaBahan,
-        parameter1,
-        parameter2,
-        parameter3,
-        UjiInkompatibilitasID,
-      } = req.body;
-
-      const kontrolbahan = await t_kontrolBahan.create({
-        namaBahan,
-        parameter1,
-        parameter2,
-        parameter3,
-        UjiInkompatibilitasID,
-      });
-
-      res.status(201).json({
-        message: "Success Create",
-        data: kontrolbahan,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-
-  // tambahan'
-
-  static async createQtpp(req, res, next) {
-    const transaction = await sequelize.transaction();
-    try {
-      console.log("asdasdsadasdasdsa12312");
-      const { data } = req.body;
-
-      const { id } = req.params;
-
-      await Promise.all(
-        data?.map(async (newItem) => {
-          const createQtpp = await t_qtpp.create(
-            {
-              bentukSediaan: newItem?.bentukSediaan || "",
-              targetBentukSediaan: newItem?.targetBentukSediaan || "",
-              justifikasiBentukSediaan: newItem?.justifikasiBentukSediaan || "",
-              detailSediaan: newItem?.detailSediaan || [],
-
-              StudiPraformulasiID: +id || null,
-            },
-            { transaction }
-          );
-          return createQtpp?.id;
-        })
-      );
-
-      await transaction.commit();
-
-      const newData = await t_qtpp.findAll({
-        where: {
-          StudiPraformulasiID: id,
-        },
-      });
-
-      res.status(201).json({
-        message: "Success createQtpp",
-        data: newData,
-      });
-    } catch (err) {
-      console.log(err);
-      if (transaction) {
-        await transaction.rollback();
-      }
-    }
-  }
   static async getQtpp(req, res) {
     const { id } = req.params;
     console.log(id, "< id");
@@ -3541,40 +2878,6 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err, 333333333333);
       res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-
-  static async createCqa(req, res, next) {
-    try {
-      const {
-        qttpElements,
-        target,
-        safety,
-        efficacy,
-        formulaDanProses,
-        apakahIniKritikalCqa,
-        justifikasi,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createCqa = await t_cqa.create({
-        qttpElements,
-        target,
-        safety,
-        efficacy,
-        formulaDanProses,
-        apakahIniKritikalCqa,
-        justifikasi,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create Cqa",
-        data: createCqa,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
     }
   }
   static async getCqa(req, res) {
@@ -3597,34 +2900,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-
-  static async createFormulaProtokol(req, res, next) {
-    try {
-      const {
-        komposisi,
-        fungsi,
-        apakahAdaPadaKomposisiOriginatorKompetitor,
-        justifikasi,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createFormulaProtokol = await t_formulaProtokol.create({
-        komposisi,
-        fungsi,
-        apakahAdaPadaKomposisiOriginatorKompetitor,
-        justifikasi,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create FormulaProtokol",
-        data: createFormulaProtokol,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
   static async getFormulaProtokol(req, res) {
     const { id } = req.params;
     try {
@@ -3642,7 +2917,6 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-
   static async createProsesPembuatan(req, res, next) {
     try {
       const { prosesPembuatan, StudiPraformulasiID } = req.body;
@@ -3663,7 +2937,6 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-
   static async getProsesPembuatan(req, res) {
     const { id } = req.params;
     try {
@@ -3681,6 +2954,157 @@ class ControllerStudiPraformulasi {
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
+
+  static async getMappingProcess(req, res) {
+    const { id } = req.params;
+    try {
+      const mappingDetails = await t_mappingProcess.findAll({
+        where: { StudiPraformulasiID: +id },
+        order: [["createdAt", "ASC"]], // Order by createdAt descending
+      });
+
+      // if (!mappingDetails || mappingDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(mappingDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async createRencanaAktivitas(req, res, next) {
+    try {
+      const {
+        tersediaBahanAwal,
+        optimasiFormulaDanProses,
+        stabilitaSkalaLab,
+        StudiPraformulasiID,
+      } = req.body;
+
+      const createRencanaAktivitas = await t_rencanaAktivitas.create({
+        tersediaBahanAwal,
+        optimasiFormulaDanProses,
+        stabilitaSkalaLab,
+        StudiPraformulasiID: +StudiPraformulasiID,
+      });
+
+      res.status(201).json({
+        message: "Success Create rencana aktivitas",
+        data: createRencanaAktivitas,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async getRencanaAktivitas(req, res) {
+    const { id } = req.params;
+    try {
+      const rencanaDetails = await t_rencanaAktivitas.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      console.log(rencanaDetails, "<< 12312321");
+
+      // if (!rencanaDetails || rencanaDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(rencanaDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editRencanaAktivitas(req, res, next) {
+    const { id } = req.params;
+    console.log(id, "< id");
+    try {
+      const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
+        req.body;
+
+      const [updatedRowsCount] = await t_rencanaAktivitas.update(
+        {
+          tersediaBahanAwal,
+          optimasiFormulaDanProses,
+          stabilitaSkalaLab,
+        },
+        {
+          where: { StudiPraformulasiID: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "rencana aktivitas updated successfully",
+        });
+      } else {
+        res.status(404).json({
+          message: "rencana aktivitas not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
+  static async getMaterial(req, res) {
+    const { id } = req.params;
+    try {
+      const materialDetails = await t_material.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      // if (!materialDetails || materialDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(materialDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async getOriginatorKompetitor(req, res) {
+    const { id } = req.params;
+    try {
+      const originatorDetails = await t_originatorAtauKompetitor.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      // if (!originatorDetails || originatorDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(originatorDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async getKebutuhanPeralatan(req, res) {
+    const { id } = req.params;
+    try {
+      const kebutuhanDetails = await t_kebutuhanPeralatanDanMesin.findAll({
+        where: { StudiPraformulasiID: id },
+      });
+
+      // if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
+      //   throw new MyError(404, "Not found!");
+      // }
+
+      res.status(200).json(kebutuhanDetails);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  //
   static async createKemasanSkalaLab(req, res, next) {
     try {
       const {
@@ -4027,86 +3451,8 @@ class ControllerStudiPraformulasi {
       next(err);
     }
   }
-  static async createMappingProcess(req, res, next) {
-    try {
-      const {
-        processParameters,
-        materialAttributes,
-        manufacturingProcess,
-        qualityAttributes,
-        StudiPraformulasiID,
-      } = req.body;
 
-      const createMappingProcess = await t_mappingProcess.create({
-        processParameters,
-        materialAttributes,
-        manufacturingProcess,
-        qualityAttributes,
-        StudiPraformulasiID,
-      });
-      res.status(201).json({
-        message: "Success Create mapping process",
-        data: createMappingProcess,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async getMappingProcess(req, res) {
-    const { id } = req.params;
-    try {
-      const mappingDetails = await t_mappingProcess.findAll({
-        where: { StudiPraformulasiID: +id },
-        order: [["createdAt", "ASC"]], // Order by createdAt descending
-      });
-
-      // if (!mappingDetails || mappingDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(mappingDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editMappingProcess(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        processParameters,
-        materialAttributes,
-        manufacturingProcess,
-        qualityAttributes,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_mappingProcess.update(
-        {
-          processParameters,
-          materialAttributes,
-          manufacturingProcess,
-          qualityAttributes,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "mapping process updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "mapping process not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
+  //
   static async createCpp(req, res, next) {
     try {
       const {
@@ -4180,389 +3526,6 @@ class ControllerStudiPraformulasi {
       } else {
         res.status(404).json({
           message: "cpp not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createRencanaAktivitas(req, res, next) {
-    try {
-      const {
-        tersediaBahanAwal,
-        optimasiFormulaDanProses,
-        stabilitaSkalaLab,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createRencanaAktivitas = await t_rencanaAktivitas.create({
-        tersediaBahanAwal,
-        optimasiFormulaDanProses,
-        stabilitaSkalaLab,
-        StudiPraformulasiID: +StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success Create rencana aktivitas",
-        data: createRencanaAktivitas,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async getRencanaAktivitas(req, res) {
-    const { id } = req.params;
-    try {
-      const rencanaDetails = await t_rencanaAktivitas.findAll({
-        where: { StudiPraformulasiID: id },
-      });
-
-      console.log(rencanaDetails, "<< 12312321");
-
-      // if (!rencanaDetails || rencanaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(rencanaDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editRencanaAktivitas(req, res, next) {
-    const { id } = req.params;
-    console.log(id, "< id");
-    try {
-      const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
-        req.body;
-
-      const [updatedRowsCount] = await t_rencanaAktivitas.update(
-        {
-          tersediaBahanAwal,
-          optimasiFormulaDanProses,
-          stabilitaSkalaLab,
-        },
-        {
-          where: { StudiPraformulasiID: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "rencana aktivitas updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "rencana aktivitas not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-
-  static async createMaterial(req, res, next) {
-    try {
-      const {
-        jumlahPenelitianAnalisaMaterial,
-        kebutuhanAnalisaMaterial,
-        biayaAnalisaMaterial,
-        jumlahPenelitianOrientasiFormulaDanProses,
-        kebutuhanOrientasiFormulaDanProses,
-        biayaOrientasiFormulaDanProses,
-        jumlahPenelitianOptimasiFormulaDanProses,
-        kebutuhanOptimasiFormulaDanProses,
-        biayaOptimasiFormulaDanProses,
-        jumlahPenelitianStabilitaSkalaLab,
-        kebutuhanStabilitaSkalaLab,
-        biayaStabilitaSkalaLab,
-        jumlahPenelitianSampelPerTinggal,
-        kebutuhanSampelPerTinggal,
-        biayaSampelPerTinggal,
-        totalKebutuhanMaterial,
-        perkiraanHargaPembelianMaterial,
-        source,
-        tableIndex,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createMaterial = await t_material.create({
-        jumlahPenelitianAnalisaMaterial,
-        kebutuhanAnalisaMaterial: +kebutuhanAnalisaMaterial,
-        biayaAnalisaMaterial: +biayaAnalisaMaterial,
-        jumlahPenelitianOrientasiFormulaDanProses,
-        kebutuhanOrientasiFormulaDanProses,
-        biayaOrientasiFormulaDanProses,
-        jumlahPenelitianOptimasiFormulaDanProses,
-        kebutuhanOptimasiFormulaDanProses,
-        biayaOptimasiFormulaDanProses,
-        jumlahPenelitianStabilitaSkalaLab,
-        kebutuhanStabilitaSkalaLab,
-        biayaStabilitaSkalaLab,
-        jumlahPenelitianSampelPerTinggal,
-        kebutuhanSampelPerTinggal,
-        biayaSampelPerTinggal,
-        totalKebutuhanMaterial,
-        perkiraanHargaPembelianMaterial,
-        source,
-        tableIndex,
-        StudiPraformulasiID,
-      });
-
-      res.status(201).json({
-        message: "Success create material",
-        data: createMaterial,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async getMaterial(req, res) {
-    const { id } = req.params;
-    try {
-      const materialDetails = await t_material.findAll({
-        where: { StudiPraformulasiID: id },
-      });
-
-      // if (!materialDetails || materialDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(materialDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editMaterial(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        jumlahPenelitianAnalisaMaterial,
-        kebutuhanAnalisaMaterial,
-        biayaAnalisaMaterial,
-        jumlahPenelitianOrientasiFormulaDanProses,
-        kebutuhanOrientasiFormulaDanProses,
-        biayaOrientasiFormulaDanProses,
-        jumlahPenelitianOptimasiFormulaDanProses,
-        kebutuhanOptimasiFormulaDanProses,
-        biayaOptimasiFormulaDanProses,
-        jumlahPenelitianStabilitaSkalaLab,
-        kebutuhanStabilitaSkalaLab,
-        biayaStabilitaSkalaLab,
-        jumlahPenelitianSampelPerTinggal,
-        kebutuhanSampelPerTinggal,
-        biayaSampelPerTinggal,
-        totalKebutuhanMaterial,
-        perkiraanHargaPembelianMaterial,
-        source,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_material.update(
-        {
-          jumlahPenelitianAnalisaMaterial,
-          kebutuhanAnalisaMaterial,
-          biayaAnalisaMaterial,
-          jumlahPenelitianOrientasiFormulaDanProses,
-          kebutuhanOrientasiFormulaDanProses,
-          biayaOrientasiFormulaDanProses,
-          jumlahPenelitianOptimasiFormulaDanProses,
-          kebutuhanOptimasiFormulaDanProses,
-          biayaOptimasiFormulaDanProses,
-          jumlahPenelitianStabilitaSkalaLab,
-          kebutuhanStabilitaSkalaLab,
-          biayaStabilitaSkalaLab,
-          jumlahPenelitianSampelPerTinggal,
-          kebutuhanSampelPerTinggal,
-          biayaSampelPerTinggal,
-          totalKebutuhanMaterial,
-          perkiraanHargaPembelianMaterial,
-          source,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "material updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "material not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createOriginatorAtauKompetitor(req, res, next) {
-    try {
-      const {
-        originator,
-        source,
-        harga,
-        pemeriksaanFisikDanKimiaOriginator,
-        profilDisolusi,
-        stabilita,
-        totalKebutuhanMaterial,
-        perkiraanHargaPembelianMaterial,
-        tableIndex,
-        StudiPraformulasiID,
-      } = req.body;
-
-      const createOriginatorAtauKompetitor =
-        await t_originatorAtauKompetitor.create({
-          originator,
-          source,
-          harga,
-          pemeriksaanFisikDanKimiaOriginator,
-          profilDisolusi,
-          stabilita,
-          totalKebutuhanMaterial,
-          perkiraanHargaPembelianMaterial,
-          tableIndex: +tableIndex,
-          StudiPraformulasiID: +StudiPraformulasiID,
-        });
-
-      res.status(201).json({
-        message: "Success Create originator/kompetitor",
-        data: createOriginatorAtauKompetitor,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async getOriginatorKompetitor(req, res) {
-    const { id } = req.params;
-    try {
-      const originatorDetails = await t_originatorAtauKompetitor.findAll({
-        where: { StudiPraformulasiID: id },
-      });
-
-      // if (!originatorDetails || originatorDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(originatorDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editOriginatorKompetitor(req, res, next) {
-    const { id } = req.params;
-    try {
-      const {
-        originator,
-        source,
-        harga,
-        pemeriksaanFisikDanKimiaOriginator,
-        profilDisolusi,
-        stabilita,
-        totalKebutuhanMaterial,
-        perkiraanHargaPembelianMaterial,
-      } = req.body;
-
-      const [updatedRowsCount] = await t_originatorAtauKompetitor.update(
-        {
-          originator,
-          source,
-          harga,
-          pemeriksaanFisikDanKimiaOriginator,
-          profilDisolusi,
-          stabilita,
-          totalKebutuhanMaterial,
-          perkiraanHargaPembelianMaterial,
-        },
-        {
-          where: { id: id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "originator kompetitor updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "originator kompetitor not found",
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async createKebutuhanPeralatanDanMesin(req, res, next) {
-    try {
-      const { peralatanDanMesin, fungsi, kapasitas, StudiPraformulasiID } =
-        req.body;
-
-      const createKebutuhanPeralatanDanMesin =
-        await t_kebutuhanPeralatanDanMesin.create({
-          peralatanDanMesin,
-          fungsi,
-          kapasitas,
-          StudiPraformulasiID,
-        });
-
-      res.status(201).json({
-        message: "Success Kebutuhan Peralatan Dan Mesin",
-        data: createKebutuhanPeralatanDanMesin,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async getKebutuhanPeralatan(req, res) {
-    const { id } = req.params;
-    try {
-      const kebutuhanDetails = await t_kebutuhanPeralatanDanMesin.findAll({
-        where: { StudiPraformulasiID: id },
-      });
-
-      // if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
-      res.status(200).json(kebutuhanDetails);
-    } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
-    }
-  }
-  static async editKebutuhanPeralatan(req, res, next) {
-    const { id } = req.params;
-    try {
-      const { peralatanDanMesin, fungsi, kapasitas } = req.body;
-
-      const [updatedRowsCount] = await t_kebutuhanPeralatanDanMesin.update(
-        {
-          peralatanDanMesin,
-          fungsi,
-          kapasitas,
-        },
-        {
-          where: { id: +id },
-        }
-      );
-
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "kebutuhan peralatan updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "kebutuhan peralatan not found",
         });
       }
     } catch (err) {

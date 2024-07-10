@@ -1814,9 +1814,13 @@ class ControllerCatatanTrial {
   }
   static async updateKesimpulan(req, res) {
     try {
+      console.log("xixixi");
       const { CatatanTrialID } = req.params;
       const { kesimpulan } = req.body;
+      console.log(CatatanTrialID, "< cat");
+      console.log(kesimpulan, "< kes");
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
+      console.log(findCatatanTrialID, "< find");
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
       const updateKesimpulan = await t_catatanTrial.update(
@@ -1828,6 +1832,7 @@ class ControllerCatatanTrial {
           returning: true,
         }
       );
+      console.log(updateKesimpulan, "< upt");
       res.status(200).json(updateKesimpulan);
     } catch (err) {
       console.log(err);
