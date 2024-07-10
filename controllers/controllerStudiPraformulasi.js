@@ -2373,7 +2373,6 @@ class ControllerStudiPraformulasi {
         nomor,
         tanggalPenyusunan,
         tanggalAddendum,
-        addendumKe,
         namaProduk,
         komposisi,
         kemasan,
@@ -2394,9 +2393,6 @@ class ControllerStudiPraformulasi {
       }
       if (tanggalAddendum) {
         obj.tanggalAddendum = tanggalAddendum;
-      }
-      if (addendumKe) {
-        obj.addendumKe = addendumKe;
       }
 
       if (namaProduk) {
@@ -2428,13 +2424,10 @@ class ControllerStudiPraformulasi {
       }
 
       const studi = await t_studiPraformulasi.findByPk(+id);
-      const studiNo = studi.addendumKe;
-      console.log(studiNo, "<<<<<<<<<<<<<<<<<< STUDI");
 
       const [updatedRowsCount] = await t_studiPraformulasi.update(
         {
           ...obj,
-          addendumKe: studiNo + 1,
         },
         {
           where: { id: id },
@@ -2865,29 +2858,76 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
-  static async createKesimpulan(req, res) {
+  static async updateTujuanScreening(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;
-      const { kesimpulan } = req.body;
-      const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
+      const { tujuanScreening } = req.body;
+      const findStudi = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
 
-      if (!findStudiPraformulasiID) throw { name: "NotFound" };
-      const createKesimpulan = await t_studiPraformulasi.update(
-        { kesimpulan: kesimpulan },
+      if (!findStudi) throw { name: "NotFound" };
+      const updateTujuanScreening = await t_studiPraformulasi.update(
+        { tujuanScreening: tujuanScreening },
         {
           where: {
-            id: findStudiPraformulasiID.id,
+            id: findStudi.id,
           },
           returning: true,
         }
       );
-      res.status(200).json(createKesimpulan);
+      res.status(200).json(updateTujuanScreening);
     } catch (err) {
       console.log(err);
     }
   }
+  static async updateKesimpulanScreening(req, res) {
+    try {
+      const { StudiPraformulasiID } = req.params;
+      const { kesimpulanScreening } = req.body;
+      const findStudi = await t_studiPraformulasi.findByPk(
+        +StudiPraformulasiID
+      );
+
+      if (!findStudi) throw { name: "NotFound" };
+      const updateKesimpulanScreening = await t_studiPraformulasi.update(
+        { kesimpulanScreening: kesimpulanScreening },
+        {
+          where: {
+            id: findStudi.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateKesimpulanScreening);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  static async updateKesimpulan(req, res) {
+    try {
+      const { StudiPraformulasiID } = req.params;
+      const { kesimpulan } = req.body;
+      const findStudi = await t_studiPraformulasi.findByPk(
+        +StudiPraformulasiID
+      );
+
+      if (!findStudi) throw { name: "NotFound" };
+      const updateKesimpulan = await t_studiPraformulasi.update(
+        { kesimpulan: kesimpulan },
+        {
+          where: {
+            id: findStudi.id,
+          },
+          returning: true,
+        }
+      );
+      res.status(200).json(updateKesimpulan);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
   static async updateDokumenAcuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;

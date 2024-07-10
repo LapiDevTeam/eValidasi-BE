@@ -29,6 +29,8 @@ module.exports = (sequelize, DataTypes) => {
       kesimpulan: DataTypes.STRING,
       statusDokumen: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
+      tujuanScreening: DataTypes.TEXT,
+      kesimpulanScreening: DataTypes.TEXT,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

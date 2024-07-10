@@ -122,6 +122,23 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.updateMatrixPerbandingan
 );
+router.put(
+  "/update-tujuanScreening/:StudiPraformulasiID",
+  ControllerStudiPraformulasi.updateTujuanScreening
+);
+router.put(
+  "/update-kesimpulanScreening/:StudiPraformulasiID",
+  ControllerStudiPraformulasi.updateKesimpulanScreening
+);
+router.put(
+  "/update-kesimpulan/:StudiPraformulasiID",
+  ControllerStudiPraformulasi.updateKesimpulan
+);
+// router.put(
+//   "/update-kesimpulanScreening/:StudiPraformulasiID",
+//   ControllerStudiPraformulasi.updateKesimpulanScreening
+// );
+
 router.get(
   "/matrix-perbandingan/:id",
   authentication,
@@ -170,10 +187,7 @@ router.post(
   "/create-fisikakimia/:id",
   ControllerStudiPraformulasi.createFisikaKimia
 );
-router.put(
-  "/create-kesimpulan/:StudiPraformulasiID",
-  ControllerStudiPraformulasi.createKesimpulan
-);
+
 router.get("/get-product-brief", ControllerStudiPraformulasi.getProductBrief);
 router.put(
   "/update-tujuan/:StudiPraformulasiID",

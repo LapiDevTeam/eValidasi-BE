@@ -58,6 +58,12 @@ module.exports = {
       rdSelection: {
         type: Sequelize.STRING,
       },
+      tujuanScreening: {
+        type: Sequelize.TEXT,
+      },
+      kesimpulanScreening: {
+        type: Sequelize.TEXT,
+      },
       user_id: {
         type: Sequelize.STRING,
       },
