@@ -2321,6 +2321,339 @@ class ControllerStudiPraformulasi {
       }
     }
   }
+  static async handleSaveZatAktif(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_zatAktif.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_zatAktif.create(
+              {
+                materialAttributes: newItem?.materialAttributes || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_zatAktif.update(
+              {
+                materialAttributes: newItem?.materialAttributes || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_zatAktif.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_zatAktif.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveBahanTambahan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_bahanTambahan.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_bahanTambahan.create(
+              {
+                bahanTambahan: newItem?.bahanTambahan || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_bahanTambahan.update(
+              {
+                bahanTambahan: newItem?.bahanTambahan || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_bahanTambahan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_bahanTambahan.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveKemasanPrimer(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      console.log(id, "<<<<<");
+      console.log(data, "< DAT");
+
+      const prevKomposisi = await t_kemasanPrimer.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      console.log(existing, " << exsting");
+      console.log(newItemId, " << newItemId");
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "<< new item");
+          if (!newItem?.id) {
+            console.log("<< masuk");
+            const created = await t_kemasanPrimer.create(
+              {
+                materialAttributes: newItem?.materialAttributes || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            console.log("<<edit");
+            await t_kemasanPrimer.update(
+              {
+                materialAttributes: newItem?.materialAttributes || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahVariabelDapatDimodifikasi:
+                  newItem?.apakahVariabelDapatDimodifikasi || "",
+                apakahTermasukCma: newItem?.apakahTermasukCma || "",
+                justifikasi: newItem?.justifikasi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_kemasanPrimer.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_kemasanPrimer.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+      });
+      console.log(newData, "< newData");
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
 
   // handle post dan edit matrix perbandingan
   static async createMatrixPerbandingan(req, res, next) {

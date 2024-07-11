@@ -117,6 +117,25 @@ router.put(
   ControllerStudiPraformulasi.handleSaveKemasanProtokol
 );
 
+// save dan edit zatAktif
+router.put(
+  "/handle-zatAktif/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveZatAktif
+);
+// save dan edit bahanTambahan
+router.put(
+  "/handle-bahanTambahan/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveBahanTambahan
+);
+// save dan edit kemasanPrimer
+router.put(
+  "/handle-kemasanPrimer/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveKemasanPrimer
+);
+
 // matrix perbandingan
 router.post(
   "/create-matrix-perbandingan",
