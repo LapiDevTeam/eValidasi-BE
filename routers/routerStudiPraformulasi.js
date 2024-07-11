@@ -238,11 +238,18 @@ router.get(
 );
 router.post(
   "/create-proses-pembuatan",
+  authentication,
   ControllerStudiPraformulasi.createProsesPembuatan
 );
 router.get(
   "/proses-pembuatan/:id",
+  authentication,
   ControllerStudiPraformulasi.getProsesPembuatan
+);
+router.put(
+  "/edit-proses-pembuatan/:id",
+  authentication,
+  ControllerStudiPraformulasi.editProsesPembuatan
 );
 
 router.post(

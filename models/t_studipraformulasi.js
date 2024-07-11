@@ -94,6 +94,7 @@ module.exports = (sequelize, DataTypes) => {
       rdSelection: DataTypes.STRING,
       tujuanScreening: DataTypes.TEXT,
       kesimpulanScreening: DataTypes.TEXT,
+      revisi: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

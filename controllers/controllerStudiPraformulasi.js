@@ -283,22 +283,49 @@ class ControllerStudiPraformulasi {
       } = req.body;
       console.log(req.body, "< req body");
 
+      const existingStudiPraformulasi = await t_studiPraformulasi.findOne({
+        where: {
+          nomor: nomor,
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      let newRevisi;
+
+      if (
+        existingStudiPraformulasi &&
+        existingStudiPraformulasi.dataValues.statusDokumen === "Approved"
+      ) {
+        newRevisi = existingStudiPraformulasi.revisi + 1;
+      } else if (
+        existingStudiPraformulasi &&
+        existingStudiPraformulasi.dataValues.statusDokumen !== "Approved"
+      ) {
+        throw new MyError(
+          404,
+          "Studi Praformulasi masih Draft, menunggu status menjadi approved"
+        );
+      } else {
+        newRevisi = 0;
+      }
+
       if (!namaProduk) {
         throw new MyError(400, "Nama Produk is required !");
       }
 
       const createdStudiPraformulasi = await t_studiPraformulasi.create({
-        nomor,
-        tanggalPenyusunan,
-        namaProduk,
-        komposisi,
-        kemasan,
-        alasan,
-        tujuan,
-        productBriefNo,
-        ProductBriefId,
-        statusDokumen,
-        rdSelection,
+        nomor: nomor,
+        tanggalPenyusunan: tanggalPenyusunan,
+        namaProduk: namaProduk,
+        komposisi: komposisi,
+        kemasan: kemasan,
+        alasan: alasan,
+        tujuan: tujuan,
+        productBriefNo: productBriefNo,
+        ProductBriefId: ProductBriefId,
+        statusDokumen: statusDokumen,
+        rdSelection: rdSelection,
+        revisi: newRevisi,
       });
 
       res.status(201).json({
@@ -3257,9 +3284,19 @@ class ControllerStudiPraformulasi {
     try {
       const { prosesPembuatan, StudiPraformulasiID } = req.body;
       console.log(req.body, "<< body");
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const createProsesPembuatan = await t_prosesPembuatan.create({
-        prosesPembuatan,
-        StudiPraformulasiID,
+        prosesPembuatan: prosesPembuatan,
+        StudiPraformulasiID: StudiPraformulasiID,
+        user_id,
+        delegated_to,
       });
 
       console.log(createProsesPembuatan, " <<<<< <<prop");
@@ -3288,6 +3325,29 @@ class ControllerStudiPraformulasi {
     } catch (err) {
       console.error(err);
       res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+  static async editProsesPembuatan(req, res, next) {
+    try {
+      const { id } = req.params;
+      console.log(id, "< id");
+
+      const { prosesPembuatan } = req.body;
+      if (!prosesPembuatan) {
+        return res
+          .status(400)
+          .json({ error: "Field 'prosesPembuatan' is required." });
+      }
+
+      const updateProsesPembuatan = await t_prosesPembuatan.update(
+        { prosesPembuatan },
+        { where: { StudiPraformulasiID: +id } }
+      );
+
+      res.status(200).json(updateProsesPembuatan);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 

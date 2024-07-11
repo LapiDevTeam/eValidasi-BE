@@ -64,6 +64,9 @@ module.exports = {
       kesimpulanScreening: {
         type: Sequelize.TEXT,
       },
+      revisi: {
+        type: Sequelize.INTEGER,
+      },
       user_id: {
         type: Sequelize.STRING,
       },
