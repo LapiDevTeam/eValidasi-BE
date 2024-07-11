@@ -113,7 +113,6 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
-
   static async approveStudi(req, res, next) {
     try {
       const {
@@ -183,7 +182,6 @@ class ControllerStudiPraformulasi {
       console.log(err);
     }
   }
-
   static async findAllStudiPraformulasi(req, res) {
     try {
       const {
@@ -283,6 +281,11 @@ class ControllerStudiPraformulasi {
         statusDokumen,
         rdSelection,
       } = req.body;
+      console.log(req.body, "< req body");
+
+      if (!namaProduk) {
+        throw new MyError(400, "Nama Produk is required !");
+      }
 
       const createdStudiPraformulasi = await t_studiPraformulasi.create({
         nomor,
@@ -299,11 +302,11 @@ class ControllerStudiPraformulasi {
       });
 
       res.status(201).json({
-        message: "Success Create CUY",
+        message: "Data has been saved",
         data: createdStudiPraformulasi,
       });
     } catch (err) {
-      console.error(err);
+      console.error(err, "<< err");
       next(err);
     }
   }
@@ -406,7 +409,7 @@ class ControllerStudiPraformulasi {
 
       res.status(200).json({
         statusCode: 200,
-        message: "SUCCESS",
+        message: "Data has been saved",
         data: newData,
       });
     } catch (err) {
