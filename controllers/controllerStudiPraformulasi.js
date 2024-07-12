@@ -50,14 +50,20 @@ const {
 
 class ControllerStudiPraformulasi {
   static async getAllAlasanByNomor(req, res) {
-    const { nomor } = req.params;
+    const { nomor, revisi } = req.params;
     const convertedNomor = nomor.replace(/-/g, "/");
     console.log(nomor, "<");
+
+    const revisionNumbers = [];
+    for (let i = 0; i <= revisi; i++) {
+      revisionNumbers.push(i);
+    }
+
     try {
       const alasan = await t_studiPraformulasi.findAll({
         where: {
           nomor: convertedNomor,
-          statusDokumen: "Approved",
+          revisi: revisionNumbers,
         },
         attributes: ["nomor", "alasan", "revisi", "statusDokumen"],
       });

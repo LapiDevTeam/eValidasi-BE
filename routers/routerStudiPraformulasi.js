@@ -3,7 +3,7 @@ const router = express.Router();
 const ControllerStudiPraformulasi = require("../controllers/controllerStudiPraformulasi");
 const { authentication } = require("../middlewares/authentication");
 router.get(
-  "/all-alasan-by-nomor/:nomor",
+  "/all-alasan-by-nomor/:nomor/:revisi",
   authentication,
   ControllerStudiPraformulasi.getAllAlasanByNomor
 );
