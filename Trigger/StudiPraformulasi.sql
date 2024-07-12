@@ -1201,6 +1201,34 @@ CREATE OR REPLACE TRIGGER "t_kebutuhanPeralatanDanMesin_del"
     AFTER DELETE ON "t_kebutuhanPeralatanDanMesin"
     FOR EACH ROW EXECUTE FUNCTION process_t_kebutuhanPeralatanDanMesin_hist();
 
+       -- matrix perbandingan
+   
+CREATE OR REPLACE FUNCTION process_t_matrixPerbandingan_hist() RETURNS TRIGGER AS $t_matrixPerbandingan_hist$
+    BEGIN
+        IF (TG_OP = 'DELETE') THEN
+            INSERT INTO "t_matrixPerbandingan_hist"
+                SELECT 'DELETED', now(), OLD.*;
+        ELSIF (TG_OP = 'UPDATE') THEN
+            INSERT INTO "t_matrixPerbandingan_hist"
+                SELECT 'UPDATED', now(), NEW.*;
+        ELSIF (TG_OP = 'INSERT') THEN
+            INSERT INTO "t_matrixPerbandingan_hist"
+                SELECT 'INSERTED', now(), NEW.*;
+        END IF;
+        RETURN NULL; -- result is ignored since this is an AFTER trigger
+    END;
+$t_matrixPerbandingan_hist$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER "t_matrixPerbandingan_ins"
+    AFTER INSERT ON "t_matrixPerbandingan"
+    FOR EACH ROW EXECUTE FUNCTION process_t_matrixPerbandingan_hist();
+CREATE OR REPLACE TRIGGER "t_matrixPerbandingan_upd"
+    AFTER UPDATE ON "t_matrixPerbandingan"
+    FOR EACH ROW EXECUTE FUNCTION process_t_matrixPerbandingan_hist();
+CREATE OR REPLACE TRIGGER "t_matrixPerbandingan_del"
+    AFTER DELETE ON "t_matrixPerbandingan"
+    FOR EACH ROW EXECUTE FUNCTION process_t_matrixPerbandingan_hist();
+
 
 
 

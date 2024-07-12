@@ -44,8 +44,31 @@ const {
 const { fetchApproverInisial } = require("../services/mssqlService");
 const { getStatus } = require("../helpers/statusProductBrief");
 const t_matrixperbandingan = require("../models/t_matrixperbandingan");
+const {
+  getStatusStudiPraformulasi,
+} = require("../helpers/statusStudiPraformulasi");
 
 class ControllerStudiPraformulasi {
+  static async getAllAlasanByNomor(req, res) {
+    const { nomor } = req.params;
+    const convertedNomor = nomor.replace(/-/g, "/");
+    console.log(nomor, "<");
+    try {
+      const alasan = await t_studiPraformulasi.findAll({
+        where: {
+          nomor: convertedNomor,
+          statusDokumen: "Approved",
+        },
+        attributes: ["nomor", "alasan", "revisi", "statusDokumen"],
+      });
+
+      res.status(200).json(alasan);
+    } catch (err) {
+      console.error(err);
+      res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   // approver pemohon
   static async approvePemohon(req, res, next) {
     try {
@@ -128,7 +151,7 @@ class ControllerStudiPraformulasi {
       const findStudi = await t_studiPraformulasi?.findByPk(+id);
 
       if (!findStudi)
-        throw new MyError(404, "Form ProductBrief tidak ditemukan");
+        throw new MyError(404, "Form StudiPraformulasi tidak ditemukan");
       const apprNo = await checkStatusStudi(id);
 
       const dataApprove = await approverRecordset(
@@ -146,7 +169,9 @@ class ControllerStudiPraformulasi {
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        statusDokumen = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
+        statusDokumen = getStatusStudiPraformulasi(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
 
       console.log(statusDokumen, "<< dok");
 

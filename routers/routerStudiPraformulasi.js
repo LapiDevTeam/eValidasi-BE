@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const ControllerStudiPraformulasi = require("../controllers/controllerStudiPraformulasi");
 const { authentication } = require("../middlewares/authentication");
+router.get(
+  "/all-alasan-by-nomor/:nomor",
+  authentication,
+  ControllerStudiPraformulasi.getAllAlasanByNomor
+);
 // save dan edit deskripsi Product
 router.put(
   "/handle-deskripsi-product/:id",
