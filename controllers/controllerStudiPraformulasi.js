@@ -41,6 +41,7 @@ const {
   isApproveValidation,
   approverRecordset,
 } = require("../helpers/approver");
+const { transporter } = require("../config/configNodeMailer");
 const { fetchApproverInisial } = require("../services/mssqlService");
 const { getStatus } = require("../helpers/statusProductBrief");
 const t_matrixperbandingan = require("../models/t_matrixperbandingan");
@@ -86,24 +87,11 @@ class ControllerStudiPraformulasi {
         approver_tanggal_1,
         keterangan_reject_1,
         is_approve_2,
+        statusDokumen,
         keterangan_reject_2,
       } = req.body;
       const { id } = req.params;
-      const findStudiPemohon = await t_studiPraformulasi.findByPk(+id);
-      if (!findStudiPemohon)
-        throw new MyError(404, "Form studi tidak ditemukan");
 
-      // await t_studiPraformulasi_status.create({
-      //   StudiPraformulasiID: id,
-      //   approver_no: apprNo,
-      //   is_approve,
-      //   approver_inisial: inisial_user,
-      //   approver_name: nama_user,
-      //   approver_joblevel_id: joblevel_id_user,
-      //   keterangan_reject,
-      //   user_id,
-      //   delegated_to,
-      // });
       if (bagian_user === "RD1" || bagian_user === "RD1") {
         await t_studiPraformulasi.update(
           {
@@ -113,6 +101,7 @@ class ControllerStudiPraformulasi {
             approver_delegated_to_1: delegated_to,
             approver_tanggal_1: new Date(),
             keterangan_reject_1: keterangan_reject_1,
+            statusDokumen: statusDokumen,
           },
           {
             where: {
@@ -129,6 +118,7 @@ class ControllerStudiPraformulasi {
             approver_delegated_to_2: delegated_to,
             approver_tanggal_2: new Date(),
             keterangan_reject_2: keterangan_reject_2,
+            statusDokumen: statusDokumen,
           },
           {
             where: {
@@ -136,6 +126,39 @@ class ControllerStudiPraformulasi {
             },
           }
         );
+      }
+
+      const findStudiPemohon = await t_studiPraformulasi.findByPk(+id);
+      let isEmail = false;
+      console.log(findStudiPemohon?.dataValues, " < 1");
+
+      console.log(req.body, "<< body");
+
+      if (!findStudiPemohon)
+        throw new MyError(404, "Form studi tidak ditemukan");
+
+      if (findStudiPemohon?.is_approve_1 && is_approve_2) {
+        isEmail = true;
+      }
+      if (is_approve_1 && findStudiPemohon?.is_approve_2) {
+        isEmail = true;
+      }
+
+      console.log(isEmail, "< email");
+
+      if (isEmail) {
+        const info = await transporter.sendMail({
+          from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+          to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
+          subject: "Studi Praformulasi", // Subject line
+          text: "Hellow world?", // plain text body
+          html: `<b>
+          <html>
+          <p> tes email studi</p>
+          </html>
+          </b>`,
+        });
+        console.log("Message sent: %s", info.messageId, "<< email");
       }
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {

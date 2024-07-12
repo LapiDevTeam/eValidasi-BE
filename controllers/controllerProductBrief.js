@@ -95,9 +95,9 @@ class ControllerProductBrief {
       });
 
       const info = await transporter.sendMail({
-        from: '"no_reply_it " <no_reply_it@lapilabs.co.id>', // sender address
+        from: `[Notifikasi][Product Brief] - ${nama} <no_reply_it@lapilabs.co.id>`,
         to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
-        subject: "Hello  test✔", // Subject line
+        subject: "Product Brief", // Subject line
         text: "Hellow world?", // plain text body
         html: `<b>
         <html>
@@ -119,7 +119,6 @@ class ControllerProductBrief {
       next(err);
     }
   }
-
   static async editProductBrief(req, res, next) {
     const { id } = req.params;
     try {
@@ -338,7 +337,6 @@ class ControllerProductBrief {
       next(error);
     }
   }
-
   static async getHistoryProductBrief(req, res, next) {
     try {
       const { id } = req.params;
@@ -364,7 +362,6 @@ class ControllerProductBrief {
       console.log(error);
     }
   }
-
   static async getNoProductBrief(req, res) {
     try {
       const noProductBrief = await t_productBrief.findAll({
