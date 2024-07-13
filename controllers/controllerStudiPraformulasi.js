@@ -154,11 +154,26 @@ class ControllerStudiPraformulasi {
           text: "Hellow world?", // plain text body
           html: `<b>
           <html>
-          <p> tes email studi</p>
+          <p> Dear Bapak / Ibu di tempat,
+Bersamaan dengan email ini, diberitahukan bahwa Studi Praformulasi ${findStudiPemohon?.namaProduk} telah selesai disusun. Mohon segera di review.
+ 
+Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.
+ 
+eFormulation System</p>
           </html>
           </b>`,
         });
         console.log("Message sent: %s", info.messageId, "<< email");
+        await t_studiPraformulasi.update(
+          {
+            statusDokumen: "Menunggu Approve Manager",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
       }
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
@@ -334,6 +349,9 @@ class ControllerStudiPraformulasi {
         ProductBriefId,
         statusDokumen,
         rdSelection,
+        tujuanScreening,
+        kesimpulanScreening,
+        kesimpulan,
       } = req.body;
       console.log(req.body, "< req body");
 
@@ -380,6 +398,9 @@ class ControllerStudiPraformulasi {
         statusDokumen: statusDokumen,
         rdSelection: rdSelection,
         revisi: newRevisi,
+        tujuanScreening: tujuanScreening,
+        kesimpulanScreening: kesimpulanScreening,
+        kesimpulan: kesimpulan,
       });
 
       res.status(201).json({
