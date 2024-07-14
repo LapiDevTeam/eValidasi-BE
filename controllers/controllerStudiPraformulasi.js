@@ -325,8 +325,412 @@ eFormulation System</p>
     try {
       const { id } = req.params;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findStudiPraformulasi = await t_studiPraformulasi.findByPk(+id);
+      if (!findStudiPraformulasi)
+        throw new MyError(404, "Form Studi Praformulasi tidak di temukan");
+
+      await t_studiPraformulasi_status.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_studiPraformulasi_status.destroy({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      await t_studiPraformulasi.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { id: +id },
+        }
+      );
+
       await t_studiPraformulasi.destroy({
-        where: { id: id }, // Corrected the where clause
+        where: { id: +id },
+      });
+
+      await t_deskripsiProduct.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+
+      await t_deskripsiProduct.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_farmakologiKlinis.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+
+      await t_farmakologiKlinis.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_formula.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_formula.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_cqa.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_cqa.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_formulaProtokol.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_formulaProtokol.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_stabilita.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_stabilita.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_karakteristikBahanAktif.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_karakteristikBahanAktif.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_karakteristikBahanTambahan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_karakteristikBahanTambahan.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_karakteristikBahanKemasan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_karakteristikBahanKemasan.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_studiPaten.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_studiPaten.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_ujiInkompatibilitas.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_ujiInkompatibilitas.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_prosesPembuatan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_prosesPembuatan.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_kemasanProtokolSkalaLab.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_kemasanProtokolSkalaLab.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_zatAktif.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_zatAktif.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_bahanTambahan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_bahanTambahan.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_kemasanPrimer.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_kemasanPrimer.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_mappingProcess.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_mappingProcess.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_cpp.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_cpp.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_rencanaAktivitas.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_rencanaAktivitas.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_material.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_material.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_originatorAtauKompetitor.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_originatorAtauKompetitor.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_kebutuhanPeralatanDanMesin.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_kebutuhanPeralatanDanMesin.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+      await t_karakteristikFisikakimia.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_karakteristikFisikakimia.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_qtpp.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_qtpp.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_kemasan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_kemasan.destroy({
+        where: { StudiPraformulasiID: id },
+      });
+
+      await t_matrixPerbandingan.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_matrixPerbandingan.destroy({
+        where: { StudiPraformulasiID: id },
       });
 
       res.status(200).send({ msg: "succeed" });
@@ -352,6 +756,11 @@ eFormulation System</p>
         tujuanScreening,
         kesimpulanScreening,
         kesimpulan,
+        is_approve_1,
+        approver_tanggal_1,
+        keterangan_reject_1,
+        is_approve_2,
+        keterangan_reject_2,
       } = req.body;
       console.log(req.body, "< req body");
 
@@ -2764,7 +3173,7 @@ eFormulation System</p>
   static async createMatrixPerbandingan(req, res, next) {
     try {
       const { spesifikasiHeaders, content, StudiPraformulasiID } = req.body;
-
+      console.log(req.body, "< req");
       const {
         user_id,
         delegated_to,
@@ -2787,7 +3196,7 @@ eFormulation System</p>
         data: createMatrixPerbandingan,
       });
     } catch (err) {
-      console.error(err);
+      console.error(err, "< ERROR");
       next(err);
     }
   }

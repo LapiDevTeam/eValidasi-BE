@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ControllerStudiPraformulasi = require("../controllers/controllerStudiPraformulasi");
 const { authentication } = require("../middlewares/authentication");
+
 router.get(
   "/all-alasan-by-nomor/:nomor/:revisi",
   authentication,
@@ -189,6 +190,7 @@ router.get(
 );
 router.delete(
   "/delete-studi-praformulasi/:id",
+  authentication,
   ControllerStudiPraformulasi.deleteStudiPraformulasi
 );
 router.get(

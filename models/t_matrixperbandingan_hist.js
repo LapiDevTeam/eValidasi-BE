@@ -13,6 +13,8 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_matrixPerbandingan_hist.init(
     {
+      status: DataTypes.STRING,
+      changeDate: DataTypes.DATE,
       spesifikasiHeaders: DataTypes.JSONB,
       content: DataTypes.JSONB,
       StudiPraformulasiID: DataTypes.INTEGER,

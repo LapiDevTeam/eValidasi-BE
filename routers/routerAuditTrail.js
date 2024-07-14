@@ -60,5 +60,9 @@ router.get(
   "/download-proses-catatan-trial-padat",
   ControllerAuditTrail.downloadExcelAuditProsesCatatanTrialPadatHist
 );
+router.get(
+  "/download-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditStudiPraformulasiHist
+);
 
 module.exports = router;

@@ -3,6 +3,12 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable("t_matrixPerbandingan_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
         type: Sequelize.INTEGER,
       },
@@ -25,11 +31,9 @@ module.exports = {
         type: Sequelize.STRING,
       },
       createdAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
       updatedAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
     });
