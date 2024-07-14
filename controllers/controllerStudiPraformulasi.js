@@ -3776,6 +3776,8 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      console.log(req.body, "< bod");
       const createProsesPembuatan = await t_prosesPembuatan.create({
         prosesPembuatan: prosesPembuatan,
         StudiPraformulasiID: StudiPraformulasiID,
@@ -3868,6 +3870,8 @@ eFormulation System</p>
         stabilitaSkalaLab,
         StudiPraformulasiID: +StudiPraformulasiID,
       });
+
+      console.log(createRencanaAktivitas, "< rencana");
 
       res.status(201).json({
         message: "Success Create rencana aktivitas",
