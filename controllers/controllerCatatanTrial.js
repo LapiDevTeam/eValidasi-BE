@@ -2440,7 +2440,7 @@ class ControllerCatatanTrial {
       next(err);
     }
   }
-  // delete ccatatan trial perlu diperbaiki untuk delete all yang bersangkutan dengan catatanrialID
+
   static async deleteCatatanTrial(req, res) {
     try {
       const { id } = req.params;
