@@ -2445,9 +2445,96 @@ class ControllerCatatanTrial {
     try {
       const { id } = req.params;
 
-      await t_catatanTrial.destroy({
-        where: { id: +id }, // Corrected the where clause
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findCatatanTrial = await t_catatanTrial.findByPk(+id);
+      if (!findCatatanTrial)
+        throw new MyError(404, "Form Catatan Trial tidak di temukan");
+
+      // First, update all related records
+      await t_catatanTrial_status.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_komposisiCatatanTrial.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_perhitunganZatAktif.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_metodePembuatan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_prosesCatatanTrialPadat.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_prosesCatatanTrialPenyalutan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_formulaCatatanTrial.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_pengamatanAwalCair.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_pengamatanLanjutan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_pengamatanAwalPadat.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_pengamatanAwalSteril.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_pengamatanAwalPenyalutan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+
+      // Next, delete all related records
+      await t_catatanTrial_status.destroy({ where: { CatatanTrialID: +id } });
+      await t_komposisiCatatanTrial.destroy({ where: { CatatanTrialID: +id } });
+      await t_perhitunganZatAktif.destroy({ where: { CatatanTrialID: +id } });
+      await t_metodePembuatan.destroy({ where: { CatatanTrialID: +id } });
+      await t_prosesCatatanTrialPadat.destroy({
+        where: { CatatanTrialID: +id },
       });
+      await t_prosesCatatanTrialPenyalutan.destroy({
+        where: { CatatanTrialID: +id },
+      });
+      await t_formulaCatatanTrial.destroy({ where: { CatatanTrialID: +id } });
+      await t_pengamatanAwalCair.destroy({ where: { CatatanTrialID: +id } });
+      await t_pengamatanLanjutan.destroy({ where: { CatatanTrialID: +id } });
+      await t_pengamatanAwalPadat.destroy({ where: { CatatanTrialID: +id } });
+      await t_pengamatanAwalSteril.destroy({ where: { CatatanTrialID: +id } });
+      await t_pengamatanAwalPenyalutan.destroy({
+        where: { CatatanTrialID: +id },
+      });
+
+      // Finally, update and delete the main record
+      await t_catatanTrial.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_catatanTrial.destroy({ where: { id: +id } });
 
       res.status(200).send({ msg: "succeed" });
     } catch (err) {

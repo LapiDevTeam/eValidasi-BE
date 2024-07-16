@@ -224,6 +224,7 @@ router.put(
 // DELETE CATATAN TRIAL
 router.delete(
   "/delete-catatan-trial/:id",
+  authentication,
   ControllerCatatanTrial.deleteCatatanTrial
 );
 

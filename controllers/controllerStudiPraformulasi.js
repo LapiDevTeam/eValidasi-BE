@@ -7,9 +7,7 @@ const {
   t_formula,
   t_kemasan,
   t_ujiInkompatibilitas,
-  t_kontrolBahan,
   sequelize,
-  StudiPaten,
   t_karakteristikBahanAktif,
   t_karakteristikBahanTambahan,
   t_karakteristikBahanKemasan,
@@ -35,7 +33,7 @@ const {
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
-const t_ujiinkompatibilitas = require("../models/t_ujiinkompatibilitas");
+
 const { checkStatusStudi } = require("../helpers/checkStatus");
 const {
   isApproveValidation,
@@ -43,8 +41,7 @@ const {
 } = require("../helpers/approver");
 const { transporter } = require("../config/configNodeMailer");
 const { fetchApproverInisial } = require("../services/mssqlService");
-const { getStatus } = require("../helpers/statusProductBrief");
-const t_matrixperbandingan = require("../models/t_matrixperbandingan");
+
 const {
   getStatusStudiPraformulasi,
 } = require("../helpers/statusStudiPraformulasi");
@@ -53,7 +50,6 @@ class ControllerStudiPraformulasi {
   static async getAllAlasanByNomor(req, res) {
     const { nomor, revisi } = req.params;
     const convertedNomor = nomor.replace(/-/g, "/");
-    console.log(nomor, "<");
 
     const revisionNumbers = [];
     for (let i = 0; i <= revisi; i++) {
@@ -81,7 +77,7 @@ class ControllerStudiPraformulasi {
     try {
       const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
         req.user;
-      console.log(req.user, "<< user");
+
       const {
         is_approve_1,
         approver_tanggal_1,
@@ -130,9 +126,6 @@ class ControllerStudiPraformulasi {
 
       const findStudiPemohon = await t_studiPraformulasi.findByPk(+id);
       let isEmail = false;
-      console.log(findStudiPemohon?.dataValues, " < 1");
-
-      console.log(req.body, "<< body");
 
       if (!findStudiPemohon)
         throw new MyError(404, "Form studi tidak ditemukan");
@@ -143,8 +136,6 @@ class ControllerStudiPraformulasi {
       if (is_approve_1 && findStudiPemohon?.is_approve_2) {
         isEmail = true;
       }
-
-      console.log(isEmail, "< email");
 
       if (isEmail) {
         const info = await transporter.sendMail({
@@ -163,7 +154,7 @@ eFormulation System</p>
           </html>
           </b>`,
         });
-        console.log("Message sent: %s", info.messageId, "<< email");
+
         await t_studiPraformulasi.update(
           {
             statusDokumen: "Menunggu Approve Manager",
@@ -205,7 +196,6 @@ eFormulation System</p>
         user_id,
         nama_user
       );
-      console.log(dataApprove, "<< DATA approve");
 
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
       let statusDokumen;
@@ -216,8 +206,6 @@ eFormulation System</p>
         statusDokumen = getStatusStudiPraformulasi(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-
-      console.log(statusDokumen, "<< dok");
 
       if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) statusDokumen = "Reject";
@@ -762,7 +750,6 @@ eFormulation System</p>
         is_approve_2,
         keterangan_reject_2,
       } = req.body;
-      console.log(req.body, "< req body");
 
       const existingStudiPraformulasi = await t_studiPraformulasi.findOne({
         where: {
@@ -836,21 +823,17 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_deskripsiProduct.findAll({
         where: {
           StudiPraformulasiID: id,
         },
       });
-      console.log(prevKomposisi, "< prev");
 
       const existing = prevKomposisi.map((item) => item?.id);
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -934,7 +917,7 @@ eFormulation System</p>
     try {
       const { data } = req.body;
       const { id } = req.params;
-      console.log(id, "<< id");
+
       const {
         user_id,
         delegated_to,
@@ -943,32 +926,25 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
-      console.log(data, "< data");
-      console.log(id, "<<<<<");
 
       const prevKomposisi = await t_farmakologiKlinis.findAll({
         where: {
           StudiPraformulasiID: +id,
         },
       });
-      console.log(prevKomposisi, "< prev");
 
       const existing = prevKomposisi.map((item) => item?.id);
-      console.log(existing, "< exis");
+
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, " < new item");
-          console.log(newItem?.id, " < new itemid");
-          console.log(existing?.includes(+newItem?.id), " < existing");
+
           if (!newItem?.id) {
-            console.log("masuk if");
             const created = await t_farmakologiKlinis.create(
               {
                 indikasi: newItem?.indikasi || "",
@@ -989,7 +965,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log(newItem, "< new item");
             await t_farmakologiKlinis.update(
               {
                 indikasi: newItem?.indikasi || "",
@@ -1055,21 +1030,17 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_karakteristikFisikakimia.findAll({
         where: {
           StudiPraformulasiID: id,
         },
       });
-      console.log(prevKomposisi, "< prev");
 
       const existing = prevKomposisi.map((item) => item?.id);
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1163,8 +1134,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_formula.findAll({
         where: {
           StudiPraformulasiID: +id,
@@ -1175,8 +1144,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1262,8 +1230,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_stabilita.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1274,8 +1240,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1362,8 +1327,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_studiPaten.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1374,8 +1337,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1464,8 +1426,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_ujiInkompatibilitas.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1476,8 +1436,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1562,8 +1521,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_cqa.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1574,8 +1531,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1664,8 +1620,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_formulaProtokol.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1676,8 +1630,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1762,9 +1715,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< Data map");
-
       const prevKomposisi = await t_mappingProcess.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1775,8 +1725,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -1859,8 +1808,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_material.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1871,8 +1818,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2011,8 +1957,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_originatorAtauKompetitor.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2023,8 +1967,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2119,8 +2062,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_kebutuhanPeralatanDanMesin.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2131,8 +2072,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2213,8 +2153,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_qtpp.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2225,8 +2163,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2311,8 +2248,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-
       const prevKomposisi = await t_kemasan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2323,8 +2258,7 @@ eFormulation System</p>
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2415,9 +2349,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_karakteristikBahanAktif.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2430,16 +2361,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_karakteristikBahanAktif.create(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2457,7 +2385,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_karakteristikBahanAktif.update(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2494,7 +2421,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -2522,9 +2448,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_karakteristikBahanTambahan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2537,16 +2460,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_karakteristikBahanTambahan.create(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2564,7 +2484,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_karakteristikBahanTambahan.update(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2601,7 +2520,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -2629,9 +2547,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_karakteristikBahanKemasan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2644,16 +2559,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_karakteristikBahanKemasan.create(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2671,7 +2583,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_karakteristikBahanKemasan.update(
               {
                 namaBahan: newItem?.namaBahan || "",
@@ -2708,7 +2619,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -2736,9 +2646,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_kemasanProtokolSkalaLab.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2751,16 +2658,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_kemasanProtokolSkalaLab.create(
               {
                 parameterBentukSediaan: newItem?.parameterBentukSediaan || "",
@@ -2781,7 +2685,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_kemasanProtokolSkalaLab.update(
               {
                 parameterBentukSediaan: newItem?.parameterBentukSediaan || "",
@@ -2821,7 +2724,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -2849,9 +2751,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_zatAktif.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2864,16 +2763,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_zatAktif.create(
               {
                 materialAttributes: newItem?.materialAttributes || "",
@@ -2893,7 +2789,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_zatAktif.update(
               {
                 materialAttributes: newItem?.materialAttributes || "",
@@ -2932,7 +2827,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -2960,9 +2854,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_bahanTambahan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2975,16 +2866,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_bahanTambahan.create(
               {
                 bahanTambahan: newItem?.bahanTambahan || "",
@@ -3004,7 +2892,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_bahanTambahan.update(
               {
                 bahanTambahan: newItem?.bahanTambahan || "",
@@ -3043,7 +2930,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -3071,9 +2957,6 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
-      console.log(data, "< DAT");
-
       const prevKomposisi = await t_kemasanPrimer.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -3086,16 +2969,13 @@ eFormulation System</p>
         .map((item) => item.id)
         .filter((id) => id !== undefined);
 
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
       // update
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<< new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_kemasanPrimer.create(
               {
                 materialAttributes: newItem?.materialAttributes || "",
@@ -3115,7 +2995,6 @@ eFormulation System</p>
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_kemasanPrimer.update(
               {
                 materialAttributes: newItem?.materialAttributes || "",
@@ -3154,7 +3033,6 @@ eFormulation System</p>
           StudiPraformulasiID: +id,
         },
       });
-      console.log(newData, "< newData");
 
       res.status(200).json({
         statusCode: 200,
@@ -3173,7 +3051,7 @@ eFormulation System</p>
   static async createMatrixPerbandingan(req, res, next) {
     try {
       const { spesifikasiHeaders, content, StudiPraformulasiID } = req.body;
-      console.log(req.body, "< req");
+
       const {
         user_id,
         delegated_to,
@@ -3203,7 +3081,7 @@ eFormulation System</p>
   static async updateMatrixPerbandingan(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
       const { spesifikasiHeaders, content } = req.body;
 
       const [updatedRowsCount] = await t_matrixPerbandingan.update(
@@ -3240,7 +3118,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(matrixDetail, "<<");
       res.status(200).json(matrixDetail);
     } catch (err) {
       console.error(err);
@@ -3317,8 +3194,6 @@ eFormulation System</p>
           where: { id: id },
         }
       );
-
-      console.log(updatedRowsCount, "<<< updated");
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
@@ -3475,8 +3350,6 @@ eFormulation System</p>
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
       const { id } = req.params;
       let studi;
-      console.log(studi, "<< STUDI");
-      console.log(joblevel_id_user, "<< job");
 
       if (+joblevel_id_user || bagian_user === bagian_user) {
         studi = await t_studiPraformulasi.findOne({
@@ -3492,9 +3365,7 @@ eFormulation System</p>
             ],
           ],
         });
-        console.log(studi, "<<studi");
       } else {
-        console.log("xixi");
         studi = await t_studiPraformulasi.findOne({
           where: {
             id,
@@ -3513,13 +3384,6 @@ eFormulation System</p>
           ],
         });
       }
-      console.log(studi.dataValues, "<< studidetails");
-      // const apprApplicationCode = studi.apprAplicationCode;
-      // console.log(apprApplicationCode, "<< code");
-      // const apprDeptId = studi.bagian;
-      // console.log(apprDeptId, "<< BAGIAN");
-      // const apprNo = await checkStatusStudi(id);
-      // console.log(a);
 
       studi.dataValues.approver_inisial_1 = await fetchApproverInisial({
         user_id: studi.dataValues.approver_user_id_1,
@@ -3530,27 +3394,9 @@ eFormulation System</p>
         delegated_to: studi.dataValues.approver_delegated_to_2,
       });
 
-      console.log(
-        studi.dataValues.approver_user_id_1,
-        studi.dataValues.approver_delegated_to_1,
-        "<< 123"
-      );
-      console.log(studi, "< STUDI");
-      // await Promise.all(
-      //   studi.dataValues.approver_data.map(async (el, index) => {
-      //     el.dataValues.approver_inisial = await fetchApproverInisial({
-      //       user_id: el.user_id,
-      //       delegated_to: el.delegated_to,
-      //     });
-
-      //     return el;
-      //   })
-      // );
-
       const apprDeptId = studi?.dataValues?.rdSelection;
-      console.log(apprDeptId, "<DEBTID");
+
       const apprNo = await checkStatusStudi(id);
-      console.log(apprNo, "<< apprNo");
 
       await Promise.all(
         studi.dataValues.approver_data.map(async (el, index) => {
@@ -3571,7 +3417,7 @@ eFormulation System</p>
         user_id
         // nama_user
       );
-      console.log(isApprove, "<< asdasda");
+
       if (isApprove.message) throw new MyError(400, isApprove.message);
 
       if (studi) {
@@ -3594,7 +3440,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(desDetails, "<<");
       res.status(200).json(desDetails);
     } catch (err) {
       console.error(err);
@@ -3612,7 +3457,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(farmakologiDetail, "<<");
       res.status(200).json(farmakologiDetail);
     } catch (err) {
       console.error(err);
@@ -3647,7 +3491,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(stabilitaDetails, "<<");
       res.status(200).json(stabilitaDetails);
     } catch (err) {
       console.error(err);
@@ -3665,7 +3508,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(stabilitaDetails, "<<");
       res.status(200).json(ujiDetails);
     } catch (err) {
       console.error(err);
@@ -3683,7 +3525,6 @@ eFormulation System</p>
         throw new MyError(404, "Not found!");
       }
 
-      // console.log(kemasanDetails, "<<");
       res.status(200).json(kemasanDetails);
     } catch (err) {
       console.error(err);
@@ -3697,7 +3538,6 @@ eFormulation System</p>
         where: { StudiPraformulasiID: id },
       });
 
-      console.log(fisikaKimiaDetails, "<<");
       if (!fisikaKimiaDetails || fisikaKimiaDetails.length === 0) {
         throw new MyError(404, "Not found!");
       }
@@ -3709,17 +3549,13 @@ eFormulation System</p>
   }
   static async getQtpp(req, res) {
     const { id } = req.params;
-    console.log(id, "< id");
+
     try {
       const qtpp = await t_qtpp.findAll({
         where: {
           StudiPraformulasiID: id,
         },
       });
-
-      // if (!cqaDetails || cqaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
 
       res.status(200).json(qtpp);
     } catch (err) {
@@ -3729,17 +3565,11 @@ eFormulation System</p>
   }
   static async getCqa(req, res) {
     const { id } = req.params;
-    console.log(id, "< id");
+
     try {
       const cqaDetails = await t_cqa.findAll({
         where: { StudiPraformulasiID: +id },
       });
-
-      console.log(cqaDetails, "<< cqa details");
-
-      // if (!cqaDetails || cqaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
 
       res.status(200).json(cqaDetails);
     } catch (err) {
@@ -3767,7 +3597,7 @@ eFormulation System</p>
   static async createProsesPembuatan(req, res, next) {
     try {
       const { prosesPembuatan, StudiPraformulasiID } = req.body;
-      console.log(req.body, "<< body");
+
       const {
         user_id,
         delegated_to,
@@ -3777,15 +3607,12 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
-      console.log(req.body, "< bod");
       const createProsesPembuatan = await t_prosesPembuatan.create({
         prosesPembuatan: prosesPembuatan,
         StudiPraformulasiID: StudiPraformulasiID,
         user_id,
         delegated_to,
       });
-
-      console.log(createProsesPembuatan, " <<<<< <<prop");
 
       res.status(201).json({
         message: "Success Create ProsesPembuatan",
@@ -3816,7 +3643,6 @@ eFormulation System</p>
   static async editProsesPembuatan(req, res, next) {
     try {
       const { id } = req.params;
-      console.log(id, "< id");
 
       const { prosesPembuatan } = req.body;
       if (!prosesPembuatan) {
@@ -3871,8 +3697,6 @@ eFormulation System</p>
         StudiPraformulasiID: +StudiPraformulasiID,
       });
 
-      console.log(createRencanaAktivitas, "< rencana");
-
       res.status(201).json({
         message: "Success Create rencana aktivitas",
         data: createRencanaAktivitas,
@@ -3889,12 +3713,6 @@ eFormulation System</p>
         where: { StudiPraformulasiID: id },
       });
 
-      console.log(rencanaDetails, "<< 12312321");
-
-      // if (!rencanaDetails || rencanaDetails.length === 0) {
-      //   throw new MyError(404, "Not found!");
-      // }
-
       res.status(200).json(rencanaDetails);
     } catch (err) {
       console.error(err);
@@ -3903,7 +3721,7 @@ eFormulation System</p>
   }
   static async editRencanaAktivitas(req, res, next) {
     const { id } = req.params;
-    console.log(id, "< id");
+
     try {
       const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
         req.body;
@@ -4040,7 +3858,7 @@ eFormulation System</p>
   static async editKemasanProtokol(req, res, next) {
     try {
       const { id } = req.params;
-      console.log(id, "<< ID");
+
       const {
         parameterBentukSediaan,
         samaDenganOriginatorAtauKompetitorBentukSediaan,
@@ -4218,7 +4036,7 @@ eFormulation System</p>
   }
   static async editZatAktif(req, res, next) {
     const { id } = req.params;
-    console.log(id, "IASDIASIDSAIDA");
+
     try {
       const {
         materialAttributes,
@@ -4257,7 +4075,7 @@ eFormulation System</p>
   }
   static async editKemasanPrimer(req, res, next) {
     const { id } = req.params;
-    console.log(id, "IASDIASIDSAIDA");
+
     try {
       const {
         materialAttributes,
@@ -4295,9 +4113,8 @@ eFormulation System</p>
     }
   }
   static async editBahanTambahan(req, res, next) {
-    console.log("ziziiziziziziz");
     const { id } = req.params;
-    console.log(id, "IASDIASIDSAIDA");
+
     res.send();
     try {
       const {
