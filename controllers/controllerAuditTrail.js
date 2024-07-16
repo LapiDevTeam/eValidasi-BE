@@ -1033,6 +1033,7 @@ class ControllerAuditTrail {
       next(error);
     }
   }
+
   static async downloadExcelAuditDeskripsiProductHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
