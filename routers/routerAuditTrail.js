@@ -64,5 +64,113 @@ router.get(
   "/download-studi-praformulasi",
   ControllerAuditTrail.downloadExcelAuditStudiPraformulasiHist
 );
+router.get(
+  "/download-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditStudiPraformulasiHist
+);
+router.get(
+  "/download-deskripsi-product-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditDeskripsiProductHist
+);
+router.get(
+  "/download-farmakologi-klinis-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditFarmakologiKlinisHist
+);
+router.get(
+  "/download-formula-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditFormulaHist
+);
+router.get(
+  "/download-kemasan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKemasanHist
+);
+router.get(
+  "/download-stabilita-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditStabilitaHist
+);
+router.get(
+  "/download-karakteristik-fisikakimia-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKarakteristikFisikaKimiaHist
+);
+router.get(
+  "/download-karakteristik-bahanAktif-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKarakteristikBahanAktifHist
+);
+router.get(
+  "/download-karakteristik-bahanTambahan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKarakteristikBahanTambahanHist
+);
+router.get(
+  "/download-karakteristik-bahanKemasan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKarakteristikBahanKemasanHist
+);
+router.get(
+  "/download-studi-paten-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditStudiPatenHist
+);
+router.get(
+  "/download-matrix-perbandingan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditMatrixPerbandinganHist
+);
+router.get(
+  "/download-uji-inkompatibilitas-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditUjiInkompatibilitasHist
+);
+router.get(
+  "/download-qtpp-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditQtppHist
+);
+router.get(
+  "/download-cqa-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditCqaHist
+);
+router.get(
+  "/download-formula-protokol-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditFormulaProtokolHist
+);
+router.get(
+  "/download-proses-pembuatan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditProsesPembuatanHist
+);
+router.get(
+  "/download-kemasan-protokol-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKemasanProtokolHist
+);
+router.get(
+  "/download-zatAktif-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditZatAktifHist
+);
+router.get(
+  "/download-bahanTambahan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditBahanTambahanHist
+);
+router.get(
+  "/download-kemasanPrimer-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKemasanPrimerHist
+);
+router.get(
+  "/download-mapping-process-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditMappingProcessHist
+);
+router.get(
+  "/download-cpp-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditCppHist
+);
+router.get(
+  "/download-rencana-aktivitas-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditRencanaAktivitasHist
+);
+router.get(
+  "/download-material-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditMaterialHist
+);
+router.get(
+  "/download-originator-kompetitor-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditOriginatorKompetitorHist
+);
+router.get(
+  "/download-kebutuhan-peralatan-studi-praformulasi",
+  ControllerAuditTrail.downloadExcelAuditKebutuhanPeralatanHist
+);
 
 module.exports = router;
