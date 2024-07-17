@@ -12,6 +12,11 @@ router.post(
   ControllerStudiPraformulasi.autoBulkInsertSameDeptApproverLine
 );
 
+router.post(
+  "/auto-generate-grup-user-custom",
+  ControllerStudiPraformulasi.autoBulkInsertGrupUserAccesCustom
+);
+
 router.get(
   "/all-alasan-by-nomor/:nomor/:revisi",
   authentication,

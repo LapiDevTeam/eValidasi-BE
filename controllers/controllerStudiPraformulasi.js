@@ -43,6 +43,7 @@ const { transporter } = require("../config/configNodeMailer");
 const {
   fetchApproverInisial,
   fetchPekerjaAutoGenerateApproverSameDept,
+  createGroupUserCustom,
 } = require("../services/mssqlService");
 
 const {
@@ -57,6 +58,18 @@ class ControllerStudiPraformulasi {
       await fetchPekerjaAutoGenerateApproverSameDept(bodyPayload);
 
       res.send("Message succes");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async autoBulkInsertGrupUserAccesCustom(req, res, next) {
+    try {
+      const bodyPayload = req.body;
+
+      await createGroupUserCustom(bodyPayload);
+
+      res.send("result");
     } catch (error) {
       next(error);
     }

@@ -89,7 +89,44 @@ const fetchPekerjaAutoGenerateApproverSameDept = async ({
   }
 };
 
+const createGroupUserCustom = async ({ bagian, joblevel_id, progId }) => {
+  try {
+    const pool = await sql.connect(configMssql);
+    const request = pool.request();
+    const findPekerja = await request.query(`
+    SELECT DISTINCT b.Group_ID 
+    From m_karyawan a
+    LEFT JOIN m_group b ON a.Jabatan = b.Group_Desc AND a.isActive = b.isActive 
+    where a.isActive = 1 AND a.Bagian = '${bagian}' AND a.Job_LevelID IN (${joblevel_id})
+    and a.site_id = 4 `);
+
+    for (let i = 0; i < findPekerja?.recordset?.length; i++) {
+      const el = findPekerja.recordset[i];
+
+      const request1 = pool.request();
+      await request1.query(`
+        BEGIN 
+        IF EXISTS (SELECT * FROM m_Access_Right mar WHERE mar.Group_ID = '${el.Group_ID}' AND mar.Prog_ID = '${progId}')
+        BEGIN 
+          SELECT * FROM m_Access_Right mar WHERE mar.Group_ID = '${el.Group_ID}' AND mar.Prog_ID = '${progId}'
+        END 
+        ELSE 
+        BEGIN 
+          INSERT INTO m_Access_Right (Group_ID , Prog_ID , IsReadOnly , Process_Date , User_ID , Delegated_to)
+          VALUES ('${el.Group_ID}', '${progId}', 0 , GETDATE(), 'MAA','MAA') 
+        END 
+        end
+        `);
+    }
+    return findPekerja.recordset;
+  } catch (error) {
+    console.log(error);
+    return { message: "db error" };
+  }
+};
+
 module.exports = {
   fetchApproverInisial,
   fetchPekerjaAutoGenerateApproverSameDept,
+  createGroupUserCustom,
 };
