@@ -40,13 +40,28 @@ const {
   approverRecordset,
 } = require("../helpers/approver");
 const { transporter } = require("../config/configNodeMailer");
-const { fetchApproverInisial } = require("../services/mssqlService");
+const {
+  fetchApproverInisial,
+  fetchPekerjaAutoGenerateApproverSameDept,
+} = require("../services/mssqlService");
 
 const {
   getStatusStudiPraformulasi,
 } = require("../helpers/statusStudiPraformulasi");
 
 class ControllerStudiPraformulasi {
+  static async autoBulkInsertSameDeptApproverLine(req, res, next) {
+    try {
+      const bodyPayload = req.body;
+
+      await fetchPekerjaAutoGenerateApproverSameDept(bodyPayload);
+
+      res.send("Message succes");
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getAllAlasanByNomor(req, res) {
     const { nomor, revisi } = req.params;
     const convertedNomor = nomor.replace(/-/g, "/");

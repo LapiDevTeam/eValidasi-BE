@@ -7,6 +7,10 @@ router.get(
   "/studi-praformulasi/history/:id",
   ControllerStudiPraformulasi.getHistoryStudiPraformulasi
 );
+router.post(
+  "/auto-generate-approver-same-dept",
+  ControllerStudiPraformulasi.autoBulkInsertSameDeptApproverLine
+);
 
 router.get(
   "/all-alasan-by-nomor/:nomor/:revisi",
