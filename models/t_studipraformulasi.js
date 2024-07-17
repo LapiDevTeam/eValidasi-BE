@@ -110,6 +110,7 @@ module.exports = (sequelize, DataTypes) => {
       approver_delegated_to_2: DataTypes.STRING,
       approver_tanggal_2: DataTypes.DATE,
       keterangan_reject_2: DataTypes.STRING,
+      alasan_reject: DataTypes.STRING,
     },
     {
       sequelize,

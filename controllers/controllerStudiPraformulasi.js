@@ -72,6 +72,33 @@ class ControllerStudiPraformulasi {
     }
   }
 
+  // get history
+  static async getHistoryStudiPraformulasi(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      // find prosedur pengolahan table
+      const studi = await t_studiPraformulasi.findByPk(+id);
+
+      if (!studi) {
+        res.status(404).json({ error: "Not Found" });
+      } else {
+        // find approval history table
+        const approvalHistory = await t_studiPraformulasi_status.findAll({
+          where: {
+            StudiPraformulasiID: +id,
+          },
+          order: [["createdAt", "DESC"]],
+        });
+
+        res.status(200).json({ approvals: approvalHistory });
+      }
+    } catch (error) {
+      next(error);
+      console.log(error);
+    }
+  }
+
   // approver pemohon
   static async approvePemohon(req, res, next) {
     try {
@@ -823,6 +850,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_deskripsiProduct.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -927,6 +983,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_farmakologiKlinis.findAll({
         where: {
           StudiPraformulasiID: +id,
@@ -1029,6 +1114,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_karakteristikFisikakimia.findAll({
         where: {
@@ -1133,6 +1247,34 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_formula.findAll({
         where: {
@@ -1230,6 +1372,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_stabilita.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1326,6 +1497,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_studiPaten.findAll({
         where: {
@@ -1426,6 +1626,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_ujiInkompatibilitas.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1520,6 +1749,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_cqa.findAll({
         where: {
@@ -1620,6 +1878,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_formulaProtokol.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1715,6 +2002,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_mappingProcess.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -1807,6 +2123,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_material.findAll({
         where: {
@@ -1957,6 +2302,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_originatorAtauKompetitor.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2062,6 +2436,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_kebutuhanPeralatanDanMesin.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2152,6 +2555,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_qtpp.findAll({
         where: {
@@ -2247,6 +2679,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_kemasan.findAll({
         where: {
@@ -2349,6 +2810,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_karakteristikBahanAktif.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2447,6 +2937,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_karakteristikBahanTambahan.findAll({
         where: {
@@ -2547,6 +3066,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_karakteristikBahanKemasan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2645,6 +3193,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_kemasanProtokolSkalaLab.findAll({
         where: {
@@ -2751,6 +3328,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_zatAktif.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2854,6 +3460,35 @@ eFormulation System</p>
         bagian_user,
       } = req.user;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const prevKomposisi = await t_bahanTambahan.findAll({
         where: {
           StudiPraformulasiID: id,
@@ -2956,6 +3591,35 @@ eFormulation System</p>
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_kemasanPrimer.findAll({
         where: {
@@ -3084,6 +3748,35 @@ eFormulation System</p>
 
       const { spesifikasiHeaders, content } = req.body;
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const [updatedRowsCount] = await t_matrixPerbandingan.update(
         {
           spesifikasiHeaders: spesifikasiHeaders || "",
@@ -3111,7 +3804,7 @@ eFormulation System</p>
     const { id } = req.params;
     try {
       const matrixDetail = await t_matrixPerbandingan.findOne({
-        where: { StudiPraformulasiID: id },
+        where: { StudiPraformulasiID: +id },
       });
 
       if (!matrixDetail || matrixDetail.length === 0) {
@@ -3189,11 +3882,41 @@ eFormulation System</p>
       const [updatedRowsCount] = await t_studiPraformulasi.update(
         {
           ...obj,
+          statusDokumen: "Draft",
         },
         {
           where: { id: id },
         }
       );
+
+      // console.log(studi?.statusDokumen, "<<studi");
+
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
@@ -3238,6 +3961,34 @@ eFormulation System</p>
         +StudiPraformulasiID
       );
 
+      if (findStudiPraformulasiID?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       if (!findStudiPraformulasiID) throw { name: "NotFound" };
       const updateTujuan = await t_studiPraformulasi.update(
         { tujuan: tujuan },
@@ -3260,6 +4011,34 @@ eFormulation System</p>
       const findStudi = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
+
+      if (findStudi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       if (!findStudi) throw { name: "NotFound" };
       const updateTujuanScreening = await t_studiPraformulasi.update(
@@ -3284,6 +4063,34 @@ eFormulation System</p>
         +StudiPraformulasiID
       );
 
+      if (findStudi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       if (!findStudi) throw { name: "NotFound" };
       const updateKesimpulanScreening = await t_studiPraformulasi.update(
         { kesimpulanScreening: kesimpulanScreening },
@@ -3307,6 +4114,34 @@ eFormulation System</p>
         +StudiPraformulasiID
       );
 
+      if (findStudi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       if (!findStudi) throw { name: "NotFound" };
       const updateKesimpulan = await t_studiPraformulasi.update(
         { kesimpulan: kesimpulan },
@@ -3329,6 +4164,34 @@ eFormulation System</p>
       const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
+
+      if (findStudiPraformulasiID?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       if (!findStudiPraformulasiID) throw { name: "NotFound" };
       const updateDokumenAcuan = await t_studiPraformulasi.update(
@@ -3656,6 +4519,35 @@ eFormulation System</p>
         { where: { StudiPraformulasiID: +id } }
       );
 
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       res.status(200).json(updateProsesPembuatan);
     } catch (err) {
       console.error(err);
@@ -3736,6 +4628,35 @@ eFormulation System</p>
           where: { StudiPraformulasiID: id },
         }
       );
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       if (updatedRowsCount > 0) {
         res.status(201).json({
@@ -4164,12 +5085,23 @@ eFormulation System</p>
         StudiPraformulasiID,
       } = req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createCpp = await t_cpp.create({
         parameterProcess,
         pengaruhKeCqa,
         apakahTermasukCpp,
         justifikasi,
         StudiPraformulasiID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -4207,6 +5139,14 @@ eFormulation System</p>
         apakahTermasukCpp,
         justifikasi,
       } = req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       const [updatedRowsCount] = await t_cpp.update(
         {
@@ -4214,6 +5154,8 @@ eFormulation System</p>
           pengaruhKeCqa,
           apakahTermasukCpp,
           justifikasi,
+          user_id,
+          delegated_to,
         },
         {
           where: { id: id },

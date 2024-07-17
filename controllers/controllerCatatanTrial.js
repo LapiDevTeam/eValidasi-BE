@@ -37,8 +37,8 @@ class ControllerCatatanTrial {
         is_approve_1,
         approver_tanggal_1,
         keterangan_reject_1,
-        is_approve_2,
-        keterangan_reject_2,
+        // is_approve_2,
+        // keterangan_reject_2,
       } = req.body;
       const { id } = req.params;
       const findStudiPemohon = await t_catatanTrial.findByPk(+id);
@@ -54,6 +54,7 @@ class ControllerCatatanTrial {
             approver_delegated_to_1: delegated_to,
             approver_tanggal_1: new Date(),
             keterangan_reject_1: keterangan_reject_1,
+            statusDokumen: "Menunggu Approve Manager/Ast.Manager",
           },
           {
             where: {
@@ -64,12 +65,13 @@ class ControllerCatatanTrial {
       } else if (bagian_user === "RD2") {
         await t_catatanTrial.update(
           {
-            is_approve_2,
-            approver_name_2: nama_user,
-            approver_user_id_2: user_id,
-            approver_delegated_to_2: delegated_to,
-            approver_tanggal_2: new Date(),
-            keterangan_reject_2: keterangan_reject_2,
+            is_approve_1,
+            approver_name_1: nama_user,
+            approver_user_id_1: user_id,
+            approver_delegated_to_1: delegated_to,
+            approver_tanggal_1: new Date(),
+            keterangan_reject_1: keterangan_reject_1,
+            statusDokumen: "Menunggu Approve Manager/Ast.Manager",
           },
           {
             where: {
@@ -205,6 +207,29 @@ class ControllerCatatanTrial {
 
       let newUpload = upload?.filter((item) => item.trim() !== "");
 
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const [updatedRowsCount] = await t_catatanTrial.update(
         {
           tanggalTrial: tanggalTrial || "",
@@ -283,7 +308,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_komposisiCatatanTrial.findAll({
         where: {
@@ -379,7 +425,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(data, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevPerhitunganZatAktif = await t_perhitunganZatAktif.findAll({
         where: {
@@ -473,7 +540,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevMetodePembuatan = await t_metodePembuatan.findAll({
         where: {
@@ -565,7 +653,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevProsesCatatanTrialPadat =
         await t_prosesCatatanTrialPadat.findAll({
@@ -672,7 +781,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevProsesCatatanTrialPenyalutan =
         await t_prosesCatatanTrialPenyalutan.findAll({
@@ -772,7 +902,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_pengamatanAwalCair.findAll({
         where: {
@@ -869,7 +1020,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_pengamatanAwalSteril.findAll({
         where: {
@@ -966,7 +1138,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_pengamatanAwalPadat.findAll({
         where: {
@@ -1101,7 +1294,28 @@ class ControllerCatatanTrial {
         bagian_user,
       } = req.user;
 
-      console.log(id, "<<<<<");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKomposisi = await t_pengamatanAwalPenyalutan.findAll({
         where: {
@@ -1286,7 +1500,28 @@ class ControllerCatatanTrial {
         detailFormula,
       } = req.body;
 
-      console.log(req.body, "<< reqbody");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const [updatedRowsCount] = await t_formulaCatatanTrial.update(
         {
@@ -1356,7 +1591,28 @@ class ControllerCatatanTrial {
       const { id } = req.params;
 
       const pengamatanAwalCairData = req.body.data; // Access req.body.data
-      console.log(pengamatanAwalCairData, "<< REQ body");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const updatedPengamatanCair = await t_pengamatanAwalCair.update(
         {
@@ -1407,10 +1663,30 @@ class ControllerCatatanTrial {
   static async updatePengamatanAwalSteril(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const pengamatanAwalSterilData = req.body.data; // Access req.body.data
-      console.log(pengamatanAwalSterilData, "<< REQ body");
 
       const updatedPengamatanSteril = t_pengamatanAwalSteril.update(
         {
@@ -1498,7 +1774,30 @@ class ControllerCatatanTrial {
   static async updatePengamatanAwalPadat(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const {
         spesifikasiPemerian,
         settingPemerian,
@@ -1601,7 +1900,30 @@ class ControllerCatatanTrial {
   static async updatePengamatanAwalLanjutan(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const { kodeTrialHeaders, content } = req.body;
 
       const [updatedRowsCount] = await t_pengamatanLanjutan.update(
@@ -1699,7 +2021,30 @@ class ControllerCatatanTrial {
   static async updatePengamatanAwalPenyalutan(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const {
         spesifikasiWeightGain,
         settingWeightGain,
@@ -1773,6 +2118,30 @@ class ControllerCatatanTrial {
   static async updatePerhitunganBatasBahanTambahan(req, res) {
     try {
       const { CatatanTrialID } = req.params;
+
+      const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +CatatanTrialID },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
       const { perhitunganBatasBahanTambahan } = req.body;
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
@@ -1794,6 +2163,29 @@ class ControllerCatatanTrial {
   static async updatePembahasan(req, res) {
     try {
       const { CatatanTrialID } = req.params;
+
+      const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +CatatanTrialID },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       const { pembahasan } = req.body;
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
@@ -1814,8 +2206,29 @@ class ControllerCatatanTrial {
   }
   static async updateKesimpulan(req, res) {
     try {
-      console.log("xixixi");
       const { CatatanTrialID } = req.params;
+      const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +CatatanTrialID },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       const { kesimpulan } = req.body;
       console.log(CatatanTrialID, "< cat");
       console.log(kesimpulan, "< kes");
@@ -1841,6 +2254,28 @@ class ControllerCatatanTrial {
   static async updateTindakLanjut(req, res) {
     try {
       const { CatatanTrialID } = req.params;
+      const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +CatatanTrialID },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       const { tindakLanjut } = req.body;
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
@@ -1862,6 +2297,28 @@ class ControllerCatatanTrial {
   static async updateUpload(req, res) {
     try {
       const { CatatanTrialID } = req.params;
+      const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +CatatanTrialID },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       const { upload } = req.body;
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
@@ -1913,18 +2370,13 @@ class ControllerCatatanTrial {
         statusDokumen = getStatusCatatanTrial(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
         statusDokumen = "Reject";
         await t_catatanTrial_status.destroy({
           where: { CatatanTrialID: +id },
         });
       }
-
-      console.log(statusDokumen, "<< STAUTS");
-      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
-
-      console.log(is_approve, "<<< iNI IS APPROVE");
 
       await t_catatanTrial_status.create({
         CatatanTrialID: id,
@@ -2412,7 +2864,28 @@ class ControllerCatatanTrial {
   static async updatePerhitunganZatAktif(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+      const cat = await t_catatanTrial.findByPk(+id);
+      if (cat?.statusDokumen === "Reject") {
+        await t_catatanTrial_status.destroy({
+          where: { CatatanTrialID: +id },
+        });
+        await t_catatanTrial.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
       const { padaEtiket, bahanBakuYangDigunakan, perhitunganBahanBaku } =
         req.body;
 

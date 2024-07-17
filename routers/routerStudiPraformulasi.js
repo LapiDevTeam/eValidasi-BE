@@ -4,6 +4,11 @@ const ControllerStudiPraformulasi = require("../controllers/controllerStudiPrafo
 const { authentication } = require("../middlewares/authentication");
 
 router.get(
+  "/studi-praformulasi/history/:id",
+  ControllerStudiPraformulasi.getHistoryStudiPraformulasi
+);
+
+router.get(
   "/all-alasan-by-nomor/:nomor/:revisi",
   authentication,
   ControllerStudiPraformulasi.getAllAlasanByNomor
@@ -294,24 +299,31 @@ router.get(
   ControllerStudiPraformulasi.getMappingProcess
 );
 
-router.post("/create-cpp", ControllerStudiPraformulasi.createCpp);
+router.post(
+  "/create-cpp",
+  authentication,
+  ControllerStudiPraformulasi.createCpp
+);
 router.get("/cpp/:id", ControllerStudiPraformulasi.getCpp);
-router.put("/edit-cpp/:id", ControllerStudiPraformulasi.editCppDetails);
+router.put(
+  "/edit-cpp/:id",
+  authentication,
+  ControllerStudiPraformulasi.editCppDetails
+);
 
 router.post(
   "/rencana-aktivitas",
+  authentication,
   ControllerStudiPraformulasi.createRencanaAktivitas
 );
-router.post(
-  "/rencana-aktivitas",
-  ControllerStudiPraformulasi.createRencanaAktivitas
-);
+
 router.get(
   "/rencana-aktivitas/:id",
   ControllerStudiPraformulasi.getRencanaAktivitas
 );
 router.put(
   "/edit-rencana-aktivitas/:id",
+  authentication,
   ControllerStudiPraformulasi.editRencanaAktivitas
 );
 

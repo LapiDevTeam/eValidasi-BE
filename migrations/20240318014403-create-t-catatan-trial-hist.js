@@ -70,24 +70,24 @@ module.exports = {
       keterangan_reject_1: {
         type: Sequelize.STRING,
       },
-      is_approve_2: {
-        type: Sequelize.STRING,
-      },
-      approver_name_2: {
-        type: Sequelize.STRING,
-      },
-      approver_user_id_2: {
-        type: Sequelize.STRING,
-      },
-      approver_delegated_to_2: {
-        type: Sequelize.STRING,
-      },
-      approver_tanggal_2: {
-        type: Sequelize.DATE,
-      },
-      keterangan_reject_2: {
-        type: Sequelize.STRING,
-      },
+      // is_approve_2: {
+      //   type: Sequelize.STRING,
+      // },
+      // approver_name_2: {
+      //   type: Sequelize.STRING,
+      // },
+      // approver_user_id_2: {
+      //   type: Sequelize.STRING,
+      // },
+      // approver_delegated_to_2: {
+      //   type: Sequelize.STRING,
+      // },
+      // approver_tanggal_2: {
+      //   type: Sequelize.DATE,
+      // },
+      // keterangan_reject_2: {
+      //   type: Sequelize.STRING,
+      // },
       alasan_reject: {
         type: Sequelize.STRING,
       },
