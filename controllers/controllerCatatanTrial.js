@@ -32,7 +32,7 @@ class ControllerCatatanTrial {
     try {
       const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
         req.user;
-      console.log(req.user, "<< user");
+
       const {
         is_approve_1,
         approver_tanggal_1,
@@ -190,7 +190,7 @@ class ControllerCatatanTrial {
   static async updateCatatanTrial(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
       const {
         tanggalTrial,
         namaProduk,
@@ -341,8 +341,7 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -458,8 +457,7 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -573,8 +571,7 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -687,8 +684,7 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -815,8 +811,7 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -935,16 +930,14 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
 
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem.pengamatanAwalCair, " << new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_pengamatanAwalCair.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -959,7 +952,6 @@ class ControllerCatatanTrial {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_pengamatanAwalCair.update(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1053,16 +1045,14 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
 
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem.pengamatanAwalSteril, " << new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_pengamatanAwalSteril.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1077,7 +1067,6 @@ class ControllerCatatanTrial {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_pengamatanAwalSteril.update(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1171,16 +1160,14 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
 
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem.pengamatanAwalSteril, " << new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_pengamatanAwalPadat.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1214,7 +1201,6 @@ class ControllerCatatanTrial {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_pengamatanAwalPadat.update(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1327,16 +1313,14 @@ class ControllerCatatanTrial {
       const newItemId = data
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
-      console.log(existing, " << exsting");
-      console.log(newItemId, " << newItemId");
+
       // update
 
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem.pengamatanAwalSteril, " << new item");
+
           if (!newItem?.id) {
-            console.log("<< masuk");
             const created = await t_pengamatanAwalPenyalutan.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1371,7 +1355,6 @@ class ControllerCatatanTrial {
           }
           // update
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
-            console.log("<<edit");
             await t_pengamatanAwalPenyalutan.update(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1488,7 +1471,7 @@ class ControllerCatatanTrial {
   static async updateFormulaCatatanTrial(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
       const {
         tujuanTrial,
         tiapSediaan,
@@ -1539,15 +1522,11 @@ class ControllerCatatanTrial {
         }
       );
 
-      console.log();
-
       if (updatedRowsCount > 0) {
-        console.log("if");
         res.status(201).json({
           message: "formula Catatan Trial updated successfully",
         });
       } else {
-        console.log("else");
         res.status(404).json({
           message: "formula Catatan Trial not found",
         });
@@ -1819,8 +1798,6 @@ class ControllerCatatanTrial {
         evaluasiUkuran,
       } = req.body;
 
-      console.log(req.body, "<< reqbody");
-
       const [updatedRowsCount] = await t_pengamatanAwalPadat.update(
         {
           spesifikasiPemerian: spesifikasiPemerian || "",
@@ -1847,15 +1824,11 @@ class ControllerCatatanTrial {
         }
       );
 
-      console.log();
-
       if (updatedRowsCount > 0) {
-        console.log("if");
         res.status(201).json({
           message: "pengamatan awal padat updated successfully",
         });
       } else {
-        console.log("else");
         res.status(404).json({
           message: "pengamatan awal padat not found",
         });
@@ -2067,8 +2040,6 @@ class ControllerCatatanTrial {
         evaluasiWaktuHancur,
       } = req.body;
 
-      console.log(req.body, "<< reqbody");
-
       const [updatedRowsCount] = await t_pengamatanAwalPenyalutan.update(
         {
           spesifikasiWeightGain: spesifikasiWeightGain || "",
@@ -2096,15 +2067,11 @@ class ControllerCatatanTrial {
         }
       );
 
-      console.log();
-
       if (updatedRowsCount > 0) {
-        console.log("if");
         res.status(201).json({
           message: "pengamatan awal penyalutan updated successfully",
         });
       } else {
-        console.log("else");
         res.status(404).json({
           message: "pengamatan awal penyalutan not found",
         });
@@ -2230,10 +2197,8 @@ class ControllerCatatanTrial {
         );
       }
       const { kesimpulan } = req.body;
-      console.log(CatatanTrialID, "< cat");
-      console.log(kesimpulan, "< kes");
+
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
-      console.log(findCatatanTrialID, "< find");
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
       const updateKesimpulan = await t_catatanTrial.update(
@@ -2245,7 +2210,7 @@ class ControllerCatatanTrial {
           returning: true,
         }
       );
-      console.log(updateKesimpulan, "< upt");
+
       res.status(200).json(updateKesimpulan);
     } catch (err) {
       console.log(err);
@@ -2566,7 +2531,6 @@ class ControllerCatatanTrial {
 
       let catatanTrialDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
-        console.log(id, "<< id");
         catatanTrialDetails = await t_catatanTrial?.findOne({
           where: {
             id,
@@ -2580,7 +2544,6 @@ class ControllerCatatanTrial {
             ],
           ],
         });
-        console.log(catatanTrialDetails.dataValues, "<< detil");
 
         catatanTrialDetails.dataValues.approver_inisial_1 =
           await fetchApproverInisial({
@@ -2595,7 +2558,6 @@ class ControllerCatatanTrial {
               catatanTrialDetails.dataValues.approver_delegated_to_2,
           });
       } else {
-        console.log("test");
         catatanTrialDetails = await t_catatanTrial.findOne({
           where: {
             id,
@@ -2614,7 +2576,6 @@ class ControllerCatatanTrial {
           ],
         });
       }
-      console.log(catatanTrialDetails, "<<< DETAILS");
 
       catatanTrialDetails.dataValues.approver_inisial_1 =
         await fetchApproverInisial({
@@ -2628,7 +2589,7 @@ class ControllerCatatanTrial {
         });
       // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
       const apprDeptId = catatanTrialDetails.bagian;
-      console.log(apprDeptId, "<DEBTID");
+
       const apprNo = await checkStatusCatatanTrial(id);
 
       await Promise.all(
@@ -2650,7 +2611,7 @@ class ControllerCatatanTrial {
         user_id
         // nama_user
       );
-      console.log(isApprove, "<< asdasda");
+
       if (isApprove.message) throw new MyError(400, isApprove.message);
       res.status(200).json({ catatanTrialDetails, isApprove });
     } catch (error) {
@@ -2685,9 +2646,9 @@ class ControllerCatatanTrial {
       const pengamatanLanjutanCair = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
-      console.log(perhitunganZatAktifCair, " << zat cair");
+
       // if (isApprove.message) throw new MyError(400, isApprove.message);
-      console.log(pengamatanAwalCair, "<< PENGAMATAN AWAL CAIR");
+
       res.status(200).json({
         catatanTrialDetailCair,
         komposisiCair,
@@ -2729,9 +2690,9 @@ class ControllerCatatanTrial {
       const pengamatanLanjutanSteril = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
-      console.log(perhitunganZatAktifSteril, " << zat Steril");
+
       // if (isApprove.message) throw new MyError(400, isApprove.message);
-      console.log(pengamatanAwalSteril, "<< PENGAMATAN AWAL Steril");
+
       res.status(200).json({
         catatanTrialDetailSteril,
         komposisiSteril,
@@ -2749,8 +2710,6 @@ class ControllerCatatanTrial {
   static async getCatatanTrialPadatDetails(req, res, next) {
     try {
       const { id } = req.params;
-
-      console.log("xixixixiix");
 
       const catatanTrialDetailPadat = await t_catatanTrial.findOne({
         where: {
