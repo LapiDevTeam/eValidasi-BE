@@ -1331,7 +1331,7 @@ class ControllerCatatanTrial {
                 settingPemerian: newItem?.settingPemerian || "",
                 evaluasiPemerian: newItem?.evaluasiPemerian || "",
                 spesifikasiKeseragamanBobot:
-                  newItem?.spesifikasiKeseragamanBobot || [],
+                  newItem?.spesifikasiKeseragamanBobot || "",
                 settingKeseragamanBobot: newItem?.rataRataKekerasanTablet || "",
                 evaluasiKeseragamanBobot:
                   newItem?.evaluasiKeseragamanBobot || "",
@@ -1365,7 +1365,7 @@ class ControllerCatatanTrial {
                 settingPemerian: newItem?.settingPemerian || "",
                 evaluasiPemerian: newItem?.evaluasiPemerian || "",
                 spesifikasiKeseragamanBobot:
-                  newItem?.spesifikasiKeseragamanBobot || [],
+                  newItem?.spesifikasiKeseragamanBobot || "",
                 settingKeseragamanBobot: newItem?.rataRataKekerasanTablet || "",
                 evaluasiKeseragamanBobot:
                   newItem?.evaluasiKeseragamanBobot || "",
@@ -1415,6 +1415,7 @@ class ControllerCatatanTrial {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
