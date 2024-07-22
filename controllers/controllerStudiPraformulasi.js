@@ -143,7 +143,7 @@ class ControllerStudiPraformulasi {
       } = req.body;
       const { id } = req.params;
 
-      if (bagian_user === "RD1" || bagian_user === "RD1") {
+      if (bagian_user === "RD1" || bagian_user === "RD2") {
         await t_studiPraformulasi.update(
           {
             is_approve_1,
