@@ -2476,7 +2476,6 @@ class ControllerCatatanTrial {
         tipeCatatanTrial,
         pic,
         bagian,
-
         statusDokumen,
         alasan,
       } = req.query;

@@ -109,7 +109,6 @@ class ControllerProductBrief {
         </html>
         </b>`,
       });
-      console.log("Message sent: %s", info.messageId, "<< email");
 
       res
         .status(201)

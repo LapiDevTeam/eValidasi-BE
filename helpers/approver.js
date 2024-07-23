@@ -20,16 +20,7 @@ const isApproveValidation = async (
 ) => {
   try {
     let isApprove = false;
-    console.log(
-      //   nama_pekerja,
-      apprApplicationCode,
-      apprDeptId,
-      apprNo,
-      user_id,
-      //   nama_user,
-      "<<< DATAAAasdasdasdasdasdaA"
-    );
-    console.log(user_id, "< uaer id");
+
     const pool = await sql.connect(configMssql);
 
     const request = pool.request();
@@ -42,8 +33,6 @@ const isApproveValidation = async (
         `SELECT  * FROM  m_Approver_Lines mal WHERE  mal.Appr_ApplicationCode = @Appr_ApplicationCode AND mal.Appr_DeptID = @Appr_DeptID AND mal.Appr_No = @Appr_No AND mal.Appr_ID = @Appr_ID`
       );
 
-    // if (apprNo === 1 && nama_pekerja === nama_user) isApprove = true;
-    console.log(result1, "<< result 1");
     if (result1.recordset.length > 0) isApprove = true;
     return isApprove;
   } catch (error) {
@@ -59,15 +48,6 @@ const approverRecordset = async (
   nama_user
 ) => {
   try {
-    console.log(
-      //   nama_pekerja,
-      apprAplicationCode,
-      bagian,
-      apprNo,
-      user_id,
-      nama_user,
-      29
-    );
     let queryApprover = `SELECT  * FROM  m_Approver_Lines mal WHERE  mal.Appr_ApplicationCode = @Appr_ApplicationCode AND mal.Appr_DeptID = @Appr_DeptID AND mal.Appr_No = @Appr_No AND mal.Appr_ID = @Appr_ID `;
     // if (apprNo === 1) {
     //   if (nama_pekerja !== nama_user)

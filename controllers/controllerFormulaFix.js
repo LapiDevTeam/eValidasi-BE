@@ -120,31 +120,14 @@ class ControllerFormulaFix {
     }
   }
 
-  // static async getFormulaFixDetails(req, res, next) {
-  //   try {
-  //     const { id } = req.params;
-
-  //     const formulaFixDetails = await FormulaFix.findOne({
-  //       where: {
-  //         id,
-  //       },
-  //     });
-
-  //     res.status(200).json(formulaFixDetails);
-  //   } catch (error) {
-  //     console.log(error);
-  //     next(error);
-  //   }
-  // }
   static async getFormulaFixDetails(req, res, next) {
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-      console.log(req.user, "< req user");
+
       const { id } = req.params;
-      // console.log(id, "<< req uer");
+
       let formulaFixDetails;
       if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
-        console.log(id, "<< id");
         formulaFixDetails = await t_formulaFix?.findOne({
           where: {
             id,
@@ -158,9 +141,7 @@ class ControllerFormulaFix {
             ],
           ],
         });
-        console.log(formulaFixDetails, "<< detil");
       } else {
-        console.log("test");
         formulaFixDetails = await t_formulaFix.findOne({
           where: {
             id,
@@ -179,8 +160,7 @@ class ControllerFormulaFix {
           ],
         });
       }
-      console.log(formulaFixDetails, "<<< DETAILS");
-      // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+
       const apprDeptId = formulaFixDetails.bagian;
       const apprNo = await checkStatusFormulaFix(id);
 
@@ -192,7 +172,7 @@ class ControllerFormulaFix {
         user_id
         // nama_user
       );
-      console.log(isApprove, "<< asdasda");
+
       if (isApprove.message) throw new MyError(400, isApprove.message);
 
       res
@@ -206,7 +186,7 @@ class ControllerFormulaFix {
   static async updateFormulaFix(req, res, next) {
     try {
       const { id } = req.params; // Ambil id catatan trial dari URL
-      console.log(id, "<< IDIDIDIDID");
+
       const {
         namaProduk,
         filter,
@@ -291,11 +271,6 @@ class ControllerFormulaFix {
           where: { FormulaFixID: +id },
         });
       }
-
-      console.log(status, "<< STAUTS");
-      console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
-
-      console.log(is_approve, "<<< iNI IS APPROVE");
 
       await t_formulaFix_status.create({
         FormulaFixID: id,

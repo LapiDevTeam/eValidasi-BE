@@ -307,45 +307,19 @@ eFormulation System</p>
         kemasan,
         alasan,
         tujuan,
+        revisi,
         productBriefNo,
         ProductBriefId,
-      } = req.body;
-      const size = page ? 15 : "";
+      } = req.query;
+
+      const size = page ? 5 : "";
 
       const { limit, offset } = getPagination(page, size);
 
       const searchParams = {};
-      if (nomor) searchParams.nomor = { [Op.iLike]: `%${nomor}%` };
-      if (tanggalPenyusunan)
-        searchParams.tanggalPenyusunan = {
-          [Op.iLike]: `%${tanggalPenyusunan}%`,
-        };
-      if (tanggalAddendum)
-        searchParams.tanggalAddendum = { [Op.iLike]: `%${tanggalAddendum}%` };
-      if (addendumKe)
-        searchParams.addendumKe = { [Op.iLike]: `%${addendumKe}%` };
-      if (namaProduk) searchParams.namaProduk = +namaProduk;
-      if (komposisi) searchParams.komposisi = { [Op.iLike]: `%${komposisi}%` };
-      if (kemasan)
-        searchParams.kemasan = {
-          [Op.iLike]: `%${kemasan}%`,
-        };
-      if (alasan)
-        searchParams.alasan = {
-          [Op.iLike]: `%${alasan}%`,
-        };
-      if (tujuan)
-        searchParams.tujuan = {
-          [Op.iLike]: `%${tujuan}%`,
-        };
-      if (productBriefNo)
-        searchParams.productBriefNo = {
-          [Op.iLike]: `%${productBriefNo}%`,
-        };
-      if (ProductBriefId)
-        searchParams.ProductBriefId = {
-          [Op.iLike]: `%${ProductBriefId}%`,
-        };
+      if (namaProduk)
+        searchParams.namaProduk = { [Op.iLike]: `%${namaProduk}%` };
+      if (revisi) searchParams.revisi = { [Op.iLike]: `%${revisi}%` };
 
       const studi = await t_studiPraformulasi.findAndCountAll({
         where: searchParams,
@@ -3919,8 +3893,6 @@ eFormulation System</p>
         }
       );
 
-      // console.log(studi?.statusDokumen, "<<studi");
-
       if (studi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
           where: { StudiPraformulasiID: +id },
@@ -3965,7 +3937,7 @@ eFormulation System</p>
 
   static async getProductBrief(req, res) {
     try {
-      const noProductBrief = await t_productBrief.findAll({
+      const approvedProductBriefs = await t_productBrief.findAll({
         attributes: [
           "id",
           "productBrief",
@@ -3974,15 +3946,25 @@ eFormulation System</p>
           "kemasan",
           "bahanAktifDanDosis",
           "rdSelection",
-        ], // Replace 'columnName' with the actual name of the column you want
+          "revisi",
+        ],
+        where: {
+          statusDokumen: "Approved", // Add condition to filter by statusDokumen
+        },
       });
-      if (!noProductBrief) throw new MyError(400, "notFound!");
 
-      res.status(200).json(noProductBrief);
+      // Check if no records were found
+      if (!approvedProductBriefs || approvedProductBriefs.length === 0) {
+        throw new MyError(400, "No approved product briefs found!");
+      }
+
+      res.status(200).json(approvedProductBriefs);
     } catch (err) {
-      console.log(err);
+      console.error("Error fetching product briefs:", err);
+      res.status(500).json({ message: "Internal server error." }); // Send error response
     }
   }
+
   static async updateTujuan(req, res) {
     try {
       const { StudiPraformulasiID } = req.params;

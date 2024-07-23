@@ -5,7 +5,7 @@ const axios = require("axios");
 const authentication = async (req, res, next) => {
   try {
     const { authentication } = req.headers;
-    console.log(authentication, "<< authen");
+
     if (!authentication) throw new MyError(401, "Not Authentication");
     if (authentication) {
       const response = await fetch("http://192.168.1.24/api/lms/v1/decode", {
@@ -40,7 +40,6 @@ const authentication = async (req, res, next) => {
         };
       }
 
-      console.log(auth);
       req.user = auth;
     }
     next();
