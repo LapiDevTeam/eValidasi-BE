@@ -113,7 +113,7 @@ const createGroupUserCustom = async ({ bagian, joblevel_id, progId }) => {
         ELSE 
         BEGIN 
           INSERT INTO m_Access_Right (Group_ID , Prog_ID , IsReadOnly , Process_Date , User_ID , Delegated_to)
-          VALUES ('${el.Group_ID}', '${progId}', 0 , GETDATE(), 'MAA','MAA') 
+          VALUES ('${el.Group_ID}', '${progId}', 0 , GETDATE(), 'System','System') 
         END 
         end
         `);
