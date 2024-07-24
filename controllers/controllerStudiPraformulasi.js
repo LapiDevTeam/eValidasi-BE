@@ -91,6 +91,7 @@ class ControllerStudiPraformulasi {
           revisi: revisionNumbers,
         },
         attributes: ["nomor", "alasan", "revisi", "statusDokumen"],
+        order: [["revisi", "ASC"]], // Sorts by 'revisi' in ascending order
       });
 
       res.status(200).json(alasan);
