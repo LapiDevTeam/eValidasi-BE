@@ -94,22 +94,6 @@ class ControllerProductBrief {
         delegated_to,
       });
 
-      const info = await transporter.sendMail({
-        from: `[Notifikasi][Product Brief] - ${nama} <no_reply_it@lapilabs.co.id>`,
-        to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
-        subject: "Product Brief", // Subject line
-        text: "Hellow world?", // plain text body
-        html: `<b>
-        <html>
-        <p> Dear Bapak / Ibu di tempat,</p>
- <p> Bersamaan dengan email ini, diberitahukan bahwa Produk Brief “${nama}” dengan nomor: ${kode} telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.</p>
- <br>
-</p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya. </p>
-</p>eFormulation System </p>
-        </html>
-        </b>`,
-      });
-
       res
         .status(201)
         .json({ message: "Success Create", id: createProductBrief.id });
@@ -481,6 +465,8 @@ class ControllerProductBrief {
         throw new MyError(404, "Form ProductBrief tidak ditemukan");
       const apprNo = await checkStatusProductBrief(id);
 
+      console.log(findProductBrief, "< PROD");
+
       const dataApprove = await approverRecordset(
         "productBrief",
         findProductBrief.rdSelection,
@@ -526,6 +512,23 @@ class ControllerProductBrief {
           },
         }
       );
+
+      const info = await transporter.sendMail({
+        from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
+        to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
+        subject: "Product Brief", // Subject line
+        text: "Hellow world?", // plain text body
+        html: `<b>
+              <html>
+              <p> Dear Bapak / Ibu di tempat,</p>
+       <p> Bersamaan dengan email ini, diberitahukan bahwa Produk Brief “${findProductBrief?.dataValues?.nama}” dengan nomor: ${findProductBrief?.dataValues?.kode} telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.</p>
+       <br>
+      </p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya. </p>
+      </p>eFormulation System </p>
+              </html>
+              </b>`,
+      });
+
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
