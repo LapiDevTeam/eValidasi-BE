@@ -4,12 +4,13 @@ const express = require("express");
 const bodyParser = require("body-parser");
 
 const cron = require("node-cron");
-const handleError = require("./middlewares/error");
+// const handleError = require("./middlewares/error");
 const routers = require("./routers");
 const app = express();
 const multer = require("multer");
 const path = require("path");
 const { Kemasan } = require("./models");
+const errorHandler = require("./middlewares/errorHandler");
 const port = process.env.PORT || 3001;
 
 // cron.schedule("* * * * *", async () => {
@@ -59,7 +60,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 app.use(routers);
-app.use(handleError);
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`LAPI eFormulation Record app listening on port ${port}`);

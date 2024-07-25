@@ -4323,21 +4323,24 @@ eFormulation System</p>
       res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
-  static async getFarmakologiKlinisDetails(req, res) {
+  static async getFarmakologiKlinisDetails(req, res, next) {
     const { id } = req.params;
     try {
       const farmakologiDetail = await t_farmakologiKlinis.findAll({
         where: { StudiPraformulasiID: id },
       });
 
-      if (!farmakologiDetail || farmakologiDetail.length === 0) {
-        throw new MyError(404, "Not found!");
-      }
+      // if (!farmakologiDetail || farmakologiDetail.length === 0) {
+      //   // throw new MyError(404, "Not found!");
+      //   throw { name: "NotFound" };
+      // }
+      console.log("masuk", "< TEST");
 
-      res.status(200).json(farmakologiDetail);
+      res.status(200).json(farmakologiDetail || []);
     } catch (err) {
-      console.error(err);
-      res.status(err.statusCode || 500).json({ error: err.message });
+      // console.error(err, "< ERR");
+      next(err);
+      // res.status(err.code || 500).json({ error: err.message });
     }
   }
   static async getFormulaDetails(req, res) {
