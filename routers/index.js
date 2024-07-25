@@ -10,6 +10,7 @@ const routerFormulaFix = require("./routerFormulaFix");
 const routerLaporanTrialSkalaLab = require("./routerLaporanTrialSkalaLab");
 const routerAuditTrail = require("./routerAuditTrail");
 const routerGlobalApi = require("./routerGlobalApi");
+const routerProposalDiversifikasi = require("./routerProposalDiversifikasi");
 const { authentication } = require("../middlewares/authentication");
 
 router.get("/current-user", authentication, (req, res) => {
@@ -39,5 +40,6 @@ router.use("/", routerFormulaFix);
 router.use("/", routerLaporanTrialSkalaLab);
 router.use("/", routerAuditTrail);
 router.use("/", routerGlobalApi);
+router.use("/", routerProposalDiversifikasi);
 
 module.exports = router;

@@ -898,6 +898,7 @@ eFormulation System</p>
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
+            console.log(id, "< id");
             const created = await t_deskripsiProduct.create(
               {
                 namaStudi: newItem?.namaStudi || "",
