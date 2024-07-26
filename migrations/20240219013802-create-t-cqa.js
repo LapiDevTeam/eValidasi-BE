@@ -10,10 +10,10 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       qttpElements: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       target: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       safety: {
         type: Sequelize.STRING,
@@ -28,7 +28,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       justifikasi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,

@@ -25,7 +25,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       justifikasi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       tableIndex: {
         type: Sequelize.INTEGER,

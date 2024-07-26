@@ -13,16 +13,16 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       namaBahan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       parameter: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       hasilTinjauan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       sumberPustaka: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       tableIndex: {
         type: Sequelize.INTEGER,

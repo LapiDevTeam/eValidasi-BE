@@ -16,13 +16,13 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_cqa.init(
     {
-      qttpElements: DataTypes.STRING,
-      target: DataTypes.STRING,
+      qttpElements: DataTypes.TEXT,
+      target: DataTypes.TEXT,
       safety: DataTypes.STRING,
       efficacy: DataTypes.STRING,
       formulaDanProses: DataTypes.STRING,
       apakahIniKritikalCqa: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      justifikasi: DataTypes.TEXT,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

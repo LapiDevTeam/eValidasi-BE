@@ -22,7 +22,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       justifikasi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,

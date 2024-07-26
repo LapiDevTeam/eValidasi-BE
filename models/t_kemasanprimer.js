@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       pengaruhKeCqa: DataTypes.JSONB,
       apakahVariabelDapatDimodifikasi: DataTypes.STRING,
       apakahTermasukCma: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      justifikasi: DataTypes.TEXT,
       tableIndex: DataTypes.INTEGER,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,

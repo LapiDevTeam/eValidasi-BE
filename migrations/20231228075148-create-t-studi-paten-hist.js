@@ -13,25 +13,25 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       nomorPaten: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       judulPaten: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       filingDate: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       expiredDate: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       claimPaten: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       infringePaten: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       sumberPustaka: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,

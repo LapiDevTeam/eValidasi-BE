@@ -11,6 +11,7 @@ const multer = require("multer");
 const path = require("path");
 const { Kemasan } = require("./models");
 const errorHandler = require("./middlewares/errorHandler");
+const error = require("./middlewares/error");
 const port = process.env.PORT || 3001;
 
 // cron.schedule("* * * * *", async () => {
@@ -60,7 +61,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 app.use(routers);
-app.use(errorHandler);
+app.use(error);
+// app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`LAPI eFormulation Record app listening on port ${port}`);

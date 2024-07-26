@@ -16,13 +16,13 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_studiPaten.init(
     {
-      nomorPaten: DataTypes.STRING,
-      judulPaten: DataTypes.STRING,
-      filingDate: DataTypes.STRING,
-      expiredDate: DataTypes.STRING,
-      claimPaten: DataTypes.STRING,
-      infringePaten: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
+      nomorPaten: DataTypes.TEXT,
+      judulPaten: DataTypes.TEXT,
+      filingDate: DataTypes.TEXT,
+      expiredDate: DataTypes.TEXT,
+      claimPaten: DataTypes.TEXT,
+      infringePaten: DataTypes.TEXT,
+      sumberPustaka: DataTypes.TEXT,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

@@ -13,13 +13,13 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       parameterBentukSediaan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       samaDenganOriginatorAtauKompetitorBentukSediaan: {
         type: Sequelize.STRING,
       },
       justifikasiBentukSediaan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       detailSediaan: {
         type: Sequelize.JSONB,

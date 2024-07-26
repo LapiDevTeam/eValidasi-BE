@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       komposisi: DataTypes.STRING,
       fungsi: DataTypes.STRING,
       apakahAdaPadaKomposisiOriginatorKompetitor: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      justifikasi: DataTypes.TEXT,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
