@@ -13,28 +13,28 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       indikasi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       mekanismeAksi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       efekSamping: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       absorpsi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       distribusi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       metabolisme: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       eliminasi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       sumberPustaka: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
