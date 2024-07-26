@@ -30,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       rdSelection: DataTypes.STRING,
       statusDokumen: DataTypes.STRING,
       alasan_reject: DataTypes.STRING,
+      alasanDelete: DataTypes.STRING,
       upload: DataTypes.JSONB,
       revisi: DataTypes.INTEGER,
       user_id: DataTypes.STRING,

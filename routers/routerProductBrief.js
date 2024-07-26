@@ -22,6 +22,10 @@ router.get(
   "/product-brief/history/:id",
   ControllerProductBrief.getHistoryProductBrief
 );
+router.get(
+  "/product-brief-deleted",
+  ControllerProductBrief.getDeletedProductBrief
+);
 router.put("/product-brief/:id", ControllerProductBrief.editProductBrief);
 router.put(
   "/update-status/:ProductBriefID",

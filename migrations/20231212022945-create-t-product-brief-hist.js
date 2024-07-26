@@ -42,6 +42,9 @@ module.exports = {
       alasan_reject: {
         type: Sequelize.STRING,
       },
+      alasanDelete: {
+        type: Sequelize.STRING,
+      },
       upload: {
         type: Sequelize.JSON,
       },

@@ -1,4 +1,8 @@
-const { t_productBrief, t_productBrief_status } = require("../models/index");
+const {
+  t_productBrief,
+  t_productBrief_status,
+  t_productBrief_hist,
+} = require("../models/index");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
@@ -41,23 +45,30 @@ class ControllerProductBrief {
 
       let newRevisi;
       let newUpload = upload.filter((item) => item.trim() !== "");
-
-      if (
-        existingProtokol &&
-        existingProtokol.dataValues.statusDokumen === "Approved"
-      ) {
-        newRevisi = existingProtokol.revisi + 1;
-      } else if (
-        existingProtokol &&
-        existingProtokol.dataValues.statusDokumen !== "Approved"
-      ) {
-        throw new MyError(
-          404,
-          "Product Brief masih Draft, menunggu status menjadi approved"
-        );
+      console.log(revisi, "< REVI");
+      if (revisi) {
+        newRevisi = revisi;
       } else {
-        newRevisi = 0;
+        if (
+          existingProtokol &&
+          existingProtokol.dataValues.statusDokumen === "Approved"
+        ) {
+          newRevisi = existingProtokol.revisi + 1;
+        } else if (
+          existingProtokol &&
+          existingProtokol.dataValues.statusDokumen !== "Approved"
+        ) {
+          throw new MyError(
+            404,
+            "Product Brief masih Draft, menunggu status menjadi approved"
+          );
+        } else {
+          newRevisi = 0;
+        }
       }
+
+      // Set revisi to "00" if not provided in the request body
+      // const finalRevisi = revisi ? revisi : 0;
 
       if (!productBrief) {
         throw new MyError(400, "Product Brief is required !");
@@ -102,6 +113,7 @@ class ControllerProductBrief {
       next(err);
     }
   }
+
   static async editProductBrief(req, res, next) {
     const { id } = req.params;
     try {
@@ -116,9 +128,10 @@ class ControllerProductBrief {
         rdSelection,
         statusDokumen = "Draft",
         upload,
+        alasanDelete,
       } = req.body;
 
-      let newUpload = upload.filter((item) => item.trim() !== "");
+      let newUpload = upload?.filter((item) => item?.trim() !== "");
 
       const [updatedRowsCount] = await t_productBrief.update(
         {
@@ -132,6 +145,7 @@ class ControllerProductBrief {
           rdSelection: rdSelection,
           statusDokumen: "Draft",
           upload: newUpload,
+          alasanDelete: alasanDelete,
         },
         {
           where: { id: id },
@@ -345,6 +359,23 @@ class ControllerProductBrief {
       console.log(error);
     }
   }
+  static async getDeletedProductBrief(req, res, next) {
+    try {
+      // Find all deleted product briefs
+      const deletedProductBriefs = await t_productBrief_hist.findAll({
+        where: {
+          status: "DELETED",
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      res.status(200).json({ deletedProductBrief: deletedProductBriefs });
+    } catch (error) {
+      next(error);
+      console.log(error);
+    }
+  }
+
   static async getNoProductBrief(req, res) {
     try {
       const noProductBrief = await t_productBrief.findAll({
