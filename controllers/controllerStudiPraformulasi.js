@@ -3956,11 +3956,11 @@ eFormulation System</p>
       });
 
       // Check if no records were found
-      if (!approvedProductBriefs || approvedProductBriefs.length === 0) {
-        throw new MyError(400, "No approved product briefs found!");
-      }
+      // if (!approvedProductBriefs || approvedProductBriefs.length === 0) {
+      //   throw new MyError(400, "No approved product briefs found!");
+      // }
 
-      res.status(200).json(approvedProductBriefs);
+      res.status(200).json(approvedProductBriefs || []);
     } catch (err) {
       console.error("Error fetching product briefs:", err);
       res.status(500).json({ message: "Internal server error." }); // Send error response
