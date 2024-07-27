@@ -2366,6 +2366,8 @@ eFormulation System</p>
                   newItem?.pemeriksaanFisikDanKimiaOriginator || null,
                 profilDisolusi: newItem?.profilDisolusi || null,
                 stabilita: newItem?.stabilita || null,
+                ujiBE: newItem?.ujiBE || null,
+                cadangan: newItem?.cadangan || null,
                 totalKebutuhanMaterial: newItem?.totalKebutuhanMaterial || null,
                 perkiraanHargaPembelianMaterial:
                   newItem?.perkiraanHargaPembelianMaterial || null,
@@ -2389,6 +2391,8 @@ eFormulation System</p>
                   newItem?.pemeriksaanFisikDanKimiaOriginator || null,
                 profilDisolusi: newItem?.profilDisolusi || null,
                 stabilita: newItem?.stabilita || null,
+                ujiBE: newItem?.ujiBE || null,
+                cadangan: newItem?.cadangan || null,
                 totalKebutuhanMaterial: newItem?.totalKebutuhanMaterial || null,
                 perkiraanHargaPembelianMaterial:
                   newItem?.perkiraanHargaPembelianMaterial || null,

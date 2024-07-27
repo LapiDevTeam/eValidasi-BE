@@ -30,6 +30,12 @@ module.exports = {
       stabilita: {
         type: Sequelize.STRING,
       },
+      ujiBE: {
+        type: Sequelize.STRING,
+      },
+      cadangan: {
+        type: Sequelize.STRING,
+      },
       totalKebutuhanMaterial: {
         type: Sequelize.STRING,
       },

@@ -22,6 +22,8 @@ module.exports = (sequelize, DataTypes) => {
       pemeriksaanFisikDanKimiaOriginator: DataTypes.STRING,
       profilDisolusi: DataTypes.STRING,
       stabilita: DataTypes.STRING,
+      ujiBE: DataTypes.STRING,
+      cadangan: DataTypes.STRING,
       totalKebutuhanMaterial: DataTypes.STRING,
       perkiraanHargaPembelianMaterial: DataTypes.STRING,
       tableIndex: DataTypes.INTEGER,
