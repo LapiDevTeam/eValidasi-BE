@@ -15,6 +15,9 @@ module.exports = {
       parameter: {
         type: Sequelize.TEXT,
       },
+      upload: {
+        type: Sequelize.JSONB,
+      },
       hasilTinjauan: {
         type: Sequelize.TEXT,
       },

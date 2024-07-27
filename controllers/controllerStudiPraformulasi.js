@@ -767,6 +767,7 @@ eFormulation System</p>
         kemasan,
         alasan,
         tujuan,
+        revisi,
         productBriefNo,
         ProductBriefId,
         statusDokumen,
@@ -789,22 +790,25 @@ eFormulation System</p>
       });
 
       let newRevisi;
-
-      if (
-        existingStudiPraformulasi &&
-        existingStudiPraformulasi.dataValues.statusDokumen === "Approved"
-      ) {
-        newRevisi = existingStudiPraformulasi.revisi + 1;
-      } else if (
-        existingStudiPraformulasi &&
-        existingStudiPraformulasi.dataValues.statusDokumen !== "Approved"
-      ) {
-        throw new MyError(
-          404,
-          "Studi Praformulasi masih Draft, menunggu status menjadi approved"
-        );
+      if (revisi) {
+        newRevisi = revisi;
       } else {
-        newRevisi = 0;
+        if (
+          existingStudiPraformulasi &&
+          existingStudiPraformulasi.dataValues.statusDokumen === "Approved"
+        ) {
+          newRevisi = existingStudiPraformulasi.revisi + 1;
+        } else if (
+          existingStudiPraformulasi &&
+          existingStudiPraformulasi.dataValues.statusDokumen !== "Approved"
+        ) {
+          throw new MyError(
+            404,
+            "Studi Praformulasi masih Draft, menunggu status menjadi approved"
+          );
+        } else {
+          newRevisi = 0;
+        }
       }
 
       if (!namaProduk) {
@@ -1930,6 +1934,7 @@ eFormulation System</p>
             const created = await t_formulaProtokol.create(
               {
                 komposisi: newItem?.komposisi || "",
+                jumlah: newItem?.jumlah || "",
                 fungsi: newItem?.fungsi || "",
                 apakahAdaPadaKomposisiOriginatorKompetitor:
                   newItem?.apakahAdaPadaKomposisiOriginatorKompetitor || "",
@@ -1947,6 +1952,7 @@ eFormulation System</p>
             await t_formulaProtokol.update(
               {
                 komposisi: newItem?.komposisi || "",
+                jumlah: newItem?.jumlah || "",
                 fungsi: newItem?.fungsi || "",
                 apakahAdaPadaKomposisiOriginatorKompetitor:
                   newItem?.apakahAdaPadaKomposisiOriginatorKompetitor || "",
@@ -2869,6 +2875,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -2886,6 +2893,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -2997,6 +3005,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -3014,6 +3023,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -3125,6 +3135,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -3142,6 +3153,7 @@ eFormulation System</p>
                 namaBahan: newItem?.namaBahan || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 parameter: newItem?.parameter || "",
+                upload: newItem?.upload || "",
                 hasilTinjauan: newItem?.hasilTinjauan || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 StudiPraformulasiID: +id || null,
@@ -3859,7 +3871,7 @@ eFormulation System</p>
         obj.namaProduk = namaProduk;
       }
 
-      if (komposisi) {
+      if (komposisi && Array.isArray(komposisi)) {
         obj.komposisi = komposisi;
       }
 
@@ -3885,6 +3897,8 @@ eFormulation System</p>
 
       const studi = await t_studiPraformulasi.findByPk(+id);
 
+      console.log(obj, "< OBJ");
+
       const [updatedRowsCount] = await t_studiPraformulasi.update(
         {
           ...obj,
@@ -3894,6 +3908,7 @@ eFormulation System</p>
           where: { id: id },
         }
       );
+      console.log(updatedRowsCount, "<< updated");
 
       if (studi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({

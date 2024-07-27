@@ -12,6 +12,9 @@ module.exports = {
       komposisi: {
         type: Sequelize.STRING,
       },
+      jumlah: {
+        type: Sequelize.STRING,
+      },
       fungsi: {
         type: Sequelize.STRING,
       },

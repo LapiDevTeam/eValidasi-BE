@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
   t_formulaProtokol.init(
     {
       komposisi: DataTypes.STRING,
+      jumlah: DataTypes.STRING,
       fungsi: DataTypes.STRING,
       apakahAdaPadaKomposisiOriginatorKompetitor: DataTypes.STRING,
       justifikasi: DataTypes.TEXT,

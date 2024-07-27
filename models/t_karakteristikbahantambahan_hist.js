@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
       changeDate: DataTypes.DATE,
       namaBahan: DataTypes.STRING,
       parameter: DataTypes.STRING,
+      upload: DataTypes.JSONB,
       hasilTinjauan: DataTypes.STRING,
       sumberPustaka: DataTypes.STRING,
       tableIndex: DataTypes.INTEGER,
