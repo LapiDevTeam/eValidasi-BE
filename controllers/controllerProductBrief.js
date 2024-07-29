@@ -45,7 +45,7 @@ class ControllerProductBrief {
 
       let newRevisi;
       let newUpload = upload.filter((item) => item.trim() !== "");
-      console.log(revisi, "< REVI");
+
       if (revisi) {
         newRevisi = revisi;
       } else {
@@ -361,15 +361,59 @@ class ControllerProductBrief {
   }
   static async getDeletedProductBrief(req, res, next) {
     try {
-      // Find all deleted product briefs
-      const deletedProductBriefs = await t_productBrief_hist.findAll({
+      const {
+        page,
+        productBrief,
+        kode,
+        nama,
+        revisi,
+        alasanDelete,
+        kemasan,
+        bentukSediaan,
+        ruangLingkup,
+        bahanAktifDanDosis,
+        rdSelection,
+        statusDokumen,
+      } = req.query;
+
+      const size = page ? 7 : "";
+
+      const { limit, offset } = getPagination(page, size);
+
+      const searchParams = {};
+      if (productBrief)
+        searchParams.productBrief = { [Op.iLike]: `%${productBrief}%` };
+      if (kode) searchParams.kode = { [Op.iLike]: `%${kode}%` };
+      if (revisi) searchParams.revisi = { [Op.iLike]: `%${revisi}%` };
+      if (nama) searchParams.nama = { [Op.iLike]: `%${nama}%` };
+      if (alasanDelete)
+        searchParams.alasanDelete = { [Op.iLike]: `%${alasanDelete}%` };
+
+      const deleteProductBriefs = await t_productBrief_hist.findAndCountAll({
         where: {
           status: "DELETED",
         },
-        order: [["createdAt", "DESC"]],
+        ...(size && { limit }),
+        ...(size && { offset }),
+        order: [["id", "DESC"]],
       });
 
-      res.status(200).json({ deletedProductBrief: deletedProductBriefs });
+      res.status(200).json({
+        limitData: size ? limit : "",
+        Offset: size ? offset : "",
+        totalPage: size ? Math.ceil(deleteProductBriefs.count / limit) : "",
+        deleteProductBriefs,
+      });
+
+      // Find all deleted product briefs
+      // const deletedProductBriefs = await t_productBrief_hist.findAll({
+      //   where: {
+      //     status: "DELETED",
+      //   },
+      //   order: [["createdAt", "DESC"]],
+      // });
+
+      // res.status(200).json({ deletedProductBrief: deletedProductBriefs });
     } catch (error) {
       next(error);
       console.log(error);
@@ -496,8 +540,6 @@ class ControllerProductBrief {
         throw new MyError(404, "Form ProductBrief tidak ditemukan");
       const apprNo = await checkStatusProductBrief(id);
 
-      console.log(findProductBrief, "< PROD");
-
       const dataApprove = await approverRecordset(
         "productBrief",
         findProductBrief.rdSelection,
@@ -513,8 +555,6 @@ class ControllerProductBrief {
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
         statusDokumen = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
-
-      console.log(statusDokumen, "<< dok");
 
       if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) statusDokumen = "Reject";
