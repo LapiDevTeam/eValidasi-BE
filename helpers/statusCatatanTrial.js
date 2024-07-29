@@ -1,4 +1,4 @@
-const listStatus = ["Menunggu Approve Manager", "Approved"];
+const listStatus = ["Menunggu Approve Manager", "Approved", "Closed"];
 
 const getStatusCatatanTrial = (num) => {
   return listStatus[+num - 1];

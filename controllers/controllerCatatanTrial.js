@@ -528,7 +528,10 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+
+      console.log(data);
       const { id } = req.params;
+      console.log(id, "< ID");
       const {
         user_id,
         delegated_to,
@@ -569,18 +572,21 @@ class ControllerCatatanTrial {
 
       const existing = prevMetodePembuatan.map((item) => item?.id);
       const newItemId = data
-        ? data.filter((item) => item?.id).map((item) => +item?.id)
-        : [];
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
 
       // update
+      const dataArray = data.flat();
       await Promise.all(
-        data?.map(async (newItem) => {
+        dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
             const created = await t_metodePembuatan.create(
               {
                 aktivitas: newItem?.aktivitas || "",
                 pengamatan: newItem?.pengamatan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -595,6 +601,7 @@ class ControllerCatatanTrial {
               {
                 aktivitas: newItem?.aktivitas || "",
                 pengamatan: newItem?.pengamatan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -2336,7 +2343,7 @@ class ControllerCatatanTrial {
         statusDokumen = getStatusCatatanTrial(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
       if (is_approve === false) {
         statusDokumen = "Reject";
         await t_catatanTrial_status.destroy({
@@ -2637,17 +2644,29 @@ class ControllerCatatanTrial {
       const formulaCair = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanCair = await t_metodePembuatan.findAll({
+      const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
+
+      // Group data by tableIndex
+      const metodePembuatanGrouped = metode.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const metodePembuatanCair = Object.values(metodePembuatanGrouped);
+
       const pengamatanAwalCair = await t_pengamatanAwalCair.findAll({
         where: { CatatanTrialID: id },
       });
       const pengamatanLanjutanCair = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
       });
-
-      // if (isApprove.message) throw new MyError(400, isApprove.message);
 
       res.status(200).json({
         catatanTrialDetailCair,
@@ -2663,6 +2682,7 @@ class ControllerCatatanTrial {
       next(error);
     }
   }
+
   static async getCatatanTrialSterilDetails(req, res, next) {
     try {
       const { id } = req.params;
@@ -2681,9 +2701,22 @@ class ControllerCatatanTrial {
       const formulaSteril = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanSteril = await t_metodePembuatan.findAll({
+      const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
+
+      // Group data by tableIndex
+      const metodePembuatanGrouped = metode.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const metodePembuatanSteril = Object.values(metodePembuatanGrouped);
       const pengamatanAwalSteril = await t_pengamatanAwalSteril.findAll({
         where: { CatatanTrialID: id },
       });
@@ -2725,9 +2758,22 @@ class ControllerCatatanTrial {
       const formulaPadat = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanPadat = await t_metodePembuatan.findAll({
+      const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
+
+      // Group data by tableIndex
+      const metodePembuatanGrouped = metode.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const metodePembuatanPadat = Object.values(metodePembuatanGrouped);
       const prosesCatatanTrialPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
       });
@@ -2770,9 +2816,22 @@ class ControllerCatatanTrial {
       const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findAll({
         where: { CatatanTrialID: id },
       });
-      const metodePembuatanPenyalutan = await t_metodePembuatan.findAll({
+      const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
       });
+
+      // Group data by tableIndex
+      const metodePembuatanGrouped = metode.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const metodePembuatanPenyalutan = Object.values(metodePembuatanGrouped);
       const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
         {
           where: { CatatanTrialID: id },

@@ -2930,6 +2930,8 @@ eFormulation System</p>
         },
       });
 
+      console.log(newData, "< new dat");
+
       res.status(200).json({
         statusCode: 200,
         message: "SUCCESS",
@@ -4950,6 +4952,7 @@ eFormulation System</p>
       // if (!zatAktifDetails || zatAktifDetails.length === 0) {
       //   throw new MyError(404, "Not found!");
       // }
+      console.log(zatAktifDetails, "< ZAT");
 
       res.status(200).json(zatAktifDetails);
     } catch (err) {

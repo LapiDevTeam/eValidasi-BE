@@ -15,6 +15,9 @@ module.exports = {
       pengamatan: {
         type: Sequelize.STRING,
       },
+      tableIndex: {
+        type: Sequelize.INTEGER,
+      },
       CatatanTrialID: {
         type: Sequelize.INTEGER,
         references: {
