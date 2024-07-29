@@ -42,7 +42,7 @@ class ControllerProductBrief {
         },
         order: [["createdAt", "DESC"]],
       });
-
+      console.log(revisi, "< revi");
       let newRevisi;
       let newUpload = upload.filter((item) => item.trim() !== "");
 

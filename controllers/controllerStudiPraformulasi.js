@@ -788,7 +788,7 @@ eFormulation System</p>
         },
         order: [["createdAt", "DESC"]],
       });
-
+      console.log(revisi, "<exis");
       let newRevisi;
       if (revisi) {
         newRevisi = revisi;
@@ -797,6 +797,7 @@ eFormulation System</p>
           existingStudiPraformulasi &&
           existingStudiPraformulasi.dataValues.statusDokumen === "Approved"
         ) {
+          console.log("xixixi");
           newRevisi = existingStudiPraformulasi.revisi + 1;
         } else if (
           existingStudiPraformulasi &&
