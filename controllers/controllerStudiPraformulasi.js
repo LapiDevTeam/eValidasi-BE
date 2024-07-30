@@ -2739,7 +2739,6 @@ eFormulation System</p>
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
 
-      console.log(data, "<<< DAT");
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -4633,6 +4632,8 @@ eFormulation System</p>
         StudiPraformulasiID,
       } = req.body;
 
+      console.log(req.body, "< REQ");
+
       const createRencanaAktivitas = await t_rencanaAktivitas.create({
         tersediaBahanAwal,
         optimasiFormulaDanProses,
@@ -4668,6 +4669,8 @@ eFormulation System</p>
     try {
       const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
         req.body;
+
+      console.log(req.body);
 
       const [updatedRowsCount] = await t_rencanaAktivitas.update(
         {

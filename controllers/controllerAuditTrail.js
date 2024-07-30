@@ -962,6 +962,7 @@ class ControllerAuditTrail {
         kemasan,
         alasan,
         tujuan,
+        revisi,
         "productBriefNo",
         "ProductBriefId",
         "statusDokumen",
@@ -1033,7 +1034,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelAuditDeskripsiProductHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -1268,7 +1268,11 @@ class ControllerAuditTrail {
       "tanggalKadarluarsa",
       "sumberPustaka",
       "bentukSediaan",
-      "detailSediaan",
+      "jenisKemasPrimer",
+      "hasilUjiKemasPrimer",
+      "jenisKemasSekunder",
+      "hasilUjiKemasSekunder",
+      "gambar",
       "StudiPraformulasiID",
        "user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate" from "t_kemasan_hist"`,
         { type: sequelize.QueryTypes.SELECT }
@@ -2066,6 +2070,7 @@ class ControllerAuditTrail {
       const dataAudit = await sequelize.query(
         `SELECT        
           komposisi,
+          jumlah,
       fungsi,
       "apakahAdaPadaKomposisiOriginatorKompetitor",
       justifikasi,
@@ -2801,6 +2806,8 @@ class ControllerAuditTrail {
       "pemeriksaanFisikDanKimiaOriginator",
       "profilDisolusi",
       stabilita,
+      "ujiBE",
+      "cadangan",
       "totalKebutuhanMaterial",
       "perkiraanHargaPembelianMaterial",
       "tableIndex",
