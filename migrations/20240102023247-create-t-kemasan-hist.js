@@ -27,14 +27,26 @@ module.exports = {
       tanggalKadarluarsa: {
         type: Sequelize.STRING,
       },
+      sumberPustaka: {
+        type: Sequelize.TEXT,
+      },
       bentukSediaan: {
         type: Sequelize.STRING,
       },
-      detailSediaan: {
-        type: Sequelize.JSONB,
+      jenisKemasPrimer: {
+        type: Sequelize.TEXT,
       },
-      sumberPustaka: {
-        type: Sequelize.STRING,
+      hasilUjiKemasPrimer: {
+        type: Sequelize.TEXT,
+      },
+      jenisKemasSekunder: {
+        type: Sequelize.TEXT,
+      },
+      hasilUjiKemasSekunder: {
+        type: Sequelize.TEXT,
+      },
+      gambar: {
+        type: Sequelize.JSONB,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,

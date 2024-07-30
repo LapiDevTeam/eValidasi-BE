@@ -2687,6 +2687,8 @@ eFormulation System</p>
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+
+      console.log(data, "<< data");
       const { id } = req.params;
       const {
         user_id,
@@ -2728,7 +2730,7 @@ eFormulation System</p>
 
       const prevKomposisi = await t_kemasan.findAll({
         where: {
-          StudiPraformulasiID: id,
+          StudiPraformulasiID: +id,
         },
       });
 
@@ -2737,6 +2739,7 @@ eFormulation System</p>
         ? data.filter((item) => item?.id).map((item) => +item?.id)
         : [];
 
+      console.log(data, "<<< DAT");
       // update
       await Promise.all(
         data?.map(async (newItem) => {
@@ -2751,7 +2754,11 @@ eFormulation System</p>
                 tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 bentukSediaan: newItem?.bentukSediaan || "",
-                detailSediaan: newItem?.detailSediaan || [],
+                jenisKemasPrimer: newItem?.jenisKemasPrimer || "",
+                hasilUjiKemasPrimer: newItem?.hasilUjiKemasSekunder || "",
+                jenisKemasSekunder: newItem?.jenisKemasSekunder || "",
+                hasilUjiKemasSekunder: newItem?.hasilUjiKemasSekunder || "",
+                gambar: newItem?.gambar || "",
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -2771,7 +2778,11 @@ eFormulation System</p>
                 tanggalKadarluarsa: newItem?.tanggalKadarluarsa || "",
                 sumberPustaka: newItem?.sumberPustaka || "",
                 bentukSediaan: newItem?.bentukSediaan || "",
-                detailSediaan: newItem?.detailSediaan || [],
+                jenisKemasPrimer: newItem?.jenisKemasPrimer || "",
+                hasilUjiKemasPrimer: newItem?.hasilUjiKemasSekunder || "",
+                jenisKemasSekunder: newItem?.jenisKemasSekunder || "",
+                hasilUjiKemasSekunder: newItem?.hasilUjiKemasSekunder || "",
+                gambar: newItem?.gambar || "",
                 StudiPraformulasiID: +id || null,
                 user_id,
                 delegated_to,
@@ -2808,6 +2819,7 @@ eFormulation System</p>
         data: newData,
       });
     } catch (err) {
+      console.log(err);
       if (transaction) {
         await transaction.rollback();
       }
