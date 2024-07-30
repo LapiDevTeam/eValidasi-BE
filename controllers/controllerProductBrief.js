@@ -584,21 +584,174 @@ class ControllerProductBrief {
         }
       );
 
-      const info = await transporter.sendMail({
-        from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
-        to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
-        subject: "Product Brief", // Subject line
-        text: "Hellow world?", // plain text body
-        html: `<b>
-              <html>
-              <p> Dear Bapak / Ibu di tempat,</p>
-       <p> Bersamaan dengan email ini, diberitahukan bahwa Produk Brief “${findProductBrief?.dataValues?.nama}” dengan nomor: ${findProductBrief?.dataValues?.kode} telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.</p>
-       <br>
-      </p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya. </p>
-      </p>eFormulation System </p>
-              </html>
-              </b>`,
-      });
+      if (findProductBrief?.rdSelection === "RD1") {
+        console.log("xixixi");
+        const info = await transporter.sendMail({
+          from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
+          to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+          subject: "Product Brief", // Subject line
+          text: "Hello world?", // plain text body
+          html: `
+          <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+              }
+              .email-container {
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: #ffffff;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #e0e0e0;
+              }
+              .header img {
+                max-width: 150px;
+              }
+              .header h1 {
+                font-size: 1.5em;
+                margin: 0;
+                color: #333333;
+              }
+              .content {
+                padding: 20px 0;
+                line-height: 1.6;
+                color: #333333;
+              }
+              .content p {
+                margin: 0 0 20px;
+              }
+              .footer {
+                text-align: center;
+                padding-top: 20px;
+                border-top: 1px solid #e0e0e0;
+                color: #777777;
+                font-size: 0.9em;
+              }
+              .footer p {
+                margin: 0;
+              }
+              .signature {
+                margin-top: 20px;
+                font-style: italic;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="email-container">
+              <div class="header">
+                <h1>Product Brief Notification</h1>
+              </div>
+              <div class="content">
+                <p>Dear Bapak / Ibu di tempat,</p>
+                <p>
+                  Bersamaan dengan email ini, diberitahukan bahwa Product Brief <b>“${findProductBrief?.dataValues?.nama}”</b> dengan nomor: <b>"${findProductBrief?.dataValues?.kode}"</b> telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.
+                </p>
+                <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+              </div>
+              <div class="footer">
+                <p>eFormulation System</p>
+                <div class="signature">Lapi Labs</div>
+              </div>
+            </div>
+          </body>
+          </html>
+          `,
+        });
+      } else {
+        const info = await transporter.sendMail({
+          from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
+          to: ["cahyadigunardi@gmail.com"], // list of receivers
+          subject: "Product Brief", // Subject line
+          text: "Hello world?", // plain text body
+          html: `
+          <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+              }
+              .email-container {
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: #ffffff;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #e0e0e0;
+              }
+              .header img {
+                max-width: 150px;
+              }
+              .header h1 {
+                font-size: 1.5em;
+                margin: 0;
+                color: #333333;
+              }
+              .content {
+                padding: 20px 0;
+                line-height: 1.6;
+                color: #333333;
+              }
+              .content p {
+                margin: 0 0 20px;
+              }
+              .footer {
+                text-align: center;
+                padding-top: 20px;
+                border-top: 1px solid #e0e0e0;
+                color: #777777;
+                font-size: 0.9em;
+              }
+              .footer p {
+                margin: 0;
+              }
+              .signature {
+                margin-top: 20px;
+                font-style: italic;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="email-container">
+              <div class="header">
+                <h1>Product Brief Notification</h1>
+              </div>
+              <div class="content">
+                <p>Dear Bapak / Ibu di tempat,</p>
+                <p>
+                  Bersamaan dengan email ini, diberitahukan bahwa Product Brief <b>“${findProductBrief?.dataValues?.nama}”</b> dengan nomor: <b>"${findProductBrief?.dataValues?.kode}"</b> telah diterima, mohon agar masing-masing bagian dapat melakukan kajian produk baru tersebut.
+                </p>
+                <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+              </div>
+              <div class="footer">
+                <p>eFormulation System</p>
+                <div class="signature">Lapi Labs</div>
+              </div>
+            </div>
+          </body>
+          </html>
+          `,
+        });
+      }
 
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {

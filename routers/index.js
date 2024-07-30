@@ -4,7 +4,7 @@ const routerProductBrief = require("./routerProductBrief");
 const routerStudiPraformulasi = require("./routerStudiPraformulasi");
 const routerStudiPaten = require("./routerStudiPaten");
 const routerStudiLiterature = require("./routerStudiLiterature");
-const routerProtokolTrialSkalaLab = require("./routerProtokolTrialSkalaLab");
+
 const routerCatatanTrial = require("./routerCatatanTrial");
 const routerFormulaFix = require("./routerFormulaFix");
 const routerLaporanTrialSkalaLab = require("./routerLaporanTrialSkalaLab");
@@ -34,7 +34,7 @@ router.use("/", routerProductBrief);
 router.use("/", routerStudiPraformulasi);
 router.use("/", routerStudiPaten);
 router.use("/", routerStudiLiterature);
-// router.use("/", routerProtokolTrialSkalaLab);
+
 router.use("/", routerCatatanTrial);
 router.use("/", routerFormulaFix);
 router.use("/", routerLaporanTrialSkalaLab);

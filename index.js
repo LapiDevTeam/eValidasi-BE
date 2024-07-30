@@ -12,57 +12,32 @@ const path = require("path");
 const { Kemasan } = require("./models");
 const errorHandler = require("./middlewares/errorHandler");
 const error = require("./middlewares/error");
+const { BASE_URL } = require("./config/configMssql");
 const port = process.env.PORT || 3001;
 
-// cron.schedule("* * * * *", async () => {
-//   console.log("xixixixi per menit");
-// });
-// app.use(bodyParser.urlencoded({ extended: false }));
+cron.schedule("30 7 * * *", async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/studi-praformulasi-pending`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    console.log("API request was successful");
+  } catch (error) {
+    console.error("Error making API request:", error);
+  }
+});
+
 app.use(express.static("public"));
 app.use(cors());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "10mb" }));
 
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, "./public");
-//   },
-//   filename: (req, file, cb) => {
-//     console.log(file);
-//     cb(null, Date.now() + path.extname(file.originalname));
-//   },
-// });
-
-// const upload = multer({ storage: storage });
-
-// app.post("/upload", upload.single("file"), async (req, res) => {
-//   try {
-//     const { file } = req;
-//     const imageUrl = `/${file.filename}`;
-//     console.log(imageUrl, "<< imageurl");
-
-//     // Insert into PostgreSQL database using Sequelize
-//     const post = await Kemasan.create({
-//       gambar: "http://localhost:3001" + imageUrl,
-//     });
-
-//     res.status(201).json({
-//       message: "File uploaded successfully and saved to the database.",
-//       post: post.toJSON(),
-//     });
-//   } catch (error) {
-//     console.error("Error during database insertion:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 app.use(routers);
 app.use(error);
-// app.use(errorHandler);
 
 app.listen(port, () => {
   console.log(`LAPI eFormulation Record app listening on port ${port}`);

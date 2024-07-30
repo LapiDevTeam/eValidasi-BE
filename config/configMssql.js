@@ -9,4 +9,6 @@ const configMssql = {
   },
 };
 
-module.exports = { configMssql };
+const BASE_URL = "http://localhost:3001";
+
+module.exports = { configMssql, BASE_URL };

@@ -49,6 +49,7 @@ const {
 const {
   getStatusStudiPraformulasi,
 } = require("../helpers/statusStudiPraformulasi");
+const moment = require("moment");
 
 class ControllerStudiPraformulasi {
   static async autoBulkInsertSameDeptApproverLine(req, res, next) {
@@ -194,22 +195,173 @@ class ControllerStudiPraformulasi {
       }
 
       if (isEmail) {
-        const info = await transporter.sendMail({
-          from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-          to: ["gunardi.cahyadi@lapilabs.co.id", "cahyadigunardi@gmail.com"], // list of receivers
-          subject: "Studi Praformulasi", // Subject line
-          text: "Hellow world?", // plain text body
-          html: `<b>
-          <html>
-          <p> Dear Bapak / Ibu di tempat,
-Bersamaan dengan email ini, diberitahukan bahwa Studi Praformulasi ${findStudiPemohon?.namaProduk} telah selesai disusun. Mohon segera di review.
- 
-Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.
- 
-eFormulation System</p>
-          </html>
-          </b>`,
-        });
+        if (findStudiPemohon?.rdSelection === "RD1") {
+          const info = await transporter.sendMail({
+            from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                    Bersamaan dengan email ini, diberitahukan bahwa Studi Praformulasi <b>"${findStudiPemohon?.namaProduk}"</b> telah selesai disusun. Mohon segera di review.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        } else {
+          const info = await transporter.sendMail({
+            from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                    Bersamaan dengan email ini, diberitahukan bahwa Studi Praformulasi <b>"${findStudiPemohon?.namaProduk}"</b> telah selesai disusun. Mohon segera di review.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        }
 
         await t_studiPraformulasi.update(
           {
@@ -236,6 +388,8 @@ eFormulation System</p>
         joblevel_id_user,
         inisial_user,
       } = req.user;
+
+      console.log(req.user, "< req user");
 
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
@@ -277,12 +431,364 @@ eFormulation System</p>
         user_id,
         delegated_to,
       });
+      if (is_approve) {
+        if (findStudi?.rdSelection === "RD1") {
+          const info = await transporter.sendMail({
+            from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Approval Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                    Bersamaan dengan email ini, diinformasikan bahwa Studi Praformulasi <b>“${findStudi?.namaProduk}”</b> sudah disetujui oleh <b>"${req.user?.bagian_user} Manager"</b>.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        } else {
+          const info = await transporter.sendMail({
+            from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Approval Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                    Bersamaan dengan email ini, diinformasikan bahwa Studi Praformulasi <b>“${findStudi?.namaProduk}”</b> sudah disetujui oleh <b>"${req.user?.bagian_user} Manager"</b>.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        }
+      } else {
+        if (findStudi?.rdSelection === "RD1") {
+          const info = await transporter.sendMail({
+            from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Reject Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                   Bersamaan dengan email ini, diinformasikan bahwa Studi Praformulasi <b>“${findStudi?.namaProduk}”</b> direject oleh <b>"${req.user?.bagian_user} Manager</b>" dengan alasan, sebagai berikut:</.b>.
+                  </p>
+                  <p>
+                  <b>
+                  ${keterangan_reject}</b>
+                  </p>
+                  <p>
+                  Mohon segera diperbaiki.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        } else {
+          const info = await transporter.sendMail({
+            from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            subject: "Studi Praformulasi", // Subject line
+            text: "Hello world?", // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Reject Notification</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                   Bersamaan dengan email ini, diinformasikan bahwa Studi Praformulasi <b>“${findStudi?.namaProduk}”</b> direject oleh <b>"${req.user?.bagian_user} Manager</b>" dengan alasan, sebagai berikut:</.b>.
+                  </p>
+                  <p>
+                  <b>
+                  ${keterangan_reject}</b>
+                  </p>
+                  <p>
+                  Mohon segera diperbaiki.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        }
+      }
+
       await t_studiPraformulasi.update(
         {
           statusDokumen: statusDokumen,
           alasan_reject: keterangan_reject,
-          // user_id,
-          // delegated_to,
+          user_id,
+          delegated_to,
         },
         {
           where: {
@@ -290,6 +796,7 @@ eFormulation System</p>
           },
         }
       );
+
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
@@ -339,6 +846,212 @@ eFormulation System</p>
       console.log(err);
     }
   }
+  static async getPendingStudiPraformulasi(req, res) {
+    try {
+      // Define the date for 3 days ago
+      const threeDaysAgo = moment().subtract(3, "days").toDate();
+
+      // Set up search parameters
+      const searchParams = {
+        statusDokumen: "Menunggu Approve Manager",
+        updatedAt: {
+          [Op.lte]: threeDaysAgo,
+        },
+      };
+
+      // Execute the query
+      const studi = await t_studiPraformulasi.findAll({
+        where: searchParams,
+        order: [["id", "DESC"]],
+      });
+
+      // Check if there are any studi records
+      if (studi.length === 0) {
+        return res.status(200).json({ message: "No pending studi found." });
+      }
+
+      // Prepare and send emails for each studi
+      const emailPromises = studi.map(async (item) => {
+        if (item?.rdSelection === "RD1") {
+          transporter.sendMail({
+            from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            subject: "Studi Praformulasi Reminder", // Subject line
+            text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Studi Praformulasi Reminder</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                   Bersamaan dengan email ini, mengingatkan kembali bahwa Studi Praformulasi <b>"${item?.namaProduk}"</b> telah selesai disusun. Mohon segera di review.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        } else {
+          transporter.sendMail({
+            from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
+            to: ["ade.ariasya@lapilabs.co.id"], // list of receivers
+            subject: "Studi Praformulasi Reminder", // Subject line
+            text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
+            html: `
+            <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .email-container {
+                  max-width: 600px;
+                  margin: 20px auto;
+                  background-color: #ffffff;
+                  padding: 20px;
+                  border-radius: 10px;
+                  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  padding-bottom: 20px;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                .header img {
+                  max-width: 150px;
+                }
+                .header h1 {
+                  font-size: 1.5em;
+                  margin: 0;
+                  color: #333333;
+                }
+                .content {
+                  padding: 20px 0;
+                  line-height: 1.6;
+                  color: #333333;
+                }
+                .content p {
+                  margin: 0 0 20px;
+                }
+                .footer {
+                  text-align: center;
+                  padding-top: 20px;
+                  border-top: 1px solid #e0e0e0;
+                  color: #777777;
+                  font-size: 0.9em;
+                }
+                .footer p {
+                  margin: 0;
+                }
+                .signature {
+                  margin-top: 20px;
+                  font-style: italic;
+                  text-align: center;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="email-container">
+                <div class="header">
+                  <h1>Studi Praformulasi Reminder</h1>
+                </div>
+                <div class="content">
+                  <p>Dear Bapak / Ibu di tempat,</p>
+                  <p>
+                   Bersamaan dengan email ini, mengingatkan kembali bahwa Studi Praformulasi <b>"${item?.namaProduk}"</b> telah selesai disusun. Mohon segera di review.
+                  </p>
+                  <p>Demikian disampaikan, terima kasih atas perhatian dan kerjasamanya.</p>
+                </div>
+                <div class="footer">
+                  <p>eFormulation System</p>
+                  <div class="signature">Lapi Labs</div>
+                </div>
+              </div>
+            </body>
+            </html>
+            `,
+          });
+        }
+      });
+
+      // Wait for all email promises to be resolved
+      await Promise.all(emailPromises);
+
+      // Send the response
+      res.status(200).json({ message: "Emails sent successfully", studi });
+    } catch (err) {
+      console.error("Error fetching pending studi pram formulasi:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
   static async deleteStudiPraformulasi(req, res) {
     try {
       const { id } = req.params;
