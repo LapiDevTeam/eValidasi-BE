@@ -18,6 +18,9 @@ module.exports = (sequelize, DataTypes) => {
       t_proposalDiversifikasi.hasMany(models.t_persentaseDalamFormula, {
         foreignKey: "ProposalDiversifikasiID",
       });
+      t_proposalDiversifikasi.hasMany(models.t_pengaruhPadaPerformaProses, {
+        foreignKey: "ProposalDiversifikasiID",
+      });
     }
   }
   t_proposalDiversifikasi.init(
