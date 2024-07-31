@@ -389,8 +389,6 @@ class ControllerStudiPraformulasi {
         inisial_user,
       } = req.user;
 
-      console.log(req.user, "< req user");
-
       const { is_approve, keterangan_reject = null } = req.body;
       const { id } = req.params;
       const findStudi = await t_studiPraformulasi?.findByPk(+id);
@@ -820,7 +818,7 @@ class ControllerStudiPraformulasi {
         ProductBriefId,
       } = req.query;
 
-      const size = page ? 5 : "";
+      const size = page ? 10 : "";
 
       const { limit, offset } = getPagination(page, size);
 
@@ -1501,7 +1499,16 @@ class ControllerStudiPraformulasi {
         },
         order: [["createdAt", "DESC"]],
       });
-      console.log(revisi, "<exis");
+
+      if (
+        existingStudiPraformulasi &&
+        nomor === existingStudiPraformulasi.dataValues.nomor
+      ) {
+        throw new MyError(
+          404,
+          "Studi Praformulasi masih Draft, menunggu status menjadi approved"
+        );
+      }
       let newRevisi;
       if (revisi) {
         newRevisi = revisi;
@@ -1510,7 +1517,6 @@ class ControllerStudiPraformulasi {
           existingStudiPraformulasi &&
           existingStudiPraformulasi.dataValues.statusDokumen === "Approved"
         ) {
-          console.log("xixixi");
           newRevisi = existingStudiPraformulasi.revisi + 1;
         } else if (
           existingStudiPraformulasi &&
@@ -1616,7 +1622,6 @@ class ControllerStudiPraformulasi {
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
-            console.log(id, "< id");
             const created = await t_deskripsiProduct.create(
               {
                 namaStudi: newItem?.namaStudi || "",
@@ -3401,7 +3406,6 @@ class ControllerStudiPraformulasi {
     try {
       const { data } = req.body;
 
-      console.log(data, "<< data");
       const { id } = req.params;
       const {
         user_id,
@@ -3654,8 +3658,6 @@ class ControllerStudiPraformulasi {
           StudiPraformulasiID: +id,
         },
       });
-
-      console.log(newData, "< new dat");
 
       res.status(200).json({
         statusCode: 200,
@@ -4628,8 +4630,6 @@ class ControllerStudiPraformulasi {
 
       const studi = await t_studiPraformulasi.findByPk(+id);
 
-      console.log(obj, "< OBJ");
-
       const [updatedRowsCount] = await t_studiPraformulasi.update(
         {
           ...obj,
@@ -4639,7 +4639,6 @@ class ControllerStudiPraformulasi {
           where: { id: id },
         }
       );
-      console.log(updatedRowsCount, "<< updated");
 
       if (studi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
@@ -5080,7 +5079,6 @@ class ControllerStudiPraformulasi {
       //   // throw new MyError(404, "Not found!");
       //   throw { name: "NotFound" };
       // }
-      console.log("masuk", "< TEST");
 
       res.status(200).json(farmakologiDetail || []);
     } catch (err) {
@@ -5345,8 +5343,6 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
-      console.log(req.body, "< REQ");
-
       const createRencanaAktivitas = await t_rencanaAktivitas.create({
         tersediaBahanAwal,
         optimasiFormulaDanProses,
@@ -5382,8 +5378,6 @@ class ControllerStudiPraformulasi {
     try {
       const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
         req.body;
-
-      console.log(req.body);
 
       const [updatedRowsCount] = await t_rencanaAktivitas.update(
         {
@@ -5681,7 +5675,6 @@ class ControllerStudiPraformulasi {
       // if (!zatAktifDetails || zatAktifDetails.length === 0) {
       //   throw new MyError(404, "Not found!");
       // }
-      console.log(zatAktifDetails, "< ZAT");
 
       res.status(200).json(zatAktifDetails);
     } catch (err) {

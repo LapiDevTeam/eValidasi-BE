@@ -10,12 +10,11 @@ const getPagination = require("../helpers/getPagination");
 const { transporter } = require("../config/configNodeMailer");
 const { checkStatusProductBrief } = require("../helpers/checkStatus");
 const { getStatus } = require("../helpers/statusProductBrief");
-const multer = require("multer");
+
 const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
-const { log } = require("console");
 
 class ControllerProductBrief {
   static async createProductBrief(req, res, next) {
@@ -42,7 +41,7 @@ class ControllerProductBrief {
         },
         order: [["createdAt", "DESC"]],
       });
-      console.log(revisi, "< revi");
+
       let newRevisi;
       let newUpload = upload.filter((item) => item.trim() !== "");
 
@@ -66,9 +65,6 @@ class ControllerProductBrief {
           newRevisi = 0;
         }
       }
-
-      // Set revisi to "00" if not provided in the request body
-      // const finalRevisi = revisi ? revisi : 0;
 
       if (!productBrief) {
         throw new MyError(400, "Product Brief is required !");
@@ -162,7 +158,7 @@ class ControllerProductBrief {
         });
       }
     } catch (err) {
-      console.log(err, "<<<< ERRROR");
+      console.log(err);
       next(err);
     }
   }
@@ -243,7 +239,7 @@ class ControllerProductBrief {
         statusDokumen,
       } = req.query;
 
-      const size = page ? 7 : "";
+      const size = page ? 10 : "";
 
       const { limit, offset } = getPagination(page, size);
 
@@ -585,7 +581,6 @@ class ControllerProductBrief {
       );
 
       if (findProductBrief?.rdSelection === "RD1") {
-        console.log("xixixi");
         const info = await transporter.sendMail({
           from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
           to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers

@@ -529,9 +529,8 @@ class ControllerCatatanTrial {
     try {
       const { data } = req.body;
 
-      console.log(data);
       const { id } = req.params;
-      console.log(id, "< ID");
+
       const {
         user_id,
         delegated_to,
@@ -2486,7 +2485,7 @@ class ControllerCatatanTrial {
         statusDokumen,
         alasan,
       } = req.query;
-      const size = page ? 5 : "";
+      const size = page ? 10 : "";
 
       const { limit, offset } = getPagination(page, size);
 
