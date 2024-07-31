@@ -4,6 +4,9 @@ const {
   t_proposalDiversifikasi,
   t_persentaseDalamFormula,
   t_proposalDiversifikasi_status,
+  t_pengaruhPadaPerformaProses,
+  t_jumlahBetsPerTahun,
+  t_totalSkoring,
   sequelize,
 } = require("../models/index");
 const sql = require("mssql");
@@ -101,12 +104,31 @@ class ControllerProposalDiversifikasi {
           ProposalDiversifikasiID: +id,
         },
       });
+      const pengaruhPadaPerformaProses =
+        await t_pengaruhPadaPerformaProses.findAll({
+          where: {
+            ProposalDiversifikasiID: +id,
+          },
+        });
+      const jumlahBetsPerTahun = await t_jumlahBetsPerTahun.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+      const totalSkoring = await t_totalSkoring.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
 
       res.status(200).json({
         proposalDiversifikasi,
         kelengkapanDokumen,
         produkTerdampak,
         persentaseDalamFormula,
+        pengaruhPadaPerformaProses,
+        jumlahBetsPerTahun,
+        totalSkoring,
       });
     } catch (err) {
       console.log(err);
@@ -179,6 +201,47 @@ class ControllerProposalDiversifikasi {
       next(err);
     }
   }
+  static async updateProposalDiversifikasi(req, res, next) {
+    const { user_id, delegated_to } = req.user;
+    try {
+      const { id } = req.params; // Ambil ID dari parameter URL
+      const { namaBahanBaku, produsen, pemasok, rancanganTrial } = req.body;
+
+      // Cari proposal berdasarkan ID
+      const existingProposal = await t_proposalDiversifikasi.findOne({
+        where: { id },
+      });
+
+      if (!existingProposal) {
+        throw new MyError(404, "Proposal not found!");
+      }
+
+      // Update proposal
+      const updatedProposal = await t_proposalDiversifikasi.update(
+        {
+          namaBahanBaku,
+          produsen,
+          pemasok,
+          rancanganTrial,
+          user_id,
+          delegated_to,
+        },
+        {
+          where: { id },
+          returning: true,
+          plain: true,
+        }
+      );
+
+      res.status(200).json({
+        message: "Data has been updated",
+        data: updatedProposal[1],
+      });
+    } catch (err) {
+      console.log(err);
+      next(err);
+    }
+  }
 
   static async findAllProposalDiversifikasi(req, res) {
     try {
@@ -216,7 +279,7 @@ class ControllerProposalDiversifikasi {
   static async handleSaveKelengkapanDokumen(req, res) {
     const transaction = await sequelize.transaction();
     try {
-      const { data } = req.body;
+      const { data, ProposalDiversifikasiID } = req.body;
       const { id } = req.params;
       const {
         user_id,
@@ -226,6 +289,8 @@ class ControllerProposalDiversifikasi {
         inisial_user,
         bagian_user,
       } = req.user;
+
+      console.log(data, "< DATA");
 
       //   const cat = await t_catatanTrial.findByPk(+id);
       //   if (cat?.statusDokumen === "Reject") {
@@ -271,7 +336,7 @@ class ControllerProposalDiversifikasi {
                 dokumen: newItem?.dokumen || "",
                 kelengkapan: newItem?.kelengkapan || "",
                 upload: newItem?.upload || "",
-                ProposalDiversifikasiID: +newItem?.id || null,
+                ProposalDiversifikasiID: +id || null,
                 user_id,
                 delegated_to,
               },
@@ -341,6 +406,7 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
+      console.log(data, "< DAT");
       //   const cat = await t_catatanTrial.findByPk(+id);
       //   if (cat?.statusDokumen === "Reject") {
       //     await t_catatanTrial_status.destroy({
@@ -555,6 +621,368 @@ class ControllerProposalDiversifikasi {
       });
     } catch (err) {
       console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSavePengaruhPadaPerformaProses(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      //   const cat = await t_catatanTrial.findByPk(+id);
+      //   if (cat?.statusDokumen === "Reject") {
+      //     await t_catatanTrial_status.destroy({
+      //       where: { CatatanTrialID: +id },
+      //     });
+      //     await t_catatanTrial.update(
+      //       {
+      //         is_approve_1: "",
+      //         approver_name_1: "",
+      //         approver_user_id_1: "",
+      //         approver_delegated_to_1: "",
+      //         approver_tanggal_1: null,
+      //         keterangan_reject_1: "",
+      //         statusDokumen: "Draft",
+      //       },
+      //       {
+      //         where: {
+      //           id,
+      //         },
+      //       }
+      //     );
+      //   }
+
+      const prevPengaruhPadaPerformaProses =
+        await t_pengaruhPadaPerformaProses.findAll({
+          where: {
+            ProposalDiversifikasiID: +id,
+          },
+        });
+
+      const existing = prevPengaruhPadaPerformaProses.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_pengaruhPadaPerformaProses.create(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                jumlahPenyimpangan: newItem?.jumlahPenyimpangan || "",
+                skorA: newItem?.skorA || "",
+                bobotB: newItem?.bobotB || "",
+                jumlah: newItem?.jumlah || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_pengaruhPadaPerformaProses.update(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                jumlahPenyimpangan: newItem?.jumlahPenyimpangan || "",
+                skorA: newItem?.skorA || "",
+                bobotB: newItem?.bobotB || "",
+                jumlah: newItem?.jumlah || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_pengaruhPadaPerformaProses.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_pengaruhPadaPerformaProses.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err, "<< ERR");
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveJumlahBetsPerTahun(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      //   const cat = await t_catatanTrial.findByPk(+id);
+      //   if (cat?.statusDokumen === "Reject") {
+      //     await t_catatanTrial_status.destroy({
+      //       where: { CatatanTrialID: +id },
+      //     });
+      //     await t_catatanTrial.update(
+      //       {
+      //         is_approve_1: "",
+      //         approver_name_1: "",
+      //         approver_user_id_1: "",
+      //         approver_delegated_to_1: "",
+      //         approver_tanggal_1: null,
+      //         keterangan_reject_1: "",
+      //         statusDokumen: "Draft",
+      //       },
+      //       {
+      //         where: {
+      //           id,
+      //         },
+      //       }
+      //     );
+      //   }
+
+      const prevJumlahBets = await t_jumlahBetsPerTahun.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+
+      const existing = prevJumlahBets.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_jumlahBetsPerTahun.create(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                jumlahBets: newItem?.jumlahBets || "",
+                skorA: newItem?.skorA || "",
+                bobotB: newItem?.bobotB || "",
+                jumlah: newItem?.jumlah || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_jumlahBetsPerTahun.update(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                jumlahBets: newItem?.jumlahBets || "",
+                skorA: newItem?.skorA || "",
+                bobotB: newItem?.bobotB || "",
+                jumlah: newItem?.jumlah || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_jumlahBetsPerTahun.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_jumlahBetsPerTahun.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err, "<< ERR");
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveTotalSkoring(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      //   const cat = await t_catatanTrial.findByPk(+id);
+      //   if (cat?.statusDokumen === "Reject") {
+      //     await t_catatanTrial_status.destroy({
+      //       where: { CatatanTrialID: +id },
+      //     });
+      //     await t_catatanTrial.update(
+      //       {
+      //         is_approve_1: "",
+      //         approver_name_1: "",
+      //         approver_user_id_1: "",
+      //         approver_delegated_to_1: "",
+      //         approver_tanggal_1: null,
+      //         keterangan_reject_1: "",
+      //         statusDokumen: "Draft",
+      //       },
+      //       {
+      //         where: {
+      //           id,
+      //         },
+      //       }
+      //     );
+      //   }
+
+      const prevTotalSkoring = await t_totalSkoring.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+
+      const existing = prevTotalSkoring.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_totalSkoring.create(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                persentaseDalamFormula: newItem?.persentaseDalamFormula || "",
+                pengaruhPadaPerformaProses:
+                  newItem?.pengaruhPadaPerformaProses || "",
+                jumlahBetsPerTahun: newItem?.jumlahBetsPerTahun || "",
+                jumlahTotal: newItem?.jumlahTotal || "",
+                keterangan: newItem?.keterangan || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_totalSkoring.update(
+              {
+                namaProduk: newItem?.namaProduk || "",
+                persentaseDalamFormula: newItem?.persentaseDalamFormula || "",
+                pengaruhPadaPerformaProses:
+                  newItem?.pengaruhPadaPerformaProses || "",
+                jumlahBetsPerTahun: newItem?.jumlahBetsPerTahun || "",
+                jumlahTotal: newItem?.jumlahTotal || "",
+                keterangan: newItem?.keterangan || "",
+                ProposalDiversifikasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_totalSkoring.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_totalSkoring.findAll({
+        where: {
+          ProposalDiversifikasiID: +id,
+        },
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err, "<< ERR");
       if (transaction) {
         await transaction.rollback();
       }

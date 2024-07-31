@@ -2,31 +2,39 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_proposalDiversifikasi", {
+    await queryInterface.createTable("t_totalSkoring", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      namaBahanBaku: {
+      namaProduk: {
         type: Sequelize.STRING,
       },
-      produsen: {
-        type: Sequelize.STRING,
+      persentaseDalamFormula: {
+        type: Sequelize.FLOAT,
       },
-      pemasok: {
-        type: Sequelize.STRING,
+      pengaruhPadaPerformaProses: {
+        type: Sequelize.FLOAT,
       },
-      statusDokumen: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
+      jumlahBetsPerTahun: {
+        type: Sequelize.FLOAT,
       },
-      alasan_reject: {
-        type: Sequelize.STRING,
+      jumlahTotal: {
+        type: Sequelize.FLOAT,
       },
-      rancanganTrial: {
-        type: Sequelize.JSONB,
+      keterangan: {
+        type: Sequelize.TEXT,
+      },
+      ProposalDiversifikasiID: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "t_proposalDiversifikasi",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -48,6 +56,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_proposalDiversifikasi");
+    await queryInterface.dropTable("t_totalSkoring");
   },
 };

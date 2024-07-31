@@ -21,6 +21,12 @@ module.exports = (sequelize, DataTypes) => {
       t_proposalDiversifikasi.hasMany(models.t_pengaruhPadaPerformaProses, {
         foreignKey: "ProposalDiversifikasiID",
       });
+      t_proposalDiversifikasi.hasMany(models.t_jumlahBetsPerTahun, {
+        foreignKey: "ProposalDiversifikasiID",
+      });
+      t_proposalDiversifikasi.hasMany(models.t_totalSkoring, {
+        foreignKey: "ProposalDiversifikasiID",
+      });
     }
   }
   t_proposalDiversifikasi.init(
@@ -30,6 +36,7 @@ module.exports = (sequelize, DataTypes) => {
       pemasok: DataTypes.STRING,
       statusDokumen: DataTypes.STRING,
       alasan_reject: DataTypes.STRING,
+      rancanganTrial: DataTypes.JSONB,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

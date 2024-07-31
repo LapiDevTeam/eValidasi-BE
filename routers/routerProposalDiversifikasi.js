@@ -32,6 +32,30 @@ router.put(
   authentication,
   ControllerProposalDiversifikasi.handleSavePersentaseDalamFormula
 );
+// save dan edit persentase dalam formula
+router.put(
+  "/handle-pengaruh-pada-performa-proses/:id",
+  authentication,
+  ControllerProposalDiversifikasi.handleSavePengaruhPadaPerformaProses
+);
+// save dan edit persentase dalam formula
+router.put(
+  "/handle-jumlah-bets-per-tahun/:id",
+  authentication,
+  ControllerProposalDiversifikasi.handleSaveJumlahBetsPerTahun
+);
+// save dan edit total skoring
+router.put(
+  "/handle-total-skoring/:id",
+  authentication,
+  ControllerProposalDiversifikasi.handleSaveTotalSkoring
+);
+// update proposal diversifikasi
+router.put(
+  "/update-proposal-diversifikasi/:id",
+  authentication,
+  ControllerProposalDiversifikasi.updateProposalDiversifikasi
+);
 
 router.get(
   "/proposal-diversifikasi/:id",
