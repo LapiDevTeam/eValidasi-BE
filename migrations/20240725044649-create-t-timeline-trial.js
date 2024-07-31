@@ -2,37 +2,42 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_proposalDiversifikasi", {
+    await queryInterface.createTable("t_timelineTrial", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      noProposal: {
+      dampakPerubahan: {
+        type: Sequelize.TEXT,
+      },
+      pic: {
         type: Sequelize.STRING,
       },
-      rdSelection: {
+      prioritas: {
         type: Sequelize.STRING,
       },
-      namaBahanBaku: {
+      tenggatWaktu: {
+        type: Sequelize.DATE,
+      },
+      realisasi: {
+        type: Sequelize.TEXT,
+      },
+      realisasiDate: {
+        type: Sequelize.DATE,
+      },
+      statusImplementasi: {
         type: Sequelize.STRING,
       },
-      produsen: {
-        type: Sequelize.STRING,
-      },
-      pemasok: {
-        type: Sequelize.STRING,
-      },
-      statusDokumen: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
-      },
-      alasan_reject: {
-        type: Sequelize.STRING,
-      },
-      rancanganTrial: {
-        type: Sequelize.JSONB,
+      ProposalDiversifikasiID: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "t_proposalDiversifikasi",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -54,6 +59,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_proposalDiversifikasi");
+    await queryInterface.dropTable("t_timelineTrial");
   },
 };

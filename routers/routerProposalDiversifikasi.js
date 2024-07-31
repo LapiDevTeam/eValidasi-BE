@@ -50,11 +50,23 @@ router.put(
   authentication,
   ControllerProposalDiversifikasi.handleSaveTotalSkoring
 );
+// save dan edit timeline trial
+router.put(
+  "/handle-timeline-trial/:id",
+  authentication,
+  ControllerProposalDiversifikasi.handleSaveTimelineTrial
+);
 // update proposal diversifikasi
 router.put(
   "/update-proposal-diversifikasi/:id",
   authentication,
   ControllerProposalDiversifikasi.updateProposalDiversifikasi
+);
+
+router.put(
+  "/approve-proposalDiversifikasi/:id",
+  authentication,
+  ControllerProposalDiversifikasi.approveProposalDiversifikasi
 );
 
 router.get(

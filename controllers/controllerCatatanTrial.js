@@ -2583,6 +2583,8 @@ class ControllerCatatanTrial {
         });
       }
 
+      console.log(catatanTrialDetails, "< DETEL");
+
       catatanTrialDetails.dataValues.approver_inisial_1 =
         await fetchApproverInisial({
           user_id: catatanTrialDetails.dataValues.approver_user_id_1,

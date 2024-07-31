@@ -2,37 +2,43 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_proposalDiversifikasi", {
+    await queryInterface.createTable("t_proposalDiversifikasi_status", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      noProposal: {
+      ProposalDiversifikasiID: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "t_proposalDiversifikasi",
+          key: "id",
+        },
+      },
+      approver_no: {
+        type: Sequelize.INTEGER,
+      },
+      is_approve: {
+        type: Sequelize.BOOLEAN,
+      },
+      approver_name: {
         type: Sequelize.STRING,
       },
-      rdSelection: {
+      approver_joblevel_id: {
         type: Sequelize.STRING,
       },
-      namaBahanBaku: {
+      approver_inisial: {
         type: Sequelize.STRING,
       },
-      produsen: {
+      keterangan_reject: {
+        type: Sequelize.TEXT,
+      },
+      user_id: {
         type: Sequelize.STRING,
       },
-      pemasok: {
+      delegated_to: {
         type: Sequelize.STRING,
-      },
-      statusDokumen: {
-        type: Sequelize.STRING,
-        defaultValue: "Draft",
-      },
-      alasan_reject: {
-        type: Sequelize.STRING,
-      },
-      rancanganTrial: {
-        type: Sequelize.JSONB,
       },
       user_id: {
         type: Sequelize.STRING,
@@ -54,6 +60,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_proposalDiversifikasi");
+    await queryInterface.dropTable("t_proposalDiversifikasi_status");
   },
 };

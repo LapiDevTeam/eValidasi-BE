@@ -27,10 +27,19 @@ module.exports = (sequelize, DataTypes) => {
       t_proposalDiversifikasi.hasMany(models.t_totalSkoring, {
         foreignKey: "ProposalDiversifikasiID",
       });
+      t_proposalDiversifikasi.hasMany(models.t_timelineTrial, {
+        foreignKey: "ProposalDiversifikasiID",
+      });
+      t_proposalDiversifikasi.hasMany(models.t_proposalDiversifikasi_status, {
+        foreignKey: "ProposalDiversifikasiID",
+        as: "approver_data",
+      });
     }
   }
   t_proposalDiversifikasi.init(
     {
+      noProposal: DataTypes.STRING,
+      rdSelection: DataTypes.STRING,
       namaBahanBaku: DataTypes.STRING,
       produsen: DataTypes.STRING,
       pemasok: DataTypes.STRING,
