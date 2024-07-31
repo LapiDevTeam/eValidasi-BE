@@ -4696,19 +4696,25 @@ class ControllerStudiPraformulasi {
           "revisi",
         ],
         where: {
-          statusDokumen: "Approved", // Add condition to filter by statusDokumen
+          statusDokumen: "Approved",
         },
+        order: [
+          ["kode", "ASC"],
+          ["revisi", "DESC"],
+        ], // Order by product number and revision
       });
 
-      // Check if no records were found
-      // if (!approvedProductBriefs || approvedProductBriefs.length === 0) {
-      //   throw new MyError(400, "No approved product briefs found!");
-      // }
+      const uniqueProductBriefs = {};
+      approvedProductBriefs.forEach((brief) => {
+        if (!uniqueProductBriefs[brief.kode]) {
+          uniqueProductBriefs[brief.kode] = brief;
+        }
+      });
 
-      res.status(200).json(approvedProductBriefs || []);
+      res.status(200).json(Object.values(uniqueProductBriefs) || []);
     } catch (err) {
       console.error("Error fetching product briefs:", err);
-      res.status(500).json({ message: "Internal server error." }); // Send error response
+      res.status(500).json({ message: "Internal server error." });
     }
   }
 
