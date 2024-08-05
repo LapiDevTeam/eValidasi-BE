@@ -1500,15 +1500,17 @@ class ControllerStudiPraformulasi {
         order: [["createdAt", "DESC"]],
       });
 
-      if (
-        existingStudiPraformulasi &&
-        nomor === existingStudiPraformulasi.dataValues.nomor
-      ) {
-        throw new MyError(
-          404,
-          "Studi Praformulasi masih Draft, menunggu status menjadi approved"
-        );
-      }
+      // console.log(existingStudiPraformulasi?.dataValues?.nomor, "< nomrr");
+
+      // if (
+      //   existingStudiPraformulasi &&
+      //   nomor === existingStudiPraformulasi.dataValues.nomor
+      // ) {
+      //   throw new MyError(
+      //     404,
+      //     "Studi Praformulasi masih Draft, menunggu status menjadi approvedddd"
+      //   );
+      // }
       let newRevisi;
       if (revisi) {
         newRevisi = revisi;
@@ -1524,7 +1526,7 @@ class ControllerStudiPraformulasi {
         ) {
           throw new MyError(
             404,
-            "Studi Praformulasi masih Draft, menunggu status menjadi approved"
+            "Studi Praformulasi masih Draft, menunggu status menjadi approved2"
           );
         } else {
           newRevisi = 0;
@@ -4722,6 +4724,14 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { tujuan } = req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
@@ -4745,6 +4755,8 @@ class ControllerStudiPraformulasi {
             approver_tanggal_2: null,
             keterangan_reject_2: "",
             statusDokumen: "Draft",
+            user_id,
+            delegated_to,
           },
           {
             where: {
@@ -4773,6 +4785,14 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { tujuanScreening } = req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
       const findStudi = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
@@ -4796,6 +4816,8 @@ class ControllerStudiPraformulasi {
             approver_tanggal_2: null,
             keterangan_reject_2: "",
             statusDokumen: "Draft",
+            user_id,
+            delegated_to,
           },
           {
             where: {
@@ -4827,6 +4849,14 @@ class ControllerStudiPraformulasi {
       const findStudi = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       if (findStudi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
@@ -4847,6 +4877,8 @@ class ControllerStudiPraformulasi {
             approver_tanggal_2: null,
             keterangan_reject_2: "",
             statusDokumen: "Draft",
+            user_id,
+            delegated_to,
           },
           {
             where: {
@@ -4878,6 +4910,14 @@ class ControllerStudiPraformulasi {
       const findStudi = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       if (findStudi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
@@ -4898,6 +4938,8 @@ class ControllerStudiPraformulasi {
             approver_tanggal_2: null,
             keterangan_reject_2: "",
             statusDokumen: "Draft",
+            user_id,
+            delegated_to,
           },
           {
             where: {
@@ -4929,6 +4971,14 @@ class ControllerStudiPraformulasi {
       const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       if (findStudiPraformulasiID?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
@@ -4949,6 +4999,8 @@ class ControllerStudiPraformulasi {
             approver_tanggal_2: null,
             keterangan_reject_2: "",
             statusDokumen: "Draft",
+            user_id,
+            delegated_to,
           },
           {
             where: {
@@ -5349,11 +5401,22 @@ class ControllerStudiPraformulasi {
         StudiPraformulasiID,
       } = req.body;
 
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
       const createRencanaAktivitas = await t_rencanaAktivitas.create({
         tersediaBahanAwal,
         optimasiFormulaDanProses,
         stabilitaSkalaLab,
         StudiPraformulasiID: +StudiPraformulasiID,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -5384,12 +5447,22 @@ class ControllerStudiPraformulasi {
     try {
       const { tersediaBahanAwal, optimasiFormulaDanProses, stabilitaSkalaLab } =
         req.body;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       const [updatedRowsCount] = await t_rencanaAktivitas.update(
         {
           tersediaBahanAwal,
           optimasiFormulaDanProses,
           stabilitaSkalaLab,
+          user_id,
+          delegated_to,
         },
         {
           where: { StudiPraformulasiID: id },

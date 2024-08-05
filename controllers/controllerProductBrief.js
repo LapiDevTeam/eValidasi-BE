@@ -308,6 +308,7 @@ class ControllerProductBrief {
 
       if (
         bagian_user === "HD" ||
+        bagian_user === "AD" ||
         productBriefDetail?.rdSelection === bagian_user
       ) {
         const apprDeptId = productBriefDetail.rdSelection;
