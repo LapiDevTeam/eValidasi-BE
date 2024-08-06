@@ -4924,14 +4924,7 @@ class ControllerStudiPraformulasi {
     try {
       const { StudiPraformulasiID } = req.params;
       const { tujuan } = req.body;
-      const {
-        user_id,
-        delegated_to,
-        nama_user,
-        joblevel_id_user,
-        inisial_user,
-        bagian_user,
-      } = req.user;
+      const { user_id, delegated_to } = req.user;
       const findStudiPraformulasiID = await t_studiPraformulasi.findByPk(
         +StudiPraformulasiID
       );

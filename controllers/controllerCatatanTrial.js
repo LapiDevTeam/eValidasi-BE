@@ -3111,5 +3111,5 @@ class ControllerCatatanTrial {
     }
   }
 }
-
+8;
 module.exports = ControllerCatatanTrial;

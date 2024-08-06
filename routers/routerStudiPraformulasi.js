@@ -175,14 +175,17 @@ router.put(
 );
 router.put(
   "/update-tujuanScreening/:StudiPraformulasiID",
+  authentication,
   ControllerStudiPraformulasi.updateTujuanScreening
 );
 router.put(
   "/update-kesimpulanScreening/:StudiPraformulasiID",
+  authentication,
   ControllerStudiPraformulasi.updateKesimpulanScreening
 );
 router.put(
   "/update-kesimpulan/:StudiPraformulasiID",
+  authentication,
   ControllerStudiPraformulasi.updateKesimpulan
 );
 router.get(
@@ -199,10 +202,12 @@ router.post(
 router.get("/get-product-brief", ControllerStudiPraformulasi.getProductBrief);
 router.put(
   "/update-tujuan/:StudiPraformulasiID",
+  authentication,
   ControllerStudiPraformulasi.updateTujuan
 );
 router.put(
   "/update-dokumenAcuan/:StudiPraformulasiID",
+  authentication,
   ControllerStudiPraformulasi.updateDokumenAcuan
 );
 router.get(
