@@ -1068,35 +1068,6 @@ class ControllerStudiPraformulasi {
       if (!findStudiPraformulasi)
         throw new MyError(404, "Form Studi Praformulasi tidak di temukan");
 
-      await t_studiPraformulasi_status.update(
-        {
-          user_id,
-          delegated_to,
-          flag_update,
-        },
-        {
-          where: { StudiPraformulasiID: +id },
-        }
-      );
-      await t_studiPraformulasi_status.destroy({
-        where: { StudiPraformulasiID: +id },
-      });
-
-      await t_studiPraformulasi.update(
-        {
-          user_id,
-          delegated_to,
-          flag_update,
-        },
-        {
-          where: { id: +id },
-        }
-      );
-
-      await t_studiPraformulasi.destroy({
-        where: { id: +id },
-      });
-
       await t_deskripsiProduct.update(
         {
           user_id,
@@ -1462,6 +1433,35 @@ class ControllerStudiPraformulasi {
         where: { StudiPraformulasiID: id },
       });
 
+      await t_studiPraformulasi_status.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { StudiPraformulasiID: +id },
+        }
+      );
+      await t_studiPraformulasi_status.destroy({
+        where: { StudiPraformulasiID: +id },
+      });
+
+      await t_studiPraformulasi.update(
+        {
+          user_id,
+          delegated_to,
+          flag_update,
+        },
+        {
+          where: { id: +id },
+        }
+      );
+
+      await t_studiPraformulasi.destroy({
+        where: { id: +id },
+      });
+
       res.status(200).send({ msg: "succeed" });
     } catch (err) {
       console.log(err);
@@ -1511,6 +1511,9 @@ class ControllerStudiPraformulasi {
       //     "Studi Praformulasi masih Draft, menunggu status menjadi approvedddd"
       //   );
       // }
+      const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
+        req.user;
+
       let newRevisi;
       if (revisi) {
         newRevisi = revisi;
@@ -1553,6 +1556,8 @@ class ControllerStudiPraformulasi {
         tujuanScreening: tujuanScreening,
         kesimpulanScreening: kesimpulanScreening,
         kesimpulan: kesimpulan,
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
@@ -1578,6 +1583,8 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -1671,7 +1678,16 @@ class ControllerStudiPraformulasi {
       const itemDelete = existing.filter(
         (itemId) => !newItemId?.includes(itemId)
       );
+
       if (itemDelete.length > 0) {
+        await t_deskripsiProduct.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_deskripsiProduct.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1711,6 +1727,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -1805,6 +1822,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_farmakologiKlinis.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_farmakologiKlinis.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1843,6 +1868,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -1937,6 +1963,15 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_karakteristikFisikakimia.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+
         await t_karakteristikFisikakimia.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1976,6 +2011,8 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
+
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
         await t_studiPraformulasi_status.destroy({
@@ -2061,6 +2098,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_formula.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_formula.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2100,6 +2145,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2188,6 +2234,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_stabilita.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_stabilita.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2226,6 +2280,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2316,6 +2371,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_studiPaten.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_studiPaten.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2354,6 +2417,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2440,6 +2504,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_ujiInkompatibilitas.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_ujiInkompatibilitas.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2478,6 +2550,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2568,6 +2641,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_cqa.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_cqa.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2606,6 +2687,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2694,6 +2776,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_formulaProtokol.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_formulaProtokol.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2732,6 +2822,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2816,6 +2907,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_mappingProcess.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_mappingProcess.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -2854,6 +2953,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -2994,6 +3094,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_material.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_material.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3032,6 +3140,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3134,6 +3243,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_originatorAtauKompetitor.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_originatorAtauKompetitor.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3172,6 +3289,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3254,6 +3372,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_kebutuhanPeralatanDanMesin.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_kebutuhanPeralatanDanMesin.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3292,6 +3418,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3378,6 +3505,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_qtpp.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_qtpp.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3417,6 +3552,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3517,6 +3653,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_kemasan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_kemasan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3556,6 +3700,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3647,6 +3792,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_karakteristikBahanAktif.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_karakteristikBahanAktif.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3686,6 +3839,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3777,6 +3931,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_karakteristikBahanTambahan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_karakteristikBahanTambahan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3816,6 +3978,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -3907,6 +4070,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_karakteristikBahanKemasan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_karakteristikBahanKemasan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -3946,6 +4117,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -4041,6 +4213,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_kemasanProtokolSkalaLab.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_kemasanProtokolSkalaLab.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -4080,6 +4260,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -4173,6 +4354,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_zatAktif.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_zatAktif.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -4212,6 +4401,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -4305,6 +4495,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_bahanTambahan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_bahanTambahan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -4344,6 +4542,7 @@ class ControllerStudiPraformulasi {
         inisial_user,
         bagian_user,
       } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
 
       const studi = await t_studiPraformulasi.findByPk(+id);
       if (studi?.statusDokumen === "Reject") {
@@ -4437,6 +4636,14 @@ class ControllerStudiPraformulasi {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_kemasanPrimer.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_kemasanPrimer.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -4469,14 +4676,7 @@ class ControllerStudiPraformulasi {
     try {
       const { spesifikasiHeaders, content, StudiPraformulasiID } = req.body;
 
-      const {
-        user_id,
-        delegated_to,
-        nama_user,
-        joblevel_id_user,
-        inisial_user,
-        bagian_user,
-      } = req.user;
+      const { user_id, delegated_to } = req.user;
 
       const createMatrixPerbandingan = await t_matrixPerbandingan.create({
         spesifikasiHeaders,

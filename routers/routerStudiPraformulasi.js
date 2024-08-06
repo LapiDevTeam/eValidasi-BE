@@ -192,6 +192,7 @@ router.get(
 );
 router.post(
   "/studi-praformulasi",
+  authentication,
   ControllerStudiPraformulasi.createStudiPraformulasi
 );
 

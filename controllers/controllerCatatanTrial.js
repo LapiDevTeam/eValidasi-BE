@@ -296,6 +296,7 @@ class ControllerCatatanTrial {
 
   static async handleSaveKomposisiCatatanTrial(req, res) {
     const transaction = await sequelize.transaction();
+
     try {
       const { data } = req.body;
       const { id } = req.params;
@@ -307,7 +308,7 @@ class ControllerCatatanTrial {
         inisial_user,
         bagian_user,
       } = req.user;
-
+      const flag_update = "UPDATE FOR DELETE";
       const cat = await t_catatanTrial.findByPk(+id);
       if (cat?.statusDokumen === "Reject") {
         await t_catatanTrial_status.destroy({
@@ -385,6 +386,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_komposisiCatatanTrial.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_komposisiCatatanTrial.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -414,6 +423,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -499,6 +509,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_perhitunganZatAktif.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_perhitunganZatAktif.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -528,7 +546,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
 
       const {
@@ -617,6 +635,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_metodePembuatan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_metodePembuatan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -646,6 +672,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -744,6 +771,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_prosesCatatanTrialPadat.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_prosesCatatanTrialPadat.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -773,6 +808,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -863,6 +899,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_prosesCatatanTrialPenyalutan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_prosesCatatanTrialPenyalutan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -892,7 +936,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -978,6 +1022,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_pengamatanAwalCair.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_pengamatanAwalCair.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1007,7 +1059,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -1093,6 +1145,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_pengamatanAwalSteril.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_pengamatanAwalSteril.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1122,7 +1182,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -1246,6 +1306,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_pengamatanAwalPadat.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_pengamatanAwalPadat.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,
@@ -1275,7 +1343,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-
+      const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
       const {
         user_id,
@@ -1401,6 +1469,14 @@ class ControllerCatatanTrial {
         (itemId) => !newItemId?.includes(itemId)
       );
       if (itemDelete.length > 0) {
+        await t_pengamatanAwalPenyalutan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
         await t_pengamatanAwalPenyalutan.destroy({
           where: { id: { [Op.in]: itemDelete } },
           transaction,

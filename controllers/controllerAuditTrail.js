@@ -1330,6 +1330,8 @@ class ControllerAuditTrail {
 
       res.send(buffer);
     } catch (error) {
+      console.log(error);
+
       next(error);
     }
   }
@@ -2810,7 +2812,6 @@ class ControllerAuditTrail {
       "cadangan",
       "totalKebutuhanMaterial",
       "perkiraanHargaPembelianMaterial",
-      "tableIndex",
       "StudiPraformulasiID",
        "user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate" from "t_originatorAtauKompetitor_hist"`,
         { type: sequelize.QueryTypes.SELECT }
