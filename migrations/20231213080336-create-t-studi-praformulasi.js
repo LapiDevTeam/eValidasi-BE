@@ -34,7 +34,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       tujuan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       productBriefNo: {
         type: Sequelize.STRING,

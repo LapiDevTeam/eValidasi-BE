@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       komposisi: DataTypes.JSONB,
       kemasan: DataTypes.STRING,
       alasan: DataTypes.STRING,
-      tujuan: DataTypes.STRING,
+      tujuan: DataTypes.TEXT,
       productBriefNo: DataTypes.STRING,
       ProductBriefId: DataTypes.INTEGER,
       kesimpulan: DataTypes.STRING,
