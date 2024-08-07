@@ -10,34 +10,34 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       namaStudi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       namaProduk: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       manufacturer: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       bentukSediaan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       dosage: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       labelClaim: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       rutePemberian: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       aturanPakai: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       sumberPustaka: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       note: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,
