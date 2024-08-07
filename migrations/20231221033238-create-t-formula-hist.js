@@ -13,19 +13,19 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       bahanTambahan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       kandungan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       fungsi: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       sumberPustaka: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       prosesPembuatan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       StudiPraformulasiID: {
         type: Sequelize.INTEGER,

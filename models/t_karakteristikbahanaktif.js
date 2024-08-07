@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_karakteristikBahanAktif.init(
     {
-      namaBahan: DataTypes.STRING,
-      parameter: DataTypes.STRING,
+      namaBahan: DataTypes.TEXT,
+      parameter: DataTypes.TEXT,
       upload: DataTypes.JSONB,
-      hasilTinjauan: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
+      hasilTinjauan: DataTypes.TEXT,
+      sumberPustaka: DataTypes.TEXT,
       tableIndex: DataTypes.INTEGER,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
