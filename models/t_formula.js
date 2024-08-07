@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_formula.init(
     {
-      bahanTambahan: DataTypes.STRING,
-      kandungan: DataTypes.STRING,
-      fungsi: DataTypes.STRING,
-      sumberPustaka: DataTypes.STRING,
-      prosesPembuatan: DataTypes.STRING,
+      bahanTambahan: DataTypes.TEXT,
+      kandungan: DataTypes.TEXT,
+      fungsi: DataTypes.TEXT,
+      sumberPustaka: DataTypes.TEXT,
+      prosesPembuatan: DataTypes.TEXT,
       StudiPraformulasiID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
