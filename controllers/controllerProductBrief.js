@@ -257,15 +257,13 @@ class ControllerProductBrief {
           [Op.iLike]: `%${bahanAktifDanDosis}%`,
         };
       if (rdSelection)
-        searchParams.rdSelection = {
-          [Op.iLike]: `%${rdSelection}%`,
-        };
+        searchParams.rdSelection = { [Op.iLike]: `%${rdSelection}%` };
       if (statusDokumen)
-        searchParams.statusDokumen = {
-          [Op.iLike]: `%${statusDokumen}%`,
-        };
+        searchParams.statusDokumen = { [Op.iLike]: `%${statusDokumen}%` };
 
+      // Exclude columns related to uploads
       const brief = await t_productBrief.findAndCountAll({
+        attributes: { exclude: ["upload"] }, // Adjust with actual column names
         where: searchParams,
         ...(size && { limit }),
         ...(size && { offset }),
@@ -274,14 +272,16 @@ class ControllerProductBrief {
 
       res.status(200).json({
         limitData: size ? limit : "",
-        Offset: size ? offset : "",
+        offset: size ? offset : "",
         totalPage: size ? Math.ceil(brief.count / limit) : "",
         brief,
       });
     } catch (err) {
-      console.log(err);
+      console.error(err); // Use console.error for better error logging
+      res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
     }
   }
+
   static async getProductBriefDetails(req, res, next) {
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
