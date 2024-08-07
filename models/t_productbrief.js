@@ -21,6 +21,7 @@ module.exports = (sequelize, DataTypes) => {
   t_productBrief.init(
     {
       productBrief: DataTypes.STRING,
+      productBriefKey: DataTypes.INTEGER,
       kode: DataTypes.STRING,
       nama: DataTypes.STRING,
       kemasan: DataTypes.STRING,

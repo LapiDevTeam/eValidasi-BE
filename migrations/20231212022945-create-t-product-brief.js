@@ -13,6 +13,10 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      productBriefKey: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+      },
       kode: {
         type: Sequelize.STRING,
       },

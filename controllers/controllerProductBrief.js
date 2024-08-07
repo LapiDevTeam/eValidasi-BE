@@ -44,6 +44,7 @@ class ControllerProductBrief {
 
       let newRevisi;
       let newUpload = upload.filter((item) => item.trim() !== "");
+      let productBriefKey;
 
       if (revisi) {
         newRevisi = revisi;
@@ -71,7 +72,7 @@ class ControllerProductBrief {
       } else if (!kode) {
         throw new MyError(400, "Kode is required !");
       } else if (!nama) {
-        throw new MyError(400, "Nama is require !");
+        throw new MyError(400, "Nama is required !");
       } else if (!kemasan) {
         throw new MyError(400, "Kemasan is required !");
       } else if (!bentukSediaan) {
@@ -81,8 +82,20 @@ class ControllerProductBrief {
       } else if (!bahanAktifDanDosis || bahanAktifDanDosis.length === 0) {
         throw new MyError(
           400,
-          "At least one bahanAktifDanDosis is be provided"
+          "At least one bahanAktifDanDosis must be provided"
         );
+      }
+
+      if (existingProtokol) {
+        productBriefKey = existingProtokol.productBriefKey;
+      } else {
+        const lastProductBrief = await t_productBrief.findOne({
+          order: [["productBriefKey", "DESC"]],
+        });
+
+        productBriefKey = lastProductBrief
+          ? lastProductBrief.productBriefKey + 1
+          : 1;
       }
 
       const createProductBrief = await t_productBrief.create({
@@ -97,6 +110,7 @@ class ControllerProductBrief {
         statusDokumen: statusDokumen,
         upload: newUpload,
         revisi: newRevisi,
+        productBriefKey: productBriefKey,
         user_id,
         delegated_to,
       });
@@ -240,12 +254,25 @@ class ControllerProductBrief {
       } = req.query;
 
       const size = page ? 10 : "";
-
       const { limit, offset } = getPagination(page, size);
 
+      let productBriefKey = null;
+      if (productBrief) {
+        const briefResult = await t_productBrief.findOne({
+          where: { productBrief: { [Op.iLike]: `%${productBrief}%` } },
+          attributes: ["productBriefKey"],
+        });
+        if (briefResult) {
+          productBriefKey = briefResult.productBriefKey;
+        } else {
+          return res
+            .status(404)
+            .json({ error: "No matching productBrief found" });
+        }
+      }
+
       const searchParams = {};
-      if (productBrief)
-        searchParams.productBrief = { [Op.iLike]: `%${productBrief}%` };
+      if (productBriefKey) searchParams.productBriefKey = productBriefKey;
       if (kode) searchParams.kode = { [Op.iLike]: `%${kode}%` };
       if (nama) searchParams.nama = { [Op.iLike]: `%${nama}%` };
       if (kemasan) searchParams.kemasan = { [Op.iLike]: `%${kemasan}%` };
@@ -261,7 +288,6 @@ class ControllerProductBrief {
       if (statusDokumen)
         searchParams.statusDokumen = { [Op.iLike]: `%${statusDokumen}%` };
 
-      // Exclude columns related to uploads
       const brief = await t_productBrief.findAndCountAll({
         attributes: { exclude: ["upload"] }, // Adjust with actual column names
         where: searchParams,

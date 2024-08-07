@@ -15,6 +15,9 @@ module.exports = {
       productBrief: {
         type: Sequelize.STRING,
       },
+      productBriefKey: {
+        type: Sequelize.INTEGER,
+      },
       kode: {
         type: Sequelize.STRING,
       },
