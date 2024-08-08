@@ -69,6 +69,8 @@ const fetchPekerjaAutoGenerateApproverSameDept = async ({
     const payloadInsertApproverLine = result.recordset.map((el) => {
       return `('${Appr_ApplicationCode}','${bagian}','${Appr_No}' , '${el.pekerja_NIK}' , '${el.Jabatan}', '${Appr_DefinitionID}' , GETDATE() , 'MAA' , 'MAA' , 1 )`;
     });
+
+    console.log(payloadInsertApproverLine.join(","), "<<< payload");
     const request1 = pool.request();
     await request1.query(`
       DELETE FROM m_Approver_lines
@@ -80,8 +82,6 @@ const fetchPekerjaAutoGenerateApproverSameDept = async ({
       INSERT INTO m_Approver_lines (Appr_ApplicationCode, Appr_DeptID, Appr_No, Appr_ID , Appr_CC , Appr_DefinitionID , Process_Date , User_ID , Delegated_To , isActive)
       VALUES ${payloadInsertApproverLine.join(",")}
       `);
-
-    console.log(payloadInsertApproverLine.join(","), "<<< payload");
 
     return { message: "Succed Approved" };
   } catch (error) {
