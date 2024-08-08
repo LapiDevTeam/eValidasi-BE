@@ -154,7 +154,7 @@ class ControllerAuditTrail {
       const worksheet = workbook.addWorksheet("Sheet 1");
 
       const dataAudit = await sequelize.query(
-        `SELECT id , "tanggalTrial" , "namaProduk" , "trialKe"  , "bentukSediaan" , "productKompetitor" , "statusDokumen" ,"perhitunganBatasBahanTambahan"  ,"pembahasan" , "kesimpulan" ,"tindakLanjut",filter, "tipeCatatanTrial", pic,bagian,"alasan_reject","user_id","delegated_to","flag_update","createdAt" ,"updatedAt"  , status ,"changeDate"  FROM "t_catatanTrial_hist"`,
+        `SELECT id , "tanggalTrial" , "namaProduk" , "trialKe"  , "bentukSediaan" , "productKompetitor" , "statusDokumen" ,"perhitunganBatasBahanTambahan"  ,"pembahasan" , "kesimpulan" ,"tindakLanjut",filter, "tipeCatatanTrial", bagian,"alasan_reject","user_id","delegated_to","flag_update","createdAt" ,"updatedAt"  , status ,"changeDate"  FROM "t_catatanTrial_hist"`,
         { type: sequelize.QueryTypes.SELECT }
       );
 
@@ -1040,7 +1040,7 @@ class ControllerAuditTrail {
       const worksheet = workbook.addWorksheet("Sheet 1");
 
       const dataAudit = await sequelize.query(
-        `SELECT  "StudiPraformulasiId" , approver_no , is_approve  , approver_name , "approver_inisial" , "keterangan_reject" ,"user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate"  from "t_studiPraformulasi_status_hist"`,
+        `SELECT  "StudiPraformulasiID" , approver_no , is_approve  , approver_name , "approver_inisial" , "keterangan_reject" ,"user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate"  from "t_studiPraformulasi_status_hist"`,
         { type: sequelize.QueryTypes.SELECT }
       );
 
@@ -1087,7 +1087,7 @@ class ControllerAuditTrail {
       const buffer = await workbook.xlsx.writeBuffer();
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="studi-praformulasi-(${currentDate}).xlsx"`
+        `attachment; filename="studi-praformulasi-status-(${currentDate}).xlsx"`
       );
       res.setHeader(
         "Content-Type",
