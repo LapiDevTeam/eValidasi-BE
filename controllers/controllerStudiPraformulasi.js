@@ -198,7 +198,8 @@ class ControllerStudiPraformulasi {
         if (findStudiPemohon?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -281,7 +282,8 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
+            // to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -433,7 +435,8 @@ class ControllerStudiPraformulasi {
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -516,7 +519,8 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -601,7 +605,8 @@ class ControllerStudiPraformulasi {
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -691,7 +696,8 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
+            // to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -902,7 +908,8 @@ class ControllerStudiPraformulasi {
         if (item?.rdSelection === "RD1") {
           transporter.sendMail({
             from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd1Emails, // list of receivers
+            // to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi Reminder", // Subject line
             text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
             html: `
@@ -985,7 +992,8 @@ class ControllerStudiPraformulasi {
         } else {
           transporter.sendMail({
             from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
+            // to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi Reminder", // Subject line
             text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
             html: `
