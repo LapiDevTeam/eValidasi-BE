@@ -70,7 +70,6 @@ const fetchPekerjaAutoGenerateApproverSameDept = async ({
       return `('${Appr_ApplicationCode}','${bagian}','${Appr_No}' , '${el.pekerja_NIK}' , '${el.Jabatan}', '${Appr_DefinitionID}' , GETDATE() , 'MAA' , 'MAA' , 1 )`;
     });
 
-    console.log(payloadInsertApproverLine.join(","), "<<< payload");
     const request1 = pool.request();
     await request1.query(`
       DELETE FROM m_Approver_lines
@@ -114,7 +113,7 @@ const createGroupUserCustom = async ({ bagian, joblevel_id, progId }) => {
         ELSE 
         BEGIN 
           INSERT INTO m_Access_Right (Group_ID , Prog_ID , IsReadOnly , Process_Date , User_ID , Delegated_to)
-          VALUES ('${el.Group_ID}', '${progId}', 0 , GETDATE(), 'System1','System1') 
+          VALUES ('${el.Group_ID}', '${progId}', 0 , GETDATE(), 'GCI','GCI') 
         END 
         end
         `);
