@@ -198,7 +198,7 @@ class ControllerStudiPraformulasi {
         if (findStudiPemohon?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -281,7 +281,7 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -433,7 +433,7 @@ class ControllerStudiPraformulasi {
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -516,7 +516,7 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -601,7 +601,7 @@ class ControllerStudiPraformulasi {
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -691,7 +691,7 @@ class ControllerStudiPraformulasi {
         } else {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["cahyadigunardi@gmail.com"], // list of receivers
+            to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -846,6 +846,35 @@ class ControllerStudiPraformulasi {
   }
   static async getPendingStudiPraformulasi(req, res) {
     try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      const getEmailsByDept = async (deptId) => {
+        const query = `SELECT emp_Email 
+  FROM m_Employee 
+  WHERE isActive = 1 
+  AND emp_DeptID  IN (${deptId}) 
+   AND emp_JobLevelID IN ('OFC','SPV','MGR','ASM','HO') 
+  AND emp_Email IS NOT NULL 
+  AND emp_Email <> '';`;
+
+        const pool = await sql.connect(config);
+        const request = pool.request();
+        const result = await request.query(query);
+        return result.recordset.map((item) => item.emp_Email);
+      };
+
+      const rd1Emails = await getEmailsByDept(`'RD1','RD3','HD'`);
+      const rd2Emails = await getEmailsByDept(`'RD2','RD3','HD'`);
+
       // Define the date for 3 days ago
       const threeDaysAgo = moment().subtract(3, "days").toDate();
 
@@ -873,7 +902,7 @@ class ControllerStudiPraformulasi {
         if (item?.rdSelection === "RD1") {
           transporter.sendMail({
             from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["gunardi.cahyadi@lapilabs.co.id"], // list of receivers
+            to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi Reminder", // Subject line
             text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
             html: `
@@ -956,7 +985,7 @@ class ControllerStudiPraformulasi {
         } else {
           transporter.sendMail({
             from: `Reminder [Studi Praformulasi] - ${item?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: ["ade.ariasya@lapilabs.co.id"], // list of receivers
+            to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi Reminder", // Subject line
             text: `Hello, please review the Studi Praformulasi for "${item?.namaProduk}".`, // plain text body
             html: `
