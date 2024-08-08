@@ -3,7 +3,6 @@ const { configMssql } = require("../config/configMssql.js");
 
 const fetchApproverInisial = async (data) => {
   try {
-    console.log(data, "<<< DAT");
     const pool = await sql.connect(configMssql);
     let objInisial = {
       inisial_user_id: "",

@@ -10,13 +10,12 @@ const getPagination = require("../helpers/getPagination");
 const { transporter } = require("../config/configNodeMailer");
 const { checkStatusProductBrief } = require("../helpers/checkStatus");
 const { getStatus } = require("../helpers/statusProductBrief");
-const multer = require("multer");
 const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
 const { sequelize } = require("../models/index");
-const { log } = require("console");
+
 class ControllerAuditTrail {
   static async downloadExcelAuditProductBriefHist(req, res, next) {
     try {
