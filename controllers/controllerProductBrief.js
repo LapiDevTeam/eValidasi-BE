@@ -117,7 +117,7 @@ class ControllerProductBrief {
 
       res
         .status(201)
-        .json({ message: "Success Create", id: createProductBrief.id });
+        .json({ message: "Data has been saved", id: createProductBrief.id });
     } catch (err) {
       console.log(err);
       next(err);
