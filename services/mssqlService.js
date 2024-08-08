@@ -81,6 +81,8 @@ const fetchPekerjaAutoGenerateApproverSameDept = async ({
       VALUES ${payloadInsertApproverLine.join(",")}
       `);
 
+    console.log(payloadInsertApproverLine.join(","), "<<< payload");
+
     return { message: "Succed Approved" };
   } catch (error) {
     console.log(error);
