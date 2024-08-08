@@ -154,7 +154,7 @@ class ControllerAuditTrail {
       const worksheet = workbook.addWorksheet("Sheet 1");
 
       const dataAudit = await sequelize.query(
-        `SELECT id , "tanggalTrial" , "namaProduk" , "trialKe"  , "bentukSediaan" , "productKompetitor" , "statusDokumen" ,"perhitunganBatasBahanTambahan"  ,"pembahasan" , "kesimpulan" ,"tindakLanjut",filter, "tipeCatatanTrial", pic,bagian,alasan_reject,user_id,delegated_to,flag_update,"createdAt" ,"updatedAt"  , status ,"changeDate"  FROM "t_catatanTrial_hist"`,
+        `SELECT id , "tanggalTrial" , "namaProduk" , "trialKe"  , "bentukSediaan" , "productKompetitor" , "statusDokumen" ,"perhitunganBatasBahanTambahan"  ,"pembahasan" , "kesimpulan" ,"tindakLanjut",filter, "tipeCatatanTrial", pic,bagian,"alasan_reject","user_id","delegated_to","flag_update","createdAt" ,"updatedAt"  , status ,"changeDate"  FROM "t_catatanTrial_hist"`,
         { type: sequelize.QueryTypes.SELECT }
       );
 
@@ -976,6 +976,71 @@ class ControllerAuditTrail {
         "is_approve_2",
         "keterangan_reject_2",
        "user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate" from "t_studiPraformulasi_hist"`,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      dataAudit?.forEach((el) => {
+        el.tanggal = el?.tanggal
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      const headers = Object.keys(dataAudit[0]);
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20;
+      });
+
+      dataAudit.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5;
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="studi-praformulasi-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async downloadExcelAuditStudiPraformulasiStatusHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      const dataAudit = await sequelize.query(
+        `SELECT  "StudiPraformulasiId" , approver_no , is_approve  , approver_name , "approver_inisial" , "keterangan_reject" ,"user_id"  ,"delegated_to" , "flag_update" , "createdAt" ,"updatedAt"  , status ,"changeDate"  from "t_studiPraformulasi_status_hist"`,
         { type: sequelize.QueryTypes.SELECT }
       );
 

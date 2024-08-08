@@ -65,8 +65,8 @@ router.get(
   ControllerAuditTrail.downloadExcelAuditStudiPraformulasiHist
 );
 router.get(
-  "/download-studi-praformulasi",
-  ControllerAuditTrail.downloadExcelAuditStudiPraformulasiHist
+  "/download-studi-praformulasi-status",
+  ControllerAuditTrail.downloadExcelAuditStudiPraformulasiStatusHist
 );
 router.get(
   "/download-deskripsi-product-studi-praformulasi",
