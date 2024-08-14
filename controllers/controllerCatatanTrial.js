@@ -2781,6 +2781,7 @@ class ControllerCatatanTrial {
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       // Group data by tableIndex
@@ -2838,6 +2839,7 @@ class ControllerCatatanTrial {
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       // Group data by tableIndex
@@ -2896,6 +2898,7 @@ class ControllerCatatanTrial {
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       // Group data by tableIndex
