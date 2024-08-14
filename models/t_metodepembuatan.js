@@ -16,8 +16,8 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_metodePembuatan.init(
     {
-      aktivitas: DataTypes.STRING,
-      pengamatan: DataTypes.STRING,
+      aktivitas: DataTypes.TEXT,
+      pengamatan: DataTypes.TEXT,
       tableIndex: DataTypes.INTEGER,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
