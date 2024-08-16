@@ -10,7 +10,7 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       tujuanTrial: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       tiapSediaan: {
         type: Sequelize.STRING,

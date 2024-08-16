@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_formulaCatatanTrial.init(
     {
-      tujuanTrial: DataTypes.STRING,
+      tujuanTrial: DataTypes.TEXT,
       tiapSediaan: DataTypes.STRING,
       besarBets: DataTypes.INTEGER,
       overmaat: DataTypes.INTEGER,

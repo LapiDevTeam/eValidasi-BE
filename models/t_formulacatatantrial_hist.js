@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      tujuanTrial: DataTypes.STRING,
+      tujuanTrial: DataTypes.TEXT,
       tiapSediaan: DataTypes.STRING,
       besarBets: DataTypes.INTEGER,
       overmaat: DataTypes.INTEGER,
