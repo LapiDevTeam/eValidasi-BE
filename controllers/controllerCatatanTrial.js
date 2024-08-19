@@ -663,6 +663,8 @@ class ControllerCatatanTrial {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
+
       if (transaction) {
         await transaction.rollback();
       }
@@ -2714,12 +2716,15 @@ class ControllerCatatanTrial {
       });
       const komposisiCair = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const perhitunganZatAktifCair = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const formulaCair = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
@@ -2741,9 +2746,11 @@ class ControllerCatatanTrial {
 
       const pengamatanAwalCair = await t_pengamatanAwalCair.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const pengamatanLanjutanCair = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2772,12 +2779,15 @@ class ControllerCatatanTrial {
       });
       const komposisiSteril = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const perhitunganZatAktifSteril = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const formulaSteril = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
@@ -2798,9 +2808,11 @@ class ControllerCatatanTrial {
       const metodePembuatanSteril = Object.values(metodePembuatanGrouped);
       const pengamatanAwalSteril = await t_pengamatanAwalSteril.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const pengamatanLanjutanSteril = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (isApprove.message) throw new MyError(400, isApprove.message);
@@ -2830,12 +2842,15 @@ class ControllerCatatanTrial {
       });
       const komposisiPadat = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const perhitunganZatAktifPadat = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const formulaPadat = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
@@ -2856,12 +2871,15 @@ class ControllerCatatanTrial {
       const metodePembuatanPadat = Object.values(metodePembuatanGrouped);
       const prosesCatatanTrialPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const pengamatanLanjutanPadat = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (isApprove.message) throw new MyError(400, isApprove.message);
@@ -2892,9 +2910,11 @@ class ControllerCatatanTrial {
 
       const formulaPenyalutan = await t_formulaCatatanTrial.findOne({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findAll({
         where: { CatatanTrialID: id },
+        order: [["id", "ASC"]],
       });
       const metode = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: id },
@@ -2916,6 +2936,7 @@ class ControllerCatatanTrial {
       const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
         {
           where: { CatatanTrialID: id },
+          order: [["id", "ASC"]],
         }
       );
 

@@ -5344,6 +5344,7 @@ class ControllerStudiPraformulasi {
     try {
       const desDetails = await t_deskripsiProduct.findAll({
         where: { StudiPraformulasiID: +id },
+        order: [["id", "ASC"]],
       });
 
       if (!desDetails || desDetails.length === 0) {
@@ -5381,6 +5382,7 @@ class ControllerStudiPraformulasi {
     try {
       const formulaDetail = await t_formula.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       if (!formulaDetail || formulaDetail.length === 0) {
@@ -5398,6 +5400,7 @@ class ControllerStudiPraformulasi {
     try {
       const stabilitaDetails = await t_stabilita.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       if (!stabilitaDetails || stabilitaDetails.length === 0) {
@@ -5415,6 +5418,7 @@ class ControllerStudiPraformulasi {
     try {
       const ujiDetails = await t_ujiInkompatibilitas.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       if (!ujiDetails || ujiDetails.length === 0) {
@@ -5432,6 +5436,7 @@ class ControllerStudiPraformulasi {
     try {
       const kemasanDetails = await t_kemasan.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       if (!kemasanDetails || kemasanDetails.length === 0) {
@@ -5449,6 +5454,7 @@ class ControllerStudiPraformulasi {
     try {
       const fisikaKimiaDetails = await t_karakteristikFisikakimia.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       if (!fisikaKimiaDetails || fisikaKimiaDetails.length === 0) {
@@ -5467,6 +5473,7 @@ class ControllerStudiPraformulasi {
       const qtpp = await t_qtpp.findAll({
         where: {
           StudiPraformulasiID: id,
+          order: [["id", "ASC"]],
         },
       });
 
@@ -5482,6 +5489,7 @@ class ControllerStudiPraformulasi {
     try {
       const cqaDetails = await t_cqa.findAll({
         where: { StudiPraformulasiID: +id },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json(cqaDetails);
@@ -5495,6 +5503,7 @@ class ControllerStudiPraformulasi {
     try {
       const formulaDetails = await t_formulaProtokol.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!formulaDetails || formulaDetails.length === 0) {
@@ -5541,6 +5550,7 @@ class ControllerStudiPraformulasi {
     try {
       const pembuatanDetails = await t_prosesPembuatan.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!pembuatanDetails || pembuatanDetails.length === 0) {
@@ -5610,7 +5620,7 @@ class ControllerStudiPraformulasi {
     try {
       const mappingDetails = await t_mappingProcess.findAll({
         where: { StudiPraformulasiID: +id },
-        order: [["createdAt", "ASC"]], // Order by createdAt descending
+        order: [["id", "ASC"]],
       });
 
       // if (!mappingDetails || mappingDetails.length === 0) {
@@ -5664,6 +5674,7 @@ class ControllerStudiPraformulasi {
     try {
       const rencanaDetails = await t_rencanaAktivitas.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json(rencanaDetails);
@@ -5749,6 +5760,7 @@ class ControllerStudiPraformulasi {
     try {
       const materialDetails = await t_material.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!materialDetails || materialDetails.length === 0) {
@@ -5767,6 +5779,7 @@ class ControllerStudiPraformulasi {
     try {
       const originatorDetails = await t_originatorAtauKompetitor.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!originatorDetails || originatorDetails.length === 0) {
@@ -5785,6 +5798,7 @@ class ControllerStudiPraformulasi {
     try {
       const kebutuhanDetails = await t_kebutuhanPeralatanDanMesin.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!kebutuhanDetails || kebutuhanDetails.length === 0) {
@@ -5834,7 +5848,7 @@ class ControllerStudiPraformulasi {
     try {
       const kemasanProtokolDetails = await t_kemasanProtokolSkalaLab.findAll({
         where: { StudiPraformulasiID: +id },
-        order: [["createdAt", "ASC"]], // Order by createdAt descending
+        order: [["id", "ASC"]],
       });
 
       // if (!kemasanProtokolDetails || kemasanProtokolDetails.length === 0) {
@@ -5980,6 +5994,7 @@ class ControllerStudiPraformulasi {
     try {
       const zatAktifDetails = await t_zatAktif.findAll({
         where: { StudiPraformulasiID: +id },
+        order: [["id", "ASC"]],
       });
 
       // if (!zatAktifDetails || zatAktifDetails.length === 0) {
@@ -5997,6 +6012,7 @@ class ControllerStudiPraformulasi {
     try {
       const bahanTambahanDetails = await t_bahanTambahan.findAll({
         where: { StudiPraformulasiID: +id },
+        order: [["id", "ASC"]],
       });
 
       // if (!bahanTambahanDetails || bahanTambahanDetails.length === 0) {
@@ -6014,6 +6030,7 @@ class ControllerStudiPraformulasi {
     try {
       const kemasanPrimerDetails = await t_kemasanPrimer.findAll({
         where: { StudiPraformulasiID: +id },
+        order: [["id", "ASC"]],
       });
 
       // if (!kemasanPrimerDetails || kemasanPrimerDetails.length === 0) {
@@ -6189,6 +6206,7 @@ class ControllerStudiPraformulasi {
     try {
       const cppDetails = await t_cpp.findAll({
         where: { StudiPraformulasiID: id },
+        order: [["id", "ASC"]],
       });
 
       // if (!cppDetails || cppDetails.length === 0) {
