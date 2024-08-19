@@ -49,7 +49,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       user_approve_date: {
-        type: Sequelize.STRING,
+        type: Sequelize.DATE,
       },
       createdAt: {
         allowNull: false,

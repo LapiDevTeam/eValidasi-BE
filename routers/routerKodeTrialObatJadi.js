@@ -13,4 +13,24 @@ router.get(
   authentication,
   ControllerKodeTrialObatJadi.getKodeTrialObatJadi
 );
+router.put(
+  "/approve-kode-trial-obat-jadi",
+  authentication,
+  ControllerKodeTrialObatJadi.approveKodeTrialObatJadi
+);
+router.put(
+  "/update-rencana-berlaku",
+  authentication,
+  ControllerKodeTrialObatJadi.updateRencanaBerlaku
+);
+router.put(
+  "/update-rencana-berlaku",
+  authentication,
+  ControllerKodeTrialObatJadi.updateRencanaBerlaku
+);
+router.get(
+  "/kode-trial-obat-jadi-latest",
+  authentication,
+  ControllerKodeTrialObatJadi.latestKodeTrialObatJadi
+);
 module.exports = router;
