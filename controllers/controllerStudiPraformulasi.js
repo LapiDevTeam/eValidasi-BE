@@ -5473,7 +5473,6 @@ class ControllerStudiPraformulasi {
       const qtpp = await t_qtpp.findAll({
         where: {
           StudiPraformulasiID: id,
-          order: [["id", "ASC"]],
         },
       });
 
