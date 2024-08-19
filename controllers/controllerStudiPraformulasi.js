@@ -1656,6 +1656,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1737,6 +1738,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -1799,6 +1801,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1879,6 +1882,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -1940,6 +1944,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2021,6 +2026,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2083,6 +2089,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2155,6 +2162,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2217,6 +2225,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2291,6 +2300,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2428,6 +2438,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2489,6 +2500,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2561,6 +2573,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2622,6 +2635,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2698,6 +2712,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2759,6 +2774,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2833,6 +2849,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -2894,6 +2911,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -2964,6 +2982,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3025,6 +3044,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3151,6 +3171,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3212,6 +3233,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3300,6 +3322,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3361,6 +3384,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3429,6 +3453,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3490,6 +3515,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3562,6 +3588,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3624,6 +3651,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3710,6 +3738,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3772,6 +3801,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3849,6 +3879,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -3911,6 +3942,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -3988,6 +4020,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -4050,6 +4083,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -4127,6 +4161,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -4189,6 +4224,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -4270,6 +4306,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -4332,6 +4369,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -4411,6 +4449,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -4473,6 +4512,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -4552,6 +4592,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -4614,6 +4655,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -4693,6 +4735,7 @@ class ControllerStudiPraformulasi {
         where: {
           StudiPraformulasiID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({

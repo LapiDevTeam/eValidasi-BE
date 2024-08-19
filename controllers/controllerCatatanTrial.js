@@ -336,6 +336,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -406,6 +407,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -461,6 +463,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevPerhitunganZatAktif.map((item) => item?.id);
@@ -529,6 +532,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -585,6 +589,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevMetodePembuatan.map((item) => item?.id);
@@ -655,6 +660,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -713,6 +719,7 @@ class ControllerCatatanTrial {
           where: {
             CatatanTrialID: id,
           },
+          order: [["id", "ASC"]],
         });
 
       const existing = prevProsesCatatanTrialPadat.map((item) => item?.id);
@@ -793,6 +800,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -849,6 +857,7 @@ class ControllerCatatanTrial {
           where: {
             CatatanTrialID: id,
           },
+          order: [["id", "ASC"]],
         });
 
       const existing = prevProsesCatatanTrialPenyalutan.map((item) => item?.id);
@@ -921,6 +930,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -976,6 +986,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1044,6 +1055,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -1099,6 +1111,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1167,6 +1180,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -1222,6 +1236,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1328,6 +1343,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
@@ -1383,6 +1399,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: id,
         },
+        order: [["id", "ASC"]],
       });
 
       const existing = prevKomposisi.map((item) => item?.id);
@@ -1491,6 +1508,7 @@ class ControllerCatatanTrial {
         where: {
           CatatanTrialID: +id,
         },
+        order: [["id", "ASC"]],
       });
 
       res.status(200).json({
