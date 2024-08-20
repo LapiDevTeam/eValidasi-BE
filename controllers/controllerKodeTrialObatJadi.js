@@ -5,7 +5,7 @@ const {
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const m_kodetrialobatjadi = require("../models/m_kodetrialobatjadi");
-const { Op } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
 
 class ControllerKodeTrialObatJadi {
   static async createKodeTrialObatJadiTemplate(req, res, next) {
@@ -53,19 +53,52 @@ class ControllerKodeTrialObatJadi {
   }
   static async getKodeTrialObatJadi(req, res) {
     try {
-      const {
-        kodeProduk,
-        namaObatJadi,
-        kemasan,
-        komposisi,
-        keterangan,
-        rencana_berlaku,
-        rencana_revisi,
-      } = req.query;
-
       const kodeTrialObatJadi = await m_kodeTrialObatJadi.findAll({
         order: [["id", "ASC"]],
       });
+
+      res.status(200).json({
+        kodeTrialObatJadi,
+      });
+    } catch (err) {
+      console.error(err); // Use console.error for better error logging
+      res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
+    }
+  }
+  static async getKodeTrialObatJadiTemplate(req, res) {
+    try {
+      const kodeTrialObatJadi = await m_kodeTrialObatJadi_template.findAll({
+        where: {
+          [Op.and]: [
+            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
+            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
+            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+          ],
+        },
+        order: [["id", "ASC"]],
+      });
+
+      console.log(kodeTrialObatJadi, "< aaaa");
+
+      res.status(200).json({
+        kodeTrialObatJadi,
+      });
+    } catch (err) {
+      console.error(err); // Use console.error for better error logging
+      res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
+    }
+  }
+  static async revisiKodeTrialObatJadi(req, res) {
+    const { revisi } = req.params;
+    try {
+      const kodeTrialObatJadi = await m_kodeTrialObatJadi_template.findAll({
+        where: {
+          [Op.and]: [{ rencana_revisi: revisi }],
+        },
+        order: [["id", "ASC"]],
+      });
+
+      console.log(kodeTrialObatJadi, "< aaaa");
 
       res.status(200).json({
         kodeTrialObatJadi,
@@ -101,7 +134,7 @@ class ControllerKodeTrialObatJadi {
       );
 
       if (incompleteRecords.length > 0) {
-        throw new MyError(400, "Rencana Berlaku belum diisi !");
+        throw new MyError(400, "Rencana Berlaku belum !");
       }
 
       // Update each record
@@ -178,11 +211,12 @@ class ControllerKodeTrialObatJadi {
       const { rencana_berlaku, rencana_revisi, rencana_alasan_desc } = req.body;
 
       // Validate the input
-      if (!rencana_berlaku || !rencana_revisi || !rencana_alasan_desc) {
+      if (!rencana_berlaku || !rencana_alasan_desc) {
         return res.status(400).json({
           message: "Missing required fields",
         });
       }
+      console.log("xixi");
 
       // Find records that need updating
       const existingRecords = await m_kodeTrialObatJadi_template.findAll({
@@ -195,6 +229,8 @@ class ControllerKodeTrialObatJadi {
         },
         order: [["createdAt", "ASC"]],
       });
+
+      console.log(existingRecords, "< exis");
 
       if (existingRecords.length === 0) {
         return res.status(404).json({
@@ -304,6 +340,44 @@ class ControllerKodeTrialObatJadi {
       }
     } catch (err) {
       console.log(err);
+      next(err);
+    }
+  }
+  static async allRevisiKodeTrialObatJadiTemplate(req, res, next) {
+    try {
+      // Find distinct rencana_revisi values
+      const existingRecords = await m_kodeTrialObatJadi_template.findAll({
+        attributes: [
+          [
+            Sequelize.fn("DISTINCT", Sequelize.col("rencana_revisi")),
+            "rencana_revisi",
+          ],
+        ], // Select distinct rencana_revisi
+        where: {
+          rencana_revisi: {
+            [Op.ne]: null, // Filter out records where rencana_revisi is null
+          },
+        },
+        // Remove the order clause as it's not allowed with DISTINCT
+      });
+
+      if (existingRecords.length === 0) {
+        return res.status(404).json({
+          message: "No records found",
+        });
+      }
+
+      // Optionally sort the results in JavaScript if necessary
+      const distinctRevisis = existingRecords
+        .map((record) => record.rencana_revisi)
+        .sort();
+
+      res.status(200).json({
+        message: "Data has been updated",
+        data: distinctRevisis, // Return the sorted distinct rencana_revisi
+      });
+    } catch (err) {
+      console.error("Error in allRevisiKodeTrialObatJadiTemplate:", err);
       next(err);
     }
   }

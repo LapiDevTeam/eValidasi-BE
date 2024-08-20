@@ -13,6 +13,11 @@ router.get(
   authentication,
   ControllerKodeTrialObatJadi.getKodeTrialObatJadi
 );
+router.get(
+  "/get-kode-trial-obat-jadi-template",
+  authentication,
+  ControllerKodeTrialObatJadi.getKodeTrialObatJadiTemplate
+);
 router.put(
   "/approve-kode-trial-obat-jadi",
   authentication,
@@ -32,6 +37,16 @@ router.get(
   "/kode-trial-obat-jadi-latest",
   authentication,
   ControllerKodeTrialObatJadi.latestKodeTrialObatJadi
+);
+router.get(
+  "/all-revisi-kode-trial-obat-jadi-template",
+  authentication,
+  ControllerKodeTrialObatJadi.allRevisiKodeTrialObatJadiTemplate
+);
+router.get(
+  "/kode-trial-obat-jadi/:revisi",
+  authentication,
+  ControllerKodeTrialObatJadi.revisiKodeTrialObatJadi
 );
 router.put(
   "/edit-kode-trial-obat-jadi-template",
