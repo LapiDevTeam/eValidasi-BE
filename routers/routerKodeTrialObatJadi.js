@@ -33,4 +33,14 @@ router.get(
   authentication,
   ControllerKodeTrialObatJadi.latestKodeTrialObatJadi
 );
+router.put(
+  "/edit-kode-trial-obat-jadi-template",
+  authentication,
+  ControllerKodeTrialObatJadi.editKodeTrialObatJadiTemplate
+);
+router.delete(
+  "/delete-kode-trial-obat-jadi-template",
+  authentication,
+  ControllerKodeTrialObatJadi.deleteKodeTrialObatJadiTemplate
+);
 module.exports = router;

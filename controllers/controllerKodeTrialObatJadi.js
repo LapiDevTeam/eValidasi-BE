@@ -88,13 +88,20 @@ class ControllerKodeTrialObatJadi {
             { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
           ],
         },
-        order: [["createdAt", "ASC"]],
+        order: [["id", "ASC"]],
       });
 
       if (existingRecords.length === 0) {
-        return res.status(404).json({
-          message: "No records found",
-        });
+        throw new MyError(400, "Not Found!");
+      }
+
+      // Check if rencana_berlaku and rencana_revisi are filled
+      const incompleteRecords = existingRecords.filter(
+        (record) => !record.rencana_berlaku || !record.rencana_revisi
+      );
+
+      if (incompleteRecords.length > 0) {
+        throw new MyError(400, "Rencana Berlaku belum diisi !");
       }
 
       // Update each record
@@ -128,7 +135,33 @@ class ControllerKodeTrialObatJadi {
         };
       });
 
+      const newRecords = updatedRecords.map((el, index) => {
+        return {
+          kodeProduk: el.kodeProduk,
+          namaObatJadi: el.namaObatJadi,
+          kemasan: el.kemasan,
+          komposisi: el.komposisi,
+          keterangan: el.keterangan,
+          rencana_berlaku: el.rencana_berlaku,
+          rencana_revisi: el.rencana_revisi,
+          rencana_alasan_desc: el.rencana_alasan_desc,
+          user_id: "Sys",
+          delegated_to: "Sys",
+        };
+      });
+
       await m_kodeTrialObatJadi_template.bulkCreate(newTemplate);
+
+      const templateFix = await m_kodeTrialObatJadi.findAll();
+
+      // If there are existing records, delete them
+      if (existingRecords.length > 0) {
+        await m_kodeTrialObatJadi.destroy({
+          truncate: true, // This will delete all records without needing a where condition
+        });
+      }
+
+      await m_kodeTrialObatJadi.bulkCreate(newRecords);
 
       res.status(200).json({
         message: "Data has been updated",
@@ -202,7 +235,7 @@ class ControllerKodeTrialObatJadi {
             { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
           ],
         },
-        order: [["createdAt", "ASC"]],
+        order: [["id", "ASC"]],
       });
 
       if (existingRecords.length === 0) {
@@ -217,6 +250,60 @@ class ControllerKodeTrialObatJadi {
       });
     } catch (err) {
       console.error("Error in approveKodeTrialObatJadi:", err);
+      next(err);
+    }
+  }
+  static async editKodeTrialObatJadiTemplate(req, res, next) {
+    try {
+      const { id, kodeProduk, namaObatJadi, kemasan, komposisi, keterangan } =
+        req.body;
+
+      const [updatedRowsCount] = await m_kodeTrialObatJadi_template.update(
+        {
+          kodeProduk: kodeProduk,
+          namaObatJadi: namaObatJadi,
+          kemasan: kemasan,
+          komposisi: komposisi,
+          keterangan: keterangan,
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Data has been saved !",
+        });
+      } else {
+        res.status(404).json({
+          message: "Kode Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err);
+      next(err);
+    }
+  }
+  static async deleteKodeTrialObatJadiTemplate(req, res, next) {
+    try {
+      const { id } = req.body;
+
+      const deletedRowsCount = await m_kodeTrialObatJadi_template.destroy({
+        where: { id: id },
+      });
+
+      if (deletedRowsCount > 0) {
+        res.status(200).json({
+          message: "Data has been deleted successfully!",
+        });
+      } else {
+        res.status(404).json({
+          message: "Kode Trial not found",
+        });
+      }
+    } catch (err) {
+      console.log(err);
       next(err);
     }
   }
