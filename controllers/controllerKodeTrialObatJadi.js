@@ -89,11 +89,13 @@ class ControllerKodeTrialObatJadi {
     }
   }
   static async revisiKodeTrialObatJadi(req, res) {
-    const { revisi } = req.params;
+    const { revisi } = req.query; // Get revisi from the query parameters
+    console.log(req.query, "<< REQ"); // Log the query parameters
+
     try {
       const kodeTrialObatJadi = await m_kodeTrialObatJadi_template.findAll({
         where: {
-          [Op.and]: [{ rencana_revisi: revisi }],
+          rencana_revisi: revisi, // Directly use the field for filtering
         },
         order: [["id", "ASC"]],
       });
@@ -108,6 +110,7 @@ class ControllerKodeTrialObatJadi {
       res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
     }
   }
+
   static async approveKodeTrialObatJadi(req, res, next) {
     try {
       const { user_id, delegated_to } = req.user;

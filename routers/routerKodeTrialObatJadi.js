@@ -44,7 +44,7 @@ router.get(
   ControllerKodeTrialObatJadi.allRevisiKodeTrialObatJadiTemplate
 );
 router.get(
-  "/kode-trial-obat-jadi/:revisi",
+  "/get-revisi-kode-trial-obat-jadi",
   authentication,
   ControllerKodeTrialObatJadi.revisiKodeTrialObatJadi
 );

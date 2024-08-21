@@ -40,7 +40,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       rencana_alasan_desc: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       user_approve: {
         type: Sequelize.STRING,

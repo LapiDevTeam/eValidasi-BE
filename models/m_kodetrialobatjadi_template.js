@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       delegated_to: DataTypes.STRING,
       rencana_berlaku: DataTypes.DATE,
       rencana_revisi: DataTypes.STRING,
-      rencana_alasan_desc: DataTypes.STRING,
+      rencana_alasan_desc: DataTypes.TEXT,
       user_approve: DataTypes.STRING,
       user_delegated: DataTypes.STRING,
       user_approve_date: DataTypes.DATE,
