@@ -16,12 +16,18 @@ module.exports = {
         type: Sequelize.STRING,
       },
       komposisi: {
+        type: Sequelize.JSONB,
+      },
+      kemasan: {
+        type: Sequelize.STRING,
+      },
+      formulaAcuan: {
         type: Sequelize.STRING,
       },
       bentukSediaan: {
         type: Sequelize.STRING,
       },
-      nomorBets: {
+      besarBets: {
         type: Sequelize.STRING,
       },
       revisi: {

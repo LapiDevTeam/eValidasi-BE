@@ -19,9 +19,11 @@ module.exports = (sequelize, DataTypes) => {
     {
       namaProduk: DataTypes.STRING,
       filter: DataTypes.STRING,
-      komposisi: DataTypes.STRING,
+      komposisi: DataTypes.JSONB,
+      kemasan: DataTypes.JSONB,
+      formulaAcuan: DataTypes.JSONB,
       bentukSediaan: DataTypes.STRING,
-      nomorBets: DataTypes.STRING,
+      besarBets: DataTypes.STRING,
       revisi: DataTypes.STRING,
       alasan: DataTypes.STRING,
       formulaA: DataTypes.JSONB,
