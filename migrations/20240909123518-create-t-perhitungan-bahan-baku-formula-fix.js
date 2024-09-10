@@ -2,37 +2,30 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_proposalDiversifikasi_status", {
+    await queryInterface.createTable("t_perhitunganBahanBakuFormulaFix", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      ProposalDiversifikasiID: {
+      title: {
+        type: Sequelize.TEXT,
+      },
+      headers: {
+        type: Sequelize.JSONB,
+      },
+      contents: {
+        type: Sequelize.JSONB,
+      },
+      FormulaFixID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_proposalDiversifikasi",
+          model: "t_formulaFix",
           key: "id",
         },
-      },
-      approver_no: {
-        type: Sequelize.INTEGER,
-      },
-      is_approve: {
-        type: Sequelize.BOOLEAN,
-      },
-      approver_name: {
-        type: Sequelize.STRING,
-      },
-      approver_joblevel_id: {
-        type: Sequelize.STRING,
-      },
-      approver_inisial: {
-        type: Sequelize.STRING,
-      },
-      keterangan_reject: {
-        type: Sequelize.TEXT,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -54,6 +47,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_proposalDiversifikasi_status");
+    await queryInterface.dropTable("t_perhitunganBahanBakuFormulaFix");
   },
 };

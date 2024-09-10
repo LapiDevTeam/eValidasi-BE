@@ -13,6 +13,27 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "FormulaFixID",
         as: "approver_data",
       });
+      t_formulaFix.hasMany(models.t_perhitunganBahanBakuFormulaFix, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_kemasanFormulaFix, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_formulaFix_prosesPengolahan, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_formulaFix_prosesPengemasan, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_formulaFix_rancanganSpesifikasiObatJadi, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_formulaFix_dataStabilitas, {
+        foreignKey: "FormulaFixID",
+      });
+      t_formulaFix.hasMany(models.t_formulaFix_acuanCatatanTrial, {
+        foreignKey: "FormulaFixID",
+      });
     }
   }
   t_formulaFix.init(
@@ -20,8 +41,8 @@ module.exports = (sequelize, DataTypes) => {
       namaProduk: DataTypes.STRING,
       filter: DataTypes.STRING,
       komposisi: DataTypes.JSONB,
-      kemasan: DataTypes.JSONB,
-      formulaAcuan: DataTypes.JSONB,
+      kemasan: DataTypes.STRING,
+      formulaAcuan: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
       besarBets: DataTypes.STRING,
       revisi: DataTypes.STRING,

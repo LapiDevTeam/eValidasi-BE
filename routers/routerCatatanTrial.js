@@ -5,6 +5,10 @@ const { authentication } = require("../middlewares/authentication");
 
 router.get("/all-namaProduk01", ControllerCatatanTrial.findAllNamaProduct01);
 router.get("/all-namaProduk02", ControllerCatatanTrial.findAllNamaProduct02);
+router.get(
+  "/all-namaProduk02FormulaFix",
+  ControllerCatatanTrial.findAllNamaProduct02FormulaFix
+);
 router.get("/all-catatan-trial", ControllerCatatanTrial.findAllCatatanTrial);
 router.post(
   "/create-catatanTrial",

@@ -145,20 +145,20 @@ class ControllerCatatanTrial {
       console.log(err);
     }
   }
-  // static async findAllNamaProduct02(req, res) {
-  //   try {
-  //     const kodeTrialObatJadi = await m_kodeTrialObatJadi.findAll();
+  static async findAllNamaProduct02FormulaFix(req, res) {
+    try {
+      const kodeTrialObatJadi = await m_kodeTrialObatJadi.findAll();
 
-  //     res.status(200).json(kodeTrialObatJadi);
-  //   } catch (err) {
-  //     console.error("Error fetching data:", err);
-  //     res.status(500).json({
-  //       success: false,
-  //       message: "Failed to fetch data",
-  //       error: err.message,
-  //     });
-  //   }
-  // }
+      res.status(200).json(kodeTrialObatJadi);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch data",
+        error: err.message,
+      });
+    }
+  }
 
   static async createCatatanTrial(req, res, next) {
     try {
