@@ -209,8 +209,10 @@ class ControllerFormulaFix {
         namaProduk,
         filter,
         komposisi,
+        kemasan,
+        formulaAcuan,
         bentukSediaan,
-        nomorBets,
+        besarBets,
         revisi,
         alasan,
         formulaA,
@@ -218,15 +220,20 @@ class ControllerFormulaFix {
         formulaC,
       } = req.body;
 
+      console.log(req.body, "< req");
+
       const [updatedRowsCount] = await t_formulaFix.update(
         {
           namaProduk: namaProduk || "",
           filter: filter || "",
           komposisi: komposisi || "",
+          kemasan: kemasan || "",
+          formulaAcuan: formulaAcuan || "",
           bentukSediaan: bentukSediaan || "",
-          nomorBets: nomorBets || "",
+          besarBets: besarBets || "",
           revisi: revisi || "",
           alasan: alasan || "",
+          filter: filter || "",
           formulaA: formulaA || "",
           formulaB: formulaB || "",
           formulaC: formulaC || "",
@@ -334,6 +341,7 @@ class ControllerFormulaFix {
           where: { FormulaFixID: id },
           order: [["id", "ASC"]],
         });
+
       const kemasanFormula = await t_kemasanFormulaFix.findAll({
         where: { FormulaFixID: id },
         order: [["id", "ASC"]],
@@ -1030,7 +1038,6 @@ class ControllerFormulaFix {
   }
 
   static async uploadDataStabilitas(req, res) {
-    console.log(req.file, "<< req file");
     const { id } = req.params;
     try {
       const pdf = await t_formulaFix_dataStabilitas.create({
@@ -1049,30 +1056,43 @@ class ControllerFormulaFix {
   }
   static async getUploadDataStabilitas(req, res) {
     try {
-      const uploads = await t_formulaFix_dataStabilitas.findAll();
-      const uploadArray = uploads.map((upload) => upload.toJSON());
+      const { id } = req.params;
+      console.log(id, "< Ini id");
 
-      uploadArray.forEach((upload) => {
-        if (upload.upload) {
-          upload.upload = Buffer.from(upload.upload).toString("base64");
-        } else {
-          upload.upload = null;
-        }
+      const upload = await t_formulaFix_dataStabilitas.findOne({
+        where: { FormulaFixID: +id },
       });
 
-      res.json(uploadArray);
+      // Check if upload is found
+      if (!upload) {
+        return res.status(404).json({ error: "No upload found" });
+      }
+
+      const uploadData = upload.toJSON(); // Convert to JSON
+
+      // Process the upload field if it exists
+      if (uploadData.upload) {
+        uploadData.upload = Buffer.from(uploadData.upload).toString("base64");
+      } else {
+        uploadData.upload = null;
+      }
+
+      console.log(uploadData, "< aray");
+
+      res.json(uploadData); // Send the processed upload data
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Error fetching images" });
     }
   }
+
   static async uploadAcuanCatatanTrial(req, res) {
-    console.log(req.file, "<< req file");
     const { id } = req.params;
     try {
       const pdf = await t_formulaFix_acuanCatatanTrial.create({
         uploadType: req.file.originalname,
         upload: req.file.buffer, // Store PDF as binary data
+        FormulaFixID: +id,
       });
 
       console.log(pdf, "< pdf");
@@ -1085,18 +1105,24 @@ class ControllerFormulaFix {
   }
   static async getUploadAcuanCatatanTrial(req, res) {
     try {
-      const uploads = await t_formulaFix_acuanCatatanTrial.findAll();
-      const uploadArray = uploads.map((upload) => upload.toJSON());
-
-      uploadArray.forEach((upload) => {
-        if (upload.upload) {
-          upload.upload = Buffer.from(upload.upload).toString("base64");
-        } else {
-          upload.upload = null;
-        }
+      const { id } = req.params;
+      const upload = await t_formulaFix_acuanCatatanTrial.findOne({
+        where: { FormulaFixID: +id },
       });
 
-      res.json(uploadArray);
+      if (!upload) {
+        return res.status(404).json({ error: "No Upload found" });
+      }
+
+      const uploadData = upload.toJSON();
+
+      if (uploadData.upload) {
+        uploadData.upload = Buffer.from(uploadData.upload).toString("base64");
+      } else {
+        uploadData.upload = null;
+      }
+
+      res.json(uploadData);
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Error fetching images" });

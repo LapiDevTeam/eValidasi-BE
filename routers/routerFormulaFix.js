@@ -62,26 +62,26 @@ router.put(
 );
 
 router.post(
-  "/upload-data-stabilitas",
+  "/upload-data-stabilitas/:id",
   authentication,
   upload.single("image"),
   ControllerFormulaFix.uploadDataStabilitas
 );
 
 router.get(
-  "/get-upload-data-stabilitas",
+  "/get-upload-data-stabilitas/:id",
   authentication,
   ControllerFormulaFix.getUploadDataStabilitas
 );
 router.post(
-  "/upload-acuan-catatan-trial",
+  "/upload-acuan-catatan-trial/:id",
   authentication,
   upload.single("image"),
   ControllerFormulaFix.uploadAcuanCatatanTrial
 );
 
 router.get(
-  "/get-upload-acuan-catatan-trial",
+  "/get-upload-acuan-catatan-trial/:id",
   authentication,
   ControllerFormulaFix.getUploadAcuanCatatanTrial
 );
