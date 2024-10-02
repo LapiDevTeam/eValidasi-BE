@@ -40,6 +40,12 @@ router.put(
   authentication,
   ControllerCatatanTrial.handleSaveMetodePembuatan
 );
+// save dan edit formula
+router.put(
+  "/handle-formula-catatan-trial/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveFormulaCatatanTrial
+);
 // save dan edit pengamatanawal cair
 router.put(
   "/handle-pengamatan-awal-cair/:id",
@@ -71,17 +77,17 @@ router.put(
   ControllerCatatanTrial.approvePemohon
 );
 
-// formula catatan trial
-router.post(
-  "/create-formula-catatan-trial",
-  authentication,
-  ControllerCatatanTrial.createFormulaCatatanTrial
-);
+// // formula catatan trial
+// router.post(
+//   "/create-formula-catatan-trial",
+//   authentication,
+//   ControllerCatatanTrial.createFormulaCatatanTrial
+// );
 
-router.put(
-  "/update-formulaCatatanTrial/:id",
-  ControllerCatatanTrial.updateFormulaCatatanTrial
-);
+// router.put(
+//   "/update-formulaCatatanTrial/:id",
+//   ControllerCatatanTrial.updateFormulaCatatanTrial
+// );
 
 // pengamatan awal cair
 router.post(

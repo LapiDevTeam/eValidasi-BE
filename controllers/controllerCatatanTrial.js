@@ -1540,20 +1540,15 @@ class ControllerCatatanTrial {
     }
   }
 
-  // handle post dan edit formula catatan trial
-  static async createFormulaCatatanTrial(req, res, next) {
+  static async handleSaveFormulaCatatanTrial(req, res) {
+    const transaction = await sequelize.transaction();
     try {
-      const {
-        tujuanTrial,
-        tiapSediaan,
-        besarBets,
-        overmaat,
-        satuan,
-        bentukSediaan,
-        kodeTrials,
-        detailFormula,
-        CatatanTrialID,
-      } = req.body;
+      const { data } = req.body;
+
+      console.log(data, "<< DATA");
+
+      const flag_update = "UPDATE FOR DELETE";
+      const { id } = req.params;
 
       const {
         user_id,
@@ -1563,44 +1558,6 @@ class ControllerCatatanTrial {
         inisial_user,
         bagian_user,
       } = req.user;
-
-      const createFormula = await t_formulaCatatanTrial.create({
-        tujuanTrial: tujuanTrial,
-        tiapSediaan: tiapSediaan,
-        besarBets: besarBets,
-        overmaat: overmaat,
-        satuan: satuan,
-        bentukSediaan: bentukSediaan,
-        kodeTrials: kodeTrials,
-        detailFormula: detailFormula,
-        CatatanTrialID: +CatatanTrialID,
-        user_id,
-        delegated_to,
-      });
-
-      res.status(201).json({
-        message: "Success Create Formula Catatan Trial",
-        data: createFormula,
-      });
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  }
-  static async updateFormulaCatatanTrial(req, res, next) {
-    try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
-
-      const {
-        tujuanTrial,
-        tiapSediaan,
-        besarBets,
-        overmaat,
-        satuan,
-        bentukSediaan,
-        kodeTrials,
-        detailFormula,
-      } = req.body;
 
       const cat = await t_catatanTrial.findByPk(+id);
       if (cat?.statusDokumen === "Reject") {
@@ -1625,36 +1582,210 @@ class ControllerCatatanTrial {
         );
       }
 
-      const [updatedRowsCount] = await t_formulaCatatanTrial.update(
-        {
-          tujuanTrial: tujuanTrial || "",
-          tiapSediaan: tiapSediaan || "",
-          besarBets: +besarBets || null,
-          overmaat: +overmaat || null,
-          satuan: satuan || "",
-          bentukSediaan: bentukSediaan || "",
-          kodeTrials: kodeTrials || "",
-          detailFormula: detailFormula || null,
+      const prevFormula = await t_formulaCatatanTrial.findAll({
+        where: {
+          CatatanTrialID: id,
         },
-        {
-          where: { id: +id },
-        }
-      );
+        order: [["id", "ASC"]],
+      });
 
-      if (updatedRowsCount > 0) {
-        res.status(201).json({
-          message: "formula Catatan Trial updated successfully",
-        });
-      } else {
-        res.status(404).json({
-          message: "formula Catatan Trial not found",
+      const existing = prevFormula.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_formulaCatatanTrial.create(
+              {
+                tujuanTrial: newItem?.tujuanTrial || "",
+                besarBets: newItem?.besarBets || "",
+                kodeTrials: newItem?.kodeTrials || null,
+                detailFormula: newItem?.detailFormula || null,
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_formulaCatatanTrial.update(
+              {
+                tujuanTrial: newItem?.tujuanTrial || "",
+                besarBets: newItem?.besarBets || "",
+                kodeTrials: newItem?.kodeTrials || null,
+                detailFormula: newItem?.detailFormula || null,
+                CatatanTrialID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_formulaCatatanTrial.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+        await t_formulaCatatanTrial.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
         });
       }
+
+      await transaction.commit();
+
+      const newData = await t_formulaCatatanTrial.findAll({
+        where: {
+          CatatanTrialID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
     } catch (err) {
-      console.log(err, "<<<< ERROR");
-      next(err);
+      console.log(err);
+
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
+
+  // // handle post dan edit formula catatan trial
+  // static async createFormulaCatatanTrial(req, res, next) {
+  //   try {
+  //     const {
+  //       tujuanTrial,
+  //       tiapSediaan,
+  //       besarBets,
+  //       overmaat,
+  //       satuan,
+  //       bentukSediaan,
+  //       kodeTrials,
+  //       detailFormula,
+  //       CatatanTrialID,
+  //     } = req.body;
+
+  //     console.log(req.body, "<< body");
+
+  //     const { user_id, delegated_to } = req.user;
+
+  //     const createFormula = await t_formulaCatatanTrial.create({
+  //       tujuanTrial: tujuanTrial,
+  //       tiapSediaan: tiapSediaan,
+  //       besarBets: besarBets,
+  //       overmaat: overmaat,
+  //       satuan: satuan,
+  //       bentukSediaan: bentukSediaan,
+  //       kodeTrials: kodeTrials,
+  //       detailFormula: detailFormula,
+  //       CatatanTrialID: +CatatanTrialID,
+  //       user_id,
+  //       delegated_to,
+  //     });
+
+  //     res.status(201).json({
+  //       message: "Success Create Formula Catatan Trial",
+  //       data: createFormula,
+  //     });
+  //   } catch (err) {
+  //     console.error(err);
+  //     next(err);
+  //   }
+  // }
+  // static async updateFormulaCatatanTrial(req, res, next) {
+  //   try {
+  //     const { id } = req.params; // Ambil id catatan trial dari URL
+
+  //     const {
+  //       tujuanTrial,
+  //       tiapSediaan,
+  //       besarBets,
+  //       overmaat,
+  //       satuan,
+  //       bentukSediaan,
+  //       kodeTrials,
+  //       detailFormula,
+  //     } = req.body;
+
+  //     const cat = await t_catatanTrial.findByPk(+id);
+  //     if (cat?.statusDokumen === "Reject") {
+  //       await t_catatanTrial_status.destroy({
+  //         where: { CatatanTrialID: +id },
+  //       });
+  //       await t_catatanTrial.update(
+  //         {
+  //           is_approve_1: "",
+  //           approver_name_1: "",
+  //           approver_user_id_1: "",
+  //           approver_delegated_to_1: "",
+  //           approver_tanggal_1: null,
+  //           keterangan_reject_1: "",
+  //           statusDokumen: "Draft",
+  //         },
+  //         {
+  //           where: {
+  //             id,
+  //           },
+  //         }
+  //       );
+  //     }
+
+  //     const [updatedRowsCount] = await t_formulaCatatanTrial.update(
+  //       {
+  //         tujuanTrial: tujuanTrial || "",
+  //         tiapSediaan: tiapSediaan || "",
+  //         besarBets: +besarBets || null,
+  //         overmaat: +overmaat || null,
+  //         satuan: satuan || "",
+  //         bentukSediaan: bentukSediaan || "",
+  //         kodeTrials: kodeTrials || "",
+  //         detailFormula: detailFormula || null,
+  //       },
+  //       {
+  //         where: { id: +id },
+  //       }
+  //     );
+
+  //     if (updatedRowsCount > 0) {
+  //       res.status(201).json({
+  //         message: "formula Catatan Trial updated successfully",
+  //       });
+  //     } else {
+  //       res.status(404).json({
+  //         message: "formula Catatan Trial not found",
+  //       });
+  //     }
+  //   } catch (err) {
+  //     console.log(err, "<<<< ERROR");
+  //     next(err);
+  //   }
+  // }
 
   // handle post dan edit pengamatan awal cair
   static async createPengamatanAwalCair(req, res, next) {
@@ -2882,7 +3013,7 @@ class ControllerCatatanTrial {
         where: { CatatanTrialID: id },
         order: [["id", "ASC"]],
       });
-      const formulaPadat = await t_formulaCatatanTrial.findOne({
+      const formulaPadat = await t_formulaCatatanTrial.findAll({
         where: { CatatanTrialID: id },
         order: [["id", "ASC"]],
       });
