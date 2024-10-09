@@ -45,10 +45,16 @@ module.exports = (sequelize, DataTypes) => {
       t_catatanTrial.hasMany(models.t_pengamatanLanjutan, {
         foreignKey: "CatatanTrialID",
       });
+      t_catatanTrial.hasMany(models.t_distribusiUkuranPartikel, {
+        foreignKey: "CatatanTrialID",
+      });
       t_catatanTrial.hasMany(models.t_pengamatanAwalPadat, {
         foreignKey: "CatatanTrialID",
       });
       t_catatanTrial.hasMany(models.t_pengamatanAwalSteril, {
+        foreignKey: "CatatanTrialID",
+      });
+      t_catatanTrial.hasMany(models.t_evaluasiBulk, {
         foreignKey: "CatatanTrialID",
       });
       t_catatanTrial.hasMany(models.t_catatanTrial_status, {
@@ -61,7 +67,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       tanggalTrial: DataTypes.DATE,
       namaProduk: DataTypes.STRING,
-      // kodeTrial: DataTypes.STRING,
+      kodeTrial: DataTypes.TEXT,
       trialKe: DataTypes.STRING,
       bentukSediaan: DataTypes.STRING,
       productKompetitor: DataTypes.STRING,

@@ -33,6 +33,9 @@ module.exports = {
       detailFormula: {
         type: Sequelize.JSONB,
       },
+      notes: {
+        type: Sequelize.TEXT,
+      },
       CatatanTrialID: {
         type: Sequelize.INTEGER,
         references: {

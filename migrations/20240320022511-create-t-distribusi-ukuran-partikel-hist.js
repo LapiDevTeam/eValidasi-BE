@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_metodePembuatan_hist", {
+    await queryInterface.createTable("t_distribusiUkuranPartikel_hist", {
       status: {
         type: Sequelize.STRING,
       },
@@ -12,17 +12,11 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
-      kodeTrial: {
-        type: Sequelize.STRING,
+      headers: {
+        type: Sequelize.JSONB,
       },
-      aktivitas: {
-        type: Sequelize.STRING,
-      },
-      pengamatan: {
-        type: Sequelize.STRING,
-      },
-      tableIndex: {
-        type: Sequelize.INTEGER,
+      content: {
+        type: Sequelize.JSONB,
       },
       CatatanTrialID: {
         type: Sequelize.INTEGER,
@@ -45,6 +39,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_metodePembuatan_hist");
+    await queryInterface.dropTable("t_distribusiUkuranPartikel_hist");
   },
 };

@@ -136,6 +136,13 @@ router.put(
   ControllerCatatanTrial.updatePengamatanAwalPenyalutan
 );
 
+// save dan edit evaluasi Bulk
+router.put(
+  "/handle-evaluasi-bulk/:id",
+  authentication,
+  ControllerCatatanTrial.handleSaveEvaluasiBulk
+);
+
 // save dan edit proses padat
 router.put(
   "/handle-proses-catatan-trial-padat/:id",
@@ -158,6 +165,17 @@ router.post(
 router.put(
   "/update-pengamatanAwalLanjutan/:id",
   ControllerCatatanTrial.updatePengamatanAwalLanjutan
+);
+
+// distribusi ukuran partikel
+router.post(
+  "/create-distribusi-ukuran-partikel",
+  authentication,
+  ControllerCatatanTrial.createDistribusiUkuranPartikel
+);
+router.put(
+  "/update-distribusi-ukuran-partikel/:id",
+  ControllerCatatanTrial.updateDistribusiUkuranPartikel
 );
 
 // pembahasan kesimpulan tindak lanjut perhitungan bahan tambahan

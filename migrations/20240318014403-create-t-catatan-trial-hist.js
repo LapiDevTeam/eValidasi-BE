@@ -18,7 +18,9 @@ module.exports = {
       namaProduk: {
         type: Sequelize.STRING,
       },
-
+      kodeTrial: {
+        type: Sequelize.TEXT,
+      },
       trialKe: {
         type: Sequelize.STRING,
       },

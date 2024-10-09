@@ -36,6 +36,15 @@ module.exports = {
       rataRataKekerasanTablet: {
         type: Sequelize.STRING,
       },
+      spesifikasiWaktuHancur: {
+        type: Sequelize.STRING,
+      },
+      settingWaktuHancur: {
+        type: Sequelize.STRING,
+      },
+      evaluasiWaktuHancur: {
+        type: Sequelize.STRING,
+      },
       spesifikasiKerapuhan: {
         type: Sequelize.STRING,
       },
@@ -66,6 +75,78 @@ module.exports = {
       evaluasiUkuran: {
         type: Sequelize.STRING,
       },
+      spesifikasiKeseragamanBobotKapsulKosong: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiKeseragamanBobotIsiKapsul: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiWaktuHancurKapsul: {
+        type: Sequelize.STRING,
+      },
+      settingWaktuHancurKapsul: {
+        type: Sequelize.STRING,
+      },
+      evaluasiWaktuHancurKapsul: {
+        type: Sequelize.STRING,
+      },
+
+      spesifikasiPemerianIsiKapsul: {
+        type: Sequelize.STRING,
+      },
+      settingPemerianIsiKapsul: {
+        type: Sequelize.STRING,
+      },
+      evaluasiPemerianIsiKapsul: {
+        type: Sequelize.STRING,
+      },
+
+      spesifikasiCangkangKapsulNo: {
+        type: Sequelize.STRING,
+      },
+      settingCangkangKapsulNo: {
+        type: Sequelize.STRING,
+      },
+      evaluasiCangkangKapsulNo: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiCap: {
+        type: Sequelize.STRING,
+      },
+      settingCap: {
+        type: Sequelize.STRING,
+      },
+      evaluasiCap: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiBody: {
+        type: Sequelize.STRING,
+      },
+      settingBody: {
+        type: Sequelize.STRING,
+      },
+      evaluasiBody: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiPenandaanCap: {
+        type: Sequelize.STRING,
+      },
+      settingPenandaanCap: {
+        type: Sequelize.STRING,
+      },
+      evaluasiPenandaanCap: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiPenandaanBody: {
+        type: Sequelize.STRING,
+      },
+      settingPenandaanBody: {
+        type: Sequelize.STRING,
+      },
+      evaluasiPenandaanBody: {
+        type: Sequelize.STRING,
+      },
+
       CatatanTrialID: {
         type: Sequelize.INTEGER,
         references: {

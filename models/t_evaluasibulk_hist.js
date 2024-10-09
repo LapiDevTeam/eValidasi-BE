@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_formulaCatatanTrial_hist extends Model {
+  class t_evaluasiBulk_hist extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -11,19 +11,14 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  t_formulaCatatanTrial_hist.init(
+  t_evaluasiBulk_hist.init(
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      tujuanTrial: DataTypes.TEXT,
-      tiapSediaan: DataTypes.STRING,
-      besarBets: DataTypes.INTEGER,
-      overmaat: DataTypes.INTEGER,
-      satuan: DataTypes.STRING,
-      bentukSediaan: DataTypes.STRING,
-      kodeTrials: DataTypes.JSONB,
-      detailFormula: DataTypes.JSONB,
-      notes: DataTypes.TEXT,
+      bulkDensity: DataTypes.TEXT,
+      tappedDensity: DataTypes.TEXT,
+      carrIndex: DataTypes.TEXT,
+      interpretasiHasil: DataTypes.TEXT,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
@@ -31,9 +26,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: "t_formulaCatatanTrial_hist",
+      modelName: "t_evaluasiBulk_hist",
       freezeTableName: true,
     }
   );
-  return t_formulaCatatanTrial_hist;
+  return t_evaluasiBulk_hist;
 };

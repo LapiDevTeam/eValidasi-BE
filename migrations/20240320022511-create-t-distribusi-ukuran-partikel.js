@@ -2,30 +2,25 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_metodePembuatan_hist", {
-      status: {
-        type: Sequelize.STRING,
-      },
-      changeDate: {
-        type: Sequelize.DATE,
-      },
+    await queryInterface.createTable("t_distribusiUkuranPartikel", {
       id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      kodeTrial: {
-        type: Sequelize.STRING,
+      headers: {
+        type: Sequelize.JSONB,
       },
-      aktivitas: {
-        type: Sequelize.STRING,
-      },
-      pengamatan: {
-        type: Sequelize.STRING,
-      },
-      tableIndex: {
-        type: Sequelize.INTEGER,
+      content: {
+        type: Sequelize.JSONB,
       },
       CatatanTrialID: {
         type: Sequelize.INTEGER,
+        references: {
+          model: "t_catatanTrial",
+          key: "id",
+        },
       },
       user_id: {
         type: Sequelize.STRING,
@@ -37,14 +32,16 @@ module.exports = {
         type: Sequelize.STRING,
       },
       createdAt: {
+        allowNull: false,
         type: Sequelize.DATE,
       },
       updatedAt: {
+        allowNull: false,
         type: Sequelize.DATE,
       },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_metodePembuatan_hist");
+    await queryInterface.dropTable("t_distribusiUkuranPartikel");
   },
 };
