@@ -1820,6 +1820,8 @@ class ControllerCatatanTrial {
             const created = await t_formulaCatatanTrial.create(
               {
                 tujuanTrial: newItem?.tujuanTrial || "",
+                tiapSediaan: newItem?.tiapSediaan || "",
+                satuan: newItem?.satuan || "",
                 besarBets: newItem?.besarBets || "",
                 kodeTrials: newItem?.kodeTrials || null,
                 detailFormula: newItem?.detailFormula || null,
@@ -1837,6 +1839,8 @@ class ControllerCatatanTrial {
             await t_formulaCatatanTrial.update(
               {
                 tujuanTrial: newItem?.tujuanTrial || "",
+                tiapSediaan: newItem?.tiapSediaan || "",
+                satuan: newItem?.satuan || "",
                 besarBets: newItem?.besarBets || "",
                 kodeTrials: newItem?.kodeTrials || null,
                 detailFormula: newItem?.detailFormula || null,
