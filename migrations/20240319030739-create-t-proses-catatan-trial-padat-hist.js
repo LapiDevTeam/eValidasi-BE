@@ -12,6 +12,9 @@ module.exports = {
       id: {
         type: Sequelize.INTEGER,
       },
+      kodeTrial: {
+        type: Sequelize.STRING,
+      },
       speed: {
         type: Sequelize.STRING,
       },
@@ -38,6 +41,9 @@ module.exports = {
       },
       keterangan: {
         type: Sequelize.STRING,
+      },
+      tableIndex: {
+        type: Sequelize.INTEGER,
       },
       CatatanTrialID: {
         type: Sequelize.INTEGER,

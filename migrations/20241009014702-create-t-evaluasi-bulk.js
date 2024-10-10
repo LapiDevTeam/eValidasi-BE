@@ -9,6 +9,9 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
+      noFormula: {
+        type: Sequelize.TEXT,
+      },
       bulkDensity: {
         type: Sequelize.TEXT,
       },

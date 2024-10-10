@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
+      kodeTrial: DataTypes.STRING,
       speed: DataTypes.STRING,
       mainPressure: DataTypes.STRING,
       prePressure: DataTypes.STRING,
@@ -24,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       abrasi: DataTypes.STRING,
       wh: DataTypes.STRING,
       keterangan: DataTypes.STRING,
+      tableIndex: DataTypes.INTEGER,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

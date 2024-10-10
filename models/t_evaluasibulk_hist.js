@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
+      noFormula: DataTypes.TEXT,
       bulkDensity: DataTypes.TEXT,
       tappedDensity: DataTypes.TEXT,
       carrIndex: DataTypes.TEXT,

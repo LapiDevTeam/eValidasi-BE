@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_evaluasiBulk.init(
     {
+      noFormula: DataTypes.TEXT,
       bulkDensity: DataTypes.TEXT,
       tappedDensity: DataTypes.TEXT,
       carrIndex: DataTypes.TEXT,

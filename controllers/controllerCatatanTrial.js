@@ -755,6 +755,7 @@ class ControllerCatatanTrial {
           if (!newItem?.id) {
             const created = await t_evaluasiBulk.create(
               {
+                noFormula: newItem?.noFormula || "",
                 bulkDensity: newItem?.bulkDensity || "",
                 tappedDensity: newItem?.tappedDensity || "",
                 carrIndex: newItem?.carrIndex || "",
@@ -771,6 +772,7 @@ class ControllerCatatanTrial {
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
             await t_evaluasiBulk.update(
               {
+                noFormula: newItem?.noFormula || "",
                 bulkDensity: newItem?.bulkDensity || "",
                 tappedDensity: newItem?.tappedDensity || "",
                 carrIndex: newItem?.carrIndex || "",
@@ -833,6 +835,7 @@ class ControllerCatatanTrial {
       const { data } = req.body;
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
+
       const {
         user_id,
         delegated_to,
@@ -865,26 +868,28 @@ class ControllerCatatanTrial {
         );
       }
 
-      const prevProsesCatatanTrialPadat =
-        await t_prosesCatatanTrialPadat.findAll({
-          where: {
-            CatatanTrialID: id,
-          },
-          order: [["id", "ASC"]],
-        });
+      const prevProses = await t_prosesCatatanTrialPadat.findAll({
+        where: {
+          CatatanTrialID: id,
+        },
+        order: [["id", "ASC"]],
+      });
 
-      const existing = prevProsesCatatanTrialPadat.map((item) => item?.id);
+      const existing = prevProses.map((item) => item?.id);
       const newItemId = data
-        ? data.filter((item) => item?.id).map((item) => +item?.id)
-        : [];
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
 
       // update
+      const dataArray = data.flat();
       await Promise.all(
-        data?.map(async (newItem) => {
+        dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
             const created = await t_prosesCatatanTrialPadat.create(
               {
+                kodeTrial: newItem?.kodeTrial || "",
                 speed: newItem?.speed || "",
                 mainPressure: newItem?.mainPressure || "",
                 prePressure: newItem?.prePressure || "",
@@ -894,6 +899,7 @@ class ControllerCatatanTrial {
                 abrasi: newItem?.abrasi || "",
                 wh: newItem?.wh || "",
                 keterangan: newItem?.keterangan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -906,6 +912,7 @@ class ControllerCatatanTrial {
           else if (newItem?.id && existing?.includes(+newItem?.id)) {
             await t_prosesCatatanTrialPadat.update(
               {
+                kodeTrial: newItem?.kodeTrial || "",
                 speed: newItem?.speed || "",
                 mainPressure: newItem?.mainPressure || "",
                 prePressure: newItem?.prePressure || "",
@@ -915,6 +922,7 @@ class ControllerCatatanTrial {
                 abrasi: newItem?.abrasi || "",
                 wh: newItem?.wh || "",
                 keterangan: newItem?.keterangan || "",
+                tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -960,6 +968,8 @@ class ControllerCatatanTrial {
         data: newData,
       });
     } catch (err) {
+      console.log(err);
+
       if (transaction) {
         await transaction.rollback();
       }
@@ -3341,10 +3351,25 @@ class ControllerCatatanTrial {
 
       // Convert grouped data into an array of arrays
       const metodePembuatanPadat = Object.values(metodePembuatanGrouped);
-      const prosesCatatanTrialPadat = await t_prosesCatatanTrialPadat.findAll({
+
+      const proses = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: id },
         order: [["id", "ASC"]],
       });
+
+      // Group data by tableIndex
+      const prosesGrouped = proses.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const prosesCatatanTrialPadat = Object.values(prosesGrouped);
+
       const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
         where: { CatatanTrialID: id },
         order: [["id", "ASC"]],
