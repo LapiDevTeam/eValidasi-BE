@@ -31,6 +31,176 @@ const {
 const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerCatatanTrial {
+  static async handleDuplicate(req, res, next) {
+    console.log("xixixi");
+    const { id } = req.params;
+    try {
+      // Step 1: Fetch data from all tables where CatatanTrialID matches the given id
+      const catatanTrial = await t_catatanTrial.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const komposisiCatatanTrial = await t_komposisiCatatanTrial.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const perhitunganZatAktif = await t_perhitunganZatAktif.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const metodePembuatan = await t_metodePembuatan.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const prosesPadat = await t_prosesCatatanTrialPadat.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const formulaCatatanTrial = await t_formulaCatatanTrial.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanAwalCair = await t_pengamatanAwalCair.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanLanjutan = await t_pengamatanLanjutan.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findOne(
+        { where: { CatatanTrialID: +id } }
+      );
+      const evaluasiBulk = await t_evaluasiBulk.findOne({
+        where: { CatatanTrialID: +id },
+      });
+      const distribusiUkuranPartikel = await t_distribusiUkuranPartikel.findOne(
+        { where: { CatatanTrialID: +id } }
+      );
+
+      // Step 2: Duplicate each record
+      if (catatanTrial) {
+        await t_catatanTrial.create({
+          ...catatanTrial.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (komposisiCatatanTrial) {
+        await t_komposisiCatatanTrial.create({
+          ...komposisiCatatanTrial.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (perhitunganZatAktif) {
+        await t_perhitunganZatAktif.create({
+          ...perhitunganZatAktif.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (metodePembuatan) {
+        await t_metodePembuatan.create({
+          ...metodePembuatan.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (prosesPadat) {
+        await t_prosesCatatanTrialPadat.create({
+          ...prosesPadat.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (prosesPenyalutan) {
+        await t_prosesCatatanTrialPenyalutan.create({
+          ...prosesPenyalutan.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (formulaCatatanTrial) {
+        await t_formulaCatatanTrial.create({
+          ...formulaCatatanTrial.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (pengamatanAwalCair) {
+        await t_pengamatanAwalCair.create({
+          ...pengamatanAwalCair.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (pengamatanLanjutan) {
+        await t_pengamatanLanjutan.create({
+          ...pengamatanLanjutan.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (pengamatanAwalPadat) {
+        await t_pengamatanAwalPadat.create({
+          ...pengamatanAwalPadat.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (pengamatanAwalSteril) {
+        await t_pengamatanAwalSteril.create({
+          ...pengamatanAwalSteril.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (pengamatanAwalPenyalutan) {
+        await t_pengamatanAwalPenyalutan.create({
+          ...pengamatanAwalPenyalutan.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (evaluasiBulk) {
+        await t_evaluasiBulk.create({
+          ...evaluasiBulk.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      if (distribusiUkuranPartikel) {
+        await t_distribusiUkuranPartikel.create({
+          ...distribusiUkuranPartikel.toJSON(),
+          CatatanTrialID: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // Step 3: Notify success
+      toast.success("Data duplicated successfully");
+    } catch (error) {
+      console.error("Error duplicating data", error);
+      toast.error("Error duplicating data");
+    }
+  }
+
   static async approvePemohon(req, res, next) {
     try {
       const { user_id, delegated_to, nama_user, inisial_user, bagian_user } =
@@ -836,6 +1006,8 @@ class ControllerCatatanTrial {
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
 
+      console.log(data, "< DAT");
+
       const {
         user_id,
         delegated_to,
@@ -887,6 +1059,20 @@ class ControllerCatatanTrial {
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
+            console.log(
+              {
+                jam: newItem?.jam || "",
+                gelatinTank: newItem?.gelatinTank || "",
+                gelatinBox: newItem?.gelatinBox || "",
+                hopper: newItem?.hopper || "",
+                needle: newItem?.needle || "",
+                pumpHeating: newItem?.pumpHeating || "",
+                setDensity: newItem?.setDensity || "",
+                jogSpeed: newItem?.jogSpeed || "",
+              },
+              "<<< asdasdas"
+            );
+
             const created = await t_prosesCatatanTrialPadat.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -899,6 +1085,15 @@ class ControllerCatatanTrial {
                 abrasi: newItem?.abrasi || "",
                 wh: newItem?.wh || "",
                 keterangan: newItem?.keterangan || "",
+                jam: newItem?.jam || "",
+                gelatinTank: newItem?.gelatinTank || "",
+                gelatinBox: newItem?.gelatinBox || "",
+                hopper: newItem?.hopper || "",
+                needle: newItem?.needle || "",
+                pumpHeating: newItem?.pumpHeating || "",
+                setDensity: newItem?.setDensity || "",
+                jogSpeed: newItem?.jogSpeed || "",
+
                 tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
@@ -922,6 +1117,14 @@ class ControllerCatatanTrial {
                 abrasi: newItem?.abrasi || "",
                 wh: newItem?.wh || "",
                 keterangan: newItem?.keterangan || "",
+                jam: newItem?.jam || "",
+                gelatinTank: newItem?.gelatinTank || "",
+                gelatinBox: newItem?.gelatinBox || "",
+                hopper: newItem?.hopper || "",
+                needle: newItem?.needle || "",
+                pumpHeating: newItem?.pumpHeating || "",
+                setDensity: newItem?.setDensity || "",
+                jogSpeed: newItem?.jogSpeed || "",
                 tableIndex: newItem?.tableIndex ?? null,
                 CatatanTrialID: +id || null,
                 user_id,
@@ -1451,6 +1654,10 @@ class ControllerCatatanTrial {
                   newItem?.spesifikasiKeseragamanBobotKapsulKosong || "",
                 spesifikasiKeseragamanBobotIsiKapsul:
                   newItem?.spesifikasiKeseragamanBobotIsiKapsul || "",
+                spesifikasiBobotIsiCangkang:
+                  newItem?.spesifikasiBobotIsiCangkang || "",
+                spesifikasiBobotIsiCangkangBending:
+                  newItem?.spesifikasiBobotIsiCangkangBending || "",
                 spesifikasiWaktuHancurKapsul:
                   newItem?.spesifikasiWaktuHancurKapsul || "",
                 settingWaktuHancurKapsul:
@@ -1482,6 +1689,19 @@ class ControllerCatatanTrial {
                 settingPenandaanBody: newItem?.settingPenandaanBody || "",
                 evaluasiPenandaanBody: newItem?.evaluasiPenandaanBody || "",
 
+                syaratWarna: newItem?.syaratWarna || "",
+                hasilWarna: newItem?.hasilWarna || "",
+                syaratBauAroma: newItem?.syaratBauAroma || "",
+                hasilBauAroma: newItem?.hasilBauAroma || "",
+                syaratRasa: newItem?.syaratRasa || "",
+                hasilRasa: newItem?.hasilRasa || "",
+                syaratPh: newItem?.syaratPh || "",
+                hasilPh: newItem?.hasilPh || "",
+                syaratBj: newItem?.syaratBj || "",
+                hasilBj: newItem?.hasilBj || "",
+                syaratViskositas: newItem?.syaratViskositas || "",
+                hasilViskositas: newItem?.hasilViskositas || "",
+
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -1505,6 +1725,9 @@ class ControllerCatatanTrial {
                 settingKekerasanTablet: newItem?.settingKekerasanTablet || "",
                 evaluasiKekerasanTablet: newItem?.evaluasiKekerasanTablet || [],
                 rataRataKekerasanTablet: newItem?.rataRataKekerasanTablet || "",
+                spesifikasiWaktuHancur: newItem?.spesifikasiWaktuHancur || "",
+                settingWaktuHancur: newItem?.settingWaktuHancur || "",
+                evaluasiWaktuHancur: newItem?.evaluasiWaktuHancur || "",
                 spesifikasiKerapuhan: newItem?.spesifikasiKerapuhan || "",
                 settingKerapuhan: newItem?.settingKerapuhan || "",
                 evaluasiKerapuhan: newItem?.evaluasiKerapuhan || "",
@@ -1515,10 +1738,15 @@ class ControllerCatatanTrial {
                 spesifikasiUkuran: newItem?.spesifikasiUkuran || "",
                 settingUkuran: newItem?.settingUkuran || "",
                 evaluasiUkuran: newItem?.evaluasiUkuran || "",
+
                 spesifikasiKeseragamanBobotKapsulKosong:
                   newItem?.spesifikasiKeseragamanBobotKapsulKosong || "",
                 spesifikasiKeseragamanBobotIsiKapsul:
                   newItem?.spesifikasiKeseragamanBobotIsiKapsul || "",
+                spesifikasiBobotIsiCangkang:
+                  newItem?.spesifikasiBobotIsiCangkang || "",
+                spesifikasiBobotIsiCangkangBending:
+                  newItem?.spesifikasiBobotIsiCangkangBending || "",
                 spesifikasiWaktuHancurKapsul:
                   newItem?.spesifikasiWaktuHancurKapsul || "",
                 settingWaktuHancurKapsul:
@@ -1549,6 +1777,20 @@ class ControllerCatatanTrial {
                   newItem?.spesifikasiPenandaanBody || "",
                 settingPenandaanBody: newItem?.settingPenandaanBody || "",
                 evaluasiPenandaanBody: newItem?.evaluasiPenandaanBody || "",
+
+                syaratWarna: newItem?.syaratWarna || "",
+                hasilWarna: newItem?.hasilWarna || "",
+                syaratBauAroma: newItem?.syaratBauAroma || "",
+                hasilBauAroma: newItem?.hasilBauAroma || "",
+                syaratRasa: newItem?.syaratRasa || "",
+                hasilRasa: newItem?.hasilRasa || "",
+                syaratPh: newItem?.syaratPh || "",
+                hasilPh: newItem?.hasilPh || "",
+                syaratBj: newItem?.syaratBj || "",
+                hasilBj: newItem?.hasilBj || "",
+                syaratViskositas: newItem?.syaratViskositas || "",
+                hasilViskositas: newItem?.hasilViskositas || "",
+
                 CatatanTrialID: +id || null,
                 user_id,
                 delegated_to,
@@ -1594,6 +1836,8 @@ class ControllerCatatanTrial {
         data: newData,
       });
     } catch (err) {
+      console.log(err, "<");
+
       if (transaction) {
         await transaction.rollback();
       }
@@ -2486,6 +2730,36 @@ class ControllerCatatanTrial {
       }
     } catch (err) {
       console.log(err, "<< er");
+      next(err);
+    }
+  }
+  static async deletePengamatanAwalLanjutan(req, res, next) {
+    try {
+      const { id } = req.params; // Getting CatatanTrialID from req.params
+
+      console.log(req.params, "< PARAMS");
+
+      // Find the record by CatatanTrialID
+      const pengamatanLanjutan = await t_pengamatanLanjutan.findOne({
+        where: { CatatanTrialID: +id },
+      });
+
+      console.log(pengamatanLanjutan, "< aa");
+
+      if (!pengamatanLanjutan) {
+        return res.status(404).json({
+          message: "Pengamatan Lanjutan not found",
+        });
+      }
+
+      // Delete the record
+      await t_pengamatanLanjutan.destroy({ where: { CatatanTrialID: +id } });
+
+      res.status(200).json({
+        message: "Success Delete pengamatanLanjutan",
+      });
+    } catch (err) {
+      console.error(err);
       next(err);
     }
   }

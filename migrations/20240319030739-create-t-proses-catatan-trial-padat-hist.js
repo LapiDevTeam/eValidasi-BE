@@ -42,6 +42,30 @@ module.exports = {
       keterangan: {
         type: Sequelize.STRING,
       },
+      jam: {
+        type: Sequelize.STRING,
+      },
+      gelatinTank: {
+        type: Sequelize.STRING,
+      },
+      gelatinBox: {
+        type: Sequelize.STRING,
+      },
+      hopper: {
+        type: Sequelize.STRING,
+      },
+      needle: {
+        type: Sequelize.STRING,
+      },
+      pumpHeating: {
+        type: Sequelize.STRING,
+      },
+      setDensity: {
+        type: Sequelize.STRING,
+      },
+      jogSpeed: {
+        type: Sequelize.STRING,
+      },
       tableIndex: {
         type: Sequelize.INTEGER,
       },

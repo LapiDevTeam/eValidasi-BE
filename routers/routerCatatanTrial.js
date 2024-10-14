@@ -3,6 +3,11 @@ const router = express.Router();
 const ControllerCatatanTrial = require("../controllers/controllerCatatanTrial");
 const { authentication } = require("../middlewares/authentication");
 
+router.post(
+  "/duplicate-catatanTrial/:id",
+  authentication,
+  ControllerCatatanTrial.handleDuplicate
+);
 router.get("/all-namaProduk01", ControllerCatatanTrial.findAllNamaProduct01);
 router.get("/all-namaProduk02", ControllerCatatanTrial.findAllNamaProduct02);
 router.get(
@@ -161,6 +166,10 @@ router.post(
   "/create-pengamatan-lanjutan",
   authentication,
   ControllerCatatanTrial.createPengamatanLanjutan
+);
+router.delete(
+  "/delete-pengamatanAwalLanjutan/:id",
+  ControllerCatatanTrial.deletePengamatanAwalLanjutan
 );
 router.put(
   "/update-pengamatanAwalLanjutan/:id",

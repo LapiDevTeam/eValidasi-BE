@@ -21,6 +21,12 @@ module.exports = {
       evaluasiPemerian: {
         type: Sequelize.STRING,
       },
+      bobotIsiCangkang: {
+        type: Sequelize.STRING,
+      },
+      bobotIsiCangkangBending: {
+        type: Sequelize.STRING,
+      },
       spesifikasiKeseragamanBobot: {
         type: Sequelize.STRING,
       },
@@ -79,6 +85,15 @@ module.exports = {
         type: Sequelize.STRING,
       },
       spesifikasiKeseragamanBobotIsiKapsul: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiKeseragamanBobotKapsulKosong: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiBobotIsiCangkang: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiBobotIsiCangkangBending: {
         type: Sequelize.STRING,
       },
       spesifikasiWaktuHancurKapsul: {
@@ -144,6 +159,43 @@ module.exports = {
         type: Sequelize.STRING,
       },
       evaluasiPenandaanBody: {
+        type: Sequelize.STRING,
+      },
+
+      syaratWarna: {
+        type: Sequelize.STRING,
+      },
+      hasilWarna: {
+        type: Sequelize.STRING,
+      },
+      syaratBauAroma: {
+        type: Sequelize.STRING,
+      },
+      hasilBauAroma: {
+        type: Sequelize.STRING,
+      },
+      syaratRasa: {
+        type: Sequelize.STRING,
+      },
+      hasilRasa: {
+        type: Sequelize.STRING,
+      },
+      syaratPh: {
+        type: Sequelize.STRING,
+      },
+      hasilPh: {
+        type: Sequelize.STRING,
+      },
+      syaratBj: {
+        type: Sequelize.STRING,
+      },
+      hasilBj: {
+        type: Sequelize.STRING,
+      },
+      syaratViskositas: {
+        type: Sequelize.STRING,
+      },
+      hasilViskositas: {
         type: Sequelize.STRING,
       },
 
