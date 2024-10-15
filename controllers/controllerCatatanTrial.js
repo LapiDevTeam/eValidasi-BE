@@ -34,170 +34,307 @@ class ControllerCatatanTrial {
   static async handleDuplicate(req, res, next) {
     console.log("xixixi");
     const { id } = req.params;
+    console.log(id, "< id");
+
     try {
       // Step 1: Fetch data from all tables where CatatanTrialID matches the given id
       const catatanTrial = await t_catatanTrial.findOne({
+        where: { id: +id },
+      });
+      const komposisiCatatanTrial = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
-      const komposisiCatatanTrial = await t_komposisiCatatanTrial.findOne({
+      const perhitunganZatAktif = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: +id },
       });
-      const perhitunganZatAktif = await t_perhitunganZatAktif.findOne({
+      const formulaCatatanTrial = await t_formulaCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
-      const metodePembuatan = await t_metodePembuatan.findOne({
+      const metodePembuatan = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: +id },
       });
-      const prosesPadat = await t_prosesCatatanTrialPadat.findOne({
+      const prosesPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: +id },
       });
-      const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findOne({
+      const prosesPenyalutan = await t_prosesCatatanTrialPenyalutan.findAll({
         where: { CatatanTrialID: +id },
       });
-      const formulaCatatanTrial = await t_formulaCatatanTrial.findOne({
-        where: { CatatanTrialID: +id },
-      });
-      const pengamatanAwalCair = await t_pengamatanAwalCair.findOne({
-        where: { CatatanTrialID: +id },
-      });
-      const pengamatanLanjutan = await t_pengamatanLanjutan.findOne({
-        where: { CatatanTrialID: +id },
-      });
-      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findOne({
-        where: { CatatanTrialID: +id },
-      });
-      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findOne({
-        where: { CatatanTrialID: +id },
-      });
-      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findOne(
-        { where: { CatatanTrialID: +id } }
-      );
-      const evaluasiBulk = await t_evaluasiBulk.findOne({
+      const evaluasiBulk = await t_evaluasiBulk.findAll({
         where: { CatatanTrialID: +id },
       });
       const distribusiUkuranPartikel = await t_distribusiUkuranPartikel.findOne(
         { where: { CatatanTrialID: +id } }
       );
+      const pengamatanAwalPadat = await t_pengamatanAwalPadat.findAll({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanLanjutan = await t_pengamatanLanjutan.findOne({
+        where: { CatatanTrialID: +id },
+      });
+
+      const pengamatanAwalCair = await t_pengamatanAwalCair.findAll({
+        where: { CatatanTrialID: +id },
+      });
+
+      const pengamatanAwalSteril = await t_pengamatanAwalSteril.findAll({
+        where: { CatatanTrialID: +id },
+      });
+      const pengamatanAwalPenyalutan = await t_pengamatanAwalPenyalutan.findAll(
+        { where: { CatatanTrialID: +id } }
+      );
 
       // Step 2: Duplicate each record
       if (catatanTrial) {
-        await t_catatanTrial.create({
-          ...catatanTrial.toJSON(),
-          CatatanTrialID: null,
+        // Convert Sequelize instance to plain object to modify it
+        const catatanTrialData = catatanTrial.toJSON();
+
+        // Delete the 'id' and 'statusDokumen' fields
+        delete catatanTrialData.id;
+        delete catatanTrialData.statusDokumen;
+
+        // Create a new record with the modified data and capture the new record
+        const newCatatanTrial = await t_catatanTrial.create({
+          ...catatanTrialData,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-      }
-      if (komposisiCatatanTrial) {
-        await t_komposisiCatatanTrial.create({
-          ...komposisiCatatanTrial.toJSON(),
-          CatatanTrialID: null,
+
+        // If komposisiCatatanTrial exists, create the new komposisi record
+        if (komposisiCatatanTrial && komposisiCatatanTrial.length > 0) {
+          for (const komposisi of komposisiCatatanTrial) {
+            // Convert each Sequelize instance to plain object to modify it
+            const komposisiData = komposisi.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete komposisiData.id;
+            delete komposisiData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_komposisiCatatanTrial.create({
+              ...komposisiData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        // Fetch perhitunganZatAktif associated with the current CatatanTrialID
+        const perhitunganZatAktif = await t_perhitunganZatAktif.findAll({
+          where: { CatatanTrialID: +id },
+        });
+
+        // If perhitunganZatAktif exists, create the new perhitungan record
+        if (perhitunganZatAktif && perhitunganZatAktif.length > 0) {
+          for (const perhitungan of perhitunganZatAktif) {
+            // Convert each Sequelize instance to plain object to modify it
+            const perhitunganData = perhitungan.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete perhitunganData.id;
+            delete perhitunganData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_perhitunganZatAktif.create({
+              ...perhitunganData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        // If formulaCatatanTrial exists, create the new formula records
+        if (formulaCatatanTrial && formulaCatatanTrial.length > 0) {
+          for (const formula of formulaCatatanTrial) {
+            // Convert each Sequelize instance to plain object to modify it
+            const formulaData = formula.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete formulaData.id;
+            delete formulaData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_formulaCatatanTrial.create({
+              ...formulaData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        if (metodePembuatan && metodePembuatan.length > 0) {
+          for (const metode of metodePembuatan) {
+            // Convert each Sequelize instance to plain object to modify it
+            const metodeData = metode.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete metodeData.id;
+            delete metodeData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_metodePembuatan.create({
+              ...metodeData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        // If prosesPadat exists, create the new proses record
+        if (prosesPadat && prosesPadat.length > 0) {
+          for (const proses of prosesPadat) {
+            // Convert each Sequelize instance to plain object to modify it
+            const prosesData = proses.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete prosesData.id;
+            delete prosesData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_prosesCatatanTrialPadat.create({
+              ...prosesData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        // If prosesPenyalutan exists, create the new proses record
+        if (prosesPenyalutan && prosesPenyalutan.length > 0) {
+          for (const proses of prosesPenyalutan) {
+            // Convert each Sequelize instance to plain object to modify it
+            const prosesData = proses.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete prosesData.id;
+            delete prosesData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_prosesCatatanTrialPenyalutan.create({
+              ...prosesData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        // If evaluasiBulk exists, create the new evaluasi record
+        if (evaluasiBulk && evaluasiBulk.length > 0) {
+          for (const evaluasi of evaluasiBulk) {
+            // Convert each Sequelize instance to a plain object to modify it
+            const evaluasiData = evaluasi.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete evaluasiData.id;
+            delete evaluasiData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_evaluasiBulk.create({
+              ...evaluasiData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+        const distribusiData = distribusiUkuranPartikel.toJSON();
+
+        // Delete the 'id' and 'statusDokumen' fields
+        delete distribusiData.id;
+        delete distribusiData.CatatanTrialID;
+
+        // Create a new record with the modified data and capture the new record
+        const newDistribusiData = await t_distribusiUkuranPartikel.create({
+          ...distribusiData,
+          CatatanTrialID: newCatatanTrial.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-      }
-      if (perhitunganZatAktif) {
-        await t_perhitunganZatAktif.create({
-          ...perhitunganZatAktif.toJSON(),
-          CatatanTrialID: null,
+
+        // If pengamatanAwalPadat exists, create the new pengamatan record
+        if (pengamatanAwalPadat && pengamatanAwalPadat.length > 0) {
+          for (const pengamatan of pengamatanAwalPadat) {
+            // Convert each Sequelize instance to a plain object to modify it
+            const pengamatanData = pengamatan.toJSON();
+
+            // Delete the 'id' and 'CatatanTrialID' fields
+            delete pengamatanData.id;
+            delete pengamatanData.CatatanTrialID;
+
+            // Create a new record with the modified data and the new CatatanTrialID
+            await t_pengamatanAwalPadat.create({
+              ...pengamatanData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+
+        const pengamatanLanjutanData = pengamatanLanjutan.toJSON();
+
+        // Delete the 'id' and 'statusDokumen' fields
+        delete pengamatanLanjutanData.id;
+        delete pengamatanLanjutanData.CatatanTrialID;
+
+        // Create a new record with the modified data and capture the new record
+        const newPengamatanLanjutanData = await t_pengamatanLanjutan.create({
+          ...pengamatanLanjutanData,
+          CatatanTrialID: newCatatanTrial.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-      }
-      if (metodePembuatan) {
-        await t_metodePembuatan.create({
-          ...metodePembuatan.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (prosesPadat) {
-        await t_prosesCatatanTrialPadat.create({
-          ...prosesPadat.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (prosesPenyalutan) {
-        await t_prosesCatatanTrialPenyalutan.create({
-          ...prosesPenyalutan.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (formulaCatatanTrial) {
-        await t_formulaCatatanTrial.create({
-          ...formulaCatatanTrial.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (pengamatanAwalCair) {
-        await t_pengamatanAwalCair.create({
-          ...pengamatanAwalCair.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (pengamatanLanjutan) {
-        await t_pengamatanLanjutan.create({
-          ...pengamatanLanjutan.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (pengamatanAwalPadat) {
-        await t_pengamatanAwalPadat.create({
-          ...pengamatanAwalPadat.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (pengamatanAwalSteril) {
-        await t_pengamatanAwalSteril.create({
-          ...pengamatanAwalSteril.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (pengamatanAwalPenyalutan) {
-        await t_pengamatanAwalPenyalutan.create({
-          ...pengamatanAwalPenyalutan.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (evaluasiBulk) {
-        await t_evaluasiBulk.create({
-          ...evaluasiBulk.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
-      if (distribusiUkuranPartikel) {
-        await t_distribusiUkuranPartikel.create({
-          ...distribusiUkuranPartikel.toJSON(),
-          CatatanTrialID: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+
+        if (pengamatanAwalCair && pengamatanAwalCair.length > 0) {
+          for (const pengamatan of pengamatanAwalCair) {
+            const pengamatanData = pengamatan.toJSON();
+            delete pengamatanData.id;
+            delete pengamatanData.CatatanTrialID;
+
+            await t_pengamatanAwalCair.create({
+              ...pengamatanData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+
+        // If pengamatanAwalSteril exists, create the new pengamatan record
+        if (pengamatanAwalSteril && pengamatanAwalSteril.length > 0) {
+          for (const pengamatan of pengamatanAwalSteril) {
+            const pengamatanData = pengamatan.toJSON();
+            delete pengamatanData.id;
+            delete pengamatanData.CatatanTrialID;
+
+            await t_pengamatanAwalSteril.create({
+              ...pengamatanData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
+
+        // If pengamatanAwalPenyalutan exists, create the new pengamatan record
+        if (pengamatanAwalPenyalutan && pengamatanAwalPenyalutan.length > 0) {
+          for (const pengamatan of pengamatanAwalPenyalutan) {
+            const pengamatanData = pengamatan.toJSON();
+            delete pengamatanData.id;
+            delete pengamatanData.CatatanTrialID;
+
+            await t_pengamatanAwalPenyalutan.create({
+              ...pengamatanData,
+              CatatanTrialID: newCatatanTrial.id, // Set the new CatatanTrialID
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
       }
 
-      // Step 3: Notify success
-      toast.success("Data duplicated successfully");
+      res.status(201).json({ message: "Data has been duplicate" });
     } catch (error) {
       console.error("Error duplicating data", error);
-      toast.error("Error duplicating data");
     }
   }
 
