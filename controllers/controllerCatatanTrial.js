@@ -3239,6 +3239,8 @@ class ControllerCatatanTrial {
   }
   static async updateUpload(req, res) {
     try {
+      console.log("xixixixixi");
+
       const { CatatanTrialID } = req.params;
       const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
       if (cat?.statusDokumen === "Reject") {
@@ -3262,19 +3264,23 @@ class ControllerCatatanTrial {
           }
         );
       }
-      const { upload } = req.body;
+      const upload = req.body;
+      console.log(upload, "< 123");
+
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
+
+      console.log(findCatatanTrialID.id, "< ID");
 
       if (!findCatatanTrialID) throw { name: "NotFound" };
       const updateUpload = await t_catatanTrial.update(
-        { upload: upload },
+        { upload }, // Directly using upload array
         {
-          where: {
-            id: findCatatanTrialID.id,
-          },
+          where: { id: findCatatanTrialID.id },
           returning: true,
         }
       );
+      console.log(updateUpload, "<< update");
+
       res.status(200).json(updateUpload);
     } catch (err) {
       console.log(err);
