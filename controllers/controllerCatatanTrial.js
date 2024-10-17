@@ -91,6 +91,7 @@ class ControllerCatatanTrial {
         // Delete the 'id' and 'statusDokumen' fields
         delete catatanTrialData.id;
         delete catatanTrialData.statusDokumen;
+        delete catatanTrialData.upload;
 
         // Create a new record with the modified data and capture the new record
         const newCatatanTrial = await t_catatanTrial.create({
@@ -236,19 +237,23 @@ class ControllerCatatanTrial {
             });
           }
         }
-        const distribusiData = distribusiUkuranPartikel.toJSON();
+        if (distribusiUkuranPartikel) {
+          const distribusiData = distribusiUkuranPartikel.toJSON();
 
-        // Delete the 'id' and 'statusDokumen' fields
-        delete distribusiData.id;
-        delete distribusiData.CatatanTrialID;
+          // Delete the 'id' and 'statusDokumen' fields
+          delete distribusiData.id;
+          delete distribusiData.CatatanTrialID;
 
-        // Create a new record with the modified data and capture the new record
-        const newDistribusiData = await t_distribusiUkuranPartikel.create({
-          ...distribusiData,
-          CatatanTrialID: newCatatanTrial.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+          // Create a new record with the modified data and capture the new record
+          const newDistribusiData = await t_distribusiUkuranPartikel.create({
+            ...distribusiData,
+            CatatanTrialID: newCatatanTrial.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          // Optionally, return or do something with newDistribusiData here
+        }
 
         // If pengamatanAwalPadat exists, create the new pengamatan record
         if (pengamatanAwalPadat && pengamatanAwalPadat.length > 0) {
@@ -270,19 +275,21 @@ class ControllerCatatanTrial {
           }
         }
 
-        const pengamatanLanjutanData = pengamatanLanjutan.toJSON();
+        if (pengamatanLanjutan) {
+          const pengamatanLanjutanData = pengamatanLanjutan.toJSON();
 
-        // Delete the 'id' and 'statusDokumen' fields
-        delete pengamatanLanjutanData.id;
-        delete pengamatanLanjutanData.CatatanTrialID;
+          // Delete the 'id' and 'statusDokumen' fields
+          delete pengamatanLanjutanData.id;
+          delete pengamatanLanjutanData.CatatanTrialID;
 
-        // Create a new record with the modified data and capture the new record
-        const newPengamatanLanjutanData = await t_pengamatanLanjutan.create({
-          ...pengamatanLanjutanData,
-          CatatanTrialID: newCatatanTrial.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+          // Create a new record with the modified data and capture the new record
+          const newPengamatanLanjutanData = await t_pengamatanLanjutan.create({
+            ...pengamatanLanjutanData,
+            CatatanTrialID: newCatatanTrial.id,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
 
         if (pengamatanAwalCair && pengamatanAwalCair.length > 0) {
           for (const pengamatan of pengamatanAwalCair) {
