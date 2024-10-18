@@ -8,6 +8,7 @@ router.post(
   authentication,
   ControllerCatatanTrial.handleDuplicate
 );
+
 router.get("/all-namaProduk01", ControllerCatatanTrial.findAllNamaProduct01);
 router.get("/all-namaProduk02", ControllerCatatanTrial.findAllNamaProduct02);
 router.get(

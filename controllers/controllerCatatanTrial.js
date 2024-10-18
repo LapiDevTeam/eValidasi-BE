@@ -18,6 +18,7 @@ const {
   m_kodeTrialObatJadi,
   sequelize,
 } = require("../models/index");
+const GLOBAL_URL = process.env.GLOBAL_URL;
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op, where } = require("sequelize");
@@ -3293,6 +3294,7 @@ class ControllerCatatanTrial {
       console.log(err);
     }
   }
+
   static async approveCatatanTrial(req, res, next) {
     try {
       const {
