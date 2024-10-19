@@ -885,6 +885,7 @@ class ControllerCatatanTrial {
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
+
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
 
@@ -938,6 +939,8 @@ class ControllerCatatanTrial {
       await Promise.all(
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
+          console.log(newItem, "< idnem");
+
           if (!newItem?.id) {
             const created = await t_metodePembuatan.create(
               {
@@ -2165,6 +2168,8 @@ class ControllerCatatanTrial {
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
 
+      console.log(id, "<< id");
+
       const {
         user_id,
         delegated_to,
@@ -2214,6 +2219,8 @@ class ControllerCatatanTrial {
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
+          console.log(newItem, "< new item");
+
           //cek kalo gada id , create baru
           if (!newItem?.id) {
             const created = await t_formulaCatatanTrial.create(
