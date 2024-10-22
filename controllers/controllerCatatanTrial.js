@@ -3478,7 +3478,7 @@ class ControllerCatatanTrial {
         statusDokumen,
         alasan,
       } = req.query;
-      const size = page ? 10 : "";
+      const size = page ? 20 : "";
 
       const { limit, offset } = getPagination(page, size);
 
