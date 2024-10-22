@@ -16,7 +16,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       kebutuhanAnalisaMaterial: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       biayaAnalisaMaterial: {
         type: Sequelize.INTEGER,
@@ -25,7 +25,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       kebutuhanOrientasiFormulaDanProses: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       biayaOrientasiFormulaDanProses: {
         type: Sequelize.INTEGER,
@@ -34,7 +34,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       kebutuhanOptimasiFormulaDanProses: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       biayaOptimasiFormulaDanProses: {
         type: Sequelize.INTEGER,
@@ -44,7 +44,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       kebutuhanStabilitaSkalaLab: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       biayaStabilitaSkalaLab: {
         type: Sequelize.INTEGER,
@@ -53,13 +53,13 @@ module.exports = {
         type: Sequelize.STRING,
       },
       kebutuhanSampelPerTinggal: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       biayaSampelPerTinggal: {
         type: Sequelize.INTEGER,
       },
       totalKebutuhanMaterial: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.FLOAT,
       },
       perkiraanHargaPembelianMaterial: {
         type: Sequelize.INTEGER,

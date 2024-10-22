@@ -16,26 +16,26 @@ module.exports = (sequelize, DataTypes) => {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
       jumlahPenelitianAnalisaMaterial: DataTypes.STRING,
-      kebutuhanAnalisaMaterial: DataTypes.INTEGER,
+      kebutuhanAnalisaMaterial: DataTypes.FLOAT,
       biayaAnalisaMaterial: DataTypes.INTEGER,
 
       jumlahPenelitianOrientasiFormulaDanProses: DataTypes.STRING,
-      kebutuhanOrientasiFormulaDanProses: DataTypes.INTEGER,
+      kebutuhanOrientasiFormulaDanProses: DataTypes.FLOAT,
       biayaOrientasiFormulaDanProses: DataTypes.INTEGER,
 
       jumlahPenelitianOptimasiFormulaDanProses: DataTypes.STRING,
-      kebutuhanOptimasiFormulaDanProses: DataTypes.INTEGER,
+      kebutuhanOptimasiFormulaDanProses: DataTypes.FLOAT,
       biayaOptimasiFormulaDanProses: DataTypes.INTEGER,
 
       jumlahPenelitianStabilitaSkalaLab: DataTypes.STRING,
-      kebutuhanStabilitaSkalaLab: DataTypes.INTEGER,
+      kebutuhanStabilitaSkalaLab: DataTypes.FLOAT,
       biayaStabilitaSkalaLab: DataTypes.INTEGER,
 
       jumlahPenelitianSampelPerTinggal: DataTypes.STRING,
-      kebutuhanSampelPerTinggal: DataTypes.INTEGER,
+      kebutuhanSampelPerTinggal: DataTypes.FLOAT,
       biayaSampelPerTinggal: DataTypes.INTEGER,
 
-      totalKebutuhanMaterial: DataTypes.INTEGER,
+      totalKebutuhanMaterial: DataTypes.FLOAT,
       perkiraanHargaPembelianMaterial: DataTypes.INTEGER,
       source: DataTypes.STRING,
       tableIndex: DataTypes.INTEGER,
