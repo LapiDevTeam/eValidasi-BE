@@ -195,10 +195,8 @@ class ControllerProductBrief {
         if (err) console.log(err);
         const request = new sql.Request();
         request.query(
-          `SELECT DISTINCT mps.Sediaan_Kode, mps.Sediaan_Nama
-          FROM m_Product mp
-          JOIN vwProductPPI vw ON vw.PPI_ProductID = mp.Product_ID
-          JOIN m_Product_Sediaan mps ON mp.Product_BentukSediaan = mps.Sediaan_Kode;`,
+          `SELECT DISTINCT Sediaan_Kode,Sediaan_Nama
+          FROM m_Product_Sediaan`,
           async function (err, { recordset }) {
             if (err) console.log(err);
             res.status(200).json(recordset);

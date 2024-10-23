@@ -421,7 +421,21 @@ class ControllerCatatanTrial {
         if (err) console.log(err);
         const request = new sql.Request();
         request.query(
-          `SELECT Product_ID, Product_Name, Product_Category FROM m_product WHERE Product_Category = '01' AND isActive = '1';
+          `SELECT 
+    p.product_id,
+    p.Product_Name, 
+    p.Product_Kemasan
+FROM 
+    m_PRODUCT p
+WHERE 
+    p.isActive = 1 
+GROUP BY 
+    p.product_id, 
+    p.Product_Name, 
+    p.Product_Kemasan
+ORDER BY 
+    p.product_id ASC;
+;
           `,
           async function (err, { recordset }) {
             if (err) console.log(err);

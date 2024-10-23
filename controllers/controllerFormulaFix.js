@@ -387,6 +387,117 @@ class ControllerFormulaFix {
     }
   }
 
+  static async findNamaBahanBaku(req, res) {
+    try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      // Establish the connection
+      await sql.connect(config);
+
+      const request = new sql.Request();
+      const { nama, kode } = req.query;
+
+      let query = `
+        SELECT DISTINCT ItemID, ItemName, principle AS Produsen 
+        FROM t_NP_Sample_Stock 
+        WHERE ItemID != '' AND ItemID != '-'
+      `;
+
+      // Dynamically add query conditions if parameters are provided
+      if (nama) {
+        query += ` AND ItemName = @nama `;
+        request.input("nama", sql.VarChar, nama);
+      }
+      if (kode) {
+        query += ` AND ItemID = @kode `;
+        request.input("kode", sql.VarChar, kode);
+      }
+
+      const { recordset } = await request.query(query);
+
+      if (recordset.length === 0) {
+        return res.status(404).json({ message: "Produsen not found" });
+      }
+
+      console.log(recordset, "< 12333");
+
+      // Send the first matched result
+      res.status(200).json(recordset);
+    } catch (err) {
+      console.error("Error in findNamaBahanBaku:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+  static async findAllKomposisi(req, res) {
+    try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      // Establish the connection
+      await sql.connect(config);
+
+      const request = new sql.Request();
+      const { product_id } = req.query; // Expecting product_id from query params
+
+      let query = `
+        SELECT 
+          pb.Product_BahanAktif,
+          pb.Product_Dosis
+        FROM m_product_bahanaktif pb
+        LEFT JOIN m_PRODUCT p ON p.Product_ID = pb.Product_ID
+        WHERE p.isActive = 1
+      `;
+
+      // If product_id is provided, filter by it
+      if (product_id) {
+        query += ` AND p.Product_ID = @product_id `;
+        request.input("product_id", sql.VarChar, product_id); // Input parameter
+      } else {
+        // Default to product_id '01' if no product_id is provided
+        query += ` AND p.Product_ID = '01' `;
+      }
+
+      const { recordset } = await request.query(query);
+
+      if (recordset.length === 0) {
+        return res.status(404).json({
+          message: "No active ingredients found for the specified product",
+        });
+      }
+
+      console.log(recordset, "< 12333");
+
+      // Format the response as an array of objects
+      const formattedList = recordset.map((item) => ({
+        dosis: item.Product_Dosis.trim(), // Dosis property
+        bahanAktif: item.Product_BahanAktif.trim(), // BahanAktif property
+      }));
+
+      // Send the formatted list
+      res.status(200).json(formattedList);
+    } catch (err) {
+      console.error("Error in findAllKomposisi:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+
   static async handleSavePerhitunganBahanBaku(req, res) {
     const transaction = await sequelize.transaction();
 

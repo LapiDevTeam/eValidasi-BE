@@ -86,6 +86,9 @@ router.get(
   ControllerFormulaFix.getUploadAcuanCatatanTrial
 );
 
+router.get("/find-produsen", ControllerFormulaFix.findNamaBahanBaku);
+router.get("/get-komposisi-01", ControllerFormulaFix.findAllKomposisi);
+
 router.get("/formula-fix-details/:id", ControllerFormulaFix.getFormulaDetails);
 
 router.delete("/delete-formula-fix/:id", ControllerFormulaFix.deleteFormulaFix);
