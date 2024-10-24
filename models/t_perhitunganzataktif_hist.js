@@ -15,9 +15,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       status: DataTypes.STRING,
       changeDate: DataTypes.DATE,
-      padaEtiket: DataTypes.STRING,
+      padaEtiket: DataTypes.TEXT,
       bahanBakuYangDigunakan: DataTypes.STRING,
-      perhitunganBahanBaku: DataTypes.STRING,
+      perhitunganBahanBaku: DataTypes.TEXT,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

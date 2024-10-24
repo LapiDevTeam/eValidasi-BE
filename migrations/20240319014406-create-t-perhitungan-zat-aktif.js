@@ -10,13 +10,13 @@ module.exports = {
         type: Sequelize.INTEGER,
       },
       padaEtiket: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       bahanBakuYangDigunakan: {
         type: Sequelize.STRING,
       },
       perhitunganBahanBaku: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       CatatanTrialID: {
         type: Sequelize.INTEGER,

@@ -16,9 +16,9 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_perhitunganZatAktif.init(
     {
-      padaEtiket: DataTypes.STRING,
+      padaEtiket: DataTypes.TEXT,
       bahanBakuYangDigunakan: DataTypes.STRING,
-      perhitunganBahanBaku: DataTypes.STRING,
+      perhitunganBahanBaku: DataTypes.TEXT,
       CatatanTrialID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
