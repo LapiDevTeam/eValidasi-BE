@@ -30,8 +30,127 @@ const {
   approverRecordset,
 } = require("../helpers/approver");
 const { fetchApproverInisial } = require("../services/mssqlService");
+const path = require("path");
+const fs = require("fs");
+const { generateAndReadTest } = require("../helpers/pdf.helper");
+const { PDFDocument, rgb } = require("pdf-lib");
 
 class ControllerCatatanTrial {
+  static async addPageNumbersToHalaman(req, res) {
+    const { inputPath, outputPath } = req.body;
+
+    try {
+      const fileName = path.basename(inputPath);
+
+      let resultOCR = await generateAndReadTest(fileName);
+
+      const existingPdfBytes = fs.readFileSync(inputPath);
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+      const totalPages = pdfDoc.getPageCount();
+
+      // KORD POTRAIT DSINI
+      const halamanX = 515;
+      const halamanY = 35;
+
+      // KORD LANDSKEP DSINI
+      const halamanX2 = 860;
+      const halamanY2 = 747;
+
+      for (let i = 0; i < totalPages; i++) {
+        const page = pdfDoc.getPage(i);
+        const { width, height } = page.getSize();
+
+        const isOCRPage = resultOCR.includes(i + 1);
+
+        if (isOCRPage) {
+          // Check if it's the last page
+          if (i + 1 === totalPages) {
+            page.drawText(`${i + 1} of ${totalPages}`, {
+              x: halamanX2,
+              y: halamanY2,
+              size: 8.5,
+              color: rgb(0, 0, 0),
+              rotate: degrees(90),
+            });
+          }
+        } else {
+          page.drawText(`${i + 1} of ${totalPages}`, {
+            x: halamanX,
+            y: halamanY,
+            size: 8.5,
+            color: rgb(0, 0, 0),
+          });
+        }
+      }
+      const pdfBytes = await pdfDoc.save();
+      fs.writeFileSync(outputPath, pdfBytes);
+
+      const absoluteOutputPath = path.resolve(outputPath);
+
+      res.sendFile(absoluteOutputPath, (err) => {
+        if (err) {
+          console.error("Error sending file:", err);
+          res.status(500).json({ error: "Failed to send the modified PDF." });
+        } else {
+          console.log("File sent successfully");
+        }
+      });
+    } catch (error) {
+      console.error("Error adding page numbers:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to add page numbers to Halaman box." });
+    }
+  }
+
+  static async uploadPDFpublic(req, res) {
+    const resp = {
+      error: true,
+      msg: "Terjadi kendala",
+    };
+
+    try {
+      if (!req.file) {
+        throw new Error("No file uploaded.");
+      }
+
+      if (req.file.mimetype !== "application/pdf") {
+        throw new Error("Hanya file dengan format .pdf yang diperbolehkan.");
+      }
+
+      const ext = path.extname(req.file.originalname); // Get file extension
+      const oldFn = req.file.path; // Temporary file path
+      const fn = req.file.md5 + ext; // New file name using md5 hash
+      const newFn = path.join(req.file.destination, "pdf-" + fn); // Absolute path of the new file
+      req.file.newFn = newFn;
+
+      // Rename the file to the new path
+      await fs.promises.rename(oldFn, newFn);
+
+      let protocol = req.protocol;
+      let host = req.get("host");
+      let url = `${protocol}://${host}`;
+
+      // if (IMG_URL) {
+      //   url = IMG_URL; // Use predefined URL if available
+      // }
+
+      const resp = {
+        error: false,
+        msg: "File berhasil diunggah",
+        url: `${url}/api/v1/upload/file/${fn}`, // URL for accessing the file
+        filename: "pdf-" + fn, // Return the actual file path on the server
+      };
+
+      return res.status(200).send(resp); // Send the response with file info
+    } catch (error) {
+      console.log({ error, msg: "@uploadPDFpublic.controller" });
+      resp.msg = error.message || "Terjadi kendala";
+      return res.status(500).json(resp);
+    }
+  }
+
   static async handleDuplicate(req, res, next) {
     console.log("xixixi");
     const { id } = req.params;
@@ -4057,9 +4176,21 @@ ORDER BY
         { user_id, delegated_to, flag_update },
         { where: { CatatanTrialID: +id } }
       );
+      await t_distribusiUkuranPartikel.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
+      await t_evaluasiBulk.update(
+        { user_id, delegated_to, flag_update },
+        { where: { CatatanTrialID: +id } }
+      );
 
       // Next, delete all related records
       await t_catatanTrial_status.destroy({ where: { CatatanTrialID: +id } });
+      await t_evaluasiBulk.destroy({ where: { CatatanTrialID: +id } });
+      await t_distribusiUkuranPartikel.destroy({
+        where: { CatatanTrialID: +id },
+      });
       await t_komposisiCatatanTrial.destroy({ where: { CatatanTrialID: +id } });
       await t_perhitunganZatAktif.destroy({ where: { CatatanTrialID: +id } });
       await t_metodePembuatan.destroy({ where: { CatatanTrialID: +id } });

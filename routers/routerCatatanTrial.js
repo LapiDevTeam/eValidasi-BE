@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const ControllerCatatanTrial = require("../controllers/controllerCatatanTrial");
 const { authentication } = require("../middlewares/authentication");
+const {
+  checkFileSizePublicPdf,
+} = require("../middlewares/upload.middleware.js");
 
 router.post(
   "/duplicate-catatanTrial/:id",
@@ -269,6 +272,13 @@ router.delete(
 router.get(
   "/catatan-trial/history/:id",
   ControllerCatatanTrial.getHistoryCatatanTrial
+);
+
+router.post("/pdf", ControllerCatatanTrial.addPageNumbersToHalaman);
+router.post(
+  "/uploadpdf",
+  checkFileSizePublicPdf,
+  ControllerCatatanTrial.uploadPDFpublic
 );
 
 module.exports = router;
