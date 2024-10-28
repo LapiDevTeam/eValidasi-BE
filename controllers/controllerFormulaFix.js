@@ -39,6 +39,8 @@ class ControllerFormulaFix {
         formulaA,
         formulaB,
         formulaC,
+        formulaD,
+        keterangan,
       } = req.body;
 
       console.log(kemasan, "< kemasan");
@@ -57,6 +59,8 @@ class ControllerFormulaFix {
         formulaA: formulaA || "",
         formulaB: formulaB || "",
         formulaC: formulaC || "",
+        formulaD: formulaD || "",
+        keterangan: keterangan || "",
         pic: nama_user || "",
         bagian: bagian_user || "",
       });
@@ -218,6 +222,8 @@ class ControllerFormulaFix {
         formulaA,
         formulaB,
         formulaC,
+        formulaD,
+        keterangan,
       } = req.body;
 
       console.log(req.body, "< req");
@@ -237,6 +243,8 @@ class ControllerFormulaFix {
           formulaA: formulaA || "",
           formulaB: formulaB || "",
           formulaC: formulaC || "",
+          formulaD: formulaD || "",
+          keterangan: keterangan || "",
         },
         {
           where: { id: id },

@@ -3531,6 +3531,15 @@ ORDER BY
     try {
       const catatanTrialPadat = await t_catatanTrial.findAll({
         where: { tipeCatatanTrial: "catatan trial padat" },
+        attributes: [
+          "id",
+          "tanggalTrial",
+          "namaProduk",
+          "kodeTrial",
+          "trialKe",
+          "bentukSediaan",
+          "tipeCatatanTrial",
+        ],
       });
 
       // if (!cqaDetails || cqaDetails.length === 0) {

@@ -34,7 +34,7 @@ module.exports = {
         type: Sequelize.STRING,
       },
       alasan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       formulaA: {
         type: Sequelize.JSONB,
@@ -44,6 +44,12 @@ module.exports = {
       },
       formulaC: {
         type: Sequelize.JSONB,
+      },
+      formulaD: {
+        type: Sequelize.JSONB,
+      },
+      keterangan: {
+        type: Sequelize.TEXT,
       },
       pic: {
         type: Sequelize.STRING,
