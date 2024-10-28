@@ -92,5 +92,8 @@ router.get("/get-komposisi-01", ControllerFormulaFix.findAllKomposisi);
 router.get("/formula-fix-details/:id", ControllerFormulaFix.getFormulaDetails);
 
 router.delete("/delete-formula-fix/:id", ControllerFormulaFix.deleteFormulaFix);
-
+router.put(
+  "/update-data-stabilitas/:FormulaFixID",
+  ControllerFormulaFix.updateDataStabilitas
+);
 module.exports = router;

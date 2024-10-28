@@ -9,11 +9,8 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      uploadType: {
-        type: Sequelize.STRING,
-      },
       upload: {
-        type: Sequelize.BLOB,
+        type: Sequelize.JSONB,
       },
       FormulaFixID: {
         type: Sequelize.INTEGER,

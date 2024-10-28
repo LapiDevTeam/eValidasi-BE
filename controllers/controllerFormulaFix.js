@@ -1156,6 +1156,37 @@ class ControllerFormulaFix {
     }
   }
 
+  static async updateDataStabilitas(req, res) {
+    try {
+      const { FormulaFixID } = req.params;
+
+      console.log(FormulaFixID, "< idddd");
+
+      const upload = req.body;
+      console.log(upload, "< 123");
+
+      // Try to find the record by FormulaFixID
+      let [dataStabilitas, created] =
+        await t_formulaFix_dataStabilitas.findOrCreate({
+          where: { FormulaFixID: +FormulaFixID },
+          defaults: { upload },
+        });
+
+      if (!created) {
+        // If the record exists, update it
+        dataStabilitas = await dataStabilitas.update({ upload });
+        console.log("Record updated:", dataStabilitas);
+      } else {
+        console.log("Record created:", dataStabilitas);
+      }
+
+      res.status(200).json(dataStabilitas);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message || "Internal Server Error" });
+    }
+  }
+
   static async uploadDataStabilitas(req, res) {
     const { id } = req.params;
     try {
@@ -1182,23 +1213,7 @@ class ControllerFormulaFix {
         where: { FormulaFixID: +id },
       });
 
-      // Check if upload is found
-      if (!upload) {
-        return res.status(404).json({ error: "No upload found" });
-      }
-
-      const uploadData = upload.toJSON(); // Convert to JSON
-
-      // Process the upload field if it exists
-      if (uploadData.upload) {
-        uploadData.upload = Buffer.from(uploadData.upload).toString("base64");
-      } else {
-        uploadData.upload = null;
-      }
-
-      console.log(uploadData, "< aray");
-
-      res.json(uploadData); // Send the processed upload data
+      res.json(upload); // Send the processed upload data
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Error fetching images" });
