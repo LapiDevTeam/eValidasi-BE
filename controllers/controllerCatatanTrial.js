@@ -748,7 +748,7 @@ ORDER BY
         const request = new sql.Request();
         request.query(
           `
-          SELECT ItemID,ItemName,Analisa,batchno,principle FROM t_NP_Sample_Stock WHERE ItemID != '' AND ItemID != '-'
+          SELECT ItemID,ItemName,batchno,principle FROM t_NP_Sample_Stock WHERE ItemID != '' AND ItemID != '-'
           ;
           `,
           async function (err, { recordset }) {

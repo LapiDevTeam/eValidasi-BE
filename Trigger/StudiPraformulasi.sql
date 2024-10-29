@@ -1230,5 +1230,60 @@ CREATE OR REPLACE TRIGGER "t_matrixPerbandingan_del"
     FOR EACH ROW EXECUTE FUNCTION process_t_matrixPerbandingan_hist();
 
 
+    -- EVALUASI BULK
+   
+CREATE OR REPLACE FUNCTION process_t_evaluasiBulk_hist() RETURNS TRIGGER AS $t_evaluasiBulk_hist$
+    BEGIN
+        IF (TG_OP = 'DELETE') THEN
+            INSERT INTO "t_evaluasiBulk_hist"
+                SELECT 'DELETED', now(), OLD.*;
+        ELSIF (TG_OP = 'UPDATE') THEN
+            INSERT INTO "t_evaluasiBulk_hist"
+                SELECT 'UPDATED', now(), NEW.*;
+        ELSIF (TG_OP = 'INSERT') THEN
+            INSERT INTO "t_evaluasiBulk_hist"
+                SELECT 'INSERTED', now(), NEW.*;
+        END IF;
+        RETURN NULL; -- result is ignored since this is an AFTER trigger
+    END;
+$t_evaluasiBulk_hist$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER "t_evaluasiBulk_ins"
+    AFTER INSERT ON "t_evaluasiBulk"
+    FOR EACH ROW EXECUTE FUNCTION process_t_evaluasiBulk_hist();
+CREATE OR REPLACE TRIGGER "t_evaluasiBulk_upd"
+    AFTER UPDATE ON "t_evaluasiBulk"
+    FOR EACH ROW EXECUTE FUNCTION process_t_evaluasiBulk_hist();
+CREATE OR REPLACE TRIGGER "t_evaluasiBulk_del"
+    AFTER DELETE ON "t_evaluasiBulk"
+    FOR EACH ROW EXECUTE FUNCTION process_t_evaluasiBulk_hist();
+    -- Distribusi ukuran partikel
+   
+CREATE OR REPLACE FUNCTION process_t_distribusiUkuranPartikel_hist() RETURNS TRIGGER AS $t_distribusiUkuranPartikel_hist$
+    BEGIN
+        IF (TG_OP = 'DELETE') THEN
+            INSERT INTO "t_distribusiUkuranPartikel_hist"
+                SELECT 'DELETED', now(), OLD.*;
+        ELSIF (TG_OP = 'UPDATE') THEN
+            INSERT INTO "t_distribusiUkuranPartikel_hist"
+                SELECT 'UPDATED', now(), NEW.*;
+        ELSIF (TG_OP = 'INSERT') THEN
+            INSERT INTO "t_distribusiUkuranPartikel_hist"
+                SELECT 'INSERTED', now(), NEW.*;
+        END IF;
+        RETURN NULL; -- result is ignored since this is an AFTER trigger
+    END;
+$t_distribusiUkuranPartikel_hist$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER "t_distribusiUkuranPartikel_ins"
+    AFTER INSERT ON "t_distribusiUkuranPartikel"
+    FOR EACH ROW EXECUTE FUNCTION process_t_distribusiUkuranPartikel_hist();
+CREATE OR REPLACE TRIGGER "t_distribusiUkuranPartikel_upd"
+    AFTER UPDATE ON "t_distribusiUkuranPartikel"
+    FOR EACH ROW EXECUTE FUNCTION process_t_distribusiUkuranPartikel_hist();
+CREATE OR REPLACE TRIGGER "t_distribusiUkuranPartikel_del"
+    AFTER DELETE ON "t_distribusiUkuranPartikel"
+    FOR EACH ROW EXECUTE FUNCTION process_t_distribusiUkuranPartikel_hist();
+
 
 

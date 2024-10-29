@@ -380,6 +380,14 @@ class ControllerFormulaFix {
           where: { FormulaFixID: id },
           order: [["id", "ASC"]],
         });
+      const dataStabilitas = await t_formulaFix_dataStabilitas.findOne({
+        where: { FormulaFixID: id },
+        order: [["id", "ASC"]],
+      });
+      const acuanCatatanTrial = await t_formulaFix_acuanCatatanTrial.findOne({
+        where: { FormulaFixID: id },
+        order: [["id", "ASC"]],
+      });
 
       res.status(200).json({
         formulaFix,
@@ -388,6 +396,8 @@ class ControllerFormulaFix {
         prosesPengolahan,
         prosesPengemasan,
         rancanganSpesifikasiObatJadi,
+        dataStabilitas,
+        acuanCatatanTrial,
       });
     } catch (error) {
       console.log(error);
