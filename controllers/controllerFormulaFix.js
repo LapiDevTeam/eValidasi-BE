@@ -1159,6 +1159,14 @@ class ControllerFormulaFix {
   static async updateDataStabilitas(req, res) {
     try {
       const { FormulaFixID } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
 
       console.log(FormulaFixID, "< idddd");
 
@@ -1186,28 +1194,9 @@ class ControllerFormulaFix {
       res.status(500).json({ error: err.message || "Internal Server Error" });
     }
   }
-
-  static async uploadDataStabilitas(req, res) {
-    const { id } = req.params;
-    try {
-      const pdf = await t_formulaFix_dataStabilitas.create({
-        uploadType: req.file.originalname,
-        upload: req.file.buffer, // Store PDF as binary data
-        FormulaFixID: +id,
-      });
-
-      console.log(pdf, "< pdf");
-
-      res.json({ message: "PDF uploaded successfully", pdfId: pdf.id });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Error uploading PDF" });
-    }
-  }
   static async getUploadDataStabilitas(req, res) {
     try {
       const { id } = req.params;
-      console.log(id, "< Ini id");
 
       const upload = await t_formulaFix_dataStabilitas.findOne({
         where: { FormulaFixID: +id },
@@ -1219,49 +1208,52 @@ class ControllerFormulaFix {
       res.status(500).json({ error: "Error fetching images" });
     }
   }
-
-  static async uploadAcuanCatatanTrial(req, res) {
-    const { id } = req.params;
+  static async updateAcuanCatatanTrial(req, res) {
     try {
-      const pdf = await t_formulaFix_acuanCatatanTrial.create({
-        uploadType: req.file.originalname,
-        upload: req.file.buffer, // Store PDF as binary data
-        FormulaFixID: +id,
-      });
+      const { FormulaFixID } = req.params;
 
-      console.log(pdf, "< pdf");
+      console.log(FormulaFixID, "< idddd");
 
-      res.json({ message: "PDF uploaded successfully", pdfId: pdf.id });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Error uploading PDF" });
+      const upload = req.body;
+      console.log(upload, "< 123");
+
+      // Try to find the record by FormulaFixID
+      let [acuanCatatanTrial, created] =
+        await t_formulaFix_acuanCatatanTrial.findOrCreate({
+          where: { FormulaFixID: +FormulaFixID },
+          defaults: { upload },
+        });
+
+      if (!created) {
+        // If the record exists, update it
+        acuanCatatanTrial = await acuanCatatanTrial.update({ upload });
+        console.log("Record updated:", acuanCatatanTrial);
+      } else {
+        console.log("Record created:", acuanCatatanTrial);
+      }
+
+      res.status(200).json(acuanCatatanTrial);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message || "Internal Server Error" });
     }
   }
   static async getUploadAcuanCatatanTrial(req, res) {
     try {
       const { id } = req.params;
+      console.log(id, "< Ini id");
+
       const upload = await t_formulaFix_acuanCatatanTrial.findOne({
         where: { FormulaFixID: +id },
       });
 
-      if (!upload) {
-        return res.status(404).json({ error: "No Upload found" });
-      }
-
-      const uploadData = upload.toJSON();
-
-      if (uploadData.upload) {
-        uploadData.upload = Buffer.from(uploadData.upload).toString("base64");
-      } else {
-        uploadData.upload = null;
-      }
-
-      res.json(uploadData);
+      res.json(upload); // Send the processed upload data
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Error fetching images" });
     }
   }
+
   static async deleteFormulaFix(req, res) {
     try {
       const { id } = req.params;

@@ -61,39 +61,34 @@ router.put(
   ControllerFormulaFix.handleSaveRancanganSpesifikasiObatJadi
 );
 
-router.post(
-  "/upload-data-stabilitas/:id",
-  authentication,
-  upload.single("image"),
-  ControllerFormulaFix.uploadDataStabilitas
-);
-
-router.get(
-  "/get-upload-data-stabilitas/:id",
-  authentication,
-  ControllerFormulaFix.getUploadDataStabilitas
-);
-router.post(
-  "/upload-acuan-catatan-trial/:id",
-  authentication,
-  upload.single("image"),
-  ControllerFormulaFix.uploadAcuanCatatanTrial
-);
-
-router.get(
-  "/get-upload-acuan-catatan-trial/:id",
-  authentication,
-  ControllerFormulaFix.getUploadAcuanCatatanTrial
-);
-
 router.get("/find-produsen", ControllerFormulaFix.findNamaBahanBaku);
 router.get("/get-komposisi-01", ControllerFormulaFix.findAllKomposisi);
 
 router.get("/formula-fix-details/:id", ControllerFormulaFix.getFormulaDetails);
 
 router.delete("/delete-formula-fix/:id", ControllerFormulaFix.deleteFormulaFix);
+
+router.get(
+  "/get-upload-data-stabilitas/:id",
+  authentication,
+  ControllerFormulaFix.getUploadDataStabilitas
+);
+
 router.put(
   "/update-data-stabilitas/:FormulaFixID",
+  authentication,
   ControllerFormulaFix.updateDataStabilitas
 );
+router.get(
+  "/get-upload-acuan-catatan-trial/:id",
+  authentication,
+  ControllerFormulaFix.getUploadAcuanCatatanTrial
+);
+
+router.put(
+  "/update-acuan-catatan-trial/:FormulaFixID",
+  authentication,
+  ControllerFormulaFix.updateAcuanCatatanTrial
+);
+
 module.exports = router;

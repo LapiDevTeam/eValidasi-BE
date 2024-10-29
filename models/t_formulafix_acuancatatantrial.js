@@ -16,8 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_formulaFix_acuanCatatanTrial.init(
     {
-      uploadType: DataTypes.STRING,
-      upload: DataTypes.BLOB,
+      upload: DataTypes.JSONB,
       FormulaFixID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
