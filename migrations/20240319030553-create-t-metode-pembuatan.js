@@ -13,10 +13,10 @@ module.exports = {
         type: Sequelize.STRING,
       },
       aktivitas: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       pengamatan: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
       },
       tableIndex: {
         type: Sequelize.INTEGER,
