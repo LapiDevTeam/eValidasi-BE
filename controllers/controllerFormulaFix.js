@@ -424,21 +424,55 @@ class ControllerFormulaFix {
       const request = new sql.Request();
       const { nama, kode } = req.query;
 
+      // Define the main query with UNION inside a CTE (Common Table Expression)
       let query = `
-        SELECT DISTINCT ItemID, ItemName, principle AS Produsen 
-        FROM t_NP_Sample_Stock 
-        WHERE ItemID != '' AND ItemID != '-'
+        WITH CombinedItems AS (
+          SELECT DISTINCT 
+              ItemID AS Item_Id, 
+              ItemName AS ItemName, 
+              principle AS Produsen
+          FROM 
+              t_NP_Sample_Stock 
+          WHERE 
+              ItemID IS NOT NULL 
+              AND ItemID <> '' 
+              AND ItemID <> '-'
+  
+          UNION 
+  
+          SELECT 
+              a.item_id AS Item_Id, 
+              b.item_name AS ItemName, 
+              c.prc_name AS Produsen 
+          FROM 
+              m_item_manufacturing_supplier a
+          LEFT JOIN 
+              m_item_manufacturing b ON a.item_id = b.item_id
+          LEFT JOIN 
+              m_principle c ON a.item_prcid = c.prc_id
+          LEFT JOIN 
+              m_supplier d ON a.item_suppid = d.supp_id
+          WHERE 
+              a.isactive = 1
+              AND b.isactive = 1 
+              AND c.isactive = 1 
+              AND d.isactive = 1 
+              AND b.item_type = 'BB'
+        )
+        SELECT * FROM CombinedItems WHERE 1=1
       `;
 
-      // Dynamically add query conditions if parameters are provided
+      // Add dynamic filters if parameters are provided
       if (nama) {
         query += ` AND ItemName = @nama `;
         request.input("nama", sql.VarChar, nama);
       }
       if (kode) {
-        query += ` AND ItemID = @kode `;
+        query += ` AND Item_Id = @kode `;
         request.input("kode", sql.VarChar, kode);
       }
+
+      query += ` ORDER BY Item_Id, Produsen;`;
 
       const { recordset } = await request.query(query);
 
@@ -446,15 +480,14 @@ class ControllerFormulaFix {
         return res.status(404).json({ message: "Produsen not found" });
       }
 
-      console.log(recordset, "< 12333");
-
-      // Send the first matched result
+      // Send the result
       res.status(200).json(recordset);
     } catch (err) {
       console.error("Error in findNamaBahanBaku:", err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
+
   static async findAllKomposisi(req, res) {
     try {
       const config = {
