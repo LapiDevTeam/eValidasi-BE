@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       revisi: DataTypes.STRING,
       alasan: DataTypes.TEXT,
       upload: DataTypes.BLOB,
+      statusDokumen: DataTypes.STRING,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,

@@ -30,6 +30,9 @@ module.exports = {
       upload: {
         type: Sequelize.BLOB,
       },
+      statusDokumen: {
+        type: Sequelize.STRING,
+      },
       user_id: {
         type: Sequelize.STRING,
       },

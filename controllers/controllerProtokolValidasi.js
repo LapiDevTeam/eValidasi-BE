@@ -1,5 +1,5 @@
 const { t_protokolValidasi } = require("../models"); // Adjust the path to your models
-
+const moment = require("moment");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
@@ -102,6 +102,7 @@ class ControllerProtokolValidasi {
         revisi: revisi,
         filter: filter,
         upload: req.file.buffer, // Store the PDF binary data
+        statusDokumen: "Draft",
       });
 
       if (pdf) {
@@ -167,11 +168,27 @@ class ControllerProtokolValidasi {
     if (nomorApprover === "1") {
       x = 50;
       y = 95;
-      approverName = `Approved by ${req.user.user_id} as ${req.user.delegated_to}`;
+      if (req.user.user_id !== req.user.delegated_to) {
+        approverName = `Approved by ${req.user.user_id} An. ${
+          req.user.delegated_to
+        }\n${moment().format("DD/MM/YYYY. HH:mm:ss")}`;
+      } else {
+        approverName = `Approved by ${req.user.user_id}\n${moment().format(
+          "DD/MM/YYYY. HH:mm:ss"
+        )}`;
+      }
     } else if (nomorApprover === "2") {
-      x = 295;
+      x = 150;
       y = 95;
-      approverName = `Approved by ${req.user.user_id} as ${req.user.delegated_to}`;
+      if (req.user.user_id !== req.user.delegated_to) {
+        approverName = `Approved by ${req.user.user_id} An. ${
+          req.user.delegated_to
+        }\n${moment().format("DD/MM/YYYY. HH:mm:ss")}`;
+      } else {
+        approverName = `Approved by ${req.user.user_id}\n${moment().format(
+          "DD/MM/YYYY. HH:mm:ss"
+        )}`;
+      }
     } else {
       return res.status(400).send("Invalid approver number.");
     }
@@ -191,11 +208,12 @@ class ControllerProtokolValidasi {
       const firstPage = pages[0]; // Modify the first page, adjust if needed
 
       // Add the approver's name and position it at the specified coordinates
-      firstPage.drawText(`${approverName}`, {
+      firstPage.drawText(approverName, {
         x: parseFloat(x),
         y: parseFloat(y),
-        size: 12, // Font size
+        size: 8, // Font size to make it small
         color: rgb(0, 0, 0), // Text color (black)
+        lineHeight: 10, // Line height to space the text nicely
       });
 
       // Save the modified PDF as bytes
