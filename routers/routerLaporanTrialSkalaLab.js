@@ -81,4 +81,18 @@ router.put(
   authentication,
   ControllerLaporanTrialSkalaLab.approveLaporanTrialSkalaLab
 );
+
+router.post(
+  "/create-permasalahan",
+  authentication,
+  ControllerLaporanTrialSkalaLab.createPermasalahan
+);
+
+// save dan edit kriteria penerimaan
+router.put(
+  "/handle-kriteria-penerimaan/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveKriteriaPenerimaan
+);
+
 module.exports = router;

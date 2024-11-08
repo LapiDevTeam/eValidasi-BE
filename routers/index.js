@@ -12,6 +12,7 @@ const routerAuditTrail = require("./routerAuditTrail");
 const routerGlobalApi = require("./routerGlobalApi");
 const routerProposalDiversifikasi = require("./routerProposalDiversifikasi");
 const routerKodeTrialObatJadi = require("./routerKodeTrialObatJadi");
+const routerProtokolValidasi = require("./routerProtokolValidasi");
 const { authentication } = require("../middlewares/authentication");
 
 router.get("/current-user", authentication, (req, res) => {
@@ -43,5 +44,6 @@ router.use("/", routerAuditTrail);
 router.use("/", routerGlobalApi);
 router.use("/", routerProposalDiversifikasi);
 router.use("/", routerKodeTrialObatJadi);
+router.use("/", routerProtokolValidasi);
 
 module.exports = router;

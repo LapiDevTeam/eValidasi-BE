@@ -11,12 +11,14 @@ const {
   t_updateRiskAssessmentKemasan,
   t_ringkasanHasilStudiCma,
   t_laporanTrialSkalaLab_status,
+  t_LTS_studiScreeningSourceApi,
+  t_LTS_kriteriaPenerimaan,
   sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
-const { AsyncLocalStorage } = require("async_hooks");
+
 const {
   checkStatusProtokol,
   checkStatusLaporanTrialSkalaLab,
@@ -187,6 +189,14 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         protokolPenelitianNo,
         lainlain,
+        permasalahan,
+        tujuan,
+        skalaStudi,
+        penyimpanganSampel,
+        tahapanStudi,
+        pembahasan,
+        kesimpulan,
+        tindakLanjut,
       } = req.body;
       const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
         +LaporanTrialSkalaLabID
@@ -201,6 +211,14 @@ class ControllerLaporanTrialSkalaLab {
           hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
           protokolPenelitianNo: protokolPenelitianNo,
           lainlain: lainlain,
+          permasalahan: permasalahan,
+          tujuan: tujuan,
+          skalaStudi: skalaStudi,
+          penyimpanganSampel: penyimpanganSampel,
+          tahapanStudi: tahapanStudi,
+          pembahasan: pembahasan,
+          kesimpulan: kesimpulan,
+          tindakLanjut: tindakLanjut,
         },
         {
           where: {
@@ -723,7 +741,6 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
-
   static async editUsulan(req, res) {
     const transaction = await sequelize.transaction();
     try {
@@ -808,7 +825,6 @@ class ControllerLaporanTrialSkalaLab {
       }
     }
   }
-
   static async approveLaporanTrialSkalaLab(req, res, next) {
     try {
       const {
@@ -884,6 +900,159 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({ message: "Success Approved" });
     } catch (err) {
       console.log(err);
+    }
+  }
+  static async createPermasalahan(req, res, next) {
+    try {
+      const { permasalahan, LaporanTrialSkalaLabID } = req.body;
+
+      const createPermasalahan = await t_LTS_studiScreeningSourceApi.create({
+        permasalahan: permasalahan,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(201).json({
+        message: "Success createPermasalahan",
+        data: createPermasalahan,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async handleSaveKriteriaPenerimaan(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const flag_update = "UPDATE FOR DELETE";
+      const { id } = req.params;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      // const cat = await t_catatanTrial.findByPk(+id);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_catatanTrial_status.destroy({
+      //     where: { LaporanTrialSkalaLabID: +id },
+      //   });
+      //   await t_catatanTrial.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+
+      const prevKriteria = await t_LTS_kriteriaPenerimaan.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      const existing = prevKriteria.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "< idnem");
+
+          if (!newItem?.id) {
+            const created = await t_LTS_kriteriaPenerimaan.create(
+              {
+                parameter: newItem?.parameter || "",
+                spesifikasi: newItem?.spesifikasi || "",
+                referensi: newItem?.referensi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_LTS_kriteriaPenerimaan.update(
+              {
+                kodeTrial: newItem?.kodeTrial || "",
+                aktivitas: newItem?.aktivitas || "",
+                pengamatan: newItem?.pengamatan || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_LTS_kriteriaPenerimaan.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+        await t_LTS_kriteriaPenerimaan.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_LTS_kriteriaPenerimaan.findAll({
+        where: {
+          LaporanTrialSkalaLabID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
 }

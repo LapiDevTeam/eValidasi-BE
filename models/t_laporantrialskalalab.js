@@ -42,6 +42,12 @@ module.exports = (sequelize, DataTypes) => {
       t_laporanTrialSkalaLab.hasMany(models.t_updateRiskAssessmentKemasan, {
         foreignKey: "LaporanTrialSkalaLabID",
       });
+      t_laporanTrialSkalaLab.hasOne(models.t_LTS_studiScreeningSourceApi, {
+        foreignKey: "LaporanTrialSkalaLabID",
+      });
+      t_laporanTrialSkalaLab.hasMany(models.t_LTS_kriteriaPenerimaan, {
+        foreignKey: "LaporanTrialSkalaLabID",
+      });
       t_laporanTrialSkalaLab.hasMany(models.t_laporanTrialSkalaLab_status, {
         foreignKey: "LaporanTrialSkalaLabID",
         as: "approver_data",
@@ -64,6 +70,14 @@ module.exports = (sequelize, DataTypes) => {
       status: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
+      permasalahan: DataTypes.TEXT,
+      tujuan: DataTypes.TEXT,
+      skalaStudi: DataTypes.TEXT,
+      penyimpanganSampel: DataTypes.TEXT,
+      tahapanStudi: DataTypes.TEXT,
+      pembahasan: DataTypes.TEXT,
+      kesimpulan: DataTypes.TEXT,
+      tindakLanjut: DataTypes.TEXT,
       alasan_reject: DataTypes.STRING,
       pic: DataTypes.STRING,
       bagian: DataTypes.STRING,

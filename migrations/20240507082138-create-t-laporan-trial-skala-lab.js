@@ -51,6 +51,30 @@ module.exports = {
       lainlain: {
         type: Sequelize.JSONB,
       },
+      permasalahan: {
+        type: Sequelize.TEXT,
+      },
+      tujuan: {
+        type: Sequelize.TEXT,
+      },
+      skalaStudi: {
+        type: Sequelize.TEXT,
+      },
+      penyimpanganSampel: {
+        type: Sequelize.TEXT,
+      },
+      tahapanStudi: {
+        type: Sequelize.TEXT,
+      },
+      pembahasan: {
+        type: Sequelize.TEXT,
+      },
+      kesimpulan: {
+        type: Sequelize.TEXT,
+      },
+      tindakLanjut: {
+        type: Sequelize.TEXT,
+      },
       alasan_reject: {
         type: Sequelize.STRING,
       },
