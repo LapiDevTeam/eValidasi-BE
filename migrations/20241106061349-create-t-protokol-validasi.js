@@ -28,7 +28,7 @@ module.exports = {
         type: Sequelize.TEXT,
       },
       upload: {
-        type: Sequelize.BLOB,
+        type: Sequelize.JSONB,
       },
       statusDokumen: {
         type: Sequelize.STRING,

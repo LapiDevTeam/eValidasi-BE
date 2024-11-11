@@ -2,32 +2,26 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_LTS_studiScreeningSourceApi", {
+    await queryInterface.createTable("t_LTS_studiCppTerhadapCqa", {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      permasalahan: {
+      judul: {
         type: Sequelize.TEXT,
       },
-      tujuan: {
+      content: {
         type: Sequelize.TEXT,
       },
-      skalaStudi: {
-        type: Sequelize.TEXT,
-      },
-      penyimpananSampel: {
-        type: Sequelize.TEXT,
-      },
-      tahapanStudi: {
-        type: Sequelize.TEXT,
+      upload: {
+        type: Sequelize.JSONB,
       },
       LaporanTrialSkalaLabID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_LTS_studiScreeningSourceApi",
+          model: "t_laporanTrialSkalaLab",
           key: "id",
         },
       },
@@ -51,6 +45,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_LTS_studiScreeningSourceApi");
+    await queryInterface.dropTable("t_LTS_studiCppTerhadapCqa");
   },
 };

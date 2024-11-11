@@ -16,11 +16,8 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_ringkasanHasilStudiCpp.init(
     {
-      prosesParameter: DataTypes.STRING,
-      CqaYangDiStudi: DataTypes.STRING,
-      rangeStudi: DataTypes.STRING,
-      controlStrategy: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      title: DataTypes.STRING,
+      content: DataTypes.JSONB,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

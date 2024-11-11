@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_protokolValidasi extends Model {
+  class t_LTS_studiCppTerhadapCqa extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,27 +9,26 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      t_LTS_studiCppTerhadapCqa.belongsTo(models.t_laporanTrialSkalaLab, {
+        foreignKey: "LaporanTrialSkalaLabID",
+      });
     }
   }
-  t_protokolValidasi.init(
+  t_LTS_studiCppTerhadapCqa.init(
     {
-      jenisDokumen: DataTypes.STRING,
-      filter: DataTypes.STRING,
-      namaProduk: DataTypes.STRING,
-      noDokumen: DataTypes.STRING,
-      revisi: DataTypes.STRING,
-      alasan: DataTypes.TEXT,
+      judul: DataTypes.TEXT,
+      content: DataTypes.TEXT,
       upload: DataTypes.JSONB,
-      statusDokumen: DataTypes.STRING,
+      LaporanTrialSkalaLabID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "t_protokolValidasi",
+      modelName: "t_LTS_studiCppTerhadapCqa",
       freezeTableName: true,
     }
   );
-  return t_protokolValidasi;
+  return t_LTS_studiCppTerhadapCqa;
 };

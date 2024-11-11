@@ -13,6 +13,7 @@ const {
   t_laporanTrialSkalaLab_status,
   t_LTS_studiScreeningSourceApi,
   t_LTS_kriteriaPenerimaan,
+  t_LTS_studiCppTerhadapCqa,
   sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
@@ -294,33 +295,42 @@ class ControllerLaporanTrialSkalaLab {
     }
   }
   static async createRingkasanHasilStudiCpp(req, res, next) {
+    const transaction = await sequelize.transaction();
     try {
-      const {
-        prosesParameter,
-        CqaYangDiStudi,
-        rangeStudi,
-        controlStrategy,
-        justifikasi,
-        LaporanTrialSkalaLabID,
-      } = req.body;
+      const { data } = req.body;
+      const { id } = req.params;
 
-      const createRingkasanHasilStudiCpp =
-        await t_ringkasanHasilStudiCpp.create({
-          prosesParameter,
-          CqaYangDiStudi,
-          rangeStudi,
-          controlStrategy,
-          justifikasi,
-          LaporanTrialSkalaLabID,
-        });
+      await Promise.all(
+        data?.map(async (newItem) => {
+          const createCMA = await t_ringkasanHasilStudiCpp.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id || null,
+            },
+            { transaction }
+          );
+          return createCMA?.id;
+        })
+      );
+
+      await transaction.commit();
+
+      const newData = await t_ringkasanHasilStudiCpp.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
 
       res.status(201).json({
-        message: "Success Create ringkasan hasil studi cpp",
-        data: createRingkasanHasilStudiCpp,
+        message: "Success createUpdateAssessment",
+        data: newData,
       });
     } catch (err) {
-      console.error(err);
-      next(err);
+      console.log(err);
+      if (transaction) {
+        await transaction.rollback();
+      }
     }
   }
   static async createRingkasanHasilStudiCma(req, res, next) {
@@ -595,6 +605,11 @@ class ControllerLaporanTrialSkalaLab {
           LaporanTrialSkalaLabID: id,
         },
       });
+      const studiCppTerhadapCqa = await t_LTS_studiCppTerhadapCqa.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
       const updateRiskAssessment = await t_updateRiskAssessment.findOne({
         where: {
           LaporanTrialSkalaLabID: id,
@@ -630,6 +645,7 @@ class ControllerLaporanTrialSkalaLab {
         kesimpulanFormulaTerpilih,
         kesimpulanProsesTerpilih,
         usulanPenelitianProduk,
+        studiCppTerhadapCqa,
         updateRiskAssessment,
         updateRiskAssessmentBahanAktif,
         updateRiskAssessmentBahanTambahan,
@@ -1053,6 +1069,217 @@ class ControllerLaporanTrialSkalaLab {
       if (transaction) {
         await transaction.rollback();
       }
+    }
+  }
+  static async handleSaveStudiCppTerhadapCqa(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+
+      const flag_update = "UPDATE FOR DELETE";
+      const { id } = req.params;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      // const cat = await t_catatanTrial.findByPk(+id);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_catatanTrial_status.destroy({
+      //     where: { LaporanTrialSkalaLabID: +id },
+      //   });
+      //   await t_catatanTrial.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+
+      const prevKriteria = await t_LTS_studiCppTerhadapCqa.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      const existing = prevKriteria.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "< idnem");
+
+          if (!newItem?.id) {
+            const created = await t_LTS_studiCppTerhadapCqa.create(
+              {
+                judul: newItem?.judul || "",
+                content: newItem?.content || "",
+                upload: newItem?.upload || null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_LTS_studiCppTerhadapCqa.update(
+              {
+                judul: newItem?.judul || "",
+                content: newItem?.content || "",
+                upload: newItem?.upload || null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_LTS_studiCppTerhadapCqa.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+        await t_LTS_studiCppTerhadapCqa.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_LTS_studiCppTerhadapCqa.findAll({
+        where: {
+          LaporanTrialSkalaLabID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async updateUpload(req, res) {
+    try {
+      console.log("Starting updateUpload...");
+
+      const { LaporanTrialSkalaLabID } = req.params;
+      const uploads = req.body; // Expected to be an array of objects
+
+      console.log(uploads, "< Upload Data");
+
+      // Ensure uploads is an array
+      if (!Array.isArray(uploads) || uploads.length === 0) {
+        return res.status(400).json({ message: "Invalid upload data format" });
+      }
+
+      // Check if records with the specified LaporanTrialSkalaLabID exist
+      const findRecords = await t_LTS_studiCppTerhadapCqa.findAll({
+        where: { LaporanTrialSkalaLabID: +LaporanTrialSkalaLabID },
+      });
+
+      if (!findRecords.length) {
+        throw {
+          name: "NotFound",
+          message: "No records found with the given LaporanTrialSkalaLabID",
+        };
+      }
+
+      // Update each record based on the data provided in uploads
+      const updatePromises = uploads.map(async (uploadData) => {
+        const { id, upload } = uploadData;
+
+        // Validate that each item has an id and upload property
+        if (!id || !upload) {
+          throw new Error(
+            "Each upload data item must contain 'id' and 'upload' properties."
+          );
+        }
+
+        // Update the specific record by id
+        return await t_LTS_studiCppTerhadapCqa.update(
+          { upload },
+          {
+            where: { id },
+            returning: true,
+          }
+        );
+      });
+
+      // Execute all update promises
+      const updatedRecords = await Promise.all(updatePromises);
+      console.log(updatedRecords, "<< Updated Records");
+
+      res
+        .status(200)
+        .json({ message: "Uploads updated successfully", updatedRecords });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        error: err.message || "An error occurred during the upload update.",
+      });
+    }
+  }
+  static async getStudiCppTerhadapCqa(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      const studiCppTerhadapCqa = await t_LTS_studiCppTerhadapCqa.findAll({
+        where: { LaporanTrialSkalaLabID: id },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        studiCppTerhadapCqa,
+      });
+    } catch (error) {
+      console.log(error);
+      next(error);
     }
   }
 }

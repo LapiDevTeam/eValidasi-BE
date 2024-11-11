@@ -13,7 +13,6 @@ const upload = multer({ storage });
 // );
 router.post(
   "/upload-pdf",
-  upload.single("pdf"),
   authentication,
   ControllerProtokolValidasi.uploadPdf
 );

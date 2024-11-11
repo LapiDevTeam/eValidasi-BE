@@ -18,7 +18,7 @@ router.post(
   ControllerLaporanTrialSkalaLab.createKesimpulanFormula
 );
 router.post(
-  "/create-ringkasan-hasil-studi-cpp",
+  "/create-ringkasan-hasil-studi-cpp/:id",
   ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
 );
 router.post(
@@ -93,6 +93,22 @@ router.put(
   "/handle-kriteria-penerimaan/:id",
   authentication,
   ControllerLaporanTrialSkalaLab.handleSaveKriteriaPenerimaan
+);
+
+// save dan edit kriteria penerimaan
+router.put(
+  "/handle-studi-cpp-terhadap-cqa/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveStudiCppTerhadapCqa
+);
+
+router.put(
+  "/update-upload-studi/:LaporanTrialSkalaLabID",
+  ControllerLaporanTrialSkalaLab.updateUpload
+);
+router.get(
+  "/studi-cpp-terhadap-cqa/:id",
+  ControllerLaporanTrialSkalaLab.getStudiCppTerhadapCqa
 );
 
 module.exports = router;

@@ -24,7 +24,7 @@ module.exports = {
       LaporanTrialSkalaLabID: {
         type: Sequelize.INTEGER,
         references: {
-          model: "t_LTS_kriteriaPenerimaan",
+          model: "t_laporanTrialSkalaLab",
           key: "id",
         },
       },

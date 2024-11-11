@@ -57,14 +57,6 @@ class ControllerProtokolValidasi {
         return res.status(404).json({ error: "Protokol validasi not found" });
       }
 
-      if (protokolValidasi) {
-        protokolValidasi.upload = Buffer.from(protokolValidasi.upload).toString(
-          "base64"
-        );
-      } else {
-        protokolValidasi.upload = null;
-      }
-
       res.status(200).json({
         message: "Success fetch protokol validasi details",
         data: protokolValidasi,
@@ -78,12 +70,15 @@ class ControllerProtokolValidasi {
   }
   static async uploadPdf(req, res, next) {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No PDF file uploaded" });
-      }
-
-      const { jenisDokumen, namaProduk, noDokumen, alasan, revisi, filter } =
-        req.body;
+      const {
+        jenisDokumen,
+        namaProduk,
+        noDokumen,
+        alasan,
+        revisi,
+        filter,
+        upload,
+      } = req.body;
 
       // Check if model is correctly loaded
       if (!t_protokolValidasi) {
@@ -101,16 +96,9 @@ class ControllerProtokolValidasi {
         alasan: alasan,
         revisi: revisi,
         filter: filter,
-        upload: req.file.buffer, // Store the PDF binary data
+        upload: upload, // Store the PDF binary data
         statusDokumen: "Draft",
       });
-
-      if (pdf) {
-        pdf.upload = Buffer.from(pdf.upload).toString("base64");
-      } else {
-        pdf.upload = null;
-      }
-      console.log(pdf, "<<");
 
       res.status(201).json({
         message: "Success Create CatatanTrial",
