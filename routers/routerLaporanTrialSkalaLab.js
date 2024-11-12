@@ -110,5 +110,37 @@ router.get(
   "/studi-cpp-terhadap-cqa/:id",
   ControllerLaporanTrialSkalaLab.getStudiCppTerhadapCqa
 );
+// save dan edit bahan aktif cma
+router.put(
+  "/handle-bahan-aktif-cma/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveBahanAktifCma
+);
+router.put(
+  "/update-upload-bahan-aktif-cma/:LaporanTrialSkalaLabID",
+  ControllerLaporanTrialSkalaLab.updateUploadBahanAktifCma
+);
+// save dan edit bahan tambahan cma
+router.put(
+  "/handle-bahan-tambahan-cma/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveBahanTambahanCma
+);
+router.put(
+  "/update-upload-bahan-tambahan-cma/:LaporanTrialSkalaLabID",
+  ControllerLaporanTrialSkalaLab.updateUploadBahanTambahanCma
+);
+
+// save dan edit hasil dan pembahasan orientasi
+router.put(
+  "/handle-hasil-dan-pembahasan-orientasi/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveHasilDanPembahasanOrientasi
+);
+
+router.put(
+  "/update-upload-hasil-dan-pembahasan-orientasi/:LaporanTrialSkalaLabID",
+  ControllerLaporanTrialSkalaLab.updateUploadHasilDanPembahasanOrientasi
+);
 
 module.exports = router;
