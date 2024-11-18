@@ -1837,7 +1837,7 @@ class ControllerLaporanTrialSkalaLab {
       }
 
       // Check if records with the specified LaporanTrialSkalaLabID exist
-      const findRecords = await t_LTS_hasilDanPembatasanOrientasi.findAll({
+      const findRecords = await t_LTS_hasilDanPembahasanOrientasi.findAll({
         where: { LaporanTrialSkalaLabID: +LaporanTrialSkalaLabID },
       });
 
@@ -1860,7 +1860,7 @@ class ControllerLaporanTrialSkalaLab {
         }
 
         // Update the specific record by id
-        return await t_LTS_hasilDanPembatasanOrientasi.update(
+        return await t_LTS_hasilDanPembahasanOrientasi.update(
           { upload },
           {
             where: { id },
