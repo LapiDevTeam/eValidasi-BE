@@ -9,13 +9,7 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      tahapanProses: {
-        type: Sequelize.STRING,
-      },
-      parameter: {
-        type: Sequelize.STRING,
-      },
-      justifikasi: {
+      kesimpulanProsesTerpilih: {
         type: Sequelize.STRING,
       },
       LaporanTrialSkalaLabID: {

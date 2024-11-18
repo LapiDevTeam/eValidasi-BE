@@ -75,6 +75,9 @@ module.exports = {
       tindakLanjut: {
         type: Sequelize.TEXT,
       },
+      spesifikasiProdukJadi: {
+        type: Sequelize.TEXT,
+      },
       alasan_reject: {
         type: Sequelize.STRING,
       },

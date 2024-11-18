@@ -272,20 +272,11 @@ class ControllerLaporanTrialSkalaLab {
 
   static async createKesimpulanFormula(req, res, next) {
     try {
-      const {
-        komposisi,
-        jumlah,
-        apakahAdaPadaKomposisiOriginator,
-        justifikasi,
-        LaporanTrialSkalaLabID,
-      } = req.body;
-
+      const { kesimpulanFormulaTerpilih, LaporanTrialSkalaLabID } = req.body;
+      const { id } = req.params;
       const createKesimpulanFormula = await t_kesimpulanFormulaTerpilih.create({
-        komposisi,
-        jumlah,
-        apakahAdaPadaKomposisiOriginator,
-        justifikasi,
-        LaporanTrialSkalaLabID,
+        kesimpulanFormulaTerpilih,
+        LaporanTrialSkalaLabID: +id || null,
       });
 
       res.status(201).json({
@@ -377,15 +368,12 @@ class ControllerLaporanTrialSkalaLab {
   }
   static async createKesimpulanProsesTerpilih(req, res, next) {
     try {
-      const { tahapanProses, parameter, justifikasi, LaporanTrialSkalaLabID } =
-        req.body;
-
+      const { kesimpulanProsesTerpilih, LaporanTrialSkalaLabID } = req.body;
+      const { id } = req.params;
       const createKesimpulanProsesTerpilih =
         await t_kesimpulanProsesTerpilih.create({
-          tahapanProses,
-          parameter,
-          justifikasi,
-          LaporanTrialSkalaLabID,
+          kesimpulanProsesTerpilih,
+          LaporanTrialSkalaLabID: +id || null,
         });
 
       res.status(201).json({
@@ -402,6 +390,7 @@ class ControllerLaporanTrialSkalaLab {
       const {
         faktor,
         parameter,
+        rangeStudiSkalaLab,
         usulanSkalaPilot,
         justifikasi,
         LaporanTrialSkalaLabID,
@@ -411,6 +400,7 @@ class ControllerLaporanTrialSkalaLab {
         await t_usulanPenelitianProduk.create({
           faktor,
           parameter,
+          rangeStudiSkalaLab,
           usulanSkalaPilot,
           justifikasi,
           LaporanTrialSkalaLabID,
@@ -580,12 +570,12 @@ class ControllerLaporanTrialSkalaLab {
           },
         });
       const kesimpulanFormulaTerpilih =
-        await t_kesimpulanFormulaTerpilih.findAll({
+        await t_kesimpulanFormulaTerpilih.findOne({
           where: {
             LaporanTrialSkalaLabID: id,
           },
         });
-      const kesimpulanProsesTerpilih = await t_kesimpulanProsesTerpilih.findAll(
+      const kesimpulanProsesTerpilih = await t_kesimpulanProsesTerpilih.findOne(
         {
           where: {
             LaporanTrialSkalaLabID: id,
@@ -613,12 +603,23 @@ class ControllerLaporanTrialSkalaLab {
           LaporanTrialSkalaLabID: id,
         },
       });
+      const hasilDanPembahasanOrientasi =
+        await t_LTS_hasilDanPembahasanOrientasi.findAll({
+          where: {
+            LaporanTrialSkalaLabID: id,
+          },
+        });
       const bahanAktifCma = await t_LTS_bahanAktifCma.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
       });
       const bahanTambahanCma = await t_LTS_bahanTambahanCma.findAll({
+        where: {
+          LaporanTrialSkalaLabID: id,
+        },
+      });
+      const kriteriaPenerimaan = await t_LTS_kriteriaPenerimaan.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
         },
@@ -652,6 +653,7 @@ class ControllerLaporanTrialSkalaLab {
       res.status(200).json({
         laporanTrialSkalaLabDetails,
         aktivitasDanWaktuPencapaian,
+        kriteriaPenerimaan,
         kesimpulanFormulaTerpilih,
         ringkasanHasilStudiCpp,
         ringkasanHasilStudiCma,
@@ -659,6 +661,7 @@ class ControllerLaporanTrialSkalaLab {
         kesimpulanProsesTerpilih,
         usulanPenelitianProduk,
         studiCppTerhadapCqa,
+        hasilDanPembahasanOrientasi,
         bahanAktifCma,
         bahanTambahanCma,
         updateRiskAssessment,
@@ -671,6 +674,60 @@ class ControllerLaporanTrialSkalaLab {
     } catch (err) {
       console.log(err);
       return res.status(500).json({ message: "Server error" });
+    }
+  }
+
+  static async updateUploadAktivitas(req, res) {
+    try {
+      console.log("xixixixixi");
+
+      const { LaporanTrialSkalaLabID } = req.params;
+      const cat = await t_laporanTrialSkalaLab.findByPk(
+        +LaporanTrialSkalaLabID
+      );
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_laporanTrialSkalaLab_status.destroy({
+      //     where: { CatatanTrialID: +CatatanTrialID },
+      //   });
+      //   await t_laporanTrialSkalaLab.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+      const upload = req.body;
+      console.log(upload, "< 123");
+
+      const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
+        +LaporanTrialSkalaLabID
+      );
+
+      console.log(findLaporanTrialSkalaLabID.id, "< ID");
+
+      if (!findLaporanTrialSkalaLabID) throw { name: "NotFound" };
+      const updateUpload = await t_laporanTrialSkalaLab.update(
+        { upload }, // Directly using upload array
+        {
+          where: { id: findLaporanTrialSkalaLabID.id },
+          returning: true,
+        }
+      );
+      console.log(updateUpload, "<< update");
+
+      res.status(200).json(updateUpload);
+    } catch (err) {
+      console.log(err);
     }
   }
   static async editLaporanTrialSkalaLab(req, res, next) {
@@ -801,6 +858,7 @@ class ControllerLaporanTrialSkalaLab {
               {
                 faktor: newItem?.faktor || "",
                 parameter: newItem?.parameter || "",
+                rangeStudiSkalaLab: newItem?.rangeStudiSkalaLab || "",
                 usulanSkalaPilot: newItem?.usulanSkalaPilot || "",
                 justifikasi: newItem?.justifikasi || "",
                 LaporanTrialSkalaLabID: +id || null,
@@ -815,6 +873,7 @@ class ControllerLaporanTrialSkalaLab {
               {
                 faktor: newItem?.faktor || "",
                 parameter: newItem?.parameter || "",
+                rangeStudiSkalaLab: newItem?.rangeStudiSkalaLab || "",
                 usulanSkalaPilot: newItem?.usulanSkalaPilot || "",
                 justifikasi: newItem?.justifikasi || "",
                 LaporanTrialSkalaLabID: +id || null,

@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       faktor: DataTypes.STRING,
       parameter: DataTypes.STRING,
+      rangeStudiSkalaLab: DataTypes.STRING,
       usulanSkalaPilot: DataTypes.STRING,
       justifikasi: DataTypes.STRING,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,

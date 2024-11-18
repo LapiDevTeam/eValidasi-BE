@@ -15,6 +15,9 @@ module.exports = {
       parameter: {
         type: Sequelize.STRING,
       },
+      rangeStudiSkalaLab: {
+        type: Sequelize.STRING,
+      },
       usulanSkalaPilot: {
         type: Sequelize.STRING,
       },

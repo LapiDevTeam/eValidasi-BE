@@ -16,9 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_kesimpulanProsesTerpilih.init(
     {
-      tahapanProses: DataTypes.STRING,
-      parameter: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      kesimpulanProsesTerpilih: DataTypes.STRING,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

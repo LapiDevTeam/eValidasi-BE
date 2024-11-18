@@ -16,10 +16,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   t_kesimpulanFormulaTerpilih.init(
     {
-      komposisi: DataTypes.STRING,
-      jumlah: DataTypes.STRING,
-      apakahAdaPadaKomposisiOriginator: DataTypes.STRING,
-      justifikasi: DataTypes.STRING,
+      kesimpulanFormulaTerpilih: DataTypes.STRING,
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,

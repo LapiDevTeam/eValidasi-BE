@@ -14,7 +14,7 @@ router.post(
 );
 
 router.post(
-  "/create-kesimpulan-formula",
+  "/create-kesimpulan-formula/:id",
   ControllerLaporanTrialSkalaLab.createKesimpulanFormula
 );
 router.post(
@@ -26,7 +26,7 @@ router.post(
   ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCma
 );
 router.post(
-  "/create-kesimpulan-proses-terpilih",
+  "/create-kesimpulan-proses-terpilih/:id",
   ControllerLaporanTrialSkalaLab.createKesimpulanProsesTerpilih
 );
 router.post(
@@ -129,6 +129,11 @@ router.put(
 router.put(
   "/update-upload-bahan-tambahan-cma/:LaporanTrialSkalaLabID",
   ControllerLaporanTrialSkalaLab.updateUploadBahanTambahanCma
+);
+
+router.put(
+  "/update-upload-aktivitas/:LaporanTrialSkalaLabID",
+  ControllerLaporanTrialSkalaLab.updateUploadAktivitas
 );
 
 // save dan edit hasil dan pembahasan orientasi

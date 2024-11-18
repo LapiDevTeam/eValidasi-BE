@@ -9,16 +9,7 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
-      komposisi: {
-        type: Sequelize.STRING,
-      },
-      jumlah: {
-        type: Sequelize.STRING,
-      },
-      apakahAdaPadaKomposisiOriginator: {
-        type: Sequelize.STRING,
-      },
-      justifikasi: {
+      kesimpulanFormulaTerpilih: {
         type: Sequelize.STRING,
       },
       LaporanTrialSkalaLabID: {

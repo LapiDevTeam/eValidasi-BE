@@ -90,6 +90,7 @@ module.exports = (sequelize, DataTypes) => {
       pembahasan: DataTypes.TEXT,
       kesimpulan: DataTypes.TEXT,
       tindakLanjut: DataTypes.TEXT,
+      spesifikasiProdukJadi: DataTypes.TEXT,
       alasan_reject: DataTypes.STRING,
       pic: DataTypes.STRING,
       bagian: DataTypes.STRING,
