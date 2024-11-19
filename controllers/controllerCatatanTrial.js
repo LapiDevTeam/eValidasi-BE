@@ -172,7 +172,9 @@ class ControllerCatatanTrial {
       });
       const metodePembuatan = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: +id },
+        order: [["createdAt", "ASC"]], // Untuk ascending
       });
+
       const prosesPadat = await t_prosesCatatanTrialPadat.findAll({
         where: { CatatanTrialID: +id },
       });
