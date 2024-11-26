@@ -24,8 +24,15 @@ const {
 class ControllerFormulaFix {
   static async createFormulaFix(req, res, next) {
     try {
-      const { nama_user, bagian_user } = req.user;
-
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
       const {
         namaProduk,
         filter,
@@ -63,6 +70,8 @@ class ControllerFormulaFix {
         keterangan: keterangan || "",
         pic: nama_user || "",
         bagian: bagian_user || "",
+        user_id,
+        delegated_to,
       });
       console.log(createFormulaFix, "<< created");
 
@@ -289,17 +298,17 @@ class ControllerFormulaFix {
         nama_user
       );
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
-      let status;
+      let statusDokumen;
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        status = getStatusFormulaFix(
+        statusDokumen = getStatusFormulaFix(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) status = "Closed";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
       if (is_approve === false) {
-        status = "Reject";
+        statusDokumen = "Reject";
         await t_formulaFix_status.destroy({
           where: { FormulaFixID: +id },
         });
@@ -318,7 +327,7 @@ class ControllerFormulaFix {
       });
       await t_formulaFix.update(
         {
-          status: status,
+          statusDokumen: statusDokumen,
           alasan_reject: keterangan_reject,
           user_id,
           // delegated_to,
@@ -1202,14 +1211,9 @@ class ControllerFormulaFix {
   static async updateDataStabilitas(req, res) {
     try {
       const { FormulaFixID } = req.params;
-      const {
-        user_id,
-        delegated_to,
-        nama_user,
-        joblevel_id_user,
-        inisial_user,
-        bagian_user,
-      } = req.user;
+      const { user_id, delegated_to } = req.user;
+
+      console.log(req.user, "< usserr");
 
       console.log(FormulaFixID, "< idddd");
 
@@ -1221,11 +1225,17 @@ class ControllerFormulaFix {
         await t_formulaFix_dataStabilitas.findOrCreate({
           where: { FormulaFixID: +FormulaFixID },
           defaults: { upload },
+          user_id,
+          delegated_to,
         });
 
       if (!created) {
         // If the record exists, update it
-        dataStabilitas = await dataStabilitas.update({ upload });
+        dataStabilitas = await dataStabilitas.update({
+          upload,
+          user_id,
+          delegated_to,
+        });
         console.log("Record updated:", dataStabilitas);
       } else {
         console.log("Record created:", dataStabilitas);
@@ -1254,7 +1264,7 @@ class ControllerFormulaFix {
   static async updateAcuanCatatanTrial(req, res) {
     try {
       const { FormulaFixID } = req.params;
-
+      const { user_id, delegated_to } = req.user;
       console.log(FormulaFixID, "< idddd");
 
       const upload = req.body;
@@ -1265,11 +1275,17 @@ class ControllerFormulaFix {
         await t_formulaFix_acuanCatatanTrial.findOrCreate({
           where: { FormulaFixID: +FormulaFixID },
           defaults: { upload },
+          user_id,
+          delegated_to,
         });
 
       if (!created) {
         // If the record exists, update it
-        acuanCatatanTrial = await acuanCatatanTrial.update({ upload });
+        acuanCatatanTrial = await acuanCatatanTrial.update({
+          upload,
+          user_id,
+          delegated_to,
+        });
         console.log("Record updated:", acuanCatatanTrial);
       } else {
         console.log("Record created:", acuanCatatanTrial);

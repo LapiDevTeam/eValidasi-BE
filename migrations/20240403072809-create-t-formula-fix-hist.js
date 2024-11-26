@@ -2,11 +2,14 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("t_formulaFix", {
+    await queryInterface.createTable("t_formulaFix_hist", {
+      status: {
+        type: Sequelize.STRING,
+      },
+      changeDate: {
+        type: Sequelize.DATE,
+      },
       id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
         type: Sequelize.INTEGER,
       },
       namaProduk: {
@@ -62,7 +65,6 @@ module.exports = {
       },
       statusDokumen: {
         type: Sequelize.STRING,
-        defaultValue: "Draft",
       },
       user_id: {
         type: Sequelize.STRING,
@@ -74,16 +76,14 @@ module.exports = {
         type: Sequelize.STRING,
       },
       createdAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
       updatedAt: {
-        allowNull: false,
         type: Sequelize.DATE,
       },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("t_formulaFix");
+    await queryInterface.dropTable("t_formulaFix_hist");
   },
 };
