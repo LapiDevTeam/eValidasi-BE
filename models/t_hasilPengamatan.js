@@ -17,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
   t_hasilPengamatan.init(
     {
       LaporanTrialSkalaLabID: DataTypes.INTEGER,
+      title: DataTypes.TEXT,
       tableIndex: DataTypes.INTEGER,
       colIndex: DataTypes.INTEGER,
       rowIndex: DataTypes.INTEGER,

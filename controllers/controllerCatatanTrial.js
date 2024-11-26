@@ -4247,6 +4247,7 @@ ORDER BY
         path,
         parameter,
         desc,
+        title,
         waktuPengamatan,
         tanggal,
         user_id,
