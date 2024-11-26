@@ -13,6 +13,7 @@ const routerGlobalApi = require("./routerGlobalApi");
 const routerProposalDiversifikasi = require("./routerProposalDiversifikasi");
 const routerKodeTrialObatJadi = require("./routerKodeTrialObatJadi");
 const routerProtokolValidasi = require("./routerProtokolValidasi");
+const routerUpload = require('../routers/v2/routerUpload');
 const { authentication } = require("../middlewares/authentication");
 
 router.get("/current-user", authentication, (req, res) => {
@@ -45,5 +46,7 @@ router.use("/", routerGlobalApi);
 router.use("/", routerProposalDiversifikasi);
 router.use("/", routerKodeTrialObatJadi);
 router.use("/", routerProtokolValidasi);
+
+router.use("/v2", routerUpload );
 
 module.exports = router;

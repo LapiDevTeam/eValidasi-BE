@@ -16,8 +16,10 @@ const {
   t_catatanTrial_status,
   m_bentuk_sediaan,
   m_kodeTrialObatJadi,
+  t_hasilPengamatan,
   sequelize,
-} = require("../models/index");
+} = require("../models");
+const { v4: uuidv4 } = require('uuid');
 
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
@@ -542,19 +544,19 @@ class ControllerCatatanTrial {
         if (err) console.log(err);
         const request = new sql.Request();
         request.query(
-          `SELECT 
+          `SELECT
     p.product_id,
-    p.Product_Name, 
+    p.Product_Name,
     p.Product_Kemasan
-FROM 
+FROM
     m_PRODUCT p
-WHERE 
-    p.isActive = 1 
-GROUP BY 
-    p.product_id, 
-    p.Product_Name, 
+WHERE
+    p.isActive = 1
+GROUP BY
+    p.product_id,
+    p.Product_Name,
     p.Product_Kemasan
-ORDER BY 
+ORDER BY
     p.product_id ASC;
 ;
           `,
@@ -4235,6 +4237,72 @@ ORDER BY
       res.status(500).send({ msg: "error" });
     }
   }
+
+  static async createHasilPengamatan(req, res) {
+    try {
+      const {
+        LaporanTrialSkalaLabID,
+        colIndex,
+        rowIndex,
+        path,
+        parameter,
+        desc,
+        waktuPengamatan,
+        tanggal,
+        user_id,
+        delegated_to,
+        flag_update,
+        tableIndex
+      } = req.body;
+
+      // Generate a unique ID for the new record
+      const id = uuidv4();
+
+      // Create the new HasilPengamatan record
+      const newHasilPengamatan = await t_hasilPengamatan.create({
+        id,
+        tableIndex,
+        LaporanTrialSkalaLabID,
+        colIndex,
+        rowIndex,
+        path,
+        parameter,
+        desc,
+        waktuPengamatan,
+        tanggal,
+        user_id,
+        delegated_to,
+        flag_update,
+        createdAt: new Date(), // Set current timestamp
+        updatedAt: new Date(), // Set current timestamp
+      });
+
+      return res.status(201).json({
+        message: 'Hasil pengamatan created successfully',
+        data: newHasilPengamatan,
+      });
+    } catch (err) {
+      console.log({ err });
+      return res.status(500).json({
+        message: err?.message || 'Internal Server Error',
+      });
+    }
+  }
+
+  static async getAllHasilPengamatan(req, res) {
+    try {
+      const allHasilPengamatan = await t_hasilPengamatan.findAll();
+      return res.status(200).json({
+        message: 'OK',
+        data: allHasilPengamatan,
+      });
+    } catch (err) {
+      console.log({err});
+      return res.status(500).json({
+        message: err?.message || 'Internal Server Error',
+      });
+    }
+  }
 }
-8;
+
 module.exports = ControllerCatatanTrial;
