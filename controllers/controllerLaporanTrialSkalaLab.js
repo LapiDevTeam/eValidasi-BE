@@ -563,12 +563,6 @@ class ControllerLaporanTrialSkalaLab {
       //     isApprove,
       //   });
 
-      const aktivitasDanWaktuPencapaian =
-        await t_aktivitasDanWaktuPencapaian.findOne({
-          where: {
-            LaporanTrialSkalaLabID: id,
-          },
-        });
       const kesimpulanFormulaTerpilih =
         await t_kesimpulanFormulaTerpilih.findOne({
           where: {
@@ -592,6 +586,24 @@ class ControllerLaporanTrialSkalaLab {
           LaporanTrialSkalaLabID: id,
         },
       });
+
+      const kriteria = await t_LTS_kriteriaPenerimaan.findAll({
+        where: { LaporanTrialSkalaLabID: id },
+        order: [["id", "ASC"]],
+      });
+
+      // Group data by tableIndex
+      const kriteriaPenerimaanGrouped = kriteria.reduce((acc, item) => {
+        const index = item.tableIndex;
+        if (!acc[index]) {
+          acc[index] = [];
+        }
+        acc[index].push(item);
+        return acc;
+      }, {});
+
+      // Convert grouped data into an array of arrays
+      const kriteriaPenerimaan = Object.values(kriteriaPenerimaanGrouped);
 
       const usulanPenelitianProduk = await t_usulanPenelitianProduk.findAll({
         where: {
@@ -619,11 +631,7 @@ class ControllerLaporanTrialSkalaLab {
           LaporanTrialSkalaLabID: id,
         },
       });
-      const kriteriaPenerimaan = await t_LTS_kriteriaPenerimaan.findAll({
-        where: {
-          LaporanTrialSkalaLabID: id,
-        },
-      });
+
       const updateRiskAssessment = await t_updateRiskAssessment.findOne({
         where: {
           LaporanTrialSkalaLabID: id,
@@ -652,7 +660,6 @@ class ControllerLaporanTrialSkalaLab {
       }
       res.status(200).json({
         laporanTrialSkalaLabDetails,
-        aktivitasDanWaktuPencapaian,
         kriteriaPenerimaan,
         kesimpulanFormulaTerpilih,
         ringkasanHasilStudiCpp,
@@ -706,8 +713,8 @@ class ControllerLaporanTrialSkalaLab {
       //     }
       //   );
       // }
-      const upload = req.body;
-      console.log(upload, "< 123");
+      const data = req.body;
+      console.log(data, "< 123");
 
       const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
         +LaporanTrialSkalaLabID
@@ -717,7 +724,7 @@ class ControllerLaporanTrialSkalaLab {
 
       if (!findLaporanTrialSkalaLabID) throw { name: "NotFound" };
       const updateUpload = await t_laporanTrialSkalaLab.update(
-        { upload }, // Directly using upload array
+        { aktivitasDanWaktuPencapaian: data }, // Directly using upload array
         {
           where: { id: findLaporanTrialSkalaLabID.id },
           returning: true,
