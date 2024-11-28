@@ -4267,6 +4267,7 @@ ORDER BY
         colIndex,
         rowIndex,
         path,
+        title,
         parameter,
         desc,
         waktuPengamatan,
@@ -4292,7 +4293,32 @@ ORDER BY
 
   static async getAllHasilPengamatan(req, res) {
     try {
-      const allHasilPengamatan = await t_hasilPengamatan.findAll();
+      let {tableIndex, colIndex, rowIndex, parameter, filePath} = req.query;
+      filePath = parseInt(filePath);
+      let where = {}
+
+      if (!filePath) {
+        where['path'] = {
+            [Op.eq]: null
+        };
+      } else {
+        where['path'] = {
+          [Op.ne]: null
+        };
+      }
+
+      if (!parameter) throw new Error('Parameter harus di isi')
+      if (!tableIndex || !colIndex || !rowIndex) {
+        where['parameter'] = parameter
+      } else {
+        where['tableIndex'] = tableIndex;
+        where['colIndex'] = colIndex;
+        where['rowIndex'] = rowIndex;
+      }
+
+      where['parameter'] = parameter;
+
+      const allHasilPengamatan = await t_hasilPengamatan.findAll({where});
       return res.status(200).json({
         message: 'OK',
         data: allHasilPengamatan,
@@ -4304,6 +4330,56 @@ ORDER BY
       });
     }
   }
+
+  static async updateHasilPengamatan (req, res) {
+    try {
+      const { parameter, tableIndex, colIndex, rowIndex } = req.body;
+      const updates = req.body.updates;
+
+      if (!parameter || tableIndex === undefined || colIndex === undefined || rowIndex === undefined) {
+        return res.status(400).json({
+          message: 'parameter, tableIndex, colIndex, and rowIndex are required.',
+        });
+      }
+
+
+      if (!updates || typeof updates !== 'object') {
+        return res.status(400).json({
+          message: 'No updates provided or invalid update data.',
+        });
+      }
+
+      // Find the record to update
+      const record = await t_hasilPengamatan.findOne({
+        where: {
+          parameter,
+          tableIndex,
+          colIndex,
+          rowIndex,
+        },
+      });
+
+
+      if (!record) {
+        return res.status(404).json({
+          message: 'Record not found.',
+        });
+      }
+
+      await record.update(updates);
+
+      return res.status(200).json({
+        message: 'Record updated successfully.',
+        data: record,
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        message: 'Internal Server Error',
+        error: err.message,
+      });
+    }
+  };
 }
 
 module.exports = ControllerCatatanTrial;
