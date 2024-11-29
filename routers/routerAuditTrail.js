@@ -173,4 +173,50 @@ router.get(
   ControllerAuditTrail.downloadExcelAuditKebutuhanPeralatanHist
 );
 
+router.get(
+  "/download-formulafix",
+  ControllerAuditTrail.downloadExcelAuditFormulaFixHist
+);
+
+router.get(
+  "/download-formulafiStatus",
+  ControllerAuditTrail.downloadExcelFormulaFixStatusHist
+);
+
+router.get(
+  "/download-ExcelPerhitunganBahanBakuFormulaFix",
+  ControllerAuditTrail.downloadExcelPerhitunganBahanBakuFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelKemasanFormulaFixHist",
+  ControllerAuditTrail.downloadExcelKemasanFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelProsesPengolahanFormulaFixHist",
+  ControllerAuditTrail.downloadExcelProsesPengolahanFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelProsesPengemasanFormulaFixHist",
+  ControllerAuditTrail.downloadExcelProsesPengemasanFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelRancanganSpesifikasiObatJadiFormulaFixHist",
+  ControllerAuditTrail.downloadExcelRancanganSpesifikasiObatJadiFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelDataStabilitasFormulaFixHist",
+  ControllerAuditTrail.downloadExcelDataStabilitasFormulaFixHist
+);
+
+router.get(
+  "/download-ExcelAcuanCatatanTrialFormulaFixHist",
+  ControllerAuditTrail.downloadExcelAcuanCatatanTrialFormulaFixHist
+);
+
+
 module.exports = router;
