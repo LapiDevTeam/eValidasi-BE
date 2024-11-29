@@ -101,6 +101,12 @@ router.put(
   authentication,
   ControllerLaporanTrialSkalaLab.handleSaveStudiCppTerhadapCqa
 );
+// save dan edit hasilpengamatan
+router.put(
+  "/handle-hasil-pengamatan/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveHasilPengamatan
+);
 
 router.put(
   "/update-upload-studi/:LaporanTrialSkalaLabID",
