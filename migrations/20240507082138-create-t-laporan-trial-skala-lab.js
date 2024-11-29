@@ -87,6 +87,9 @@ module.exports = {
       bagian: {
         type: Sequelize.STRING,
       },
+      aktivitasDanWaktuPencapaian: {
+        type: Sequelize.JSONB,
+      },
       user_id: {
         type: Sequelize.STRING,
       },

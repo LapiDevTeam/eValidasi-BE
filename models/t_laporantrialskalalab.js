@@ -94,6 +94,7 @@ module.exports = (sequelize, DataTypes) => {
       alasan_reject: DataTypes.STRING,
       pic: DataTypes.STRING,
       bagian: DataTypes.STRING,
+      aktivitasDanWaktuPencapaian: DataTypes.JSONB,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
