@@ -60,6 +60,9 @@ module.exports = (sequelize, DataTypes) => {
       t_laporanTrialSkalaLab.hasMany(models.t_LTS_hasilDanPembahasanOrientasi, {
         foreignKey: "LaporanTrialSkalaLabID",
       });
+      t_laporanTrialSkalaLab.hasMany(models.t_LTS_hasilPengamatan, {
+        foreignKey: "LaporanTrialSkalaLabID",
+      });
       t_laporanTrialSkalaLab.hasMany(models.t_laporanTrialSkalaLab_status, {
         foreignKey: "LaporanTrialSkalaLabID",
         as: "approver_data",

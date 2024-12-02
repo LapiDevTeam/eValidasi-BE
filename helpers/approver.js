@@ -19,6 +19,7 @@ const isApproveValidation = async (
   nama_user
 ) => {
   try {
+    console.log(apprApplicationCode, apprDeptId, apprNo, user_id, "< AAAA");
     let isApprove = false;
 
     const pool = await sql.connect(configMssql);
