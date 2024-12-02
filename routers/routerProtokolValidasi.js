@@ -11,6 +11,12 @@ const upload = multer({ storage });
 //   authentication,
 //   ControllerProtokolValidasi.createProductBrief
 // );
+
+router.put(
+  "/update-upload-protokol/:ProtokolID",
+  ControllerProtokolValidasi.updateUploadProtokol
+);
+
 router.post(
   "/upload-pdf",
   authentication,
@@ -22,6 +28,7 @@ router.get(
 );
 router.get(
   "/get-protokol-validasi/:id",
+  authentication,
   ControllerProtokolValidasi.getProtokolValidasi
 );
 router.get(
@@ -30,7 +37,7 @@ router.get(
   ControllerProtokolValidasi.getUpload
 );
 router.post(
-  "/approve/:id",
+  "/approve-protokol/:id",
   authentication,
   ControllerProtokolValidasi.approveProtokol
 );
