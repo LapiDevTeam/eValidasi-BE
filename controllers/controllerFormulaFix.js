@@ -50,8 +50,6 @@ class ControllerFormulaFix {
         keterangan,
       } = req.body;
 
-      console.log(kemasan, "< kemasan");
-
       const createFormulaFix = await t_formulaFix.create({
         namaProduk: namaProduk || "",
         filter: filter || "",
@@ -73,14 +71,12 @@ class ControllerFormulaFix {
         user_id,
         delegated_to,
       });
-      console.log(createFormulaFix, "<< created");
 
       res.status(201).json({
-        message: "Success Create formulaFix",
+        message: "Data has been saved!",
         data: createFormulaFix,
       });
     } catch (err) {
-      console.log(err, "<< er");
       next(err);
     }
   }
@@ -196,12 +192,10 @@ class ControllerFormulaFix {
       const apprNo = await checkStatusFormulaFix(id);
 
       const isApprove = await isApproveValidation(
-        // productBriefDetail.nama_pegawai,
         "formulaFix",
         apprDeptId,
         apprNo,
         user_id
-        // nama_user
       );
 
       if (isApprove.message) throw new MyError(400, isApprove.message);
@@ -235,8 +229,6 @@ class ControllerFormulaFix {
         keterangan,
       } = req.body;
 
-      console.log(req.body, "< req");
-
       const [updatedRowsCount] = await t_formulaFix.update(
         {
           namaProduk: namaProduk || "",
@@ -261,7 +253,7 @@ class ControllerFormulaFix {
       );
       if (updatedRowsCount > 0) {
         res.status(201).json({
-          message: "Formula Fix updated successfully",
+          message: "Data has been saved!",
         });
       } else {
         res.status(404).json({
@@ -348,11 +340,55 @@ class ControllerFormulaFix {
     try {
       const { id } = req.params;
 
-      const formulaFix = await t_formulaFix.findOne({
-        where: {
-          id,
-        },
-      });
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+
+      let formulaFixDetails;
+      if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
+        formulaFixDetails = await t_formulaFix?.findOne({
+          where: {
+            id,
+          },
+          include: { model: t_formulaFix_status, as: "approver_data" },
+          order: [
+            [
+              { model: t_formulaFix_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      } else {
+        formulaFixDetails = await t_formulaFix.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_formulaFix_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_formulaFix_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+      }
+
+      const apprDeptId = bagian_user;
+      const apprNo = await checkStatusFormulaFix(id);
+
+      const isApprove = await isApproveValidation(
+        "formulaFix",
+        apprDeptId,
+        apprNo,
+        user_id
+      );
+
+      if (isApprove.message) throw new MyError(400, isApprove.message);
+
       const perhitunganBahanBaku =
         await t_perhitunganBahanBakuFormulaFix.findAll({
           where: { FormulaFixID: id },
@@ -399,7 +435,7 @@ class ControllerFormulaFix {
       });
 
       res.status(200).json({
-        formulaFix,
+        formulaFix: { ...(formulaFixDetails?.dataValues || {}), isApprove },
         perhitunganBahanBaku,
         kemasanFormulaFix,
         prosesPengolahan,
@@ -542,8 +578,6 @@ class ControllerFormulaFix {
         });
       }
 
-      console.log(recordset, "< 12333");
-
       // Format the response as an array of objects
       const formattedList = recordset.map((item) => ({
         dosis: item.Product_Dosis.trim(), // Dosis property
@@ -563,7 +597,7 @@ class ControllerFormulaFix {
 
     try {
       const { data } = req.body;
-      console.log(data, "<dat");
+
       const { id } = req.params;
       const {
         user_id,
@@ -573,7 +607,7 @@ class ControllerFormulaFix {
         inisial_user,
         bagian_user,
       } = req.user;
-      console.log(id, "< IDDDDD");
+
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
       // if (cat?.statusDokumen === "Reject") {
@@ -613,10 +647,6 @@ class ControllerFormulaFix {
       // update
       await Promise.all(
         data?.map(async (newItem) => {
-          //cek kalo gada id , create baru
-          console.log(newItem, "<new");
-          console.log(id, "< ID");
-
           if (!newItem?.id) {
             const created = await t_perhitunganBahanBakuFormulaFix.create(
               {
@@ -679,7 +709,7 @@ class ControllerFormulaFix {
 
       res.status(200).json({
         statusCode: 200,
-        message: "SUCCESS",
+        message: "Data has been saved!",
         data: newData,
       });
     } catch (err) {
@@ -809,7 +839,7 @@ class ControllerFormulaFix {
 
       res.status(200).json({
         statusCode: 200,
-        message: "SUCCESS",
+        message: "Data has been saved!",
         data: newData,
       });
     } catch (err) {
@@ -825,7 +855,7 @@ class ControllerFormulaFix {
 
     try {
       const { data } = req.body;
-      console.log(data, "<dat");
+
       const { id } = req.params;
       const {
         user_id,
@@ -835,7 +865,7 @@ class ControllerFormulaFix {
         inisial_user,
         bagian_user,
       } = req.user;
-      console.log(req.user, "<req");
+
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
       // if (cat?.statusDokumen === "Reject") {
@@ -876,8 +906,6 @@ class ControllerFormulaFix {
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<new");
-          console.log(id, "< ID");
 
           if (!newItem?.id) {
             const created = await t_formulaFix_prosesPengolahan.create(
@@ -939,7 +967,7 @@ class ControllerFormulaFix {
 
       res.status(200).json({
         statusCode: 200,
-        message: "SUCCESS",
+        message: "Data has been saved!",
         data: newData,
       });
     } catch (err) {
@@ -954,7 +982,7 @@ class ControllerFormulaFix {
 
     try {
       const { data } = req.body;
-      console.log(data, "<dat");
+
       const { id } = req.params;
       const {
         user_id,
@@ -964,7 +992,7 @@ class ControllerFormulaFix {
         inisial_user,
         bagian_user,
       } = req.user;
-      console.log(req.user, "<req");
+
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
       // if (cat?.statusDokumen === "Reject") {
@@ -1005,8 +1033,6 @@ class ControllerFormulaFix {
       await Promise.all(
         data?.map(async (newItem) => {
           //cek kalo gada id , create baru
-          console.log(newItem, "<new");
-          console.log(id, "< ID");
 
           if (!newItem?.id) {
             const created = await t_formulaFix_prosesPengemasan.create(
@@ -1068,7 +1094,7 @@ class ControllerFormulaFix {
 
       res.status(200).json({
         statusCode: 200,
-        message: "SUCCESS",
+        message: "Data has been saved!",
         data: newData,
       });
     } catch (err) {
@@ -1213,12 +1239,7 @@ class ControllerFormulaFix {
       const { FormulaFixID } = req.params;
       const { user_id, delegated_to } = req.user;
 
-      console.log(req.user, "< usserr");
-
-      console.log(FormulaFixID, "< idddd");
-
       const upload = req.body;
-      console.log(upload, "< 123");
 
       // Try to find the record by FormulaFixID
       let [dataStabilitas, created] =
@@ -1265,10 +1286,8 @@ class ControllerFormulaFix {
     try {
       const { FormulaFixID } = req.params;
       const { user_id, delegated_to } = req.user;
-      console.log(FormulaFixID, "< idddd");
 
       const upload = req.body;
-      console.log(upload, "< 123");
 
       // Try to find the record by FormulaFixID
       let [acuanCatatanTrial, created] =
@@ -1300,7 +1319,6 @@ class ControllerFormulaFix {
   static async getUploadAcuanCatatanTrial(req, res) {
     try {
       const { id } = req.params;
-      console.log(id, "< Ini id");
 
       const upload = await t_formulaFix_acuanCatatanTrial.findOne({
         where: { FormulaFixID: +id },

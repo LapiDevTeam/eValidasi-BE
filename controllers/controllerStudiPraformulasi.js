@@ -5349,6 +5349,8 @@ class ControllerStudiPraformulasi {
 
       const apprDeptId = studi?.dataValues?.rdSelection;
 
+      console.log(apprDeptId, "< DEPT ID");
+
       const apprNo = await checkStatusStudi(id);
 
       await Promise.all(
