@@ -3105,7 +3105,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelFormulaFixStatusHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3195,7 +3194,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelPerhitunganBahanBakuFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3284,7 +3282,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelKemasanFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3371,7 +3368,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelProsesPengolahanFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3458,7 +3454,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelProsesPengemasanFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3545,7 +3540,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelRancanganSpesifikasiObatJadiFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3633,7 +3627,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelDataStabilitasFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3719,7 +3712,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
   static async downloadExcelAcuanCatatanTrialFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3805,7 +3797,2410 @@ class ControllerAuditTrail {
       next(error);
     }
   }
+  static async downloadExcelKelengkapanDokumenHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
 
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          dokumen,
+          kelengkapan,
+          upload,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_kelengkapanDokumen_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.upload = JSON.stringify(el.upload); // Convert JSONB to string for Excel compatibility
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="KelengkapanDokumen-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelProdukTerdampakHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaProduk",
+          keterangan,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_produkTerdampak_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="ProdukTerdampak-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelProposalDiversifikasiHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "noProposal",
+          "rdSelection",
+          "namaBahanBaku",
+          produsen,
+          pemasok,
+          "statusDokumen",
+          alasan_reject,
+          "rancanganTrial",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_proposalDiversifikasi_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="ProposalDiversifikasi-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelPersentaseDalamFormulaHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaProduk",
+          "persenDalamFormula",
+          "skorA",
+          "bobotB",
+          jumlah,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_persentaseDalamFormula_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="PersentaseDalamFormula-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelJumlahBetsPerTahunHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaProduk",
+          "jumlahBets",
+          "skorA",
+          "bobotB",
+          jumlah,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_jumlahBetsPerTahun_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="JumlahBetsPerTahun-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelTotalSkoringHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaProduk",
+          "persentaseDalamFormula",
+          "pengaruhPadaPerformaProses",
+          "jumlahBetsPerTahun",
+          "jumlahTotal",
+          keterangan,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_totalSkoring_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="TotalSkoring-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelTimelineTrialHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "dampakPerubahan",
+          pic,
+          prioritas,
+          "tenggatWaktu",
+          realisasi,
+          "realisasiDate",
+          "statusImplementasi",
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_timelineTrial_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.tenggatWaktu = el?.tenggatWaktu
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.realisasiDate = el?.realisasiDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="TimelineTrial-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelProposalDiversifikasiStatusHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "ProposalDiversifikasiID",
+          approver_no,
+          is_approve,
+          approver_name,
+          approver_joblevel_id,
+          approver_inisial,
+          keterangan_reject,
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_proposalDiversifikasi_status_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="ProposalDiversifikasiStatus-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelPengaruhPadaPerformaProsesHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaProduk",
+          "jumlahPenyimpangan",
+          "skorA",
+          "bobotB",
+          jumlah,
+          "ProposalDiversifikasiID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          status,
+          "changeDate"
+        FROM public."t_pengaruhPadaPerformaProses_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="PengaruhPadaPerformaProses-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelProtokolValidasiHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "jenisDokumen",
+          "filter",
+          "namaProduk",
+          "noDokumen",
+          revisi,
+          alasan,
+          upload,
+          "statusDokumen",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_protokolValidasi_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="ProtokolValidasi-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelAktivitasDanWaktuPencapaianHist(req, res, next) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query data from the database
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "rencanaTersediaBahanAwal",
+          "pencapaianTersediaBahanAwal",
+          "rencanaOptimasiFormula",
+          "pencapaianOptimasiFormula",
+          "rencanaStabilitaSkalaLab",
+          "pencapaianStabilitaSkalaLab",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."t_aktivitasDanWaktuPencapaian_hist";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Extract headers from the first data object
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 25; // Adjust column width for readability
+      });
+
+      // Populate data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send the file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="AktivitasDanWaktuPencapaian-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelKesimpulanFormulaTerpilihHist(req, res, next) {
+    try {
+      const tableName = 't_kesimpulanFormulaTerpilih_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          komposisi,
+          jumlah,
+          "apakahAdaPadaKomposisiOriginator",
+          justifikasi,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="KesimpulanFormulaTerpilih-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelRingkasanHasilStudiCppHist(req, res, next) {
+    try {
+      const tableName = 't_ringkasanHasilStudiCpp_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "prosesParameter",
+          "CqaYangDiStudi",
+          "rangeStudi",
+          "controlStrategy",
+          justifikasi,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="RingkasanHasilStudiCpp-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelKesimpulanProsesTerpilihHist(req, res, next) {
+    try {
+      const tableName = 't_kesimpulanProsesTerpilih_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "tahapanProses",
+          "parameter",
+          justifikasi,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="KesimpulanProsesTerpilih-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelUsulanPenelitianProdukHist(req, res, next) {
+    try {
+      const tableName = 't_usulanPenelitianProduk_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          faktor,
+          "parameter",
+          "usulanSkalaPilot",
+          justifikasi,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="UsulanPenelitianProduk-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelUpdateRiskAssessmentHist(req, res, next) {
+    try {
+      const tableName = 't_updateRiskAssessment_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "cqaHeader",
+          "rows",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.cqaHeader = JSON.stringify(el.cqaHeader); // Convert JSONB to string
+        el.rows = JSON.stringify(el.rows); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="UpdateRiskAssessment-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelUpdateRiskAssessmentBahanAktifHist(req, res, next) {
+    try {
+      const tableName = 't_updateRiskAssessmentBahanAktif_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "cqaHeader",
+          "rows",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.cqaHeader = JSON.stringify(el.cqaHeader); // Convert JSONB to string
+        el.rows = JSON.stringify(el.rows); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="UpdateRiskAssessmentBahanAktif-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelUpdateRiskAssessmentBahanTambahanHist(req, res, next) {
+    try {
+      const tableName = 't_updateRiskAssessmentBahanTambahan_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "cqaHeader",
+          "rows",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.cqaHeader = JSON.stringify(el.cqaHeader); // Convert JSONB to string
+        el.rows = JSON.stringify(el.rows); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="UpdateRiskAssessmentBahanTambahan-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelUpdateRiskAssessmentKemasanHist(req, res, next) {
+    try {
+      const tableName = 't_updateRiskAssessmentKemasan_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "cqaHeader",
+          "rows",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.cqaHeader = JSON.stringify(el.cqaHeader); // Convert JSONB to string
+        el.rows = JSON.stringify(el.rows); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="UpdateRiskAssessmentKemasan-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelRingkasanHasilStudiCmaHist(req, res, next) {
+    try {
+      const tableName = 't_ringkasanHasilStudiCma_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          title,
+          content,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.content = JSON.stringify(el.content); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="RingkasanHasilStudiCma-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLaporanTrialSkalaLabStatusHist(req, res, next) {
+    try {
+      const tableName = 't_laporanTrialSkalaLab_status_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "LaporanTrialSkalaLabID",
+          approver_no,
+          is_approve,
+          approver_name,
+          approver_joblevel_id,
+          approver_inisial,
+          keterangan_reject,
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LaporanTrialSkalaLabStatus-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSStudiScreeningSourceApiHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_studiScreeningSourceApi_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          permasalahan,
+          tujuan,
+          "skalaStudi",
+          "penyimpananSampel",
+          "tahapanStudi",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSStudiScreeningSourceApi-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSKriteriaPenerimaanHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_kriteriaPenerimaan_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "parameter",
+          spesifikasi,
+          referensi,
+          "tableIndex",
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSKriteriaPenerimaan-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSStudiCppTerhadapCqaHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_studiCppTerhadapCqa_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          judul,
+          content,
+          upload,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.upload = JSON.stringify(el.upload); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSStudiCppTerhadapCqa-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSBahanAktifCmaHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_bahanAktifCma_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaBahan",
+          judul,
+          content,
+          upload,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.upload = JSON.stringify(el.upload); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSBahanAktifCma-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSBahanTambahanCmaHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_bahanTambahanCma_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          "namaBahan",
+          judul,
+          content,
+          upload,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.upload = JSON.stringify(el.upload); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSBahanTambahanCma-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
+  static async downloadExcelLTSHasilDanPembahasanOrientasiHist(req, res, next) {
+    try {
+      const tableName = 't_LTS_hasilDanPembahasanOrientasi_hist'; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          judul,
+          content,
+          upload,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.upload = JSON.stringify(el.upload); // Convert JSONB to string
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LTSHasilDanPembahasanOrientasi-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
 
 }
 

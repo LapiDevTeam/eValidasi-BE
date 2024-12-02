@@ -218,5 +218,148 @@ router.get(
   ControllerAuditTrail.downloadExcelAcuanCatatanTrialFormulaFixHist
 );
 
+router.get(
+  "/download-ExcelKelengkapanDokumenHist",
+  ControllerAuditTrail.downloadExcelKelengkapanDokumenHist
+);
+
+router.get(
+  "/download-ExcelProdukTerdampakHist",
+  ControllerAuditTrail.downloadExcelProdukTerdampakHist
+);
+
+router.get(
+  "/download-ExcelProposalDiversifikasiHist",
+  ControllerAuditTrail.downloadExcelProposalDiversifikasiHist
+);
+
+router.get(
+  "/download-PersentaseDalamFormulaHist",
+  ControllerAuditTrail.downloadExcelPersentaseDalamFormulaHist
+);
+
+router.get(
+  "/download-ExcelJumlahBetsPerTahunHist",
+  ControllerAuditTrail.downloadExcelJumlahBetsPerTahunHist
+);
+
+router.get(
+  "/download-ExcelTotalSkoringHist",
+  ControllerAuditTrail.downloadExcelTotalSkoringHist
+);
+
+router.get(
+  "/download-ExcelTimelineTrialHist",
+  ControllerAuditTrail.downloadExcelTimelineTrialHist
+);
+
+router.get(
+  "/download-ExcelProposalDiversifikasiStatusHist",
+  ControllerAuditTrail.downloadExcelProposalDiversifikasiStatusHist
+);
+
+router.get(
+  "/download-ExcelPengaruhPadaPerformaProsesHist",
+  ControllerAuditTrail.downloadExcelPengaruhPadaPerformaProsesHist
+);
+
+
+router.get(
+  "/download-ExcelProtokolValidasiHist",
+  ControllerAuditTrail.downloadExcelProtokolValidasiHist
+);
+
+router.get(
+  "/download-ExcelAktivitasDanWaktuPencapaianHist",
+  ControllerAuditTrail.downloadExcelAktivitasDanWaktuPencapaianHist
+);
+
+router.get(
+  "/download-ExcelRingkasanHasilStudiCppHist",
+  ControllerAuditTrail.downloadExcelRingkasanHasilStudiCppHist
+);
+
+router.get(
+  "/download-ExcelKesimpulanProsesTerpilihHist",
+  ControllerAuditTrail.downloadExcelKesimpulanProsesTerpilihHist
+);
+
+router.get(
+  "/download-ExcelUsulanPenelitianProdukHist",
+  ControllerAuditTrail.downloadExcelUsulanPenelitianProdukHist
+);
+
+router.get(
+  "/download-ExcelUpdateRiskAssessmentHist",
+  ControllerAuditTrail.downloadExcelUpdateRiskAssessmentHist
+);
+
+router.get(
+  "/download-ExcelUpdateRiskAssessmentBahanAktifHist",
+  ControllerAuditTrail.downloadExcelUpdateRiskAssessmentBahanAktifHist
+);
+
+router.get(
+  "/download-ExcelUpdateRiskAssessmentBahanTambahanHist",
+  ControllerAuditTrail.downloadExcelUpdateRiskAssessmentBahanTambahanHist
+);
+
+router.get(
+  "/download-ExcelUpdateRiskAssessmentKemasanHist",
+  ControllerAuditTrail.downloadExcelUpdateRiskAssessmentKemasanHist
+);
+
+router.get(
+  "/download-ExcelRingkasanHasilStudiCmaHist",
+  ControllerAuditTrail.downloadExcelRingkasanHasilStudiCmaHist
+);
+
+router.get(
+  "/download-ExcelLaporanTrialSkalaLabStatusHist",
+  ControllerAuditTrail.downloadExcelLaporanTrialSkalaLabStatusHist
+);
+
+router.get(
+  "/download-ExcelLTSStudiScreeningSourceApiHist",
+  ControllerAuditTrail.downloadExcelLTSStudiScreeningSourceApiHist
+);
+
+router.get(
+  "/download-ExcelLTSKriteriaPenerimaanHist",
+  ControllerAuditTrail.downloadExcelLTSKriteriaPenerimaanHist
+);
+
+router.get(
+  "/download-ExcelLTSStudiCppTerhadapCqaHist",
+  ControllerAuditTrail.downloadExcelLTSStudiCppTerhadapCqaHist
+);
+
+router.get(
+  "/download-ExcelLTSBahanAktifCmaHist",
+  ControllerAuditTrail.downloadExcelLTSBahanAktifCmaHist
+);
+
+router.get(
+  "/download-ExcelLTSBahanTambahanCmaHist",
+  ControllerAuditTrail.downloadExcelLTSBahanTambahanCmaHist
+);
+
+router.get(
+  "/download-ExcelLTSBahanTambahanCmaHist",
+  ControllerAuditTrail.downloadExcelLTSBahanTambahanCmaHist
+);
+
+router.get(
+  "/download-ExcelLTSHasilDanPembahasanOrientasiHist",
+  ControllerAuditTrail.downloadExcelLTSHasilDanPembahasanOrientasiHist
+);
+
+
+
+
+
+
+
+
 
 module.exports = router;
