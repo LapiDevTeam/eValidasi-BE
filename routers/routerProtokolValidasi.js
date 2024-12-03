@@ -22,6 +22,7 @@ router.post(
   authentication,
   ControllerProtokolValidasi.uploadPdf
 );
+router.put("/edit-pdf/:id", authentication, ControllerProtokolValidasi.editPdf);
 router.get(
   "/all-protokol-validasi",
   ControllerProtokolValidasi.findAllProtokolValidasi
@@ -36,7 +37,7 @@ router.get(
   authentication,
   ControllerProtokolValidasi.getUpload
 );
-router.post(
+router.put(
   "/approve-protokol/:id",
   authentication,
   ControllerProtokolValidasi.approveProtokol

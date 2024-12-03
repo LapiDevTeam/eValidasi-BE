@@ -110,7 +110,7 @@ const checkStatusProtokolValidasi = async (id) => {
   let apprNo = 1;
   const checkStatus = await t_protokolValidasi_status.findAll({
     where: {
-      // ProposalDiversifikasiID: id,
+      ProtokolValidasiID: id,
       is_approve: true,
     },
     order: [["approver_no", "DESC"]],

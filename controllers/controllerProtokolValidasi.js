@@ -113,6 +113,7 @@ class ControllerProtokolValidasi {
         // nama_user
       );
       console.log(isApprove, "<< asdasda");
+      console.log(apprNo, "<< appr NO");
       if (isApprove.message) throw new MyError(400, isApprove.message);
 
       res.status(200).json({
@@ -158,15 +159,85 @@ class ControllerProtokolValidasi {
         upload: upload, // Store the PDF binary data
         bagian: bagian_user || "",
         statusDokumen: "Draft",
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
-        message: "Success Create CatatanTrial",
+        message: "Data has been saved!",
         data: pdf,
       });
     } catch (error) {
       console.error("Upload PDF error:", error);
       res.status(500).json({ error: "Error uploading PDF" });
+    }
+  }
+
+  static async editPdf(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+      const { jenisDokumen, namaProduk, noDokumen, alasan, revisi, filter } =
+        req.body;
+
+      const prot = await t_protokolValidasi.findByPk(+id);
+      if (prot?.statusDokumen === "Reject") {
+        await t_protokolValidasi_status.destroy({
+          where: { ProtokolValidasiID: +id },
+        });
+        await t_protokolValidasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
+      // Check if model is correctly loaded
+      if (!t_protokolValidasi) {
+        console.error("Model 't_ProtokolValidasi' is not defined.");
+        return res
+          .status(500)
+          .json({ error: "Server error: Model not found." });
+      }
+
+      // Check if the record exists
+      const existingPdf = await t_protokolValidasi.findByPk(id);
+      if (!existingPdf) {
+        return res.status(404).json({ error: "Record not found." });
+      }
+
+      // Update the record
+      const updatedPdf = await existingPdf.update({
+        jenisDokumen: jenisDokumen || existingPdf.jenisDokumen,
+        namaProduk: namaProduk || existingPdf.namaProduk,
+        noDokumen: noDokumen || existingPdf.noDokumen,
+        alasan: alasan || existingPdf.alasan,
+        revisi: revisi || existingPdf.revisi,
+        filter: filter || existingPdf.filter,
+        bagian: bagian_user || existingPdf.bagian,
+        statusDokumen: existingPdf.statusDokumen,
+        user_id,
+        delegated_to,
+      });
+
+      res.status(200).json({
+        message: "Data has been saved!",
+        data: updatedPdf,
+      });
+    } catch (error) {
+      console.error("Edit PDF error:", error);
+      res.status(500).json({ error: "Error editing PDF" });
     }
   }
 
@@ -217,8 +288,8 @@ class ControllerProtokolValidasi {
       const { id } = req.params;
       const findProtokolValidasi = await t_protokolValidasi.findByPk(+id);
       if (!findProtokolValidasi)
-        throw new MyError(404, "Form CatatanTrial tidak ditemukan");
-      const apprNo = await checkStatusCatatanTrial(id);
+        throw new MyError(404, "Form Protokol Validasi tidak ditemukan");
+      const apprNo = await checkStatusProtokolValidasi(id);
 
       const dataApprove = await approverRecordset(
         // findProtokol.nama_pegawai,
@@ -237,7 +308,7 @@ class ControllerProtokolValidasi {
         statusDokumen = getStatusProtokolValidasi(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
         statusDokumen = "Reject";
         await t_protokolValidasi_status.destroy({
