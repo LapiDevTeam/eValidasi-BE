@@ -1,17 +1,23 @@
-const { t_protokolValidasi } = require("../models"); // Adjust the path to your models
+const { t_protokolValidasi, t_protokolValidasi_status } = require("../models"); // Adjust the path to your models
 const moment = require("moment");
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
 const { Op } = require("sequelize");
 const getPagination = require("../helpers/getPagination");
 const { transporter } = require("../config/configNodeMailer");
-const { checkStatusProductBrief } = require("../helpers/checkStatus");
+const {
+  checkStatusProductBrief,
+  checkStatusProtokolValidasi,
+} = require("../helpers/checkStatus");
 const { getStatus } = require("../helpers/statusProductBrief");
 const { PDFDocument, rgb } = require("pdf-lib");
 const {
   approverRecordset,
   isApproveValidation,
 } = require("../helpers/approver");
+const {
+  getStatusProtokolValidasi,
+} = require("../helpers/statusProtokolValidasi");
 
 class ControllerProtokolValidasi {
   static async findAllProtokolValidasi(req, res) {
@@ -49,17 +55,70 @@ class ControllerProtokolValidasi {
 
   static async getProtokolValidasi(req, res, next) {
     try {
+      const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
       const { id } = req.params;
 
-      const protokolValidasi = await t_protokolValidasi.findByPk(id);
-
-      if (!protokolValidasi) {
-        return res.status(404).json({ error: "Protokol validasi not found" });
+      let protokolValidasiDetails;
+      console.log(joblevel_id_user, "< job level");
+      if (+joblevel_id_user === 1 || bagian_user === bagian_user) {
+        console.log(id, "<< id");
+        protokolValidasiDetails = await t_protokolValidasi?.findOne({
+          where: {
+            id,
+          },
+          include: {
+            model: t_protokolValidasi_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_protokolValidasi_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
+        console.log(protokolValidasiDetails, "<< detil");
+      } else {
+        console.log("test");
+        protokolValidasiDetails = await t_protokolValidasi.findOne({
+          where: {
+            id,
+            bagian: bagian_user,
+          },
+          include: {
+            model: t_protokolValidasi_status,
+            as: "approver_data",
+          },
+          order: [
+            [
+              { model: t_protokolValidasi_status, as: "approver_data" },
+              "approver_no",
+              "ASC",
+            ],
+          ],
+        });
       }
+      console.log(protokolValidasiDetails, "<<< DETAILS");
+      // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
+      const apprDeptId = bagian_user;
+      const apprNo = await checkStatusProtokolValidasi(id);
+      console.log(apprNo, "< < DEBt ID");
+      const isApprove = await isApproveValidation(
+        // productBriefDetail.nama_pegawai,
+        "protokolValidasi",
+        apprDeptId,
+        apprNo,
+        user_id
+        // nama_user
+      );
+      console.log(isApprove, "<< asdasda");
+      console.log(apprNo, "<< appr NO");
+      if (isApprove.message) throw new MyError(400, isApprove.message);
 
       res.status(200).json({
-        message: "Success fetch protokol validasi details",
-        data: protokolValidasi,
+        protokolValidasi: protokolValidasiDetails,
+        isApprove,
       });
     } catch (error) {
       console.error("Error fetching protokol validasi details:", error);
@@ -70,6 +129,7 @@ class ControllerProtokolValidasi {
   }
   static async uploadPdf(req, res, next) {
     try {
+      const { user_id, delegated_to, nama_user, bagian_user } = req.user;
       const {
         jenisDokumen,
         namaProduk,
@@ -97,16 +157,87 @@ class ControllerProtokolValidasi {
         revisi: revisi,
         filter: filter,
         upload: upload, // Store the PDF binary data
+        bagian: bagian_user || "",
         statusDokumen: "Draft",
+        user_id,
+        delegated_to,
       });
 
       res.status(201).json({
-        message: "Success Create CatatanTrial",
+        message: "Data has been saved!",
         data: pdf,
       });
     } catch (error) {
       console.error("Upload PDF error:", error);
       res.status(500).json({ error: "Error uploading PDF" });
+    }
+  }
+
+  static async editPdf(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+      const { jenisDokumen, namaProduk, noDokumen, alasan, revisi, filter } =
+        req.body;
+
+      const prot = await t_protokolValidasi.findByPk(+id);
+      if (prot?.statusDokumen === "Reject") {
+        await t_protokolValidasi_status.destroy({
+          where: { ProtokolValidasiID: +id },
+        });
+        await t_protokolValidasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
+      // Check if model is correctly loaded
+      if (!t_protokolValidasi) {
+        console.error("Model 't_ProtokolValidasi' is not defined.");
+        return res
+          .status(500)
+          .json({ error: "Server error: Model not found." });
+      }
+
+      // Check if the record exists
+      const existingPdf = await t_protokolValidasi.findByPk(id);
+      if (!existingPdf) {
+        return res.status(404).json({ error: "Record not found." });
+      }
+
+      // Update the record
+      const updatedPdf = await existingPdf.update({
+        jenisDokumen: jenisDokumen || existingPdf.jenisDokumen,
+        namaProduk: namaProduk || existingPdf.namaProduk,
+        noDokumen: noDokumen || existingPdf.noDokumen,
+        alasan: alasan || existingPdf.alasan,
+        revisi: revisi || existingPdf.revisi,
+        filter: filter || existingPdf.filter,
+        bagian: bagian_user || existingPdf.bagian,
+        statusDokumen: existingPdf.statusDokumen,
+        user_id,
+        delegated_to,
+      });
+
+      res.status(200).json({
+        message: "Data has been saved!",
+        data: updatedPdf,
+      });
+    } catch (error) {
+      console.error("Edit PDF error:", error);
+      res.status(500).json({ error: "Error editing PDF" });
     }
   }
 
@@ -144,77 +275,122 @@ class ControllerProtokolValidasi {
     }
   }
 
-  static async approveProtokol(req, res) {
-    const { id } = req.params;
-    const { nomorApprover } = req.query;
-    console.log(req.user, "< aaaa");
-
-    let x, y;
-    let approverName;
-
-    // Validate approver number
-    if (nomorApprover === "1") {
-      x = 50;
-      y = 95;
-      if (req.user.user_id !== req.user.delegated_to) {
-        approverName = `Approved by ${req.user.user_id} An. ${
-          req.user.delegated_to
-        }\n${moment().format("DD/MM/YYYY. HH:mm:ss")}`;
-      } else {
-        approverName = `Approved by ${req.user.user_id}\n${moment().format(
-          "DD/MM/YYYY. HH:mm:ss"
-        )}`;
-      }
-    } else if (nomorApprover === "2") {
-      x = 150;
-      y = 95;
-      if (req.user.user_id !== req.user.delegated_to) {
-        approverName = `Approved by ${req.user.user_id} An. ${
-          req.user.delegated_to
-        }\n${moment().format("DD/MM/YYYY. HH:mm:ss")}`;
-      } else {
-        approverName = `Approved by ${req.user.user_id}\n${moment().format(
-          "DD/MM/YYYY. HH:mm:ss"
-        )}`;
-      }
-    } else {
-      return res.status(400).send("Invalid approver number.");
-    }
-
+  static async approveProtokol(req, res, next) {
     try {
-      // Fetch PDF from database using the provided id
-      const pdfRecord = await t_protokolValidasi.findByPk(id);
-      if (!pdfRecord) {
-        return res.status(404).send("PDF not found.");
+      const {
+        user_id,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        delegated_to,
+      } = req.user;
+      const { is_approve, keterangan_reject = null } = req.body;
+      const { id } = req.params;
+      const findProtokolValidasi = await t_protokolValidasi.findByPk(+id);
+      if (!findProtokolValidasi)
+        throw new MyError(404, "Form Protokol Validasi tidak ditemukan");
+      const apprNo = await checkStatusProtokolValidasi(id);
+
+      const dataApprove = await approverRecordset(
+        // findProtokol.nama_pegawai,
+        "protokolValidasi",
+        findProtokolValidasi.bagian,
+        apprNo,
+        user_id,
+        nama_user
+      );
+      if (dataApprove.message) throw new MyError(400, dataApprove.message);
+      let statusDokumen;
+      if (
+        dataApprove.recordset.length > 0 &&
+        dataApprove.recordset.Appr_DefinitionID !== 0
+      )
+        statusDokumen = getStatusProtokolValidasi(
+          dataApprove.recordset[0]?.Appr_DefinitionID
+        );
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
+      if (is_approve === false) {
+        statusDokumen = "Reject";
+        await t_protokolValidasi_status.destroy({
+          where: { ProtokolValidasiID: +id },
+        });
       }
 
-      const existingPdfBytes = pdfRecord.upload;
-
-      // Load the existing PDF
-      const pdfDoc = await PDFDocument.load(existingPdfBytes);
-      const pages = pdfDoc.getPages();
-      const firstPage = pages[0]; // Modify the first page, adjust if needed
-
-      // Add the approver's name and position it at the specified coordinates
-      firstPage.drawText(approverName, {
-        x: parseFloat(x),
-        y: parseFloat(y),
-        size: 8, // Font size to make it small
-        color: rgb(0, 0, 0), // Text color (black)
-        lineHeight: 10, // Line height to space the text nicely
+      await t_protokolValidasi_status.create({
+        ProtokolValidasiID: id,
+        approver_no: apprNo,
+        is_approve,
+        approver_inisial: inisial_user,
+        approver_name: nama_user,
+        approver_joblevel_id: joblevel_id_user,
+        keterangan_reject,
+        user_id,
+        delegated_to,
       });
+      await t_protokolValidasi.update(
+        {
+          statusDokumen: statusDokumen,
+          alasan_reject: keterangan_reject,
+          user_id,
+          // delegated_to,
+        },
+        {
+          where: {
+            id,
+          },
+        }
+      );
+      res.status(201).json({ message: "Success Approved" });
+    } catch (err) {
+      console.log(err);
+    }
+  }
 
-      // Save the modified PDF as bytes
-      const pdfBytes = await pdfDoc.save();
+  static async updateUploadProtokol(req, res) {
+    try {
+      const { ProtokolID } = req.params;
+      const cat = await t_protokolValidasi.findByPk(+ProtokolID);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_protokolValidasi_status.destroy({
+      //     where: { ProtokolID: +ProtokolID },
+      //   });
+      //   await t_protokolValidasi.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+      const upload = req.body;
+      console.log(upload, "< 123");
 
-      // Update the PDF record with the modified content
-      await pdfRecord.update({ upload: Buffer.from(pdfBytes) });
+      const find = await t_protokolValidasi.findByPk(+ProtokolID);
 
-      // Send a success response
-      res.status(200).send("File approved and modified successfully!");
-    } catch (error) {
-      console.error(error);
-      res.status(500).send(`Error: ${error.message}`);
+      console.log(find.id, "< ID");
+
+      if (!find) throw { name: "NotFound" };
+      const updateUpload = await t_protokolValidasi.update(
+        { upload }, // Directly using upload array
+        {
+          where: { id: find.id },
+          returning: true,
+        }
+      );
+      console.log(updateUpload, "<< update");
+
+      res.status(200).json(updateUpload);
+    } catch (err) {
+      console.log(err);
     }
   }
 }

@@ -1,7 +1,7 @@
 "use strict";
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
-  class t_protokolValidasi extends Model {
+  class t_protokolValidasi_status extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,32 +9,29 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      t_protokolValidasi.hasMany(models.t_protokolValidasi_status, {
+      t_protokolValidasi_status.belongsTo(models.t_protokolValidasi, {
         foreignKey: "ProtokolValidasiID",
-        as: "approver_data",
       });
     }
   }
-  t_protokolValidasi.init(
+  t_protokolValidasi_status.init(
     {
-      jenisDokumen: DataTypes.STRING,
-      filter: DataTypes.STRING,
-      namaProduk: DataTypes.STRING,
-      noDokumen: DataTypes.STRING,
-      revisi: DataTypes.STRING,
-      alasan: DataTypes.TEXT,
-      upload: DataTypes.JSONB,
-      bagian: DataTypes.STRING,
-      statusDokumen: DataTypes.STRING,
+      ProtokolValidasiID: DataTypes.INTEGER,
+      approver_no: DataTypes.INTEGER,
+      is_approve: DataTypes.BOOLEAN,
+      approver_name: DataTypes.STRING,
+      approver_joblevel_id: DataTypes.STRING,
+      approver_inisial: DataTypes.STRING,
+      keterangan_reject: DataTypes.TEXT,
       user_id: DataTypes.STRING,
       delegated_to: DataTypes.STRING,
       flag_update: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "t_protokolValidasi",
+      modelName: "t_protokolValidasi_status",
       freezeTableName: true,
     }
   );
-  return t_protokolValidasi;
+  return t_protokolValidasi_status;
 };
