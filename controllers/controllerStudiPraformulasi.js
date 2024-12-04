@@ -2726,6 +2726,139 @@ class ControllerStudiPraformulasi {
       }
     }
   }
+  static async handleSaveCpp(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+      const flag_update = "UPDATE FOR DELETE";
+
+      const studi = await t_studiPraformulasi.findByPk(+id);
+      if (studi?.statusDokumen === "Reject") {
+        await t_studiPraformulasi_status.destroy({
+          where: { StudiPraformulasiID: +id },
+        });
+        await t_studiPraformulasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            is_approve_2: "",
+            approver_name_2: "",
+            approver_user_id_2: "",
+            approver_delegated_to_2: "",
+            approver_tanggal_2: null,
+            keterangan_reject_2: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
+
+      const prevKomposisi = await t_cpp.findAll({
+        where: {
+          StudiPraformulasiID: id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      const existing = prevKomposisi.map((item) => item?.id);
+      const newItemId = data
+        ? data.filter((item) => item?.id).map((item) => +item?.id)
+        : [];
+
+      // update
+      await Promise.all(
+        data?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          if (!newItem?.id) {
+            const created = await t_cpp.create(
+              {
+                parameterProcess: newItem?.parameterProcess || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahTermasukCpp: newItem?.apakahTermasukCpp || "",
+                justifikasi: newItem?.justifikasi || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_cpp.update(
+              {
+                parameterProcess: newItem?.parameterProcess || "",
+                pengaruhKeCqa: newItem?.pengaruhKeCqa || "",
+                apakahTermasukCpp: newItem?.apakahTermasukCpp || "",
+                justifikasi: newItem?.justifikasi || "",
+                StudiPraformulasiID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_cpp.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+        await t_cpp.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_cpp.findAll({
+        where: {
+          StudiPraformulasiID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
   static async handleSaveFormulaProtokol(req, res) {
     const transaction = await sequelize.transaction();
     try {
