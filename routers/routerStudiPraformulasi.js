@@ -70,6 +70,11 @@ router.put(
   authentication,
   ControllerStudiPraformulasi.handleSaveCqa
 );
+router.put(
+  "/handle-cpp/:id",
+  authentication,
+  ControllerStudiPraformulasi.handleSaveCpp
+);
 // save dan edit formula protokol
 router.put(
   "/handle-formula-protokol/:id",
