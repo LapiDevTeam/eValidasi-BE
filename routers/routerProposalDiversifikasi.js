@@ -9,6 +9,13 @@ router.post(
   authentication,
   ControllerProposalDiversifikasi.createProposalDiversifikasi
 );
+
+router.put(
+  "/edit-proposalDiversifikasi/:id",
+  authentication,
+  ControllerProposalDiversifikasi.editProposalDiversifikasi
+);
+
 router.get(
   "/all-proposal-diversifikasi",
   ControllerProposalDiversifikasi.findAllProposalDiversifikasi

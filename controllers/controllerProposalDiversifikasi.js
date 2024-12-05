@@ -23,6 +23,7 @@ const {
 const {
   getStatusProposalDiversifikasi,
 } = require("../helpers/statusProposalDiversifikasi");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerProposalDiversifikasi {
   static async approveProposalDiversifikasi(req, res, next) {
@@ -148,6 +149,20 @@ class ControllerProposalDiversifikasi {
       const apprDeptId = proposalDiversifikasiDetails.rdSelection;
       const apprNo = await checkStatusProposalDiversifikasi(id);
       console.log(apprNo, "< < DEBt ID");
+
+      await Promise.all(
+        proposalDiversifikasiDetails.dataValues.approver_data.map(
+          async (el, index) => {
+            el.dataValues.approver_inisial = await fetchApproverInisial({
+              user_id: el.user_id,
+              delegated_to: el.delegated_to,
+            });
+
+            return el;
+          }
+        )
+      );
+
       const isApprove = await isApproveValidation(
         // productBriefDetail.nama_pegawai,
         "proposalDiversifikasi",
@@ -212,6 +227,7 @@ class ControllerProposalDiversifikasi {
       return res.status(500).json({ message: "Server error" });
     }
   }
+
   static async createProposalDiversifikasi(req, res, next) {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     try {
@@ -239,6 +255,65 @@ class ControllerProposalDiversifikasi {
       });
     } catch (err) {
       console.log(err);
+      next(err);
+    }
+  }
+
+  static async editProposalDiversifikasi(req, res, next) {
+    try {
+      const { id } = req.params; // Ambil id catatan trial dari URL
+      const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+      const { rdSelection, namaBahanBaku, produsen, pemasok } = req.body;
+
+      // const cat = await t_catatanTrial.findByPk(+id);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_catatanTrial_status.destroy({
+      //     where: { CatatanTrialID: +id },
+      //   });
+      //   await t_catatanTrial.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+
+      const updatedRowsCount = await t_proposalDiversifikasi.update(
+        {
+          rdSelection: bagian_user || "",
+          namaBahanBaku: namaBahanBaku || "",
+          produsen: produsen || "",
+          pemasok: pemasok || "",
+          user_id,
+          delegated_to,
+        },
+        {
+          where: { id: id },
+        }
+      );
+      if (updatedRowsCount > 0) {
+        const updatedProposal = await t_proposalDiversifikasi.findByPk(id); // Ambil data yang diperbarui
+        return res.status(200).json({
+          message: "Proposal Diversifikasi updated successfully",
+          data: updatedProposal,
+        });
+      } else {
+        res.status(404).json({
+          message: "Proposal Diversifikasi not found",
+        });
+      }
+    } catch (err) {
+      console.log(err, "<< er");
       next(err);
     }
   }

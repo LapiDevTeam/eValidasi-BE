@@ -20,6 +20,7 @@ const {
   isApproveValidation,
   approverRecordset,
 } = require("../helpers/approver");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerFormulaFix {
   static async createFormulaFix(req, res, next) {
@@ -379,6 +380,17 @@ class ControllerFormulaFix {
 
       const apprDeptId = bagian_user;
       const apprNo = await checkStatusFormulaFix(id);
+
+      await Promise.all(
+        formulaFixDetails.dataValues.approver_data.map(async (el, index) => {
+          el.dataValues.approver_inisial = await fetchApproverInisial({
+            user_id: el.user_id,
+            delegated_to: el.delegated_to,
+          });
+
+          return el;
+        })
+      );
 
       const isApprove = await isApproveValidation(
         "formulaFix",
