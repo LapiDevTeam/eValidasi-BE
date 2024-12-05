@@ -189,8 +189,12 @@ class ControllerFormulaFix {
         });
       }
 
+      console.log(formulaFixDetails, "< BAgian");
+
       const apprDeptId = formulaFixDetails.bagian;
       const apprNo = await checkStatusFormulaFix(id);
+
+      console.log(apprNo, "< nooo");
 
       const isApprove = await isApproveValidation(
         "formulaFix",
@@ -198,6 +202,8 @@ class ControllerFormulaFix {
         apprNo,
         user_id
       );
+
+      console.log(isApprove, "< isapprove");
 
       if (isApprove.message) throw new MyError(400, isApprove.message);
 
@@ -281,17 +287,21 @@ class ControllerFormulaFix {
       if (!findFormulaFix)
         throw new MyError(404, "Form formula fix tidak ditemukan");
       const apprNo = await checkStatusFormulaFix(id);
+      console.log(apprNo, "< ap no");
 
       const dataApprove = await approverRecordset(
-        // findProtokol.nama_pegawai,
         "formulaFix",
         findFormulaFix.bagian,
         apprNo,
         user_id,
         nama_user
       );
+
+      console.log(dataApprove, "< DAt ap");
+
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
       let statusDokumen;
+
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
@@ -299,7 +309,12 @@ class ControllerFormulaFix {
         statusDokumen = getStatusFormulaFix(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
+
+      console.log(dataApprove?.recordset[0]?.Appr_DefinitionID, " < appr");
+
+      console.log(statusDokumen, "< STATUS");
+
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
         statusDokumen = "Reject";
         await t_formulaFix_status.destroy({
@@ -378,7 +393,7 @@ class ControllerFormulaFix {
         });
       }
 
-      const apprDeptId = bagian_user;
+      const apprDeptId = formulaFixDetails?.bagian;
       const apprNo = await checkStatusFormulaFix(id);
 
       await Promise.all(
