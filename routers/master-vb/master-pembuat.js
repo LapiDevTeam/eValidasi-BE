@@ -7,5 +7,9 @@ masterPembuatRouter.post(
   "/",
   MasterPembuatController.createOrUpdateMasterPembuat
 );
+masterPembuatRouter.get(
+  "/print",
+  MasterPembuatController.downloadExcelMasterPembuat
+);
 
 module.exports = masterPembuatRouter;

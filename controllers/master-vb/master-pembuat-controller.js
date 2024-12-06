@@ -48,8 +48,9 @@ class MasterPembuatController {
       next(error);
     }
   }
-  static async downloadExcelAuditProductBriefHist(req, res, next) {
+  static async downloadExcelMasterPembuat(req, res, next) {
     try {
+      const fileName = "Marster Principle";
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
 
@@ -65,13 +66,19 @@ class MasterPembuatController {
 
       const headers = Object.keys(dataAudit[0] || {});
       const currentDate = new Date().toLocaleDateString("en-GB");
-
-      worksheet.addRow(["Excel Report"]);
+      const borderTemplate = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+      worksheet.addRow(["Master Principle"]);
       worksheet.addRow([`Printed on ${currentDate}`]);
       worksheet.addRow([]);
 
       headers.forEach((header, index) => {
         const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.border = borderTemplate;
         cell.value = header;
         cell.font = { bold: true };
         worksheet.getColumn(index + 1).width = 20;
@@ -80,14 +87,16 @@ class MasterPembuatController {
       dataAudit.forEach((row, rowIndex) => {
         const rowNumber = rowIndex + 5;
         headers.forEach((header, colIndex) => {
-          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+          const cell = worksheet.getRow(rowNumber).getCell(colIndex + 1);
+          cell.border = borderTemplate;
+          cell.value = row[header];
         });
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="product-brief-(${currentDate}).xlsx"`
+        `attachment; filename="${fileName}.xlsx"`
       );
       res.setHeader(
         "Content-Type",
