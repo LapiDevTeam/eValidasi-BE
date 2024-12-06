@@ -13,8 +13,9 @@ const routerGlobalApi = require("./routerGlobalApi");
 const routerProposalDiversifikasi = require("./routerProposalDiversifikasi");
 const routerKodeTrialObatJadi = require("./routerKodeTrialObatJadi");
 const routerProtokolValidasi = require("./routerProtokolValidasi");
-const routerUpload = require('../routers/v2/routerUpload');
+const routerUpload = require("../routers/v2/routerUpload");
 const { authentication } = require("../middlewares/authentication");
+const masterRouter = require("./master-vb/index");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -33,6 +34,9 @@ router.get("/", (req, res) => {
   res.send("Welcome to LAPI Laboratories New API!");
 });
 
+//Master Router
+router.use("/master", masterRouter);
+
 router.use("/", routerProductBrief);
 router.use("/", routerStudiPraformulasi);
 router.use("/", routerStudiPaten);
@@ -47,6 +51,6 @@ router.use("/", routerProposalDiversifikasi);
 router.use("/", routerKodeTrialObatJadi);
 router.use("/", routerProtokolValidasi);
 
-router.use("/v2", routerUpload );
+router.use("/v2", routerUpload);
 
 module.exports = router;
