@@ -174,47 +174,47 @@ router.get(
 );
 
 router.get(
-  "/download-formulafix",
+  "/download-formula-fix",
   ControllerAuditTrail.downloadExcelAuditFormulaFixHist
 );
 
 router.get(
-  "/download-formulafiStatus",
+  "/download-formula-fix-status",
   ControllerAuditTrail.downloadExcelFormulaFixStatusHist
 );
 
 router.get(
-  "/download-ExcelPerhitunganBahanBakuFormulaFix",
+  "/download-perhitungan-bahan-baku-formula-fix",
   ControllerAuditTrail.downloadExcelPerhitunganBahanBakuFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelKemasanFormulaFixHist",
+  "/download-kemasan-formula-fix",
   ControllerAuditTrail.downloadExcelKemasanFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelProsesPengolahanFormulaFixHist",
+  "/download-proses-pengolahan",
   ControllerAuditTrail.downloadExcelProsesPengolahanFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelProsesPengemasanFormulaFixHist",
+  "/download-proses-pengemasan",
   ControllerAuditTrail.downloadExcelProsesPengemasanFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelRancanganSpesifikasiObatJadiFormulaFixHist",
+  "/download-rancangan-spesifikasi-obat-jadi",
   ControllerAuditTrail.downloadExcelRancanganSpesifikasiObatJadiFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelDataStabilitasFormulaFixHist",
+  "/download-data-stabilitas",
   ControllerAuditTrail.downloadExcelDataStabilitasFormulaFixHist
 );
 
 router.get(
-  "/download-ExcelAcuanCatatanTrialFormulaFixHist",
+  "/download-acuan-catatan-trial",
   ControllerAuditTrail.downloadExcelAcuanCatatanTrialFormulaFixHist
 );
 
@@ -262,7 +262,6 @@ router.get(
   "/download-ExcelPengaruhPadaPerformaProsesHist",
   ControllerAuditTrail.downloadExcelPengaruhPadaPerformaProsesHist
 );
-
 
 router.get(
   "/download-ExcelProtokolValidasiHist",
@@ -353,13 +352,5 @@ router.get(
   "/download-ExcelLTSHasilDanPembahasanOrientasiHist",
   ControllerAuditTrail.downloadExcelLTSHasilDanPembahasanOrientasiHist
 );
-
-
-
-
-
-
-
-
 
 module.exports = router;
