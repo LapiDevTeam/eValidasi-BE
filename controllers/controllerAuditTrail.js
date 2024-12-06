@@ -79,7 +79,7 @@ class ControllerAuditTrail {
 
       res.send(buffer);
     } catch (error) {
-      console.log({error});
+      console.log({ error });
       next(error);
     }
   }
@@ -3007,8 +3007,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
-
   static async downloadExcelAuditFormulaFixHist(req, res, next) {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -3067,8 +3065,8 @@ class ControllerAuditTrail {
           .replace(/\..+/, "");
       });
 
-      console.log({asas: dataAudit[0]});
-      const headers = Object?.keys(dataAudit[0] || {})
+      console.log({ asas: dataAudit[0] });
+      const headers = Object?.keys(dataAudit[0] || {});
       const currentDate = new Date().toLocaleDateString("en-GB");
 
       worksheet.addRow(["Excel Report"]);
@@ -3101,7 +3099,7 @@ class ControllerAuditTrail {
 
       res.send(buffer);
     } catch (error) {
-      console.log({error});
+      console.log({ error });
       next(error);
     }
   }
@@ -3540,7 +3538,11 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-  static async downloadExcelRancanganSpesifikasiObatJadiFormulaFixHist(req, res, next) {
+  static async downloadExcelRancanganSpesifikasiObatJadiFormulaFixHist(
+    req,
+    res,
+    next
+  ) {
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -4775,7 +4777,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelKesimpulanFormulaTerpilihHist(req, res, next) {
     try {
-      const tableName = 't_kesimpulanFormulaTerpilih_hist'; // Dynamic table name
+      const tableName = "t_kesimpulanFormulaTerpilih_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -4864,7 +4866,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelRingkasanHasilStudiCppHist(req, res, next) {
     try {
-      const tableName = 't_ringkasanHasilStudiCpp_hist'; // Dynamic table name
+      const tableName = "t_ringkasanHasilStudiCpp_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -4954,7 +4956,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelKesimpulanProsesTerpilihHist(req, res, next) {
     try {
-      const tableName = 't_kesimpulanProsesTerpilih_hist'; // Dynamic table name
+      const tableName = "t_kesimpulanProsesTerpilih_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5042,7 +5044,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelUsulanPenelitianProdukHist(req, res, next) {
     try {
-      const tableName = 't_usulanPenelitianProduk_hist'; // Dynamic table name
+      const tableName = "t_usulanPenelitianProduk_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5131,7 +5133,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelUpdateRiskAssessmentHist(req, res, next) {
     try {
-      const tableName = 't_updateRiskAssessment_hist'; // Dynamic table name
+      const tableName = "t_updateRiskAssessment_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5220,7 +5222,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelUpdateRiskAssessmentBahanAktifHist(req, res, next) {
     try {
-      const tableName = 't_updateRiskAssessmentBahanAktif_hist'; // Dynamic table name
+      const tableName = "t_updateRiskAssessmentBahanAktif_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5307,9 +5309,13 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-  static async downloadExcelUpdateRiskAssessmentBahanTambahanHist(req, res, next) {
+  static async downloadExcelUpdateRiskAssessmentBahanTambahanHist(
+    req,
+    res,
+    next
+  ) {
     try {
-      const tableName = 't_updateRiskAssessmentBahanTambahan_hist'; // Dynamic table name
+      const tableName = "t_updateRiskAssessmentBahanTambahan_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5398,7 +5404,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelUpdateRiskAssessmentKemasanHist(req, res, next) {
     try {
-      const tableName = 't_updateRiskAssessmentKemasan_hist'; // Dynamic table name
+      const tableName = "t_updateRiskAssessmentKemasan_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5487,7 +5493,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelRingkasanHasilStudiCmaHist(req, res, next) {
     try {
-      const tableName = 't_ringkasanHasilStudiCma_hist'; // Dynamic table name
+      const tableName = "t_ringkasanHasilStudiCma_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5575,7 +5581,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLaporanTrialSkalaLabStatusHist(req, res, next) {
     try {
-      const tableName = 't_laporanTrialSkalaLab_status_hist'; // Dynamic table name
+      const tableName = "t_laporanTrialSkalaLab_status_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5666,7 +5672,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSStudiScreeningSourceApiHist(req, res, next) {
     try {
-      const tableName = 't_LTS_studiScreeningSourceApi_hist'; // Dynamic table name
+      const tableName = "t_LTS_studiScreeningSourceApi_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5756,7 +5762,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSKriteriaPenerimaanHist(req, res, next) {
     try {
-      const tableName = 't_LTS_kriteriaPenerimaan_hist'; // Dynamic table name
+      const tableName = "t_LTS_kriteriaPenerimaan_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5845,7 +5851,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSStudiCppTerhadapCqaHist(req, res, next) {
     try {
-      const tableName = 't_LTS_studiCppTerhadapCqa_hist'; // Dynamic table name
+      const tableName = "t_LTS_studiCppTerhadapCqa_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -5934,7 +5940,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSBahanAktifCmaHist(req, res, next) {
     try {
-      const tableName = 't_LTS_bahanAktifCma_hist'; // Dynamic table name
+      const tableName = "t_LTS_bahanAktifCma_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -6024,7 +6030,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSBahanTambahanCmaHist(req, res, next) {
     try {
-      const tableName = 't_LTS_bahanTambahanCma_hist'; // Dynamic table name
+      const tableName = "t_LTS_bahanTambahanCma_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -6114,7 +6120,7 @@ class ControllerAuditTrail {
   }
   static async downloadExcelLTSHasilDanPembahasanOrientasiHist(req, res, next) {
     try {
-      const tableName = 't_LTS_hasilDanPembahasanOrientasi_hist'; // Dynamic table name
+      const tableName = "t_LTS_hasilDanPembahasanOrientasi_hist"; // Dynamic table name
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
@@ -6201,7 +6207,6 @@ class ControllerAuditTrail {
       next(error);
     }
   }
-
 }
 
 module.exports = ControllerAuditTrail;
