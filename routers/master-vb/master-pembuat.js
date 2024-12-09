@@ -3,10 +3,10 @@ const masterPembuatRouter = express.Router();
 const MasterPembuatController = require("../../controllers/master-vb/master-pembuat-controller");
 
 masterPembuatRouter.get("/", MasterPembuatController.fetchMasterPembuat);
-masterPembuatRouter.post(
-  "/",
-  MasterPembuatController.createOrUpdateMasterPembuat
-);
+// masterPembuatRouter.post(
+//   "/",
+//   MasterPembuatController.createOrUpdateMasterPembuat
+// );
 masterPembuatRouter.get(
   "/print",
   MasterPembuatController.downloadExcelMasterPembuat
