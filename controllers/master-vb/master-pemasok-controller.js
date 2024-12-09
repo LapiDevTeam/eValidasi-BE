@@ -2,13 +2,12 @@ const sql = require("mssql");
 const { configMssql } = require("../../config/configMssql");
 const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
-class MasterPembuatController {
+class MasterPemasokController {
   static async fetchMasterPembuat(req, res, next) {
     try {
       const pool = await sql.connect(configMssql);
       const queryCode = `
-        SELECT Prc_ID AS ID , Prc_Name AS "Nama Principle", Prc_ContactPerson AS "Contact Person" , Prc_Address AS Address , Prc_Phone AS Phone FROM m_Principle mp 
-      WHERE Prc_ID <> '(none)'  and isActive = 1 ORDER BY Prc_ID ASC;
+        SELECT Supp_id, Supp_Name FROM m_Supplier WHERE Supp_id <> '(none)' AND isActive = 1 ORDER BY 1;
       `;
       const request = pool.request();
       const result1 = await request.query(queryCode);
@@ -50,14 +49,13 @@ class MasterPembuatController {
   }
   static async downloadExcelMasterPembuat(req, res, next) {
     try {
-      const fileName = "Master Principle";
+      const fileName = "Master Pemasok";
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
 
       const pool = await sql.connect(configMssql);
       const queryCode = `
-        SELECT Prc_ID AS ID , Prc_Name AS "Nama Principle", Prc_ContactPerson AS "Contact Person" , Prc_Address AS Address , Prc_Phone AS Phone FROM m_Principle mp 
-      WHERE Prc_ID <> '(none)'  and isActive = 1 ORDER BY Prc_ID ASC;
+        SELECT Supp_id, Supp_Name FROM m_Supplier WHERE Supp_id <> '(none)' AND isActive = 1 ORDER BY 1;
       `;
       const request = pool.request();
       const result1 = await request.query(queryCode);
@@ -111,4 +109,4 @@ class MasterPembuatController {
   }
 }
 
-module.exports = MasterPembuatController;
+module.exports = MasterPemasokController;
