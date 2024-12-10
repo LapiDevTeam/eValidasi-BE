@@ -16,6 +16,7 @@ const routerProtokolValidasi = require("./routerProtokolValidasi");
 const routerUpload = require("../routers/v2/routerUpload");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("./master-vb/index");
+const globalRouter = require("./global");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -36,6 +37,9 @@ router.get("/", (req, res) => {
 
 //Master Router
 router.use("/master", masterRouter);
+
+//Global Router
+router.use("/global", globalRouter);
 
 router.use("/", routerProductBrief);
 router.use("/", routerStudiPraformulasi);
