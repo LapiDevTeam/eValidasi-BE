@@ -199,6 +199,8 @@ class ControllerFormulaFix {
         user_id
       );
 
+      console.log(isApprove, "< isapprove");
+
       if (isApprove.message) throw new MyError(400, isApprove.message);
 
       res
@@ -281,17 +283,21 @@ class ControllerFormulaFix {
       if (!findFormulaFix)
         throw new MyError(404, "Form formula fix tidak ditemukan");
       const apprNo = await checkStatusFormulaFix(id);
+      console.log(apprNo, "< ap no");
 
       const dataApprove = await approverRecordset(
-        // findProtokol.nama_pegawai,
         "formulaFix",
         findFormulaFix.bagian,
         apprNo,
         user_id,
         nama_user
       );
+
+      console.log(dataApprove, "< DAt ap");
+
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
       let statusDokumen;
+
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
@@ -299,7 +305,12 @@ class ControllerFormulaFix {
         statusDokumen = getStatusFormulaFix(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) statusDokumen = "Closed";
+
+      console.log(dataApprove?.recordset[0]?.Appr_DefinitionID, " < appr");
+
+      console.log(statusDokumen, "< STATUS");
+
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
         statusDokumen = "Reject";
         await t_formulaFix_status.destroy({
@@ -378,7 +389,7 @@ class ControllerFormulaFix {
         });
       }
 
-      const apprDeptId = bagian_user;
+      const apprDeptId = formulaFixDetails?.bagian;
       const apprNo = await checkStatusFormulaFix(id);
 
       await Promise.all(
@@ -622,27 +633,27 @@ class ControllerFormulaFix {
 
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      if (formula?.statusDokumen === "Reject") {
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+        await t_formulaFix.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevPerhitungan = await t_perhitunganBahanBakuFormulaFix.findAll({
         where: {
@@ -749,27 +760,27 @@ class ControllerFormulaFix {
 
       const formula = await t_formulaFix.findByPk(+id);
 
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      if (formula?.statusDokumen === "Reject") {
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+        await t_formulaFix.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKemasan = await t_kemasanFormulaFix.findAll({
         where: {
@@ -880,27 +891,27 @@ class ControllerFormulaFix {
 
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      if (formula?.statusDokumen === "Reject") {
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+        await t_formulaFix.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevProsesPengolahan = await t_formulaFix_prosesPengolahan.findAll({
         where: {
@@ -1007,27 +1018,27 @@ class ControllerFormulaFix {
 
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      if (formula?.statusDokumen === "Reject") {
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+        await t_formulaFix.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevProsesPengemasan = await t_formulaFix_prosesPengemasan.findAll({
         where: {
@@ -1132,27 +1143,27 @@ class ControllerFormulaFix {
       } = req.user;
       const flag_update = "UPDATE FOR DELETE";
       const formula = await t_formulaFix.findByPk(+id);
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      if (formula?.statusDokumen === "Reject") {
+        await t_formulaFix_status.destroy({
+          where: { FormulaFixID: +id },
+        });
+        await t_formulaFix.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevRancangan =
         await t_formulaFix_rancanganSpesifikasiObatJadi.findAll({
@@ -1343,13 +1354,103 @@ class ControllerFormulaFix {
     }
   }
 
+  // static async deleteFormulaFix(req, res) {
+  //   try {
+  //     const { id } = req.params;
+
+  //     await t_formulaFix.destroy({
+  //       where: { id: +id }, // Corrected the where clause
+  //     });
+
+  //     res.status(200).send({ msg: "succeed" });
+  //   } catch (err) {
+  //     console.log(err);
+  //     res.status(500).send({ msg: "error" });
+  //   }
+  // }
+
   static async deleteFormulaFix(req, res) {
     try {
       const { id } = req.params;
 
-      await t_formulaFix.destroy({
-        where: { id: +id }, // Corrected the where clause
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findFormulaFix = await t_formulaFix.findByPk(+id);
+      if (!findFormulaFix)
+        throw new MyError(404, "Form Formula Fix tidak di temukan");
+
+      // First, update all related records
+      await t_formulaFix_status.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_perhitunganBahanBakuFormulaFix.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_kemasanFormulaFix.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_formulaFix_prosesPengolahan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_formulaFix_prosesPengemasan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_formulaFix_rancanganSpesifikasiObatJadi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_formulaFix_dataStabilitas.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+      await t_formulaFix_acuanCatatanTrial.update(
+        { user_id, delegated_to, flag_update },
+        { where: { FormulaFixID: +id } }
+      );
+
+      // Next, delete all related records
+      await t_formulaFix_status.destroy({ where: { FormulaFixID: +id } });
+      await t_perhitunganBahanBakuFormulaFix.destroy({
+        where: { FormulaFixID: +id },
       });
+      await t_kemasanFormulaFix.destroy({
+        where: { FormulaFixID: +id },
+      });
+      await t_formulaFix_prosesPengolahan.destroy({
+        where: { FormulaFixID: +id },
+      });
+      await t_formulaFix_prosesPengemasan.destroy({
+        where: { FormulaFixID: +id },
+      });
+      await t_formulaFix_rancanganSpesifikasiObatJadi.destroy({
+        where: { FormulaFixID: +id },
+      });
+      await t_formulaFix_dataStabilitas.destroy({
+        where: { FormulaFixID: +id },
+      });
+      await t_formulaFix_acuanCatatanTrial.destroy({
+        where: { FormulaFixID: +id },
+      });
+
+      // Finally, update and delete the main record
+      await t_formulaFix.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_formulaFix.destroy({ where: { id: +id } });
 
       res.status(200).send({ msg: "succeed" });
     } catch (err) {

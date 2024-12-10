@@ -70,7 +70,11 @@ router.get(
   ControllerFormulaFix.getFormulaDetails
 );
 
-router.delete("/delete-formula-fix/:id", ControllerFormulaFix.deleteFormulaFix);
+router.delete(
+  "/delete-formula-fix/:id",
+  authentication,
+  ControllerFormulaFix.deleteFormulaFix
+);
 
 router.get(
   "/get-upload-data-stabilitas/:id",

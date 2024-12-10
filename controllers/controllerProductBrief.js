@@ -569,11 +569,13 @@ class ControllerProductBrief {
         nama_user
       );
 
+      console.log(dataApprove?.recordset, "< record set product brief");
+
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
       let statusDokumen;
       if (
         dataApprove.recordset.length > 0 &&
-        dataApprove.recordset.Appr_DefinitionID !== 0
+        dataApprove.recordset?.Appr_DefinitionID !== 0
       )
         statusDokumen = getStatus(dataApprove.recordset[0]?.Appr_DefinitionID);
 

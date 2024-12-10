@@ -81,4 +81,10 @@ router.get(
   authentication,
   ControllerProposalDiversifikasi.getProposalDiversifikasiDetails
 );
+
+router.delete(
+  "/delete-proposal-diversifikasi/:id",
+  authentication,
+  ControllerProposalDiversifikasi.deleteProposalDiversifikasi
+);
 module.exports = router;

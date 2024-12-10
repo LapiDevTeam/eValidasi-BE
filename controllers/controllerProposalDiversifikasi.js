@@ -144,7 +144,7 @@ class ControllerProposalDiversifikasi {
           ],
         });
       }
-      console.log(proposalDiversifikasiDetails, "<<< DETAILS");
+
       // const apprApplicationCode = catatanTrialDetails.apprAplicationCode;
       const apprDeptId = proposalDiversifikasiDetails.rdSelection;
       const apprNo = await checkStatusProposalDiversifikasi(id);
@@ -265,28 +265,28 @@ class ControllerProposalDiversifikasi {
       const { user_id, delegated_to, nama_user, bagian_user } = req.user;
       const { rdSelection, namaBahanBaku, produsen, pemasok } = req.body;
 
-      // const cat = await t_catatanTrial.findByPk(+id);
-      // if (cat?.statusDokumen === "Reject") {
-      //   await t_catatanTrial_status.destroy({
-      //     where: { CatatanTrialID: +id },
-      //   });
-      //   await t_catatanTrial.update(
-      //     {
-      //       is_approve_1: "",
-      //       approver_name_1: "",
-      //       approver_user_id_1: "",
-      //       approver_delegated_to_1: "",
-      //       approver_tanggal_1: null,
-      //       keterangan_reject_1: "",
-      //       statusDokumen: "Draft",
-      //     },
-      //     {
-      //       where: {
-      //         id,
-      //       },
-      //     }
-      //   );
-      // }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const updatedRowsCount = await t_proposalDiversifikasi.update(
         {
@@ -408,28 +408,28 @@ class ControllerProposalDiversifikasi {
 
       console.log(data, "< DATA");
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevKelengkapanDokumen = await t_kelengkapanDokumen.findAll({
         where: {
@@ -522,29 +522,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      console.log(data, "< DAT");
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevProdukTerdampak = await t_produkTerdampak.findAll({
         where: {
@@ -635,28 +634,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevPersentaseDalamFormula = await t_persentaseDalamFormula.findAll(
         {
@@ -756,28 +755,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevPengaruhPadaPerformaProses =
         await t_pengaruhPadaPerformaProses.findAll({
@@ -876,28 +875,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevJumlahBets = await t_jumlahBetsPerTahun.findAll({
         where: {
@@ -995,28 +994,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevTotalSkoring = await t_totalSkoring.findAll({
         where: {
@@ -1118,28 +1117,28 @@ class ControllerProposalDiversifikasi {
         bagian_user,
       } = req.user;
 
-      //   const cat = await t_catatanTrial.findByPk(+id);
-      //   if (cat?.statusDokumen === "Reject") {
-      //     await t_catatanTrial_status.destroy({
-      //       where: { CatatanTrialID: +id },
-      //     });
-      //     await t_catatanTrial.update(
-      //       {
-      //         is_approve_1: "",
-      //         approver_name_1: "",
-      //         approver_user_id_1: "",
-      //         approver_delegated_to_1: "",
-      //         approver_tanggal_1: null,
-      //         keterangan_reject_1: "",
-      //         statusDokumen: "Draft",
-      //       },
-      //       {
-      //         where: {
-      //           id,
-      //         },
-      //       }
-      //     );
-      //   }
+      const proposal = await t_proposalDiversifikasi.findByPk(+id);
+      if (proposal?.statusDokumen === "Reject") {
+        await t_proposalDiversifikasi_status.destroy({
+          where: { ProposalDiversifikasiID: +id },
+        });
+        await t_proposalDiversifikasi.update(
+          {
+            is_approve_1: "",
+            approver_name_1: "",
+            approver_user_id_1: "",
+            approver_delegated_to_1: "",
+            approver_tanggal_1: null,
+            keterangan_reject_1: "",
+            statusDokumen: "Draft",
+          },
+          {
+            where: {
+              id,
+            },
+          }
+        );
+      }
 
       const prevTimelineTrial = await t_timelineTrial.findAll({
         where: {
@@ -1225,6 +1224,101 @@ class ControllerProposalDiversifikasi {
       if (transaction) {
         await transaction.rollback();
       }
+    }
+  }
+  static async deleteProposalDiversifikasi(req, res) {
+    try {
+      const { id } = req.params;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findProposalDiversifikasi = await t_proposalDiversifikasi.findByPk(
+        +id
+      );
+      if (!findProposalDiversifikasi)
+        throw new MyError(404, "Form Formula Fix tidak di temukan");
+
+      // First, update all related records
+      await t_proposalDiversifikasi_status.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_kelengkapanDokumen.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_produkTerdampak.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+
+      await t_persentaseDalamFormula.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_pengaruhPadaPerformaProses.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_jumlahBetsPerTahun.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_totalSkoring.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+      await t_timelineTrial.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProposalDiversifikasiID: +id } }
+      );
+
+      // Next, delete all related records
+      await t_proposalDiversifikasi_status.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_kelengkapanDokumen.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_produkTerdampak.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+
+      await t_persentaseDalamFormula.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_pengaruhPadaPerformaProses.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_jumlahBetsPerTahun.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_totalSkoring.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+      await t_timelineTrial.destroy({
+        where: { ProposalDiversifikasiID: +id },
+      });
+
+      // Finally, update and delete the main record
+      await t_proposalDiversifikasi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_proposalDiversifikasi.destroy({ where: { id: +id } });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
     }
   }
 }
