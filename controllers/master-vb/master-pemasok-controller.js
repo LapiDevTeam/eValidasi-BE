@@ -3,7 +3,7 @@ const { configMssql } = require("../../config/configMssql");
 const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
 class MasterPemasokController {
-  static async fetchMasterPembuat(req, res, next) {
+  static async fetchMasterPemasok(req, res, next) {
     try {
       const pool = await sql.connect(configMssql);
       const queryCode = `
@@ -18,36 +18,8 @@ class MasterPemasokController {
       next(error);
     }
   }
-  static async createOrUpdateMasterPembuat(req, res, next) {
-    try {
-      const { Prc_ID, Prc_Name } = req.body;
-      // const { user_id, delegated_to } = req.user;
 
-      const pool = await sql.connect(configMssql);
-      const queryCode = `
-      IF EXISTS (SELECT 1 FROM m_Principle mp  WHERE Prc_ID = @Prc_ID)
-        UPDATE m_Principle
-        SET Prc_Name = @Prc_Name, Process_Date = GETDATE(), User_ID = @User_ID , Delegated_To = @Delegated_To
-        WHERE Prc_ID = @Prc_ID
-      ELSE
-          INSERT INTO m_Principle (Prc_ID, Prc_Name , Prc_ContactPerson, Prc_Address , Prc_Phone, Process_Date ,User_ID , Delegated_To ,isActive) 
-      VALUES (@Prc_ID, @Prc_Name, '','','' , GETDATE() , @User_ID , @Delegated_To , 1);
-      `;
-      const request = pool.request();
-      const result1 = await request
-        .input("Prc_ID", sql.NVarChar(50), Prc_ID)
-        .input("User_ID", sql.NVarChar(50), "TEST")
-        .input("Delegated_To", sql.NVarChar(50), "TEST")
-        .input("Prc_Name", sql.NVarChar(250), Prc_Name)
-        .query(queryCode);
-
-      console.log(result1);
-      res.status(200).json({ message: "Data has been saved" });
-    } catch (error) {
-      next(error);
-    }
-  }
-  static async downloadExcelMasterPembuat(req, res, next) {
+  static async downloadExcelMasterPemasok(req, res, next) {
     try {
       const fileName = "Master Pemasok";
       const workbook = new ExcelJS.Workbook();

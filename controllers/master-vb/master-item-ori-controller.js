@@ -2,8 +2,8 @@ const sql = require("mssql");
 const { configMssql } = require("../../config/configMssql");
 const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
-class MasterItemBahanAwalController {
-  static async fetchItemGroup(req, res, next) {
+class MasterItemOriController {
+  static async fetchItemGroupOri(req, res, next) {
     try {
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
 
@@ -29,7 +29,7 @@ class MasterItemBahanAwalController {
     }
   }
 
-  static async downloadExcelExportItemBahanAwal(req, res, next) {
+  static async downloadExcelExportItemOri(req, res, next) {
     try {
       const { itemType } = req.query;
 
@@ -95,4 +95,4 @@ class MasterItemBahanAwalController {
   }
 }
 
-module.exports = MasterItemBahanAwalController;
+module.exports = MasterItemOriController;
