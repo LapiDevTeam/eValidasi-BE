@@ -6,6 +6,9 @@ const globalRouter = express.Router();
 globalRouter.get("/group-code", GlobalController.fetchGroupCode);
 
 // fetch ITEM UNIT ID
+globalRouter.get("/dpba-detail", GlobalController.fetchDPBADetail);
+
+// fetch ITEM UNIT ID
 globalRouter.get("/item-unit", GlobalController.fetchItemUnit);
 
 module.exports = globalRouter;
