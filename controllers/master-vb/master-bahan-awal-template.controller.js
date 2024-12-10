@@ -115,7 +115,8 @@ async function masterBahanAwalTemplate_CREATE(req, res, next) {
     console.log({error});
     await transaction.rollback();
     return res.status(500).json({
-      message: error?.message || 'Internal Server Error',
+      message: 'ERROR',
+      data: error?.message || 'Internal Server Error'
     });
   }
 }
@@ -173,7 +174,8 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
     console.log({ error });
     await transaction.rollback();
     return res.status(500).json({
-      message: error?.message || "Internal Server Error",
+      message: 'ERROR',
+      data: error?.message || 'Internal Server Error'
     });
   }
 }
@@ -268,7 +270,8 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
     await transaction.rollback();
     console.log({ error });
     return res.status(500).json({
-      message: error?.message || "Internal Server Error",
+      message: 'ERROR',
+      data: error?.message || 'Internal Server Error'
     });
   }
 }
