@@ -2,32 +2,46 @@ const sql = require("mssql");
 const { configMssql } = require("../../config/configMssql");
 const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
-class MasterPemasokController {
-  static async fetchMasterPemasok(req, res, next) {
+class MasterItemOriController {
+  static async fetchItemGroupOri(req, res, next) {
     try {
+      const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
+
+      if (!groupType) throw new MyError(400, "groupType is required");
       const pool = await sql.connect(configMssql);
       const queryCode = `
-        SELECT Supp_id, Supp_Name FROM m_Supplier WHERE Supp_id <> '(none)' AND isActive = 1 ORDER BY 1;
-      `;
+      select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
+        item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, 
+        item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
+        item_status, IsActive,Owner, ishalal, item_bpomgenerik, namagenerik, item_row from vwM_ItemWithGroup where item_type = @group_type
+         ${
+           isActive ? "and IsActive = 1" : ""
+         } and item_id + ' ' + item_name like '%${kodeOrNamaBahan}%' order by Process_Date desc`;
       const request = pool.request();
-      const result1 = await request.query(queryCode);
-      if (result1.recordset.length === 0)
-        throw new MyError(404, "Data tidak ditemukan");
-      res.status(200).json({ data: result1.recordset });
+      const result1 = await request
+        .input("group_type", sql.NVarChar(5), groupType)
+        .query(queryCode);
+
+      const _data = result1.recordset;
+      res.status(200).json({ data: _data });
     } catch (error) {
       next(error);
     }
   }
 
-  static async downloadExcelMasterPemasok(req, res, next) {
+  static async downloadExcelExportItemOri(req, res, next) {
     try {
-      const fileName = "Master Pemasok";
+      const { itemType } = req.query;
+
+      if (!itemType) throw new MyError(400, "Item Type is required");
+      const fileName = "Master Item";
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Sheet 1");
 
       const pool = await sql.connect(configMssql);
       const queryCode = `
-        SELECT Supp_id, Supp_Name FROM m_Supplier WHERE Supp_id <> '(none)' AND isActive = 1 ORDER BY 1;
+        Select Type_Name as TIPE, Item_ID as KODE, Group_Name as MASTER , Item_Name as "NAMA BAHAN" , Item_Size as UKURAN , Item_Description  as DESKRIPSI , Item_Unit as SATUAN , Item_MinOrder as "MIN ORDER" , Item_LeadTime as "LEAD TIME" , Item_PackingSize as "PACKING SIZE" , Item_LocalIndent as "LOCAL/INDENT" from vwITEM_PRINT
+      where item_type like '${itemType}';
       `;
       const request = pool.request();
       const result1 = await request.query(queryCode);
@@ -42,7 +56,7 @@ class MasterPemasokController {
         bottom: { style: "thin" },
         right: { style: "thin" },
       };
-      worksheet.addRow(["Master Principle"]);
+      worksheet.addRow(["Master Item"]);
       worksheet.addRow([`Printed on ${currentDate}`]);
       worksheet.addRow([]);
 
@@ -81,4 +95,4 @@ class MasterPemasokController {
   }
 }
 
-module.exports = MasterPemasokController;
+module.exports = MasterItemOriController;
