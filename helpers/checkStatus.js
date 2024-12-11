@@ -79,7 +79,9 @@ const checkStatusFormulaFix = async (id) => {
     },
     order: [["approver_no", "DESC"]],
   });
+
   if (checkStatus.length) apprNo = checkStatus[0]?.approver_no + 1;
+
   return apprNo;
 };
 const checkStatusLaporanTrialSkalaLab = async (id) => {

@@ -58,12 +58,16 @@ const approverRecordset = async (
 
     const pool = await sql.connect(configMssql);
     const request = pool.request();
+
+    console.log(apprAplicationCode, bagian, apprNo, user_id, "< AAAA");
+
     const result = await request
       .input("Appr_ApplicationCode", sql.NVarChar(50), apprAplicationCode)
       .input("Appr_DeptID", sql.NVarChar(50), bagian)
       .input("Appr_ID", sql.NVarChar(50), user_id)
       .input("Appr_No", sql.Int, apprNo)
       .query(queryApprover);
+    console.log(result, "< res");
 
     const request1 = pool.request();
     const result1 = await request1
