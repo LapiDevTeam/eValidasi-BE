@@ -276,6 +276,224 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
   }
 }
 
+async function masterBahanAwalTemplate_APPROVE(req, res, next) {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const { TxtGroup_ID, gstrUserName, gstrDelegatedTo } = req.body;
+
+    if (!TxtGroup_ID || TxtGroup_ID.trim() === "") {
+      return res.status(500).json({
+        message: "Group KODE tidak boleh dikosongkan !!!",
+      });
+    }
+
+    // Step 1: Get current date and time
+    const [{ perio, GetNow: sqlDtTime }] = await sequelizeMSQL.query(
+      `
+      SELECT
+        REPLACE(CONVERT(VARCHAR(19), GETDATE(), 121), '-', '') AS perio,
+        CONVERT(VARCHAR, GETDATE(), 20) AS GetNow
+      `,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
+    const sqlPeriode = perio;
+
+    // Step 2: Check Approver Identity
+    const approver = await sequelizeMSQL.query(
+      `
+      SELECT TOP 1 Appr_Identity
+      FROM m_Approver_Lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode LIKE 'ITEM'
+        AND Appr_ID LIKE :gstrUserName
+      `,
+      {
+        replacements: { gstrUserName },
+        type: Sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (!approver || approver.length === 0) {
+      return res.status(500).json({
+        message: "Can not approve data",
+      });
+    }
+
+    const sqlAppr_Identity = approver[0]?.Appr_Identity || "0000";
+
+    // Step 3: Build queries
+    const xSQL1 = `
+      UPDATE m_Item_Manufacturing_Supplier_template
+      SET
+        item_Periode = :sqlPeriode,
+        tgl_berlaku = :sqlDtTime,
+        user_approve = :gstrUserName,
+        user_delegated = :gstrDelegatedTo
+      WHERE ISNULL(item_Periode, '') = ''
+        AND Item_ID IN (
+          SELECT DISTINCT Item_ID
+          FROM m_Item_Manufacturing_template
+          WHERE ISNULL(item_Periode, '') = ''
+            AND Item_Group = :TxtGroup_ID
+        );
+
+      UPDATE m_Item_Manufacturing_template
+      SET
+        item_Periode = :sqlPeriode,
+        tgl_berlaku = :sqlDtTime,
+        user_approve = :gstrUserName,
+        user_delegated = :gstrDelegatedTo
+      WHERE ISNULL(item_Periode, '') = ''
+        AND Item_Group = :TxtGroup_ID;
+    `;
+
+    const xSQL2 = `
+      INSERT INTO m_Item_Manufacturing_Status (
+        Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To
+      )
+      SELECT
+        Item_ID, 1, 0, :sqlAppr_Identity, :sqlDtTime, :gstrUserName, :gstrDelegatedTo
+      FROM m_Item_Manufacturing_template
+      WHERE ISNULL(item_Periode, '') = :sqlPeriode
+        AND Item_Group = :TxtGroup_ID;
+    `;
+
+    const zSQL1 = `
+      UPDATE m_Item_Manufacturing_Supplier
+      SET
+        USER_ID = :gstrUserName,
+        Delegated_To = :gstrDelegatedTo,
+        flag_update = 'Update For Delete'
+      WHERE Item_ID IN (
+        SELECT DISTINCT Item_ID
+        FROM m_Item_Manufacturing
+        WHERE Item_Group = :TxtGroup_ID
+      );
+
+      DELETE FROM m_Item_Manufacturing_Supplier
+      WHERE Item_ID IN (
+        SELECT DISTINCT Item_ID
+        FROM m_Item_Manufacturing
+        WHERE Item_Group = :TxtGroup_ID
+      );
+    `;
+
+    const zSQL3 = `
+      INSERT INTO m_Item_Manufacturing_Supplier_template (
+        Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive,
+        Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date,
+        Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat,
+        Masa_berlaku_date, Dok_Pendukung, item_Periode, tgl_berlaku, user_approve, user_delegated
+      )
+      SELECT
+        Item_ID, Item_PrcID, Item_SuppID, :sqlDtTime, :gstrUserName, :gstrDelegatedTo, isActive,
+        Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date,
+        Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat,
+        Masa_berlaku_date, Dok_Pendukung, NULL, NULL, NULL, NULL
+      FROM m_Item_Manufacturing_Supplier_template
+      WHERE ISNULL(item_Periode, '') = :sqlPeriode;
+    `;
+
+    const vSQL1 = `
+      UPDATE m_Item_Manufacturing
+      SET
+        USER_ID = :gstrUserName,
+        Delegated_To = :gstrDelegatedTo,
+        flag_update = 'Update For Delete'
+      WHERE Item_Group = :TxtGroup_ID;
+
+      DELETE FROM m_Item_Manufacturing
+      WHERE Item_Group = :TxtGroup_ID;
+    `;
+
+    const vSQL2 = `
+      INSERT INTO m_Item_Manufacturing (
+        PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description,
+        Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder, Item_LeadTime,
+        Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency,
+        Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To,
+        Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime,
+        Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate,
+        Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row
+      )
+      SELECT
+        PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description,
+        Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder, Item_LeadTime,
+        Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency,
+        Item_LastPrice, Item_LastPriceDate, 1, Item_BJ, :gstrUserName, :gstrDelegatedTo,
+        :sqlDtTime, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime,
+        Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate,
+        Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row
+      FROM m_Item_Manufacturing_template
+      WHERE ISNULL(item_Periode, '') = :sqlPeriode;
+    `;
+
+
+    await sequelizeMSQL.query(xSQL1, {
+      replacements: {
+        sqlPeriode,
+        sqlDtTime,
+        gstrUserName,
+        gstrDelegatedTo,
+        TxtGroup_ID,
+      },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(xSQL2, {
+      replacements: {
+        sqlPeriode,
+        sqlDtTime,
+        sqlAppr_Identity,
+        gstrUserName,
+        gstrDelegatedTo,
+        TxtGroup_ID,
+      },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(zSQL1, {
+      replacements: { TxtGroup_ID, gstrUserName, gstrDelegatedTo },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(zSQL3, {
+      replacements: { sqlPeriode, sqlDtTime, gstrUserName, gstrDelegatedTo },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(vSQL1, {
+      replacements: { TxtGroup_ID, gstrUserName, gstrDelegatedTo },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(vSQL2, {
+      replacements: {
+        sqlPeriode,
+        sqlDtTime,
+        gstrUserName,
+        gstrDelegatedTo,
+      },
+      transaction,
+    });
+
+    await transaction.commit();
+    // await transaction.rollback();
+    return res.status(200).json({
+      message: "Data has been approved for this period!",
+    });
+  } catch (error) {
+    const resp = {
+      message: "ERROR",
+    }
+    await transaction.rollback();
+    console.log({error, name: error?.name});
+    if(error?.name == 'SequelizeUniqueConstraintError' ) resp['data'] = 'Data Sudah Approve'
+    return res.status(500).json(resp);
+  }
+}
+
+
 async function countJumlahPPI(item_ID) {
   try {
 
@@ -424,4 +642,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE }
+ module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE }
