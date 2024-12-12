@@ -1,7 +1,114 @@
 const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
 const { Sequelize } = require("../../models");
 
-async function masterBahanAwalTemplate_CREATE(req, res, next) {
+const { QueryTypes } = require("sequelize");
+
+const masterBahanAwalTemplate_CREATE = async (req, res) => {
+    try {
+        const {
+            item_ID,
+            item_name,
+            item_kodeGenerik,
+            item_groupID,
+            item_type,
+            item_size,
+            item_description,
+            item_unit,
+            item_minOrder = "",
+            item_leadTime = "",
+            item_packingSize = "",
+            item_localIndent,
+            strInput = "0",
+            username,
+            delegatedTo,
+            owner,
+            isHalal,
+            row,
+            itemStatus = "1",
+        } = req.body;
+
+        let lblItem_ID = "";
+
+        if (!item_groupID || !item_name) {
+            return res.status(400).json({ message: "Nama Barang harus diisi dan tidak boleh kosong!!!" });
+        }
+
+        if (!item_unit) {
+            return res.status(400).json({ message: "Satuan harus diisi!" });
+        }
+
+        if (!isNaN(item_groupID.charAt(0))) {
+
+            const query1 = `
+                SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3)
+                FROM m_Item_Manufacturing_template
+                WHERE ISNUMERIC(LEFT(Item_ID, 1)) = 1
+                  AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}%'
+            `;
+
+            const [result] = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
+            lblItem_ID = `${item_groupID} ${result ? result[""] : "001"}`;
+        } else {
+
+            const query2 = `
+                SELECT CASE
+                    WHEN ISNUMERIC(RIGHT(MAX(Item_ID), 1)) = 1 THEN '${item_groupID} ${item_ID}A'
+                    ELSE '${item_groupID} ${item_ID}' + CHAR(ASCII(RIGHT(MAX(Item_ID), 1)) + 1)
+                END AS autonum
+                FROM m_Item_Manufacturing_template
+                WHERE Item_ID LIKE '${item_groupID} ${item_ID}%'
+            `;
+
+            const [result] = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
+            lblItem_ID = result ? result["autonum"] : `${item_groupID} ${item_ID}`;
+        }
+
+        if (item_type === "BAHAN KEMAS") {
+            const query3 = `
+                SELECT Item_MonthUjiUlang
+                FROM t_item_manuf_ujiulangDefault
+                WHERE item_id LIKE '${item_groupID}'
+            `;
+
+            const [ujiulangResult] = await sequelizeMSQL.query(query3, { type: QueryTypes.SELECT });
+            if (ujiulangResult) {
+                console.log(`Default Uji Ulang Period: ${ujiulangResult.Item_MonthUjiUlang} bulan`);
+            }
+        }
+
+        const query4 = `
+            SELECT MAX(PK_ID) + 1 AS PKID
+            FROM m_Item_Manufacturing_template
+            WHERE ISNULL(item_Periode, '') = ''
+        `;
+
+        const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
+        const PK_ID = pkidResult ? pkidResult.PKID : 1;
+
+        const insertQuery = `
+            INSERT INTO m_Item_Manufacturing_template (
+                PK_ID, isactive, Item_ID, Item_Name, Item_BPOMGenerik, Item_group, Item_type,
+                item_size, item_Description, Item_Currency, item_price, item_unit, Item_MinOrder,
+                Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_MonthUjiUlang,
+                User_ID, Delegated_To, Process_Date, item_isPPI, Owner, IsHalal, item_row, Item_Status
+            ) VALUES (
+                '${PK_ID}', 1, '${lblItem_ID}', '${item_name}', '${item_kodeGenerik}', '${item_groupID}',
+                '${item_type}', '${item_size}', '${item_description}', 'IDR', '0', '${item_unit}', '${item_minOrder}',
+                '${item_leadTime}', '${item_packingSize}', '${item_localIndent}', '${strInput}',
+                '${username}', '${delegatedTo}', GETDATE(), 1, '${owner}', '${isHalal}', '${row}', '${itemStatus}'
+            )
+        `;
+
+        await sequelizeMSQL.query(insertQuery, { type: QueryTypes.INSERT });
+
+        return res.status(201).json({ message: `Data berhasil disimpan dengan kode: ${lblItem_ID}` });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Terjadi kesalahan saat menyimpan data.", error: error.message });
+    }
+};
+
+async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
   try {
     let {
@@ -492,7 +599,6 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
     return res.status(500).json(resp);
   }
 }
-
 
 async function countJumlahPPI(item_ID) {
   try {
