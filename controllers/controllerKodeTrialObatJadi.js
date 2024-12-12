@@ -6,6 +6,7 @@ const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const m_kodetrialobatjadi = require("../models/m_kodetrialobatjadi");
 const { Sequelize, Op } = require("sequelize");
+const { isApproveValidation } = require("../helpers/approver");
 
 class ControllerKodeTrialObatJadi {
   static async createKodeTrialObatJadiTemplate(req, res, next) {
@@ -20,12 +21,24 @@ class ControllerKodeTrialObatJadi {
         rencana_revisi,
       } = req.body;
 
-      //   const existingObatJadi = await m_kodeTrialObatJadi_template.findOne({
-      //     where: {
-      //       nomor: nomor,
-      //     },
-      //     order: [["createdAt", "DESC"]],
-      //   });
+      const existingObatJadi = await m_kodeTrialObatJadi_template.findAll({
+        where: {
+          [Op.and]: [
+            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
+            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
+            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+          ],
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (
+        existingObatJadi?.find(
+          (obatJadi) => obatJadi?.kodeProduk === kodeProduk
+        )
+      ) {
+        throw new MyError(400, "Kode Produk Sudah Ada!");
+      }
 
       const { user_id, delegated_to } = req.user;
 
@@ -78,8 +91,6 @@ class ControllerKodeTrialObatJadi {
         order: [["id", "ASC"]],
       });
 
-      console.log(kodeTrialObatJadi, "< aaaa");
-
       res.status(200).json({
         kodeTrialObatJadi,
       });
@@ -90,7 +101,6 @@ class ControllerKodeTrialObatJadi {
   }
   static async revisiKodeTrialObatJadi(req, res) {
     const { revisi } = req.query; // Get revisi from the query parameters
-    console.log(req.query, "<< REQ"); // Log the query parameters
 
     try {
       const kodeTrialObatJadi = await m_kodeTrialObatJadi_template.findAll({
@@ -99,8 +109,6 @@ class ControllerKodeTrialObatJadi {
         },
         order: [["id", "ASC"]],
       });
-
-      console.log(kodeTrialObatJadi, "< aaaa");
 
       res.status(200).json({
         kodeTrialObatJadi,
@@ -113,96 +121,107 @@ class ControllerKodeTrialObatJadi {
 
   static async approveKodeTrialObatJadi(req, res, next) {
     try {
-      const { user_id, delegated_to } = req.user;
+      const { user_id, bagian_user, delegated_to } = req.user;
 
-      // Find the existing records
-      const existingRecords = await m_kodeTrialObatJadi_template.findAll({
-        where: {
-          [Op.and]: [
-            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
-            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
-            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
-          ],
-        },
-        order: [["id", "ASC"]],
-      });
+      const apprDeptId = bagian_user;
+      const apprNo = 1;
 
-      if (existingRecords.length === 0) {
-        throw new MyError(400, "Not Found!");
-      }
-
-      // Check if rencana_berlaku and rencana_revisi are filled
-      const incompleteRecords = existingRecords.filter(
-        (record) => !record.rencana_berlaku || !record.rencana_revisi
+      const isApprove = await isApproveValidation(
+        "kodeTrialObatJadi",
+        apprDeptId,
+        apprNo,
+        user_id
       );
 
-      if (incompleteRecords.length > 0) {
-        throw new MyError(400, "Rencana Berlaku belum !");
-      }
-
-      // Update each record
-      const updatedRecords = await Promise.all(
-        existingRecords.map(async (record) => {
-          try {
-            return await record.update({
-              user_approve: user_id,
-              user_delegated: delegated_to,
-              user_approve_date: new Date(), // Ensure this is a valid date
-            });
-          } catch (updateError) {
-            console.error(
-              `Error updating record with ID ${record.id}:`,
-              updateError
-            );
-            throw updateError;
-          }
-        })
-      );
-
-      const newTemplate = existingRecords.map((el, index) => {
-        return {
-          kodeProduk: el.kodeProduk,
-          namaObatJadi: el.namaObatJadi,
-          kemasan: el.kemasan,
-          komposisi: el.komposisi,
-          keterangan: el.keterangan,
-          user_id: "Sys",
-          delegated_to: "Sys",
-        };
-      });
-
-      const newRecords = updatedRecords.map((el, index) => {
-        return {
-          kodeProduk: el.kodeProduk,
-          namaObatJadi: el.namaObatJadi,
-          kemasan: el.kemasan,
-          komposisi: el.komposisi,
-          keterangan: el.keterangan,
-          rencana_berlaku: el.rencana_berlaku,
-          rencana_revisi: el.rencana_revisi,
-          rencana_alasan_desc: el.rencana_alasan_desc,
-          user_id: "Sys",
-          delegated_to: "Sys",
-        };
-      });
-
-      await m_kodeTrialObatJadi_template.bulkCreate(newTemplate);
-
-      const templateFix = await m_kodeTrialObatJadi.findAll();
-
-      // If there are existing records, delete them
-      if (existingRecords.length > 0) {
-        await m_kodeTrialObatJadi.destroy({
-          truncate: true, // This will delete all records without needing a where condition
+      console.log(isApprove, "< isapprove");
+      if (isApprove === true) {
+        const existingRecords = await m_kodeTrialObatJadi_template.findAll({
+          where: {
+            [Op.and]: [
+              { user_approve: { [Op.or]: [null, ""] } },
+              { user_delegated: { [Op.or]: [null, ""] } },
+              { user_approve_date: { [Op.is]: null } },
+            ],
+          },
+          order: [["id", "ASC"]],
         });
+
+        if (existingRecords.length === 0) {
+          throw new MyError(400, "Not Found!");
+        }
+
+        const incompleteRecords = existingRecords.filter(
+          (record) => !record.rencana_berlaku || !record.rencana_revisi
+        );
+
+        if (incompleteRecords.length > 0) {
+          throw new MyError(400, "Rencana Berlaku belum !");
+        }
+
+        const updatedRecords = await Promise.all(
+          existingRecords.map(async (record) => {
+            try {
+              return await record.update({
+                user_approve: user_id,
+                user_delegated: delegated_to,
+                user_approve_date: new Date(),
+              });
+            } catch (updateError) {
+              console.error(
+                `Error updating record with ID ${record.id}:`,
+                updateError
+              );
+              throw updateError;
+            }
+          })
+        );
+
+        const newTemplate = existingRecords.map((el, index) => {
+          return {
+            kodeProduk: el.kodeProduk,
+            namaObatJadi: el.namaObatJadi,
+            kemasan: el.kemasan,
+            komposisi: el.komposisi,
+            keterangan: el.keterangan,
+            user_id: "Sys",
+            delegated_to: "Sys",
+          };
+        });
+
+        const newRecords = updatedRecords.map((el, index) => {
+          return {
+            kodeProduk: el.kodeProduk,
+            namaObatJadi: el.namaObatJadi,
+            kemasan: el.kemasan,
+            komposisi: el.komposisi,
+            keterangan: el.keterangan,
+            rencana_berlaku: el.rencana_berlaku,
+            rencana_revisi: el.rencana_revisi,
+            rencana_alasan_desc: el.rencana_alasan_desc,
+            user_id: "Sys",
+            delegated_to: "Sys",
+          };
+        });
+
+        await m_kodeTrialObatJadi_template.bulkCreate(newTemplate);
+
+        const templateFix = await m_kodeTrialObatJadi.findAll();
+
+        if (existingRecords.length > 0) {
+          await m_kodeTrialObatJadi.destroy({
+            truncate: true,
+          });
+        }
+
+        await m_kodeTrialObatJadi.bulkCreate(newRecords);
+
+        res.status(200).json({
+          message: "Data has been updated",
+          data: updatedRecords,
+        });
+      } else {
+        throw new MyError(400, "User no Access");
       }
-
-      await m_kodeTrialObatJadi.bulkCreate(newRecords);
-
-      res.status(200).json({
-        message: "Data has been updated",
-        data: updatedRecords,
-      });
     } catch (err) {
       console.error("Error in approveKodeTrialObatJadi:", err);
       next(err);
@@ -219,21 +238,18 @@ class ControllerKodeTrialObatJadi {
           message: "Missing required fields",
         });
       }
-      console.log("xixi");
 
       // Find records that need updating
       const existingRecords = await m_kodeTrialObatJadi_template.findAll({
         where: {
           [Op.and]: [
-            { rencana_berlaku: { [Op.is]: null } },
-            { rencana_revisi: { [Op.or]: [null, ""] } },
-            { rencana_alasan_desc: { [Op.or]: [null, ""] } },
+            { user_approve: { [Op.is]: null } },
+            { user_delegated: { [Op.is]: null } },
+            { user_approve_date: { [Op.is]: null } },
           ],
         },
         order: [["createdAt", "ASC"]],
       });
-
-      console.log(existingRecords, "< exis");
 
       if (existingRecords.length === 0) {
         return res.status(404).json({
@@ -263,7 +279,17 @@ class ControllerKodeTrialObatJadi {
   }
   static async latestKodeTrialObatJadi(req, res, next) {
     try {
-      const { user_id, delegated_to } = req.user;
+      const { user_id, bagian_user, delegated_to } = req.user;
+
+      const apprDeptId = bagian_user;
+      const apprNo = 1;
+
+      const isApprove = await isApproveValidation(
+        "kodeTrialObatJadi",
+        apprDeptId,
+        apprNo,
+        user_id
+      );
 
       // Find the existing records
       const existingRecords = await m_kodeTrialObatJadi_template.findAll({
@@ -286,6 +312,7 @@ class ControllerKodeTrialObatJadi {
       res.status(200).json({
         message: "Data has been updated",
         data: existingRecords,
+        isApprove,
       });
     } catch (err) {
       console.error("Error in approveKodeTrialObatJadi:", err);

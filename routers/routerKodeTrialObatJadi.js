@@ -28,11 +28,11 @@ router.put(
   authentication,
   ControllerKodeTrialObatJadi.updateRencanaBerlaku
 );
-router.put(
-  "/update-rencana-berlaku",
-  authentication,
-  ControllerKodeTrialObatJadi.updateRencanaBerlaku
-);
+// router.put(
+//   "/update-rencana-berlaku",
+//   authentication,
+//   ControllerKodeTrialObatJadi.updateRencanaBerlaku
+// );
 router.get(
   "/kode-trial-obat-jadi-latest",
   authentication,
