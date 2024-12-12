@@ -1,6 +1,8 @@
 const sql = require("mssql");
 const { configMssql } = require("../config/configMssql");
 const MyError = require("../helpers/errors");
+const { sequelizeMSQL } = require("../config/config.sequelize.dbmssql");
+const { QueryTypes } = require("sequelize");
 
 class GlobalController {
   static async fetchGroupCode(req, res, next) {
@@ -16,6 +18,24 @@ class GlobalController {
         .query(queryCode);
 
       const _data = result1.recordset;
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async fetchBpomItem(req, res, next) {
+    try {
+      const { item_name } = req.query;
+      const sqlCode = `
+      SELECT item_name as NAMA_GENERIK , item_id as KODE FROM m_BPOM_item where isActive = 1 and item_name like '%${
+        item_name || ""
+      }%' ORDER BY item_name ASC`;
+
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+      });
+
       res.status(200).json({ data: _data });
     } catch (error) {
       next(error);
