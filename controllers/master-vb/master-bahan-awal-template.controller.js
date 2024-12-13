@@ -233,7 +233,7 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
 async function masterBahanAwalTemplate_UPDATE(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
   try {
-    const { item_ID, ...fieldsToUpdate } = req.body;
+    const { item_ID, insertRevisi = false, txtUkuranHistory = '', ...fieldsToUpdate } = req.body;
 
     if (!item_ID) {
       return res.status(400).json({
@@ -255,10 +255,62 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
       })
       .join(", ");
 
+
+      if (insertRevisi && (txtUkuranHistory || txtUkuranHistory !== '' )) {
+        const queryGetPrs = `
+        select A.Item_PrcID,B.Prc_Name
+        from m_Item_Manufacturing_supplier A
+        LEFT JOIN m_principle B on B.Prc_ID=A.Item_PrcID
+        where A.Item_ID='${item_ID}'
+        `;
+
+        const resultGetPrs = await sequelizeMSQL.query(queryGetPrs, {
+          type: Sequelize.QueryTypes.SELECT,
+          logging: (query, queryObject) => {},
+        });
+
+        if (resultGetPrs?.length <= 0) {
+          console.log({ resultGetPrs: resultGetPrs[0] });
+
+          const insertPromises = resultGetPrs[0].map(async (element) => {
+            const item_nameRevisi = setClause?.item_name || '';
+            const item_PrcID = element?.item_PrcID || '';
+            const item_prcName = element?.item_prcName || '';
+            const queryInsertRevisi = `
+                  INSERT INTO t_RevisionCode_Reminder
+                  (Tanggal, Item_ID, Item_Name, Item_PrcID, Item_PrcName, Ukuran_Lama, update_as_status)
+                  VALUES (
+                      GETDATE(),
+                      '${item_ID}',
+                      '${item_nameRevisi}',
+                      '${item_PrcID}',
+                      '${item_prcName}',
+                      '${txtUkuranHistory}',
+                      'update'
+                  )
+              `;
+
+            return sequelizeMSQL.query(queryInsertRevisi, {
+              type: Sequelize.QueryTypes.INSERT,
+              logging: (query, queryObject) => {},
+              transaction,
+            });
+          });
+
+
+          try {
+            const insertRevisiResults = await Promise.all(insertPromises);
+            console.log('Insert operations completed:', insertRevisiResults);
+          } catch (error) {
+            console.error('Error in inserting data:', error);
+          }
+        }
+      }
+
     const queryUpdate = `
       UPDATE [m_Item_Manufacturing_template]
       SET ${setClause},
-          Process_date = GETDATE() -- Always update the process date
+          Process_date = GETDATE()
       WHERE
           Item_ID = '${item_ID}'
           AND ISNULL(item_periode, '') = '';
