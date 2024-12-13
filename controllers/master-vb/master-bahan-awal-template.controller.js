@@ -44,11 +44,12 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
                 SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3)
                 FROM m_Item_Manufacturing_template
                 WHERE ISNUMERIC(LEFT(Item_ID, 1)) = 1
-                  AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}%'
+                  AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}___'
             `;
 
             const [result] = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
             lblItem_ID = `${item_groupID} ${result ? result[""] : "001"}`;
+            console.log({result1: result, lblItem_ID});
         } else {
 
             const query2 = `
