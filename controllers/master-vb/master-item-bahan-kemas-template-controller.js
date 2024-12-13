@@ -24,6 +24,24 @@ class MasterItemBahanKemasTemplateController {
       next(error);
     }
   }
+  static async fetchItemWithGroupTemplateOther(req, res, next) {
+    try {
+      const { item_groupID, item_type } = req.query;
+      const sqlCode = `
+        select Item_ID , Group_name, Item_Name, Item_Size, Item_Description, item_unit, item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate, item_status, IsActive, '1' as SubCode 
+      from vwM_ItemWithGroup 
+      where item_type like '${item_type}' and item_isPPI = 1  and Item_Group = '${item_groupID}' union all Select '${item_groupID} ' + Group_ID, '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '', '0'  
+      from m_Item_Group where Group_ID <> 'NN' and ISNUMERIC(left(Group_ID,1)) = 0 order by 1;
+      `;
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+      });
+
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
 
   static async downloadExcelExportItemTemplate(req, res, next) {
     try {
