@@ -14,5 +14,9 @@ masterItemBahanKemasTemplateRouter.get(
   "/export",
   MasterItemBahanKemasTemplateController.downloadExcelExportItemTemplate
 );
+masterItemBahanKemasTemplateRouter.post(
+  "/approve",
+  MasterItemBahanKemasTemplateController.masterItemBahanTemplateApprover
+);
 
 module.exports = masterItemBahanKemasTemplateRouter;

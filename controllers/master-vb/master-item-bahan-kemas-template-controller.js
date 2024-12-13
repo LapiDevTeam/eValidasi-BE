@@ -105,6 +105,192 @@ class MasterItemBahanKemasTemplateController {
       next(error);
     }
   }
+
+  static async masterItemBahanTemplateApprover(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      // const { user_id, delegated_to } = req.user;
+      
+      const {
+        item_groupID,
+      } = req.body;
+
+      if (!item_groupID)
+        throw new MyError(400, "Group KODE tidak boleh dikosongkan !!!");
+
+      //Periode and dateTime
+      const [{ perio: periode, GetNow: dateTime }] = await sequelizeMSQL.query(
+        `
+        SELECT REPLACE(CONVERT(VARCHAR(19), GETDATE(), 121), '-', '') AS perio,
+      CONVERT(VARCHAR, GETDATE(), 20) AS GetNow
+      `,
+        { type: QueryTypes.SELECT }
+      );
+
+      //Check Approver line
+      const [_isApprove] = await sequelizeMSQL.query(
+        `
+            SELECT TOP 1 Appr_Identity
+          FROM m_Approver_Lines
+          WHERE isactive = 1
+          AND Appr_ApplicationCode LIKE 'ITEM'
+          AND Appr_ID LIKE '${user_id}'
+        `,
+        { type: QueryTypes.SELECT }
+      );
+      if (!_isApprove?.Appr_Identity)
+        throw new MyError(400, "Approver tidak sesuai");
+
+      const approverId = _isApprove.Appr_Identity;
+
+      //Update Query
+      const xSQL1 = `
+        UPDATE  m_Item_Manufacturing_Supplier_template SET item_Periode= :periode, tgl_berlaku= :dateTime, user_approve= :user_id, user_delegated= :delegated_to
+      WHERE (ISNULL(item_Periode, N'') = '') and  Item_ID in (select distinct Item_ID from m_Item_Manufacturing_template where isnull(item_Periode,'') ='' and Item_Group = :item_groupID) 
+
+      UPDATE  m_Item_Manufacturing_template SET item_Periode= :periode, tgl_berlaku= :dateTime, user_approve= :user_id, user_delegated= :delegated_to
+      WHERE (ISNULL(item_Periode, N'') = '') and Item_Group = :item_groupID) 
+      
+      update m_Item_Manufacturing_Status set USER_ID= :user_id, Delegated_To= :delegated_to, flag_update='Update For Delete'
+      where Item_ID in (select Item_ID from m_Item_Manufacturing where Item_Group = :item_groupID) 
+
+      delete m_Item_Manufacturing_Status 
+      where Item_ID in (select Item_ID from m_Item_Manufacturing where Item_Group = :item_groupID)
+      `;
+      await sequelizeMSQL.query(xSQL1, {
+        replacements: {
+          periode,
+          dateTime,
+          user_id,
+          delegated_to,
+          item_groupID,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const xSQL2 = `
+        insert into m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)  
+      select Item_ID, 1,0, :approverId ,  :dateTime,  :user_id,  :delegated_to 
+      from m_Item_Manufacturing_template 
+      where isnull(item_Periode,'') =  :periode and   Item_Group = :item_groupID)
+      `;
+
+      await sequelizeMSQL.query(xSQL2, {
+        replacements: {
+          approverId,
+          periode,
+          dateTime,
+          user_id,
+          delegated_to,
+          item_groupID,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const zSQL1 = `
+      update m_Item_Manufacturing_Supplier set USER_ID= :user_id, Delegated_To= :delegated_to, flag_update='Update For Delete' 
+      where Item_ID in (select distinct Item_ID from m_Item_Manufacturing where Item_Group = :item_groupID)
+      
+      delete m_Item_Manufacturing_Supplier 
+      where Item_ID in (select distinct Item_ID from m_Item_Manufacturing where Item_Group = :item_groupID)
+      `;
+      await sequelizeMSQL.query(zSQL1, {
+        replacements: {
+          user_id,
+          delegated_to,
+          item_groupID,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const zSQL2 = `
+      insert into m_Item_Manufacturing_Supplier (Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung)  
+      select  Item_ID, Item_PrcID, Item_SuppID,  :dateTime AS Process_Date,  :user_id AS User_ID,  :delegated_to as Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID,   item_ket , input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung   From m_Item_Manufacturing_Supplier_template   
+      where isnull(item_Periode,'') = :periode
+      `;
+      await sequelizeMSQL.query(zSQL2, {
+        replacements: {
+          user_id,
+          delegated_to,
+          item_groupID,
+          periode,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const zSQL3 = `
+      insert into m_Item_Manufacturing_Supplier_template ( Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket,input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung, item_Periode, tgl_berlaku,user_approve,user_delegated)  
+      select  Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID,   item_ket , input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung   , null as item_Periode, null as tgl_berlaku, null as user_approve, null as user_delegated   
+      From m_Item_Manufacturing_Supplier_template   
+      where isnull(item_Periode,'') = :periode
+      `;
+      await sequelizeMSQL.query(zSQL3, {
+        replacements: {
+          periode,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const vSQL1 = `
+      update m_Item_Manufacturing set USER_ID= :user_id, Delegated_To= :delegated_to, flag_update='Update For Delete' 
+      where Item_Group = :item_groupID)  
+
+      delete m_Item_Manufacturing 
+      where Item_Group = :item_groupID)
+      `;
+      await sequelizeMSQL.query(vSQL1, {
+        replacements: {
+          user_id,
+          delegated_to,
+          item_groupID,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const vSQL2 = `
+      insert into m_Item_Manufacturing ( PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row)  
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ, :user_id as User_ID, :delegated_to as  Delegated_To, :dateTime as Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR , Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row   
+      From m_Item_Manufacturing_template  
+      WHERE (ISNULL(item_Periode, N'') =  :periode)
+      `;
+      await sequelizeMSQL.query(vSQL2, {
+        replacements: {
+          periode,
+          dateTime,
+          user_id,
+          delegated_to,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const vSQL3 = `
+      insert into m_Item_Manufacturing_template (PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode, tgl_berlaku, user_approve,user_delegated)  
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ,   User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row,   null as item_Periode, null as tgl_berlaku, null as user_approve, null as user_delegated  
+      From m_Item_Manufacturing_template   
+      WHERE (ISNULL(item_Periode, N'') =  :periode)
+      `;
+      await sequelizeMSQL.query(vSQL3, {
+        replacements: {
+          periode,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      await transaction.rollback();
+      res.status(200).json({ data: 'Data has been approved' });
+    } catch (error) {
+      await transaction.rollback();
+      next(error);
+    }
+  }
 }
 
 module.exports = MasterItemBahanKemasTemplateController;
