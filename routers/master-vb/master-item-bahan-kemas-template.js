@@ -7,6 +7,10 @@ masterItemBahanKemasTemplateRouter.get(
   MasterItemBahanKemasTemplateController.fetchItemWithGroupTemplate
 );
 masterItemBahanKemasTemplateRouter.get(
+  "/item-group-template-other",
+  MasterItemBahanKemasTemplateController.fetchItemWithGroupTemplateOther
+);
+masterItemBahanKemasTemplateRouter.get(
   "/export",
   MasterItemBahanKemasTemplateController.downloadExcelExportItemTemplate
 );
