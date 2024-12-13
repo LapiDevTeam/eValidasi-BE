@@ -1,4 +1,5 @@
 const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
+const { getPagination, getPagingData } = require("../../helpers/pagination");
 const { Sequelize } = require("../../models");
 
 const { QueryTypes } = require("sequelize");
@@ -600,6 +601,70 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
   }
 }
 
+async function getViewDPBATemplate(req, res, next) {
+  try {
+    let { item_group, page = 0, size = 10 } = req.query;
+
+    const { limit, offset } = getPagination(parseInt(page), parseInt(size));
+
+    if (!item_group || item_group === "") return res.status(500).json({message: 'item_group is required'})
+
+    let queryString = ""
+    let countString = ""
+    if (item_group === "ä" || item_group === "RH") {
+      queryString = `
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          FROM v_DPBA_template
+          WHERE Item_group in ('ä', 'RH')
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+      `
+      countString = `
+        SELECT COUNT(*) AS count from v_DPBA_template
+        WHERE Item_group in ('ä', 'RH')
+      `
+    } else {
+      queryString = `
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          FROM v_DPBA_template
+          WHERE Item_group = :item_group
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+      `
+      countString = `
+        SELECT COUNT(*) AS count from v_DPBA_template
+        WHERE Item_group = :item_group
+      `
+    }
+
+    const result = await sequelizeMSQL.query(queryString, {
+      replacements: { item_group, offset, limit },
+    });
+
+    const [total] = await sequelizeMSQL.query(countString, {
+      replacements: { item_group, offset, limit },
+    });
+
+    const data = {
+      rows: result[0],
+      count: total[0]?.count
+    }
+
+    const response = getPagingData(data, page, limit);
+    return res.status(200).json(response)
+
+  } catch (error) {
+    console.log({error});
+    const resp = {
+      message: "ERROR",
+    }
+    console.log({error, name: error?.name});
+    return res.status(500).json(resp);
+  }
+}
+
 async function countJumlahPPI(item_ID) {
   try {
 
@@ -748,4 +813,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE }
+ module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
