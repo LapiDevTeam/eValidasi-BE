@@ -109,7 +109,7 @@ class MasterItemBahanKemasTemplateController {
   static async masterItemBahanTemplateApprover(req, res, next) {
     const transaction = await sequelizeMSQL.transaction();
     try {
-      // const { user_id, delegated_to } = req.user;
+      const { user_id, delegated_to } = req.user;
       
       const {
         item_groupID,
