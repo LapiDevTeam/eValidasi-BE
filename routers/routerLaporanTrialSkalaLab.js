@@ -8,6 +8,12 @@ router.post(
   authentication,
   ControllerLaporanTrialSkalaLab.createLaporanTrialSkalaLab
 );
+
+router.put(
+  "/update-laporan-trial-skala-lab/:id",
+  ControllerLaporanTrialSkalaLab.updateLaporanTrialSkalaLab
+);
+
 router.post(
   "/aktivitas-dan-waktu-pencapaian",
   ControllerLaporanTrialSkalaLab.createAktivitasDanWaktuPencapaian

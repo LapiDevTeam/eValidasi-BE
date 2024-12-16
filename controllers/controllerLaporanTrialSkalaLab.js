@@ -185,6 +185,62 @@ class ControllerLaporanTrialSkalaLab {
     }
   }
 
+  static async updateLaporanTrialSkalaLab(req, res, next) {
+    try {
+      const { id } = req.params;
+      const {
+        nomor,
+        tanggal,
+        namaProduk,
+        komposisi,
+        kemasan,
+        alasan,
+        tujuan,
+        productBriefNo,
+        hasilStudiPraformulasiNo,
+        lainlain,
+        ProductBriefId,
+        status,
+        rdSelection,
+      } = req.body;
+
+      const [updatedRowsCount] = await t_laporanTrialSkalaLab.update(
+        {
+          nomor: nomor || "",
+          tanggal: tanggal || "",
+          namaProduk: namaProduk,
+          komposisi: komposisi,
+          kemasan: kemasan,
+          alasan: alasan,
+          tujuan: tujuan,
+          productBriefNo: productBriefNo,
+          hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
+          lainlain: lainlain,
+          ProductBriefId: ProductBriefId,
+          status: status,
+          rdSelection: rdSelection,
+        },
+        {
+          where: { id: id },
+        }
+      );
+      console.log(updatedRowsCount, "< updated");
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Data has been saved!",
+        });
+      } else {
+        res.status(404).json({
+          message: "Laporan Trial Skala Lab not found",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async updateDokumenAcuanLaporan(req, res) {
     try {
       const { LaporanTrialSkalaLabID } = req.params;
@@ -682,7 +738,7 @@ class ControllerLaporanTrialSkalaLab {
         updateRiskAssessmentBahanAktif,
         updateRiskAssessmentBahanTambahan,
         updateRiskAssessmentKemasan,
-        ...(laporanTrialSkalaLabDetails?.dataValues || {}),
+        // ...(laporanTrialSkalaLabDetails?.dataValues || {}),
         isApprove,
       });
     } catch (err) {
