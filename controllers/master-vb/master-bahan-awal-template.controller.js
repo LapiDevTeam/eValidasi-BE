@@ -39,7 +39,6 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
         }
 
         if (!isNaN(item_groupID.charAt(0))) {
-
             const query1 = `
                 SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3)
                 FROM m_Item_Manufacturing_template
@@ -319,10 +318,13 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
     const updatedData = await sequelizeMSQL.query(queryUpdate, {
       type: Sequelize.QueryTypes.UPDATE,
       logging: (query, queryObject) => {
+        console.log({query});
       },
       transaction
     });
 
+
+    console.log({updatedData});
     await transaction.commit();
     // await transaction.rollback();
 
@@ -654,6 +656,121 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
   }
 }
 
+async function masterItemPrinciple_CREATE(req, res, next) {
+  const transaction = await sequelizeMSQL.transaction();
+  let statusRev = false;
+  try {
+    const {
+      item_ID,
+      prc_ID,
+      supp_ID,
+      kodeNegara,
+      isActive,
+      isDefault,
+      itemName,
+      ukuranHistory,
+      txtHalal = 'Non',
+      halalExpDate,
+      lembagaHalal,
+      nomorSertifikatHalal,
+      docPendukungHalal,
+    } = req.body;
+
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+
+    if (!item_ID) throw new Error(`Item ID wajib diisi!`);
+
+    if (!txtHalal || txtHalal === '') throw new Error(`Harap pilih Halal/Non Halal!`)
+
+    if (!prc_ID || prc_ID === '') throw new Error(`Harap pilih principlenya`)
+
+    let isHalal = 0;
+    let stringSertifikat = ``
+
+    if (txtHalal === 'HALAL') {
+      isHalal = 1;
+      stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
+    }
+
+    const cekItem = await newValidation(item_ID);
+    if (cekItem) {
+      if (!statusRev || statusRev == 0) {
+
+      }
+    }
+
+    const queryInsert = `
+    INSERT INTO m_item_Manufacturing_Supplier_template (
+    Item_ID,
+    item_PrcId,
+    item_suppID,
+    item_BPOMnegara,
+    Process_date,
+    User_ID,
+    delegated_to,
+    isActive,
+    isDefault,
+    item_revision,
+    item_revisionDate,
+    item_revisionUserID,
+    item_revisionDelegatedTo,
+    item_ket,
+    input_date,
+    item_isHalal,
+    lembaga,
+    nomor_sertifikat,
+    masa_berlaku_date,
+    dok_pendukung,
+    )
+    VALUES (
+    ${item_ID},
+    ${prc_ID},
+    ${item_suppID},
+    ${kodeNegara},
+    GETDATE(),
+    ${user_id},
+    ${delegated_to},
+    ${isActive},
+    ${isDefault},
+    ${isDefault},
+    ${kodeNegara},
+    ${kodeNegara},
+    ${kodeNegara},
+    ${kodeNegara},
+    ${kodeNegara},
+    ${kodeNegara},
+    )
+    `
+
+    return res.status(200).json({
+      message: "OK",
+    });
+  } catch (error) {
+    const resp = {
+      message: "ERROR",
+    }
+    await transaction.rollback();
+    console.log({error, name: error?.name});
+    return res.status(500).json(resp);
+  }
+}
+
+const newValidation = async (item_ID) => {
+  try {
+    const query = `
+    SELECT TOP 1 item_type from m_item_manufacturing_template WHERE ISNULL(item_periode, '') = '' and item_type = 'BK' and item_ID = ${item_ID} and ISNUMERIC(LEFT(item_ID, 1)) = 0
+    `
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { item_ID },
+    });
+    return result[0];
+
+  } catch (error) {
+    console.log({error, name: 'newValidation'});
+    return null;
+  }
+}
+
 async function getViewDPBATemplate(req, res, next) {
   try {
     let { item_group, page = 0, size = 10 } = req.query;
@@ -866,4 +983,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
