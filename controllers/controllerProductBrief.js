@@ -610,12 +610,12 @@ class ControllerProductBrief {
       if (findProductBrief?.rdSelection === "RD1") {
         const info = await transporter.sendMail({
           from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
-          // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-          to: [
-            "RD1.Global@lapilabs.co.id",
-            "RD3.Global@lapilabs.co.id",
-            "AD.Global@lapilabs.co.id",
-          ], // list of receivers
+          to: ["gunardi.cahyadi@lapilabs.co.id"], //
+          // to: [
+          //   "RD1.Global@lapilabs.co.id",
+          //   "RD3.Global@lapilabs.co.id",
+          //   "AD.Global@lapilabs.co.id",
+          // ], // list of receivers
           subject: "Product Brief", // Subject line
           text: "Product Brief", // plain text body
           html: `
@@ -698,12 +698,12 @@ class ControllerProductBrief {
       } else {
         const info = await transporter.sendMail({
           from: `[Notifikasi][Product Brief] - ${findProductBrief?.dataValues?.nama} <no_reply_it@lapilabs.co.id>`,
-          // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-          to: [
-            "RD2.Global@lapilabs.co.id",
-            "RD3.Global@lapilabs.co.id",
-            "AD.Global@lapilabs.co.id",
-          ],
+          to: ["gunardi.cahyadi@lapilabs.co.id"], //
+          // to: [
+          //   "RD2.Global@lapilabs.co.id",
+          //   "RD3.Global@lapilabs.co.id",
+          //   "AD.Global@lapilabs.co.id",
+          // ],
           subject: "Product Brief", // Subject line
           text: "Product Brief", // plain text body
           html: `

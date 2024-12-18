@@ -7,7 +7,8 @@ const masterPemasokRouter = require("./master-pemasok");
 const masterItemOri = require("./master-item-ori");
 const masterItemBahanKemasTemplateRouter = require("./master-item-bahan-kemas-template");
 
-// masterRouter.use(authentication);
+masterRouter.use(authentication);
+
 masterRouter.use("/pembuat", masterPembuatRouter);
 masterRouter.use("/pemasok", masterPemasokRouter);
 masterRouter.use("/item-ori", masterItemOri);
