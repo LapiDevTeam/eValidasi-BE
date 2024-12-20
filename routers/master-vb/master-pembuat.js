@@ -7,7 +7,7 @@ masterPembuatRouter.get(
   "/print",
   MasterPembuatController.downloadExcelMasterPembuat
 );
-// masterPembuatRouter.use(authentication)
+masterPembuatRouter.use(authentication)
 masterPembuatRouter.get("/", MasterPembuatController.fetchMasterPembuat);
 masterPembuatRouter.post(
   "/",

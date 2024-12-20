@@ -7,7 +7,7 @@ masterItemOri.get(
   "/export",
   MasterItemOriController.downloadExcelExportItemOri
 );
-// masterItemOri.use(authentication)
+masterItemOri.use(authentication)
 masterItemOri.get("/item-group", MasterItemOriController.fetchItemGroupOri);
 
 module.exports = masterItemOri;

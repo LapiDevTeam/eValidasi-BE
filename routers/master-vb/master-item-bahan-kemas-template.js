@@ -22,5 +22,21 @@ masterItemBahanKemasTemplateRouter.post(
   "/approve",
   MasterItemBahanKemasTemplateController.masterItemBahanTemplateApprover
 );
+masterItemBahanKemasTemplateRouter.get(
+  "/pembuat-template",
+  MasterItemBahanKemasTemplateController.readPembuatTemplate
+);
+masterItemBahanKemasTemplateRouter.get(
+  "/bpa",
+  MasterItemBahanKemasTemplateController.readPembuatTemplate
+);
+masterItemBahanKemasTemplateRouter.get(
+  "/pembuat-template",
+  MasterItemBahanKemasTemplateController.readPembuatTemplate
+);
+masterItemBahanKemasTemplateRouter.get(
+  "/pemasok-template",
+  MasterItemBahanKemasTemplateController.readPemasokTemplate
+);
 
 module.exports = masterItemBahanKemasTemplateRouter;
