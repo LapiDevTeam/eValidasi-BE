@@ -7,7 +7,7 @@ masterPemasokRouter.get(
   "/print",
   MasterPemasokController.downloadExcelMasterPemasok
 );
-// masterPemasokRouter.use(authentication)
+masterPemasokRouter.use(authentication)
 masterPemasokRouter.get("/", MasterPemasokController.fetchMasterPemasok);
 
 

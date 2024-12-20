@@ -4,6 +4,40 @@ const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
 
 class MasterItemBahanKemasTemplateController {
+  static async readPembuatTemplate(req, res, next) {
+    try {
+      const { prcName } = req.query;
+      const sqlCode = `
+        Select Prc_Name,Prc_ID from m_Principle_template where isActive=1 and prc_id in (select isnull(prc_id,'') from T_QA_UA_M_Vendor union all Select '00029' as prc_ID ) and Prc_name like :prcName order by prc_name
+      `;
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: {
+          prcName: `%${prcName || ""}%`,
+        },
+      });
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async readPemasokTemplate(req, res, next) {
+    try {
+      const { suppName } = req.query;
+      const sqlCode = `
+        select sUPP_NAME, Supp_ID from m_Supplier_template WHERE isActive = 1 and supp_id in (select isnull(supp_id,'') from T_QA_UA_M_Vendor union all Select '00307' as supp_id ) and supp_name like :suppName order by supp_name
+      `;
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: {
+          suppName: `%${suppName || ""}%`,
+        },
+      });
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
   static async fetchItemWithGroupTemplate(req, res, next) {
     try {
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
@@ -110,10 +144,8 @@ class MasterItemBahanKemasTemplateController {
     const transaction = await sequelizeMSQL.transaction();
     try {
       const { user_id, delegated_to } = req.user;
-      
-      const {
-        item_groupID,
-      } = req.body;
+
+      const { item_groupID } = req.body;
 
       if (!item_groupID)
         throw new MyError(400, "Group KODE tidak boleh dikosongkan !!!");
@@ -285,7 +317,7 @@ class MasterItemBahanKemasTemplateController {
       });
 
       await transaction.rollback();
-      res.status(200).json({ data: 'Data has been approved' });
+      res.status(200).json({ data: "Data has been approved" });
     } catch (error) {
       await transaction.rollback();
       next(error);
