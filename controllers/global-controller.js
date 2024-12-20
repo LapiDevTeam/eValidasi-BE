@@ -45,7 +45,7 @@ class GlobalController {
   static async fetchItemUnit(req, res, next) {
     try {
       const pool = await sql.connect(configMssql);
-      const queryCode = `SELECT unit_id FROM m_unit WHERE unit_ID NOT LIKE '(none)'`;
+      const queryCode = `SELECT unit_id FROM m_unit WHERE unit_ID <> '(none)'`;
       const request = pool.request();
       const result1 = await request.query(queryCode);
 
@@ -70,6 +70,59 @@ class GlobalController {
       res.status(200).json({ data: _data });
     } catch (error) {
       next(error);
+    }
+  }
+  static async fetchPrinciple(req,res,next) {
+    try {
+      const {prcName}= req.query
+      const sqlCode = `
+        Select Prc_Name,Prc_ID from m_Principle where isActive=1 and Prc_name like :prcName order by prc_name
+      `
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: {
+          prcName: `%${prcName || ""}%`
+        },
+      })
+      res.status(200).json({data: _data})
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  static async fetchNegaraAsal (req, res, next) {
+    try {
+      const {namaNegara} = req.query
+      const sqlCode = ` 
+      select COUNTRY_NAME, COUNTRY_ID From m_BPOM_REGION WHERE ISACTIVE = 1 and country_name like :namaNegara order by country_name
+      `
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements:{
+          namaNegara: `%${namaNegara || ""}%`
+        } 
+      })
+      res.status(200).json({data: _data})
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  static async fetchSupplier(req,res,next){
+    try {
+      const {suppName} = req.query
+      const sqlCode = `
+      select supp_name, Supp_ID from m_Supplier WHERE isActive = 1 and supp_name like :suppName order by supp_name
+      `
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type:QueryTypes.SELECT,
+        replacements: {
+          suppName: `%${suppName || ""}%`
+        },
+      })
+      res.status(200).json({data: _data})
+    } catch (error) {
+      next(error)
     }
   }
 }
