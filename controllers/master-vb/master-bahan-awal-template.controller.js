@@ -823,6 +823,129 @@ async function masterItemPrinciple_CREATE(req, res, next) {
   }
 }
 
+async function masterItemPrinciple_UPDATE(req, res) {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const {
+      item_ID,
+      prc_ID,
+      supp_ID,
+      txtHalal,
+      txtHalalMasaBerlaku,
+      dtpHalalMasaBerlaku,
+      lembagaHalal,
+      nomorSertifikatHalal,
+      docPendukungHalal,
+      txtKodeNegara,
+      isActive,
+      isDefault,
+      old_prc_ID,
+      old_supp_ID,
+    } = req.body;
+
+    const { user_id } = req.user;
+
+    if (!item_ID) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Item ID tidak boleh kosong" });
+    }
+
+    if (!txtHalal) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Harap pilih Halal/Non Halal!" });
+    }
+
+    let strIsHalal;
+    let strSertifikat;
+
+    if (txtHalal === "Halal") {
+      strIsHalal = 1;
+      strSertifikat = `
+        , Lembaga=:lembagaHalal
+        , Nomor_sertifikat=:nomorSertifikatHalal
+        , Masa_berlaku_date=${txtHalalMasaBerlaku === "-" ? "NULL" : ":dtpHalalMasaBerlaku"}
+        , Dok_Pendukung=:docPendukungHalal
+      `;
+    } else {
+      strIsHalal = 0;
+      strSertifikat = `
+        , Lembaga=''
+        , Nomor_sertifikat=''
+        , Masa_berlaku_date=NULL
+        , Dok_Pendukung=''
+      `;
+    }
+
+    const query1 = `
+      UPDATE m_Item_Manufacturing_Supplier_template
+      SET item_BPOMnegara = :txtKodeNegara,
+          IsActive = :isActive,
+          IsDefault = :isDefault,
+          Process_Date = GETDATE(),
+          [User_ID] = :user_id,
+          Item_isHalal = :strIsHalal
+          ${strSertifikat}
+      WHERE ISNULL(item_Periode, '') = ''
+        AND ISNULL(Item_ID, '') = :item_ID
+        AND ISNULL(Item_PrcID, '') = :old_prc_ID;
+    `;
+
+    const query2 = `
+      UPDATE m_Item_Manufacturing_Supplier_template
+      SET Item_SuppID = :supp_ID,
+          item_PRCID = :prc_ID,
+          IsActive = :isActive,
+          IsDefault = :isDefault,
+          Process_Date = GETDATE(),
+          [User_ID] = :user_id
+      WHERE ISNULL(item_Periode, '') = ''
+        AND ISNULL(Item_ID, '') = :item_ID
+        AND ISNULL(Item_PrcID, '') = :old_prc_ID
+        AND ISNULL(Item_SUPPID, '') = :old_supp_ID;
+    `;
+
+    // Execute raw queries with parameterized inputs
+    await sequelizeMSQL.query(query1, {
+      replacements: {
+        txtKodeNegara,
+        isActive,
+        isDefault,
+        user_id,
+        strIsHalal,
+        lembagaHalal,
+        nomorSertifikatHalal,
+        dtpHalalMasaBerlaku,
+        docPendukungHalal,
+        item_ID: item_ID.trim(),
+        old_prc_ID: old_prc_ID.trim(),
+      },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(query2, {
+      replacements: {
+        supp_ID,
+        prc_ID,
+        isActive,
+        isDefault,
+        user_id,
+        item_ID: item_ID.trim(),
+        old_prc_ID: old_prc_ID.trim(),
+        old_supp_ID: old_supp_ID.trim(),
+      },
+      transaction,
+    });
+
+    await transaction.commit();
+
+    res.status(200).json({ message: "Data berhasil disimpan!" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error updating item:", error);
+    res.status(500).json({ message: "Terjadi kesalahan. Silakan coba lagi." });
+  }
+}
+
 const getPrinciple = async (item_ID) => {
   try {
     const query = `
@@ -1098,4 +1221,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }

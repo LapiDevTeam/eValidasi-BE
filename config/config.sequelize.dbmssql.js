@@ -32,7 +32,7 @@ const sequelizeMSQL = new Sequelize(dbmsConfig.DB, dbmsConfig.USER, dbmsConfig.P
       trustServerCertificate: true,
     },
   },
-  logging: console.log,
+  // logging: console.log,
 });
 
 
