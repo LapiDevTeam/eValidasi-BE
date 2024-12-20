@@ -39,7 +39,6 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
         }
 
         if (!isNaN(item_groupID.charAt(0))) {
-
             const query1 = `
                 SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3)
                 FROM m_Item_Manufacturing_template
@@ -319,10 +318,13 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
     const updatedData = await sequelizeMSQL.query(queryUpdate, {
       type: Sequelize.QueryTypes.UPDATE,
       logging: (query, queryObject) => {
+        console.log({query});
       },
       transaction
     });
 
+
+    console.log({updatedData});
     await transaction.commit();
     // await transaction.rollback();
 
@@ -654,6 +656,359 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
   }
 }
 
+async function masterItemPrinciple_CREATE(req, res, next) {
+  const transaction = await sequelizeMSQL.transaction();
+  let statusRev = false;
+  try {
+    const {
+      item_ID,
+      prc_ID,
+      supp_ID,
+      kodeNegara,
+      isActive,
+      isDefault,
+      itemName,
+      ukuranHistory,
+      txtHalal = 'Non',
+      halalExpDate,
+      lembagaHalal,
+      nomorSertifikatHalal,
+      docPendukungHalal,
+      ukuranBaru = '',
+      ukuranLama = ''
+    } = req.body;
+
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+
+    if (!item_ID) throw new Error(`Item ID wajib diisi!`);
+
+    if (!txtHalal || txtHalal === '') throw new Error(`Harap pilih Halal/Non Halal!`)
+
+    if (!prc_ID || prc_ID === '') throw new Error(`Harap pilih principlenya`)
+
+    const principleDetail = await getPrcById(prc_ID);
+
+    console.log({principleDetail});
+
+    let isHalal = 0;
+    let stringSertifikat = ``
+
+    if (txtHalal === 'HALAL') {
+      isHalal = 1;
+      stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
+    }
+
+    const cekItem = await getPrinciple(item_ID);
+    const cekRevisi = await getRevisi(item_ID, prc_ID);
+
+    let [item_revisionDate, item_revisionUserID, item_revisionDelegatedTo, item_revision, item_revisionKet] = ['', '', '', '', ''];
+
+    if (!cekRevisi) {
+      const getDateTime = new Date();
+      item_revision = '00'
+      item_revisionDate = getDateTime.toISOString().replace('T', ' ').slice(0, 19).replace(/-/g, '/');
+      item_revisionUserID = user_id
+      item_revisionDelegatedTo = delegated_to
+      item_revisionKet =  ''
+      statusRev = false
+    }
+
+    if (cekRevisi) {
+      const strItemRevisionDate = cekRevisi?.item_revisionDate
+        .toISOString()
+        .replace('T', ' ')
+        .slice(0, 19)
+        .replace(/-/g, '/')
+        .replace(':', ';');
+      item_revision = cekRevisi?.item_revision
+      item_revisionDate = cekRevisi?.item_revisionDate
+      item_revisionUserID = cekRevisi?.item_revisionUserId
+      item_revisionDelegatedTo = cekRevisi?.item_revisionDelegatedTo
+      item_revisionKet = cekRevisi?.item_ket
+      statusRev = true
+    }
+
+
+    console.log({ cekItem, cekRevisi });
+    if (cekItem && principleDetail) {
+      if (!statusRev || statusRev == 0) {
+        const queryRevisi = `
+        INSERT into t_revisionCode_reminder(
+        Tanggal,
+        item_ID,
+        item_name,
+        item_prcID,
+        item_prcName,
+        Ukuran_lama,
+        ukuran_Baru,
+        update_as_status
+        )
+        VALUES (
+        GETDATE(),
+        '${item_ID}',
+        '${cekItem?.item_name}',
+        '${prc_ID}',
+        '${principleDetail?.prc_name}',
+        '${ukuranLama}',
+        '${ukuranBaru}',
+        'INSERT'
+        )
+        `;
+        const insertResultRevisi = await sequelizeMSQL.query(queryRevisi, { type: QueryTypes.INSERT, transaction });
+        console.log({ queryRevisi });
+      }
+    }
+
+    const queryInsert = `
+    INSERT INTO m_item_Manufacturing_Supplier_template (
+        Item_ID,
+        item_PrcId,
+        item_suppID,
+        item_BPOMnegara,
+        Process_date,
+        User_ID,
+        delegated_to,
+        isActive,
+        isDefault,
+        item_revision,
+        item_revisionDate,
+        item_revisionUserID,
+        item_revisionDelegatedTo,
+        item_ket,
+        input_date,
+        item_isHalal,
+        lembaga,
+        nomor_sertifikat,
+        masa_berlaku_date,
+        dok_pendukung
+    )
+    VALUES (
+        '${item_ID}',
+        '${prc_ID}',
+        '${supp_ID}',
+        '${kodeNegara}',
+        GETDATE(),
+        '${user_id}',
+        '${delegated_to}',
+        ${isActive},
+        ${isDefault},
+        '${item_revision}',
+        '${item_revisionDate}',
+        '${item_revisionUserID}',
+        '${item_revisionDelegatedTo}',
+        '${item_revisionKet}',
+        GETDATE(),
+        '${isHalal}',
+        '${stringSertifikat}',
+        NULL,
+        NULL,
+        NULL
+    );
+`;
+
+    const insertResult = await sequelizeMSQL.query(queryInsert, { type: QueryTypes.INSERT, transaction });
+
+    await transaction.commit();
+    return res.status(200).json({
+      message: "OK",
+    });
+
+  } catch (error) {
+    const resp = {
+      message: "ERROR",
+    }
+    await transaction.rollback();
+    console.log({error, name: error?.name});
+    return res.status(500).json(resp);
+  }
+}
+
+async function masterItemPrinciple_UPDATE(req, res) {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const {
+      item_ID,
+      prc_ID,
+      supp_ID,
+      txtHalal,
+      txtHalalMasaBerlaku,
+      dtpHalalMasaBerlaku,
+      lembagaHalal,
+      nomorSertifikatHalal,
+      docPendukungHalal,
+      txtKodeNegara,
+      isActive,
+      isDefault,
+      old_prc_ID,
+      old_supp_ID,
+    } = req.body;
+
+    const { user_id } = req.user;
+
+    if (!item_ID) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Item ID tidak boleh kosong" });
+    }
+
+    if (!txtHalal) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Harap pilih Halal/Non Halal!" });
+    }
+
+    let strIsHalal;
+    let strSertifikat;
+
+    if (txtHalal === "Halal") {
+      strIsHalal = 1;
+      strSertifikat = `
+        , Lembaga=:lembagaHalal
+        , Nomor_sertifikat=:nomorSertifikatHalal
+        , Masa_berlaku_date=${txtHalalMasaBerlaku === "-" ? "NULL" : ":dtpHalalMasaBerlaku"}
+        , Dok_Pendukung=:docPendukungHalal
+      `;
+    } else {
+      strIsHalal = 0;
+      strSertifikat = `
+        , Lembaga=''
+        , Nomor_sertifikat=''
+        , Masa_berlaku_date=NULL
+        , Dok_Pendukung=''
+      `;
+    }
+
+    const query1 = `
+      UPDATE m_Item_Manufacturing_Supplier_template
+      SET item_BPOMnegara = :txtKodeNegara,
+          IsActive = :isActive,
+          IsDefault = :isDefault,
+          Process_Date = GETDATE(),
+          [User_ID] = :user_id,
+          Item_isHalal = :strIsHalal
+          ${strSertifikat}
+      WHERE ISNULL(item_Periode, '') = ''
+        AND ISNULL(Item_ID, '') = :item_ID
+        AND ISNULL(Item_PrcID, '') = :old_prc_ID;
+    `;
+
+    const query2 = `
+      UPDATE m_Item_Manufacturing_Supplier_template
+      SET Item_SuppID = :supp_ID,
+          item_PRCID = :prc_ID,
+          IsActive = :isActive,
+          IsDefault = :isDefault,
+          Process_Date = GETDATE(),
+          [User_ID] = :user_id
+      WHERE ISNULL(item_Periode, '') = ''
+        AND ISNULL(Item_ID, '') = :item_ID
+        AND ISNULL(Item_PrcID, '') = :old_prc_ID
+        AND ISNULL(Item_SUPPID, '') = :old_supp_ID;
+    `;
+
+    // Execute raw queries with parameterized inputs
+    await sequelizeMSQL.query(query1, {
+      replacements: {
+        txtKodeNegara,
+        isActive,
+        isDefault,
+        user_id,
+        strIsHalal,
+        lembagaHalal,
+        nomorSertifikatHalal,
+        dtpHalalMasaBerlaku,
+        docPendukungHalal,
+        item_ID: item_ID.trim(),
+        old_prc_ID: old_prc_ID.trim(),
+      },
+      transaction,
+    });
+
+    await sequelizeMSQL.query(query2, {
+      replacements: {
+        supp_ID,
+        prc_ID,
+        isActive,
+        isDefault,
+        user_id,
+        item_ID: item_ID.trim(),
+        old_prc_ID: old_prc_ID.trim(),
+        old_supp_ID: old_supp_ID.trim(),
+      },
+      transaction,
+    });
+
+    await transaction.commit();
+
+    res.status(200).json({ message: "Data berhasil disimpan!" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error updating item:", error);
+    res.status(500).json({ message: "Terjadi kesalahan. Silakan coba lagi." });
+  }
+}
+
+const getPrinciple = async (item_ID) => {
+  try {
+    const query = `
+    SELECT TOP 1 item_type from m_item_manufacturing_template WHERE ISNULL(item_periode, '') = '' and item_type = 'BK' and item_ID = '${item_ID}' and ISNUMERIC(LEFT(item_ID, 1)) = 0
+    `
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { item_ID },
+    });
+    return result[0];
+
+  } catch (error) {
+    console.log({error, name: 'getPrinciple'});
+    return null;
+  }
+}
+
+const getPrcById = async (prc_ID) => {
+  try {
+    const query = `
+    SELECT TOP 1 * from m_principle where prc_ID = ${prc_ID} and isActive = 1;
+    `
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { prc_ID },
+    });
+    return result[0][0];
+
+  } catch (error) {
+    console.log({error, name: 'getPrcById'});
+    return null;
+  }
+}
+
+const getRevisi = async (item_ID, prc_ID) => {
+  try {
+    const query = `
+      SELECT TOP 1
+        item_revision,
+        CONVERT(CHAR(23), CONVERT(DATETIME, item_revisionDate, 101), 121) as item_RevisionDate,
+        Item_revisionUserId,
+        item_ket,
+        item_revisionDelegatedTo
+      FROM m_item_manufacturing_supplier_template
+      WHERE ISNULL(item_periode, '') = ''
+        AND item_ID = :item
+        AND item_PrcID = :prc
+      ORDER BY Item_RevisionDate DESC
+    `;
+
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { item: item_ID, prc: prc_ID },
+      type: sequelizeMSQL.QueryTypes.SELECT,
+    });
+
+    return result[0];
+  } catch (error) {
+    console.error({
+      error,
+      name: 'getRevisi'
+    });
+    return null;
+  }
+};
+
 async function getViewDPBATemplate(req, res, next) {
   try {
     let { item_group, page = 0, size = 10 } = req.query;
@@ -866,4 +1221,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
