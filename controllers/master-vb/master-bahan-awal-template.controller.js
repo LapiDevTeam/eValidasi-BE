@@ -1010,6 +1010,126 @@ async function masterItemPrinciple_DELETE(req, res, next) {
   }
 }
 
+async function getItemSupplier_template(req, res, next) {
+  try {
+    const { item_ID } = req.query;
+
+    if (!item_ID) {
+      return res.status(400).json({
+        message: "Item_ID is required.",
+      });
+    }
+
+    const itemDetails = await getItemDetails(item_ID);
+
+    if (!itemDetails || itemDetails.length === 0) {
+      return res.status(404).json({
+        message: "Item not found.",
+      });
+    }
+
+    const response = itemDetails.map(item => ({
+      Item_ID: item.Item_ID,
+      Item_Name: item.Item_Name,
+      Item_BPOMgenerik: item.item_bpomgenerik,
+      Item_Generikname: item.Item_generikname,
+      Item_PrcID: item.Item_PrcID,
+      Prc_Name: item.Prc_Name,
+      Item_BPOMNegara: item.Item_BPOMNegara,
+      Country_Name: item.Country_Name,
+      Supp_ID: item.Supp_ID,
+      Supp_Name: item.Supp_Name,
+      IsActive: item.IsActive,
+      IsDefault: item.IsDefault ? "True" : "False",
+      Item_Revision: item.Item_Revision || "00",
+      Input_Date: item.input_date,
+      IsHalal: item.isHalal,
+      Lembaga: item.Lembaga,
+      Nomor_Sertifikat: item.Nomor_sertifikat,
+      Masa_Berlaku_Date: item.Masa_berlaku_date,
+      Dok_Pendukung: item.Dok_Pendukung,
+    }));
+
+    return res.status(200).json({
+      message: "OK",
+      data: response,
+    });
+  } catch (error) {
+    console.error("Error in getItemSupplier_template:", error);
+    return res.status(500).json({
+      message: "ERROR",
+      data: error?.message || "Internal Server Error",
+    });
+  }
+}
+
+const getItemDetails = async (item_ID) => {
+  try {
+    const query = `
+      SELECT
+        A.Item_ID,
+        B.Item_Name,
+        B.item_bpomgenerik,
+        F.Item_Name AS Item_generikname,
+        A.Item_PrcID,
+        C.Prc_Name,
+        A.Item_BPOMNegara,
+        E.Country_Name,
+        D.Supp_ID,
+        D.Supp_Name,
+        A.IsActive,
+        A.IsDefault,
+        A.Item_Revision,
+        CONVERT(VARCHAR(10), A.input_date, 111) AS input_date,
+        CASE WHEN ISNULL(A.item_ishalal, 0) = 0 THEN 'Non Halal' ELSE 'Halal' END AS isHalal,
+        A.Lembaga,
+        A.Nomor_sertifikat,
+        A.Masa_berlaku_date,
+        A.Dok_Pendukung
+      FROM m_Item_Manufacturing_Supplier_template AS A
+      LEFT JOIN m_Item_Manufacturing_template AS B ON B.Item_ID = A.Item_ID
+      LEFT JOIN (
+        SELECT *
+        FROM m_Principle_template
+        WHERE isactive = 1
+          AND prc_id IN (SELECT ISNULL(prc_id, '') FROM T_QA_UA_M_Vendor UNION ALL SELECT '00029' AS prc_ID)
+      ) AS C ON C.Prc_ID = A.ITem_PrcID
+      LEFT JOIN (
+        SELECT *
+        FROM m_Supplier_template
+        WHERE isActive = 1
+          AND supp_id IN (SELECT ISNULL(supp_id, '') FROM T_QA_UA_M_Vendor UNION ALL SELECT '00307' AS supp_id)
+      ) AS D ON D.Supp_ID = A.Item_SuppID
+      LEFT JOIN (
+        SELECT *
+        FROM m_BPOM_Region
+        WHERE isActive = 1
+      ) AS E ON E.Country_ID = A.Item_BPOMNegara
+      LEFT JOIN (
+        SELECT *
+        FROM m_BPOM_item
+        WHERE isActive = 1
+      ) AS F ON F.Item_ID = B.Item_BPOMGenerik
+      WHERE ISNULL(A.item_Periode, '') = ''
+        AND ISNULL(B.item_Periode, '') = ''
+        AND A.Item_ID = :item_ID
+        AND A.isactive = 1
+        AND B.isActive = 1
+        AND C.isActive = 1
+    `;
+
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { item_ID },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching item details:", error);
+    return null;
+  }
+};
+
 const getPrinciple = async (item_ID) => {
   try {
     const query = `
@@ -1285,4 +1405,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
