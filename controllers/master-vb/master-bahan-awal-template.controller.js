@@ -946,6 +946,76 @@ async function masterItemPrinciple_UPDATE(req, res) {
   }
 }
 
+async function masterItemPrinciple_DELETE(req, res, next) {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const { item_ID, prc_ID, supp_ID } = req.body;
+
+    if (!item_ID || !prc_ID || !supp_ID) {
+      return res.status(400).json({
+        message: "Item_ID, prc_ID, and supp_ID are required.",
+      });
+    }
+
+    // const rowCount = await sequelizeMSQL.query(
+    //   `SELECT COUNT(*) AS row FROM m_Item_Manufacturing_Supplier_template WHERE ISNULL(item_Periode, '') = '' AND Item_ID = :item_ID`,
+    //   {
+    //     replacements: { item_ID: item_ID.trim() },
+    //     type: Sequelize.QueryTypes.SELECT,
+    //   }
+    // );
+
+    const itemType = await sequelizeMSQL.query(
+      `SELECT Item_Type FROM m_item_manufacturing_template WHERE Item_ID = :item_ID`,
+      {
+        replacements: { item_ID: item_ID.trim() },
+        type: Sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    let strSQL = "";
+
+    if (itemType[0].Item_Type === "BK") {
+      strSQL += `
+        DELETE FROM m_Item_Manufacturing_revisionDelete
+        WHERE Item_ID = :item_ID AND Item_PrcID = :prc_ID AND Item_SuppID = :supp_ID;
+
+        INSERT INTO m_Item_Manufacturing_revisionDelete
+        SELECT Item_ID, Item_PrcID, Item_SuppID, Item_Revision, GETDATE(), :user_id, :delegated_to
+        FROM m_item_manufacturing_supplier
+        WHERE Item_ID = :item_ID AND Item_PrcID = :prc_ID AND Item_SuppID = :supp_ID;
+      `;
+    }
+
+    strSQL += `
+      DELETE FROM m_Item_Manufacturing_Supplier_template
+      WHERE ISNULL(item_Periode, '') = '' AND Item_ID = :item_ID AND Item_PrcID = :prc_ID AND Item_SuppID = :supp_ID;
+    `;
+
+    await sequelizeMSQL.query(strSQL, {
+      replacements: {
+        item_ID: item_ID.trim(),
+        prc_ID: prc_ID.trim(),
+        supp_ID: supp_ID.trim(),
+        user_id: req.user.gstrUserName,
+        delegated_to: req.user.gstrDelegatedTo,
+      },
+      transaction,
+    });
+
+    await transaction.commit();
+    return res.status(200).json({
+      message: "Data berhasil dihapus!",
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error deleting item:", error);
+    return res.status(500).json({
+      message: "Terjadi kesalahan. Silakan coba lagi.",
+    });
+  }
+}
+
 const getPrinciple = async (item_ID) => {
   try {
     const query = `
@@ -1221,4 +1291,4 @@ async function getPKID() {
 }
 
 
- module.exports = { masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
