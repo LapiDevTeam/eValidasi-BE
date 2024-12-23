@@ -695,7 +695,11 @@ async function masterItemPrinciple_CREATE(req, res, next) {
 
     if (txtHalal === 'Halal') {
       isHalal = 1;
-      stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
+      if (typeof lembagaHalal === 'undefined' || typeof nomorSertifikatHalal === 'undefined' || typeof halalExpDate === 'undefined') {
+        stringSertifikat = '';
+      } else {
+        stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
+      }
     }
 
     const cekItem = await getPrinciple(item_ID);
@@ -752,7 +756,7 @@ async function masterItemPrinciple_CREATE(req, res, next) {
         console.log({ queryRevisi });
       }
     }
-
+    console.log({stringSertifikat});
     const queryInsert = `
     INSERT INTO m_item_Manufacturing_Supplier_template (
         Item_ID,
