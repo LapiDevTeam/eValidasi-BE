@@ -679,7 +679,7 @@ async function masterItemPrinciple_CREATE(req, res, next) {
     } = req.body;
 
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-
+    console.log({user_id, delegated_to});
     if (!item_ID) throw new Error(`Item ID wajib diisi!`);
 
     if (!txtHalal || txtHalal === '') throw new Error(`Harap pilih Halal/Non Halal!`)
