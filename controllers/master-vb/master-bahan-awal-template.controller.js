@@ -1067,6 +1067,51 @@ async function getItemSupplier_template(req, res, next) {
   }
 }
 
+async function getHistorySupplier_template(req, res) {
+  try {
+    const { item_ID } = req.query;
+
+    if (!item_ID) {
+      return res.status(400).json({ message: "Item_ID is required." });
+    }
+
+    const query = `
+      SELECT DISTINCT
+        b.emp_name AS UserID,
+        c.emp_name AS DelegatedTo,
+        CONVERT(nvarchar(17), a.deleteDate, 113) AS deleteDate,
+        a.Status,
+        CONVERT(nvarchar(10), a.deleteDate, 112) + REPLACE(CONVERT(nvarchar(9), a.deleteDate, 114), ':', '') AS orderby
+      FROM (
+        SELECT User_ID, Delegated_To, deleteDate, Status
+        FROM m_Item_Manufacturing_History
+        WHERE Item_ID LIKE :item_ID
+        UNION ALL
+        SELECT User_ID, Delegated_To, process_date AS deleteDate, 'LIVE' AS Status
+        FROM m_Item_Manufacturing
+        WHERE Item_ID LIKE :item_ID
+      ) a
+      LEFT JOIN m_Employee b ON a.User_ID = b.Emp_nik
+      LEFT JOIN m_Employee c ON a.Delegated_To = c.Emp_nik
+      ORDER BY orderby
+    `;
+
+    const historyData = await sequelizeMSQL.query(query, {
+      replacements: { item_ID: item_ID.trim() },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (historyData.length === 0) {
+      return res.status(404).json({ message: "Data Not Found!" });
+    }
+
+    return res.status(200).json({ message: "OK", data: historyData });
+  } catch (error) {
+    console.error("Error fetching history:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 const getItemDetails = async (item_ID) => {
   try {
     const query = `
@@ -1409,4 +1454,4 @@ async function getPKID() {
 }
 
 
- module.exports = { getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
