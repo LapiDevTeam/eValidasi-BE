@@ -797,10 +797,10 @@ async function masterItemPrinciple_CREATE(req, res, next) {
         '${item_revisionKet}',
         GETDATE(),
         '${isHalal}',
-        '${stringSertifikat}',
-        NULL,
-        NULL,
-        NULL
+        ${lembagaHalal ? `'${lembagaHalal}'` : 'NULL'},
+        ${nomorSertifikatHalal ? `'${nomorSertifikatHalal}'` : 'NULL'},
+        ${halalExpDate ? `'${halalExpDate}'` : 'NULL'},
+        ${docPendukungHalal ? `'${docPendukungHalal}'` : 'NULL'}
     );
 `;
 
