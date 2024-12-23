@@ -1112,6 +1112,65 @@ async function getHistorySupplier_template(req, res) {
   }
 }
 
+async function checkPeriodController(req, res) {
+  try {
+    const { item_groupID } = req.query;
+
+    if (!item_groupID) {
+      return res.status(400).json({ message: "TxtGroup_ID is required." });
+    }
+
+    const result = await checkPeriod(item_groupID);
+
+    return res.status(200).json({
+      message: "Period check completed.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error in checkPeriodController:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+async function checkPeriod(TxtGroup_ID) {
+  try {
+    const [result] = await sequelizeMSQL.query(
+      `SELECT COUNT(*) AS jum, MAX(item_Periode) AS MaxPeriode
+       FROM m_Item_Manufacturing_template
+       WHERE Item_Group = :TxtGroup_ID`,
+      {
+        replacements: { TxtGroup_ID },
+        type: Sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    if (result.jum === 0) {
+      const [maxPeriodeResult] = await sequelizeMSQL.query(
+        `SELECT MAX(item_Periode) AS MaxPeriode
+         FROM m_Item_Manufacturing_template
+         WHERE Item_Group = :TxtGroup_ID`,
+        {
+          replacements: { TxtGroup_ID },
+          type: Sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      return {
+        exists: false,
+        maxPeriode: maxPeriodeResult.MaxPeriode,
+      };
+    } else {
+      return {
+        exists: true,
+        maxPeriode: result.MaxPeriode,
+      };
+    }
+  } catch (error) {
+    console.error("Error checking period:", error);
+    throw error;
+  }
+}
+
 const getItemDetails = async (item_ID) => {
   try {
     const query = `
@@ -1454,4 +1513,4 @@ async function getPKID() {
 }
 
 
- module.exports = { getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+ module.exports = { checkPeriodController, getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
