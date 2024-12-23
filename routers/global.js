@@ -15,14 +15,12 @@ globalRouter.get("/item-unit", GlobalController.fetchItemUnit);
 globalRouter.get("/bpom-item", GlobalController.fetchBpomItem);
 
 // fetch Principle
-globalRouter.get('/principle',GlobalController.fetchPrinciple)
+globalRouter.get("/principle", GlobalController.fetchPrinciple);
 
 // fetch Negara asal
-globalRouter.get('/negara-asal',GlobalController.fetchNegaraAsal)
+globalRouter.get("/negara-asal", GlobalController.fetchNegaraAsal);
 
 // fetch supplier
-globalRouter.get('/supplier',GlobalController.fetchSupplier)
-
-
+globalRouter.get("/supplier", GlobalController.fetchSupplier);
 
 module.exports = globalRouter;
