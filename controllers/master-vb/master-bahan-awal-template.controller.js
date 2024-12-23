@@ -712,20 +712,14 @@ async function masterItemPrinciple_CREATE(req, res, next) {
       item_revisionKet =  ''
       statusRev = false
     }
-
+    console.log({cekRevisi});
     if (cekRevisi) {
-      const strItemRevisionDate = cekRevisi?.item_revisionDate
-        .toISOString()
-        .replace('T', ' ')
-        .slice(0, 19)
-        .replace(/-/g, '/')
-        .replace(':', ';');
-      item_revision = cekRevisi?.item_revision
-      item_revisionDate = cekRevisi?.item_revisionDate
-      item_revisionUserID = cekRevisi?.item_revisionUserId
-      item_revisionDelegatedTo = cekRevisi?.item_revisionDelegatedTo
-      item_revisionKet = cekRevisi?.item_ket
-      statusRev = true
+      item_revision = cekRevisi?.item_revision;
+      item_revisionDate = cekRevisi?.item_revisionDate ? cekRevisi.item_revisionDate.toISOString().replace('T', ' ').slice(0, 19).replace(/-/g, '/') : '';
+      item_revisionUserID = cekRevisi?.item_revisionUserId;
+      item_revisionDelegatedTo = cekRevisi?.item_revisionDelegatedTo;
+      item_revisionKet = cekRevisi?.item_ket;
+      statusRev = true;
     }
 
 
