@@ -693,7 +693,7 @@ async function masterItemPrinciple_CREATE(req, res, next) {
     let isHalal = 0;
     let stringSertifikat = ``
 
-    if (txtHalal === 'HALAL') {
+    if (txtHalal === 'Halal') {
       isHalal = 1;
       stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
     }

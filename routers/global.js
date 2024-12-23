@@ -14,4 +14,13 @@ globalRouter.get("/item-unit", GlobalController.fetchItemUnit);
 // fetch BPOM ITEM
 globalRouter.get("/bpom-item", GlobalController.fetchBpomItem);
 
+// fetch Principle
+globalRouter.get("/principle", GlobalController.fetchPrinciple);
+
+// fetch Negara asal
+globalRouter.get("/negara-asal", GlobalController.fetchNegaraAsal);
+
+// fetch supplier
+globalRouter.get("/supplier", GlobalController.fetchSupplier);
+
 module.exports = globalRouter;

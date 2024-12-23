@@ -4,6 +4,40 @@ const MyError = require("../../helpers/errors");
 const ExcelJS = require("exceljs");
 
 class MasterItemBahanKemasTemplateController {
+  static async readPembuatTemplate(req, res, next) {
+    try {
+      const { prcName } = req.query;
+      const sqlCode = `
+        Select Prc_Name,Prc_ID from m_Principle_template where isActive=1 and prc_id in (select isnull(prc_id,'') from T_QA_UA_M_Vendor union all Select '00029' as prc_ID ) and Prc_name like :prcName order by prc_name
+      `;
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: {
+          prcName: `%${prcName || ""}%`,
+        },
+      });
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async readPemasokTemplate(req, res, next) {
+    try {
+      const { suppName } = req.query;
+      const sqlCode = `
+        select sUPP_NAME, Supp_ID from m_Supplier_template WHERE isActive = 1 and supp_id in (select isnull(supp_id,'') from T_QA_UA_M_Vendor union all Select '00307' as supp_id ) and supp_name like :suppName order by supp_name
+      `;
+      const _data = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: {
+          suppName: `%${suppName || ""}%`,
+        },
+      });
+      res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
   static async fetchItemWithGroupTemplate(req, res, next) {
     try {
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
@@ -236,6 +270,38 @@ class MasterItemBahanKemasTemplateController {
         type: QueryTypes.UPDATE,
         transaction,
       });
+
+      const vSQL2 = `
+      insert into m_Item_Manufacturing ( PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row)  
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ, :user_id as User_ID, :delegated_to as  Delegated_To, :dateTime as Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR , Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row   
+      From m_Item_Manufacturing_template  
+      WHERE (ISNULL(item_Periode, N'') =  :periode)
+      `;
+      await sequelizeMSQL.query(vSQL2, {
+        replacements: {
+          periode,
+          dateTime,
+          user_id,
+          delegated_to,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
+      const vSQL3 = `
+      insert into m_Item_Manufacturing_template (PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode, tgl_berlaku, user_approve,user_delegated)  
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ,   User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row,   null as item_Periode, null as tgl_berlaku, null as user_approve, null as user_delegated  
+      From m_Item_Manufacturing_template   
+      WHERE (ISNULL(item_Periode, N'') =  :periode)
+      `;
+      await sequelizeMSQL.query(vSQL3, {
+        replacements: {
+          periode,
+        },
+        type: QueryTypes.UPDATE,
+        transaction,
+      });
+
 
       await transaction.commit();
       res.status(200).json({ data: "Data has been approved" });

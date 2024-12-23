@@ -6,11 +6,13 @@ const masterBahanAwalTemplate = require("./master-bahan-awal-template.routes");
 const masterPemasokRouter = require("./master-pemasok");
 const masterItemOri = require("./master-item-ori");
 const masterItemBahanKemasTemplateRouter = require("./master-item-bahan-kemas-template");
+const masterProductRouter = require("./master-product.routes");
 
-masterRouter.use(authentication);
+// masterRouter.use(authentication);
 
 masterRouter.use("/pembuat", masterPembuatRouter);
 masterRouter.use("/pemasok", masterPemasokRouter);
+masterRouter.use("/product", masterProductRouter);
 masterRouter.use("/item-ori", masterItemOri);
 masterRouter.use(
   "/item-bahan-kemas-template",
