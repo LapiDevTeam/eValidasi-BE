@@ -116,7 +116,7 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
       } = req.body;
 
@@ -134,12 +134,12 @@ class ControllerLaporanTrialSkalaLab {
       // console.log(existingLaporan.dataValues.status, "exis 12312312");
       if (
         existingLaporan &&
-        existingLaporan?.dataValues?.status === "Approved"
+        existingLaporan?.dataValues?.statusDokumen === "Approved"
       ) {
         newRevisi = existingLaporan?.revisi + 1;
       } else if (
         existingLaporan &&
-        existingLaporan?.dataValues?.status !== "Approved"
+        existingLaporan?.dataValues?.statusDokumen !== "Approved"
       ) {
         throw new MyError(
           404,
@@ -163,7 +163,7 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
         pic: nama_user || "",
         bagian: bagian_user || "",
@@ -200,7 +200,7 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
       } = req.body;
 
@@ -217,7 +217,7 @@ class ControllerLaporanTrialSkalaLab {
           hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
           lainlain: lainlain,
           ProductBriefId: ProductBriefId,
-          status: status,
+          statusDokumen: statusDokumen,
           rdSelection: rdSelection,
         },
         {
@@ -258,6 +258,7 @@ class ControllerLaporanTrialSkalaLab {
         pembahasan,
         kesimpulan,
         tindakLanjut,
+        spesifikasiProdukJadi,
       } = req.body;
       const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
         +LaporanTrialSkalaLabID
@@ -280,6 +281,7 @@ class ControllerLaporanTrialSkalaLab {
           pembahasan: pembahasan,
           kesimpulan: kesimpulan,
           tindakLanjut: tindakLanjut,
+          spesifikasiProdukJadi: spesifikasiProdukJadi,
         },
         {
           where: {
@@ -333,7 +335,7 @@ class ControllerLaporanTrialSkalaLab {
       const { id } = req.params;
       const createKesimpulanFormula = await t_kesimpulanFormulaTerpilih.create({
         kesimpulanFormulaTerpilih,
-        LaporanTrialSkalaLabID: +id || null,
+        LaporanTrialSkalaLabID,
       });
 
       res.status(201).json({
@@ -345,19 +347,63 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+
+  static async editKesimpulanFormula(req, res, next) {
+    try {
+      const { kesimpulanFormulaTerpilih } = req.body;
+      const { id } = req.params;
+
+      // Pastikan ID valid
+      if (!id) {
+        return res.status(400).json({
+          message: "Invalid ID",
+        });
+      }
+
+      // Cari data berdasarkan ID
+      const kesimpulanFormula = await t_kesimpulanFormulaTerpilih.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Ganti `id` dengan nilai yang sesuai
+        },
+      });
+
+      console.log(kesimpulanFormula, "< aa");
+
+      if (!kesimpulanFormula) {
+        return res.status(404).json({
+          message: "Kesimpulan formula not found",
+        });
+      }
+
+      // Update data
+      const updatedKesimpulanFormula = await kesimpulanFormula.update({
+        kesimpulanFormulaTerpilih,
+      });
+
+      res.status(200).json({
+        message: "Success update kesimpulan formula",
+        data: updatedKesimpulanFormula,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async createRingkasanHasilStudiCpp(req, res, next) {
     const transaction = await sequelize.transaction();
     try {
-      const { data } = req.body;
+      const { data, LaporanTrialSkalaLabID } = req.body;
       const { id } = req.params;
 
       await Promise.all(
         data?.map(async (newItem) => {
+          console.log(LaporanTrialSkalaLabID, "< IDIDID");
           const createCMA = await t_ringkasanHasilStudiCpp.create(
             {
               title: newItem?.title || "",
               content: newItem?.content || [],
-              LaporanTrialSkalaLabID: +id || null,
+              LaporanTrialSkalaLabID,
             },
             { transaction }
           );
@@ -369,7 +415,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const newData = await t_ringkasanHasilStudiCpp.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID,
         },
       });
 
@@ -384,11 +430,55 @@ class ControllerLaporanTrialSkalaLab {
       }
     }
   }
+
+  static async editRingkasanHasilStudiCpp(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body; // Data baru yang dikirimkan
+      const { id } = req.params; // LaporanTrialSkalaLabID
+
+      // Step 1: Hapus data lama berdasarkan `LaporanTrialSkalaLabID`
+      await t_ringkasanHasilStudiCpp.destroy({
+        where: { LaporanTrialSkalaLabID: id },
+        transaction,
+      });
+
+      // Step 2: Tambahkan data baru
+      const newRecords = await Promise.all(
+        data?.map((newItem) =>
+          t_ringkasanHasilStudiCpp.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id,
+            },
+            { transaction }
+          )
+        )
+      );
+
+      await transaction.commit();
+
+      res.status(200).json({
+        message: "Success update ringkasan hasil studi CPP",
+        data: newRecords,
+      });
+    } catch (err) {
+      console.error("Error updating ringkasan hasil studi CPP:", err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+      res.status(500).json({
+        message: "Failed to update ringkasan hasil studi CPP",
+        error: err.message,
+      });
+    }
+  }
+
   static async createRingkasanHasilStudiCma(req, res, next) {
     const transaction = await sequelize.transaction();
     try {
-      const { data } = req.body;
-      const { id } = req.params;
+      const { data, LaporanTrialSkalaLabID } = req.body;
 
       await Promise.all(
         data?.map(async (newItem) => {
@@ -396,7 +486,7 @@ class ControllerLaporanTrialSkalaLab {
             {
               title: newItem?.title || "",
               content: newItem?.content || [],
-              LaporanTrialSkalaLabID: +id || null,
+              LaporanTrialSkalaLabID,
             },
             { transaction }
           );
@@ -408,7 +498,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const newData = await t_ringkasanHasilStudiCma.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID,
         },
       });
 
@@ -423,6 +513,48 @@ class ControllerLaporanTrialSkalaLab {
       }
     }
   }
+  static async editRingkasanHasilStudiCma(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+
+      await t_ringkasanHasilStudiCma.destroy({
+        where: { LaporanTrialSkalaLabID: id },
+        transaction,
+      });
+
+      // Step 2: Tambahkan data baru
+      const newRecords = await Promise.all(
+        data?.map((newItem) =>
+          t_ringkasanHasilStudiCma.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id,
+            },
+            { transaction }
+          )
+        )
+      );
+
+      await transaction.commit();
+
+      res.status(200).json({
+        message: "Success update ringkasan hasil studi CMA",
+        data: newRecords,
+      });
+    } catch (err) {
+      console.error("Error updating ringkasan hasil studi CMA:", err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+      res.status(500).json({
+        message: "Failed to update ringkasan hasil studi CMA",
+        error: err.message,
+      });
+    }
+  }
   static async createKesimpulanProsesTerpilih(req, res, next) {
     try {
       const { kesimpulanProsesTerpilih, LaporanTrialSkalaLabID } = req.body;
@@ -430,12 +562,53 @@ class ControllerLaporanTrialSkalaLab {
       const createKesimpulanProsesTerpilih =
         await t_kesimpulanProsesTerpilih.create({
           kesimpulanProsesTerpilih,
-          LaporanTrialSkalaLabID: +id || null,
+          LaporanTrialSkalaLabID,
         });
 
       res.status(201).json({
         message: "Success Create kesimpulan proses terpilih",
         data: createKesimpulanProsesTerpilih,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editKesimpulanProsesTerpilih(req, res, next) {
+    try {
+      const { kesimpulanProsesTerpilih } = req.body;
+      const { id } = req.params;
+
+      // Pastikan ID valid
+      if (!id) {
+        return res.status(400).json({
+          message: "Invalid ID",
+        });
+      }
+
+      // Cari data berdasarkan ID
+      const kesimpulanProses = await t_kesimpulanProsesTerpilih.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Ganti `id` dengan nilai yang sesuai
+        },
+      });
+
+      console.log(kesimpulanProses, "< aa");
+
+      if (!kesimpulanProses) {
+        return res.status(404).json({
+          message: "Kesimpulan proses not found",
+        });
+      }
+
+      // Update data
+      const updatedKesimpulanProses = await kesimpulanProses.update({
+        kesimpulanProsesTerpilih,
+      });
+
+      res.status(200).json({
+        message: "Success update kesimpulan proses",
+        data: updatedKesimpulanProses,
       });
     } catch (err) {
       console.error(err);
@@ -511,6 +684,43 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+  static async editUpdateAssessmentBahanAktif(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentBahanAktif.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async createUpdateAssessmentBahanTambahan(req, res, next) {
     try {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
@@ -525,6 +735,44 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({
         message: "Success createUpdateAssessment",
         data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editUpdateAssessmentBahanTambahan(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentBahanTambahan.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      console.log(existingRecord, "< re");
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
       });
     } catch (err) {
       console.error(err);
@@ -546,6 +794,44 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({
         message: "Success createUpdateAssessment",
         data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editUpdateAssessmentKemasan(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentKemasan.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      console.log(existingRecord, "< re");
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
       });
     } catch (err) {
       console.error(err);
