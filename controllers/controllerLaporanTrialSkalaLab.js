@@ -88,9 +88,156 @@ class ControllerLaporanTrialSkalaLab {
     try {
       const { id } = req.params;
 
-      await t_laporanTrialSkalaLab.destroy({
-        where: { id: id }, // Corrected the where clause
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findLaporanTrialSkalaLab = await t_laporanTrialSkalaLab.findByPk(
+        +id
+      );
+      if (!findLaporanTrialSkalaLab)
+        throw new MyError(404, "Form Formula Fix tidak di temukan");
+
+      // First, update all related records
+      // await t_formulaFix_status.update(
+      //   { user_id, delegated_to, flag_update },
+      //   { where: { FormulaFixID: +id } }
+      // );
+      await t_aktivitasDanWaktuPencapaian.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_kesimpulanFormulaTerpilih.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_ringkasanHasilStudiCpp.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_kesimpulanProsesTerpilih.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_usulanPenelitianProduk.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessment.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentBahanAktif.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentBahanTambahan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentKemasan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_ringkasanHasilStudiCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_studiScreeningSourceApi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_kriteriaPenerimaan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_studiCppTerhadapCqa.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_bahanAktifCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_bahanTambahanCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_hasilDanPembahasanOrientasi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_hasilPengamatan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+
+      // Next, delete all related records
+      // await t_formulaFix_status.destroy({ where: { FormulaFixID: +id } });
+      await t_aktivitasDanWaktuPencapaian.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
       });
+      await t_kesimpulanFormulaTerpilih.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_ringkasanHasilStudiCpp.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_kesimpulanProsesTerpilih.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_usulanPenelitianProduk.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessment.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentBahanAktif.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentBahanTambahan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentKemasan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_ringkasanHasilStudiCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_studiScreeningSourceApi.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_kriteriaPenerimaan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_studiCppTerhadapCqa.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_bahanAktifCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_bahanTambahanCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_hasilDanPembahasanOrientasi.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_hasilPengamatan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+
+      // Finally, update and delete the main record
+      await t_laporanTrialSkalaLab.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_laporanTrialSkalaLab.destroy({ where: { id: +id } });
 
       res.status(200).send({ msg: "succeed" });
     } catch (err) {
@@ -1408,7 +1555,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const prevKriteria = await t_LTS_kriteriaPenerimaan.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID: +id,
         },
         order: [["id", "ASC"]],
       });

@@ -9,6 +9,12 @@ router.post(
   ControllerLaporanTrialSkalaLab.createLaporanTrialSkalaLab
 );
 
+router.delete(
+  "/delete-laporan-trial-skala-lab/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.deleteLaporanTrialSkalaLab
+);
+
 router.put(
   "/update-laporan-trial-skala-lab/:id",
   ControllerLaporanTrialSkalaLab.updateLaporanTrialSkalaLab
