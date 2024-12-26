@@ -38,6 +38,7 @@ const {
 const {
   getStatusLaporanTrialSkalaLab,
 } = require("../helpers/statusLaporanTrialSkalaLab");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerLaporanTrialSkalaLab {
   static async findAllLaporanTrialSkalaLab(req, res) {
@@ -1035,6 +1036,20 @@ class ControllerLaporanTrialSkalaLab {
       const apprDeptId = laporanTrialSkalaLabDetails.bagian;
       const apprNo = await checkStatusLaporanTrialSkalaLab(id);
       console.log(apprNo, "< < DEBt ID");
+
+      await Promise.all(
+        laporanTrialSkalaLabDetails.dataValues.approver_data.map(
+          async (el, index) => {
+            el.dataValues.approver_inisial = await fetchApproverInisial({
+              user_id: el.user_id,
+              delegated_to: el.delegated_to,
+            });
+
+            return el;
+          }
+        )
+      );
+
       const isApprove = await isApproveValidation(
         // productBriefDetail.nama_pegawai,
         "laporanTrialSkalaLab",
@@ -1445,23 +1460,22 @@ class ControllerLaporanTrialSkalaLab {
         nama_user
       );
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
-      let status;
+      let statusDokumen;
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        status = getStatusLaporanTrialSkalaLab(
+        statusDokumen = getStatusLaporanTrialSkalaLab(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
-        status = "Reject";
+        statusDokumen = "Reject";
         await t_laporanTrialSkalaLab_status.destroy({
           where: { LaporanTrialSkalaLabID: +id },
         });
       }
 
-      console.log(status, "<< STAUTS");
       console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
 
       console.log(is_approve, "<<< iNI IS APPROVE");
@@ -1479,7 +1493,7 @@ class ControllerLaporanTrialSkalaLab {
       });
       await t_laporanTrialSkalaLab.update(
         {
-          status: status,
+          statusDokumen: statusDokumen,
           alasan_reject: keterangan_reject,
           user_id,
           // delegated_to,
