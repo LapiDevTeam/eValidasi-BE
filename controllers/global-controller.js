@@ -44,20 +44,9 @@ class GlobalController {
 
   static async fetchItemUnit(req, res, next) {
     try {
-      const { isActive } = req.query;
+      const { withDescripton } = req.query;
       const pool = await sql.connect(configMssql);
-      let whereClauses = [];
-
-      if (isActive) {
-        whereClauses.push(`isActive = ${isActive}`);
-      }
-
-      let where = "";
-      if (whereClauses.length > 0) {
-        where = ` AND ${whereClauses.join(" AND ")}`;
-      }
-
-      const queryCode = `SELECT unit_id FROM m_unit WHERE unit_ID <> '(none)'${where}`;
+      const queryCode = withDescripton ? `Select Unit_ID, Unit_Description from m_unit where isActive = 1`:`SELECT unit_id FROM m_unit WHERE unit_ID <> '(none)'`;
       const request = pool.request();
       const result1 = await request.query(queryCode);
 
@@ -84,57 +73,57 @@ class GlobalController {
       next(error);
     }
   }
-  static async fetchPrinciple(req,res,next) {
+  static async fetchPrinciple(req, res, next) {
     try {
-      const {prcName}= req.query
+      const { prcName } = req.query;
       const sqlCode = `
         Select Prc_Name,Prc_ID from m_Principle where isActive=1 and Prc_name like :prcName order by prc_name
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
         replacements: {
-          prcName: `%${prcName || ""}%`
+          prcName: `%${prcName || ""}%`,
         },
-      })
-      res.status(200).json({data: _data})
+      });
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
-  static async fetchNegaraAsal (req, res, next) {
+  static async fetchNegaraAsal(req, res, next) {
     try {
-      const {namaNegara} = req.query
+      const { namaNegara } = req.query;
       const sqlCode = `
       select COUNTRY_NAME, COUNTRY_ID From m_BPOM_REGION WHERE ISACTIVE = 1 and country_name like :namaNegara order by country_name
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
-        replacements:{
-          namaNegara: `%${namaNegara || ""}%`
-        }
-      })
-      res.status(200).json({data: _data})
+        replacements: {
+          namaNegara: `%${namaNegara || ""}%`,
+        },
+      });
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
-  static async fetchSupplier(req,res,next){
+  static async fetchSupplier(req, res, next) {
     try {
-      const {suppName} = req.query
+      const { suppName } = req.query;
       const sqlCode = `
       select supp_name, Supp_ID from m_Supplier WHERE isActive = 1 and supp_name like :suppName order by supp_name
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
-        type:QueryTypes.SELECT,
+        type: QueryTypes.SELECT,
         replacements: {
-          suppName: `%${suppName || ""}%`
+          suppName: `%${suppName || ""}%`,
         },
-      })
-      res.status(200).json({data: _data})
+      });
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
