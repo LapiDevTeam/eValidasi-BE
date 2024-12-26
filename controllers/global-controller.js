@@ -44,8 +44,20 @@ class GlobalController {
 
   static async fetchItemUnit(req, res, next) {
     try {
+      const { isActive } = req.query;
       const pool = await sql.connect(configMssql);
-      const queryCode = `SELECT unit_id FROM m_unit WHERE unit_ID <> '(none)'`;
+      let whereClauses = [];
+
+      if (isActive) {
+        whereClauses.push(`isActive = ${isActive}`);
+      }
+
+      let where = "";
+      if (whereClauses.length > 0) {
+        where = ` AND ${whereClauses.join(" AND ")}`;
+      }
+
+      const queryCode = `SELECT unit_id FROM m_unit WHERE unit_ID <> '(none)'${where}`;
       const request = pool.request();
       const result1 = await request.query(queryCode);
 
@@ -61,7 +73,7 @@ class GlobalController {
       const { Item_ID } = req.query;
       const pool = await sql.connect(configMssql);
       const queryCode = `
-        SELECT A.Item_ID, B.Item_Name, B.item_bpomgenerik, F.Item_Name as Item_generikname, A.Item_PrcID,C.PRc_Name, A.Item_BPOMNegara, E.Country_Name, D.Supp_ID, D.Supp_Name, A.IsActive,A.IsDefault,A.Item_Revision, convert(varchar(10),A.input_date ,111) as input_date, case when isnull(A.item_ishalal,0) = 0 then 'Non Halal' else 'Halal' end as  isHalal,A.Lembaga, A.Nomor_sertifikat, A.Masa_berlaku_date, A.Dok_Pendukung   from m_Item_Manufacturing_Supplier as A left join m_Item_Manufacturing as B on B.Item_ID = A.Item_ID left join m_Principle as C on C.Prc_ID = A.ITem_PrcID left join m_Supplier D on D.Supp_ID = A.Item_SuppID left join (select * From m_BPOM_Region where isActive = 1) E on E.Country_ID = A.Item_BPOMNegara left join (select * from m_BPOM_item where isActive = 1) F on F.Item_ID = B.Item_BPOMGenerik 
+        SELECT A.Item_ID, B.Item_Name, B.item_bpomgenerik, F.Item_Name as Item_generikname, A.Item_PrcID,C.PRc_Name, A.Item_BPOMNegara, E.Country_Name, D.Supp_ID, D.Supp_Name, A.IsActive,A.IsDefault,A.Item_Revision, convert(varchar(10),A.input_date ,111) as input_date, case when isnull(A.item_ishalal,0) = 0 then 'Non Halal' else 'Halal' end as  isHalal,A.Lembaga, A.Nomor_sertifikat, A.Masa_berlaku_date, A.Dok_Pendukung   from m_Item_Manufacturing_Supplier as A left join m_Item_Manufacturing as B on B.Item_ID = A.Item_ID left join m_Principle as C on C.Prc_ID = A.ITem_PrcID left join m_Supplier D on D.Supp_ID = A.Item_SuppID left join (select * From m_BPOM_Region where isActive = 1) E on E.Country_ID = A.Item_BPOMNegara left join (select * from m_BPOM_item where isActive = 1) F on F.Item_ID = B.Item_BPOMGenerik
       where A.Item_ID = '${Item_ID}' and A.isactive = 1 and B.isActive = 1`;
       const request = pool.request();
       const result1 = await request.query(queryCode);
@@ -93,14 +105,14 @@ class GlobalController {
   static async fetchNegaraAsal (req, res, next) {
     try {
       const {namaNegara} = req.query
-      const sqlCode = ` 
+      const sqlCode = `
       select COUNTRY_NAME, COUNTRY_ID From m_BPOM_REGION WHERE ISACTIVE = 1 and country_name like :namaNegara order by country_name
       `
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
         replacements:{
           namaNegara: `%${namaNegara || ""}%`
-        } 
+        }
       })
       res.status(200).json({data: _data})
     } catch (error) {
@@ -124,6 +136,17 @@ class GlobalController {
     } catch (error) {
       next(error)
     }
+  }
+
+  static async getProductInit(productID) {
+    const result = await sequelizeMSQL.query(
+      "select (isNULL(max(Product_init),-1))+1 as INIT from m_product where Product_ID like :productID and isActive = 0",
+      {
+        type: QueryTypes.SELECT,
+        replacements: { productID }
+      }
+    );
+    return result[0].INIT;
   }
 }
 
