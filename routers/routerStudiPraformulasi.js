@@ -4,6 +4,11 @@ const ControllerStudiPraformulasi = require("../controllers/controllerStudiPrafo
 const { authentication } = require("../middlewares/authentication");
 
 router.get(
+  "/print-studiPraformulasi",
+  ControllerStudiPraformulasi.printStudiPraformulasi
+);
+
+router.get(
   "/studi-praformulasi/history/:id",
   ControllerStudiPraformulasi.getHistoryStudiPraformulasi
 );
