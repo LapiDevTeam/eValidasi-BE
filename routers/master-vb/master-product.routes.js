@@ -16,5 +16,6 @@ masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 
 masterProductRouter.post("/", authentication, MasterProductController.addNewProduct);
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
+masterProductRouter.get("/maping-itemID", MasterProductController.getMappingID);
 
 module.exports = masterProductRouter

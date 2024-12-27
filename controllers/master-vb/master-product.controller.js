@@ -405,6 +405,61 @@ class MasterProductController {
       next(error);
     }
   }
+
+  static async getMappingID (req, res, next) {
+    try {
+      const { productType } = req.query;
+      if (!productType) {
+        return res.status(400).json({ message: "productType is required!" });
+      }
+
+      const result = await MasterProductController.queryItemID(productType);
+      const resp = {
+        data : result
+      }
+      console.log({data: result});
+      res.status(200).json(resp);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async queryItemID(productType) {
+    if (productType === "IN") {
+      const strSQL = `
+        SELECT Item_ID, Group_Type, Item_Name, Item_Size, Item_Description, item_unit,
+               item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
+               item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
+               item_status
+        FROM vwM_ItemWithGroup_template
+        WHERE isActive = 1 AND Item_Name LIKE 'GRANULAT%'
+      `;
+
+      try {
+        const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+        const itemIDs = [];
+        if (grecLister.length > 0) {
+          grecLister.forEach(item => {
+            itemIDs.push({
+              itemID: item.Item_ID,
+              itemName: item.Item_Name,
+              master: item.Group_Type,
+              satuan: item.item_unit
+            });
+          });
+
+          return itemIDs;
+        } else {
+          throw new Error("Data Not Found!");
+        }
+      } catch (error) {
+        throw new Error(error.message);
+      }
+    } else {
+      throw new Error("Hanya untuk PRODUK ANTARA !!!");
+    }
+  }
 }
 
 module.exports = MasterProductController;
