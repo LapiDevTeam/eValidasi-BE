@@ -134,8 +134,8 @@ class MasterProductController {
         return res.status(400).json({ message: "Jenis Produk Harus di isi" });
       }
 
-      if (!productID && (productCategory === "02" || productType === "IN")) {
-
+      if (!productID) {
+        console.log({objectasdasd: productID});
         const queryGetProduct = `
         SELECT TOP 1 isnull(product_id, '') as Product_ID FROM m_product_auto_number where pk_id > (select top 1 PK_ID From m_product_auto_number where product_id in (select top 1 product_id from m_Product_template where isnull(product_periode,'') = '' and len(product_id) = 2 order by pk_Id desc)) order by pk_id
         `
@@ -424,6 +424,211 @@ class MasterProductController {
     }
   }
 
+  static async approveProduct(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      const { user_id, delegated_to, nama_user } = req.user;
+      const {
+        productCategory,
+        productID
+      } = req.body;
+
+      if (!productCategory) {
+        return res.status(400).json({ message: "productCategory dan productID harus di isi!" });
+      }
+
+      const canApprove = await MasterProductController.cekApproverLine(user_id);
+      let sPeriode;
+      let sGetDate;
+
+      if (!canApprove) {
+        return res.status(401).json({ message: "Anda tidak memiliki akses untuk approve" });
+      }
+
+      const dateQuery = `
+      SELECT REPLACE(CONVERT(VARCHAR(19), GETDATE(), 121), '-', '') AS vPeriode,
+      CONVERT(VARCHAR, GETDATE(), 20) AS GetNow
+      `;
+
+      const dateResult = await sequelizeMSQL.query(dateQuery, {
+        type: QueryTypes.SELECT,
+        transaction
+      });
+
+      sPeriode = dateResult[0]?.vPeriode;
+      sGetDate = dateResult[0]?.GetNow;
+
+      if (productCategory == "01") {
+        let sSQLA = `
+          UPDATE m_item_manufacturing
+          SET USER_ID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
+          WHERE REPLACE(Item_ID, ' ', '') IN (SELECT Product_ID FROM m_Product WHERE Product_Type = 'IN');
+          DELETE FROM m_item_manufacturing
+          WHERE REPLACE(Item_ID, ' ', '') IN (SELECT Product_ID FROM m_Product WHERE Product_Type = 'IN');
+        `;
+
+        let sSQLB = `
+          INSERT INTO m_Item_Manufacturing (
+            PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+            Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
+            User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,
+            Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row
+          )
+          SELECT
+            PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+            Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
+            '${user_id}' AS User_ID, '${delegated_to}' AS Delegated_To, '${sGetDate}' AS Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,
+            Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row
+          FROM m_Item_Manufacturing_template
+          WHERE ISNULL(item_Periode, '') = ''
+          AND REPLACE(Item_ID, ' ', '') IN (SELECT Product_ID FROM m_Product_template WHERE ISNULL(Product_Periode, '') = '' AND Product_Type = 'IN');
+        `;
+
+        let sSQLC = `
+          INSERT INTO m_Item_Manufacturing_template (
+            PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+            Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
+            User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,
+            Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode,
+            tgl_berlaku, user_approve, user_delegated
+          )
+          SELECT
+            PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+            Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
+            User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,
+            Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row,
+            '${sPeriode}', '${sGetDate}', '${user_id}', '${delegated_to}' AS user_delegated
+          FROM m_Item_Manufacturing_template
+          WHERE ISNULL(item_Periode, '') = ''
+          AND REPLACE(Item_ID, ' ', '') IN (SELECT Product_ID FROM m_Product_template WHERE ISNULL(Product_Periode, '') = '' AND Product_Type = 'IN');
+        `;
+
+        await sequelizeMSQL.query(sSQLA, { transaction });
+        await sequelizeMSQL.query(sSQLB, { transaction });
+        await sequelizeMSQL.query(sSQLC, { transaction });
+      }
+
+      let sSQL1 = `
+      UPDATE m_product_bahanaktif
+      SET USER_ID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
+      WHERE product_id IN (SELECT product_id FROM m_product WHERE Product_Category = '${productCategory}');
+      DELETE FROM m_product_bahanaktif
+      WHERE product_id IN (SELECT product_id FROM m_product WHERE Product_Category = '${productCategory}');
+      UPDATE m_product_bahanaktif_template
+      SET Product_Periode='${sPeriode}', Approve_date='${sGetDate}', User_Approve='${user_id}', User_Delegated='${delegated_to}'
+      WHERE ISNULL(Product_Periode, '') = ''
+      AND product_id IN (SELECT product_id FROM m_Product_template WHERE ISNULL(Product_Periode, '') = '' AND Product_Category = '${productCategory}');
+    `;
+
+    let sSQL2 = `
+      INSERT INTO m_product_bahanaktif (PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, User_id, Delegated_to, Process_date)
+      SELECT PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, '${user_id}' AS User_id, '${delegated_to}' AS Delegated_to, '${sGetDate}' AS Process_date
+      FROM m_product_bahanaktif_template
+      WHERE ISNULL(Product_Periode, '') = '${sPeriode}';
+    `;
+
+    let sSQL3 = `
+      INSERT INTO m_product_bahanaktif_template (PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, Product_Periode, Approve_date, User_Approve, User_Delegated, User_id, Delegated_to, Process_date)
+      SELECT PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, NULL AS Product_Periode, NULL AS Approve_date, NULL AS User_Approve, NULL AS User_Delegated, User_id, Delegated_to, Process_date
+      FROM m_product_bahanaktif_template
+      WHERE ISNULL(Product_Periode, '') = '${sPeriode}';
+    `;
+
+    let sSQL4 = `
+      UPDATE m_Product
+      SET USER_ID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
+      WHERE Product_Category = '${productCategory}';
+      DELETE FROM m_Product
+      WHERE Product_Category = '${productCategory}';
+      UPDATE m_Product_template
+      SET Product_Periode='${sPeriode}', Approve_date='${sGetDate}', User_Approve='${user_id}', User_Delegated='${delegated_to}'
+      WHERE ISNULL(Product_Periode, N'') = ''
+      AND Product_Category = '${productCategory}';
+    `;
+    console.log({sSQL4});
+    let sSQL5 = `
+      INSERT INTO m_Product (Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+        Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
+        Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
+        Product_GroupSediaan, Product_GroupTargetRealisasi, Product_SalesName, Product_Status, Product_SalesHNA, Product_ShortName, Product_SalesUnit,
+        Product_isSuplemen, Product_LabelQA, Product_RetainBigSuperUnit, Product_RetainKonversiBig, Product_RetainBigUnit, Product_RetainKonversi,
+        Product_RetainSmallUnit, Product_SediaanPlanning, Product_Owner, product_import, Product_KonversiProduksiToSales, Product_bahanAktif,
+        Product_PN_HK_PProcessing, Product_PN_HK_PKSekunder, Product_PN_HK_Produksi, Product_PN_HK_PPIProduksi, Product_versiBPOM, Product_NotPPI,
+        Product_BentukSediaan, Product_Kemasan, Product_Dosis, Product_RuangLingkup, PK_ID, CDOB_01, CDOB_02, CDOB_03)
+      SELECT Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+        Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive,
+        '${user_id}' AS User_ID, '${delegated_to}' AS Delegated_To, '${sGetDate}' AS Process_Date,
+        Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
+        Product_GroupSediaan, Product_GroupTargetRealisasi, Product_SalesName, Product_Status, Product_SalesHNA, Product_ShortName, Product_SalesUnit,
+        Product_isSuplemen, Product_LabelQA, Product_RetainBigSuperUnit, Product_RetainKonversiBig, Product_RetainBigUnit, Product_RetainKonversi,
+        Product_RetainSmallUnit, Product_SediaanPlanning, Product_Owner, product_import, Product_KonversiProduksiToSales, Product_bahanAktif,
+        Product_PN_HK_PProcessing, Product_PN_HK_PKSekunder, Product_PN_HK_Produksi, Product_PN_HK_PPIProduksi, Product_versiBPOM, Product_NotPPI,
+        Product_BentukSediaan, Product_Kemasan, Product_Dosis, Product_RuangLingkup, PK_ID, CDOB_01, CDOB_02, CDOB_03
+      FROM m_Product_template
+      WHERE ISNULL(Product_Periode, N'') = '${sPeriode}'
+      AND Product_Category = '${productCategory}';
+    `;
+      console.log({sSQL5});
+    let sSQL6 = `
+      INSERT INTO m_Product_template (Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+        Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
+        Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
+        Product_GroupSediaan, Product_GroupTargetRealisasi, Product_SalesName, Product_Status, Product_SalesHNA, Product_ShortName, Product_SalesUnit,
+        Product_isSuplemen, Product_LabelQA, Product_RetainBigSuperUnit, Product_RetainKonversiBig, Product_RetainBigUnit, Product_RetainKonversi,
+        Product_RetainSmallUnit, Product_SediaanPlanning, Product_Owner, product_import, Product_KonversiProduksiToSales, Product_bahanAktif,
+        Product_PN_HK_PProcessing, Product_PN_HK_PKSekunder, Product_PN_HK_Produksi, Product_PN_HK_PPIProduksi, Product_versiBPOM, Product_NotPPI,
+        Product_BentukSediaan, Product_Kemasan, Product_Dosis, Product_RuangLingkup, PK_ID, Product_Periode, CDOB_01, CDOB_02, CDOB_03, Approve_date, User_Approve, User_Delegated)
+      SELECT Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+        Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
+        Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
+        Product_GroupSediaan, Product_GroupTargetRealisasi, Product_SalesName, Product_Status, Product_SalesHNA, Product_ShortName, Product_SalesUnit,
+        Product_isSuplemen, Product_LabelQA, Product_RetainBigSuperUnit, Product_RetainKonversiBig, Product_RetainBigUnit, Product_RetainKonversi,
+        Product_RetainSmallUnit, Product_SediaanPlanning, Product_Owner, product_import, Product_KonversiProduksiToSales, Product_bahanAktif,
+        Product_PN_HK_PProcessing, Product_PN_HK_PKSekunder, Product_PN_HK_Produksi, Product_PN_HK_PPIProduksi, Product_versiBPOM, Product_NotPPI,
+        Product_BentukSediaan, Product_Kemasan, Product_Dosis, Product_RuangLingkup, PK_ID, NULL AS Product_Periode, CDOB_01, CDOB_02, CDOB_03, NULL AS Approve_date, NULL AS User_Approve, NULL AS User_Delegated
+      FROM m_Product_template
+      WHERE ISNULL(Product_Periode, N'') = '${sPeriode}'
+      AND Product_Category = '${productCategory}';
+    `;
+
+    await sequelizeMSQL.query(sSQL1, { transaction });
+    await sequelizeMSQL.query(sSQL2, { transaction });
+    await sequelizeMSQL.query(sSQL3, { transaction });
+    await sequelizeMSQL.query(sSQL4, { transaction });
+    await sequelizeMSQL.query(sSQL5, { transaction });
+    await sequelizeMSQL.query(sSQL6, { transaction });
+
+    const lastApproveDate = await MasterProductController.showLastApproveDate();
+
+
+
+    const resp = {
+      message: "Product has been approved successfully",
+      data: lastApproveDate
+    }
+
+    await transaction.commit();
+    return res.status(200).json(resp);
+    } catch (error) {
+      console.error('Error:', error);
+      await transaction.rollback();
+      const resp = {
+        message: "gagal approve product, produk sudah di approve sebelumnya",
+        extraData: error?.message || 'internal server error'
+      }
+      return res.status(500).json(resp);
+    }
+  }
+
+  static async createBahanAktifByProductID(req, res, next) {
+    try {
+
+    } catch (error) {
+      console.log({error});
+      next(error);
+    }
+  }
+
   static async queryItemID(productType) {
     if (productType === "IN") {
       const strSQL = `
@@ -460,6 +665,43 @@ class MasterProductController {
       throw new Error("Hanya untuk PRODUK ANTARA !!!");
     }
   }
+
+  static cekApproverLine = async (user_id) => {
+    const sqlQuery = `
+      SELECT TOP 1 Appr_Identity
+      FROM m_Approver_Lines
+      WHERE isActive = 1
+        AND Appr_ApplicationCode LIKE 'PRODUCT'
+        AND Appr_ID LIKE :userID
+    `;
+
+    const result = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT,
+      replacements: { userID: user_id },
+    });
+
+    return result.length > 0;
+  }
+
+  static async showLastApproveDate() {
+    try {
+      const sqlQuery = `
+        SELECT TOP 1 CONVERT(VARCHAR(20), Approve_date, 13) AS dtAppr
+        FROM m_Product_template
+        ORDER BY Approve_date DESC
+      `;
+
+      const result = await sequelizeMSQL.query(sqlQuery, {
+        type: QueryTypes.SELECT,
+      });
+
+      return result.length > 0 ? result[0].dtAppr : '';
+    } catch (error) {
+      console.error('Error fetching last approve date:', error);
+      throw error;
+    }
+  }
+
 }
 
 module.exports = MasterProductController;
