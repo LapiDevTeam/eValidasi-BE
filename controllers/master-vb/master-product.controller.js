@@ -9,10 +9,11 @@ class MasterProductController {
       if (!productCategory) throw new MyError(400, 'productCategory is required');
 
       const sqlCode = `
-        select A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
+        select  A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
       from vwProduct_template as A
       left join m_customer_product on A.product_id = m_customer_product.product_id
       left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
+      left join m_Product_template mpt on mpt.Product_ID = A.Product_ID
       where A.isActive = 1 and product_category = :productCategory order by A.Product_ID
       `;
       const _data = await sequelizeMSQL.query(sqlCode, {
@@ -310,7 +311,7 @@ class MasterProductController {
         delegatedTo = delegated_to,
       } = req.body;
 
-      if (!productNotPPI) {
+      if (typeof(productNotPPI) === "undefined" || productNotPPI === null) {
         return res.status(400).json({ message: 'productNotPPI is required!' });
       }
 
@@ -664,6 +665,142 @@ class MasterProductController {
     } catch (error) {
       console.error('Error fetching last approve date:', error);
       next(error);
+    }
+  }
+
+  static async createBahanAktifByProductID(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      const { user_id, delegated_to } = req.user;
+      const { productID, bahanAktif, dosis } = req.body;
+
+      if (!bahanAktif || !dosis) {
+        return res.status(400).json({ message: 'Harap isi data' });
+      }
+
+      const checkProductQuery = `
+        SELECT COUNT(*) AS jum
+        FROM m_Product_template
+        WHERE ISNULL(Product_Periode, '') = ''
+          AND Product_ID LIKE :productID
+      `;
+
+      const checkProductResult = await sequelizeMSQL.query(checkProductQuery, {
+        replacements: { productID: productID },
+        type: QueryTypes.SELECT,
+      });
+
+      if (checkProductResult[0].jum === 0) {
+        return res.status(400).json({ message: 'Harap simpan produk terlebih dahulu!' });
+      }
+
+      const insertQuery = `
+        INSERT INTO m_product_bahanaktif_template (PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, User_id, Delegated_to, Process_Date)
+        VALUES (
+          (SELECT MAX(pk_id) + 1 FROM m_product_bahanaktif_template WHERE ISNULL(product_periode, '') = ''),
+          :productID,
+          :bahanAktif,
+          :dosis,
+          :userID,
+          :delegatedTo,
+          GETDATE()
+        )
+      `;
+
+      await sequelizeMSQL.query(insertQuery, {
+        replacements: {
+          productID: productID,
+          bahanAktif: bahanAktif,
+          dosis: dosis,
+          userID: user_id,
+          delegatedTo: delegated_to,
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      res.status(200).json({ message: 'Data has been saved successfully' });
+    } catch (error) {
+      console.error('Error:', error);
+      await transaction.rollback();
+      res.status(500).json({ message: 'Failed to save data', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async updateBahanAktifByProductID(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      const { user_id, delegated_to } = req.user;
+      const { productID, pkID, bahanAktif, dosis } = req.body;
+
+      if (!pkID) {
+        return res.status(400).json({ message: 'Harap pilih data yang akan di-update' });
+      }
+
+      const updateQuery = `
+        UPDATE m_product_bahanaktif_template
+        SET User_id = :userID,
+            Delegated_to = :delegatedTo,
+            Process_Date = GETDATE(),
+            Product_BahanAktif = :bahanAktif,
+            Product_Dosis = :dosis
+        WHERE ISNULL(product_periode, '') = ''
+          AND pk_id = :pkID
+          AND product_id = :productID
+      `;
+
+      await sequelizeMSQL.query(updateQuery, {
+        replacements: {
+          userID: user_id,
+          delegatedTo: delegated_to,
+          bahanAktif: bahanAktif,
+          dosis: dosis,
+          pkID: pkID,
+          productID: productID,
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      res.status(200).json({ message: 'Data has been updated successfully' });
+    } catch (error) {
+      console.error('Error:', error);
+      await transaction.rollback();
+      res.status(500).json({ message: 'Failed to update data', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async deleteBahanAktifByProductID(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      const { user_id, delegated_to } = req.user;
+      const { productID, pkID } = req.body;
+
+      if (!pkID) {
+        return res.status(400).json({ message: 'Harap pilih data yang akan dihapus' });
+      }
+
+      const deleteQuery = `
+        DELETE FROM m_product_bahanaktif_template
+        WHERE ISNULL(product_periode, '') = ''
+          AND pk_id = :pkID
+          AND product_id = :productID
+      `;
+
+      await sequelizeMSQL.query(deleteQuery, {
+        replacements: {
+          pkID: pkID,
+          productID: productID,
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      res.status(200).json({ message: 'Data has been deleted successfully' });
+    } catch (error) {
+      console.error('Error:', error);
+      await transaction.rollback();
+      res.status(500).json({ message: 'Failed to delete data', extraData: error.message || 'internal server error' });
     }
   }
 
