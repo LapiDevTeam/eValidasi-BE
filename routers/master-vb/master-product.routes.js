@@ -18,4 +18,8 @@ masterProductRouter.post("/", authentication, MasterProductController.addNewProd
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
 masterProductRouter.get("/maping-itemID", MasterProductController.getMappingID);
 
+masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);
+
+
+
 module.exports = masterProductRouter
