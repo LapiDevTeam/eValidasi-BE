@@ -23,6 +23,7 @@ masterProductRouter.post("/bahanaktif", authentication, MasterProductController.
 masterProductRouter.patch("/bahanaktif", authentication, MasterProductController.updateBahanAktifByProductID);
 masterProductRouter.delete("/bahanaktif", authentication, MasterProductController.deleteBahanAktifByProductID);
 masterProductRouter.get("/lastapprovedate", MasterProductController.getLastApproveDate);
+masterProductRouter.get("/print", MasterProductController.generateDAProduk);
 
 masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);
 

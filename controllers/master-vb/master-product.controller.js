@@ -2,6 +2,7 @@ const { QueryTypes } = require('sequelize');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const MyError = require('../../helpers/errors');
 const GlobalController = require('../global-controller');
+const { getPagination, getPagingData } = require('../../helpers/pagination');
 class MasterProductController {
   static async fetchProduct(req, res, next) {
     try {
@@ -803,6 +804,158 @@ class MasterProductController {
       res.status(500).json({ message: 'Failed to delete data', extraData: error.message || 'internal server error' });
     }
   }
+
+  static async generateDAProdukBAK(req, res, next) {
+    try {
+      const { productCategory } = req.body;
+
+      if (!productCategory) {
+        return res.status(400).json({ message: 'Product category is required!' });
+      }
+
+      let file;
+      let query;
+
+      if (productCategory === '01') {
+        file = 'DA.RD.000001_Rev11.doc';
+        query = `
+          SELECT ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor, a.Product_ID, A.Product_Name,
+                 ISNULL(A.Product_Kemasan, '-') AS kemasan, ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+                 'bahan aktif' AS bahan_aktif, 'dosis' AS dosis, ISNULL(product_ruanglingkup, '-') AS product_ruanglingkup,
+                 CASE WHEN ISNULL(Product_Unit, '(none)') = '(none)' THEN '-' ELSE product_unit END AS Product_Unit,
+                 ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+                 CASE WHEN product_notppi = 1 THEN '-' ELSE 'Ada' END AS customer, ISNULL(product_status, '-') AS product_status,
+                 A.Kategori_prod
+          FROM vwProduct_template A
+          WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY A.PK_ID
+        `;
+      } else {
+        file = 'DA.RD.000026.doc';
+        query = `
+          SELECT ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor, a.Product_ID, A.Product_Name,
+                 ISNULL(A.Product_Kemasan, '-') AS kemasan, ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+                 'bahan aktif' AS bahan_aktif, 'dosis' AS dosis, ISNULL(product_ruanglingkup, '-') AS product_ruanglingkup,
+                 CASE WHEN ISNULL(Product_Unit, '(none)') = '(none)' THEN '-' ELSE product_unit END AS Product_Unit,
+                 ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+                 ISNULL(C.Cust_Name, '-') AS customer
+          FROM vwProduct_template A
+          LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+          LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+          WHERE A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY PK_ID
+        `;
+      }
+
+      const result = await sequelizeMSQL.query(query, {
+        replacements: { productCategory },
+        type: QueryTypes.SELECT,
+      });
+
+      if (result.length === 0) {
+        return res.status(404).json({ message: 'No data found' });
+      }
+
+      // const path = await copyTemplate(file);
+
+      // await insertDataIntoWordDocument(path, result);
+
+      res.status(200).json({
+         message: 'OK',
+         data: result,
+        });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Failed to export file', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async generateDAProduk(req, res, next) {
+    try {
+      const { productCategory, page = 0, size = 10 } = req.query;
+
+      if (!productCategory) {
+        return res.status(400).json({ message: 'Product category is required!' });
+      }
+
+      const { limit, offset } = getPagination(parseInt(page), parseInt(size));
+
+      let file;
+      let queryString;
+      let countString;
+
+      if (productCategory === '01') {
+        file = 'DA.RD.000001_Rev11.doc';
+        queryString = `
+          SELECT * FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A.PK_ID ASC) AS RowNum, a.Product_ID, A.Product_Name,
+                   ISNULL(A.Product_Kemasan, '-') AS kemasan, ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+                   'bahan aktif' AS bahan_aktif, 'dosis' AS dosis, ISNULL(product_ruanglingkup, '-') AS product_ruanglingkup,
+                   CASE WHEN ISNULL(Product_Unit, '(none)') = '(none)' THEN '-' ELSE product_unit END AS Product_Unit,
+                   ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+                   CASE WHEN product_notppi = 1 THEN '-' ELSE 'Ada' END AS customer, ISNULL(product_status, '-') AS product_status,
+                   A.Kategori_prod
+            FROM vwProduct_template A
+            WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+          ) AS Result
+          WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit
+          ORDER BY RowNum;
+        `;
+        countString = `
+          SELECT COUNT(*) AS count
+          FROM vwProduct_template A
+          WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+        `;
+      } else {
+        file = 'DA.RD.000026.doc';
+        queryString = `
+          SELECT * FROM (
+            SELECT ROW_NUMBER() OVER (ORDER BY A.PK_ID ASC) AS RowNum, a.Product_ID, A.Product_Name,
+                   ISNULL(A.Product_Kemasan, '-') AS kemasan, ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+                   'bahan aktif' AS bahan_aktif, 'dosis' AS dosis, ISNULL(product_ruanglingkup, '-') AS product_ruanglingkup,
+                   CASE WHEN ISNULL(Product_Unit, '(none)') = '(none)' THEN '-' ELSE product_unit END AS Product_Unit,
+                   ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+                   ISNULL(C.Cust_Name, '-') AS customer
+            FROM vwProduct_template A
+            LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+            LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+            WHERE A.isActive = 1 AND A.product_category = :productCategory
+          ) AS Result
+          WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit
+          ORDER BY RowNum;
+        `;
+        countString = `
+          SELECT COUNT(*) AS count
+          FROM vwProduct_template A
+          LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+          LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+          WHERE A.isActive = 1 AND A.product_category = :productCategory
+        `;
+      }
+
+      const result = await sequelizeMSQL.query(queryString, {
+        replacements: { productCategory, offset, limit },
+        type: QueryTypes.SELECT,
+      });
+
+      const [total] = await sequelizeMSQL.query(countString, {
+        replacements: { productCategory },
+        type: QueryTypes.SELECT,
+      });
+
+      const data = {
+        rows: result,
+        count: total?.count || 0
+      };
+
+      const response = getPagingData(data, page, limit);
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Failed to export file', extraData: error.message || 'internal server error' });
+    }
+  }
+
 
   static async deleteProduct(req, res, next) {
     const transaction = await sequelizeMSQL.transaction();
