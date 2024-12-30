@@ -1,12 +1,12 @@
-const { QueryTypes } = require("sequelize");
-const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
-const MyError = require("../../helpers/errors");
+const { QueryTypes } = require('sequelize');
+const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
+const MyError = require('../../helpers/errors');
 const GlobalController = require('../global-controller');
 class MasterProductController {
   static async fetchProduct(req, res, next) {
     try {
       const { productCategory } = req.query;
-      if(!productCategory) throw new MyError(400, "productCategory is required");
+      if (!productCategory) throw new MyError(400, 'productCategory is required');
 
       const sqlCode = `
         select A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
@@ -18,11 +18,11 @@ class MasterProductController {
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
         replacements: {
-          productCategory: productCategory || "" ,
+          productCategory: productCategory || '',
         },
       });
 
-      console.log(sqlCode,8);
+      console.log(sqlCode, 8);
 
       res.status(200).json({ data: _data });
     } catch (error) {
@@ -33,60 +33,59 @@ class MasterProductController {
     try {
       const sqlCode = `
       select Sediaan_Nama, Sediaan_kode from m_product_sediaan where isActive = 1 order by Sediaan_Nama
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
-      })
+      });
 
-      res.status(200).json({ data: _data })
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
   static async fetchRuangLingkup(req, res, next) {
     try {
-      const {productCategory} = req.query
-      if(!productCategory) throw new MyError(400, "productCategory is required");
-      const sqlCode =`
+      const { productCategory } = req.query;
+      if (!productCategory) throw new MyError(400, 'productCategory is required');
+      const sqlCode = `
       select Name, ID from m_product_ruanglingkup where isactive = 1 and category_id = :productCategory order by Name
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
         replacements: {
-          productCategory
-        }
-      })
+          productCategory,
+        },
+      });
 
-      res.status(200).json({ data: _data })
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
   static async fetchCustomer(req, res, next) {
     try {
-      const {productCategory = '02'} = req.query
+      const { productCategory = '02' } = req.query;
 
-      const sqlCode =`
+      const sqlCode = `
       select Cust_Name, Cust_ID from m_Customer where isActive = 1 and Cust_Type like :productCategory order by cust_id
-      `
+      `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
         replacements: {
-          productCategory
-        }
-      })
+          productCategory,
+        },
+      });
 
-      res.status(200).json({ data: _data })
+      res.status(200).json({ data: _data });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
   static async addNewProduct(req, res, next) {
     try {
-
       const { user_id, delegated_to, nama_user, bagian_user } = req.user;
       let {
         productCategory,
@@ -118,45 +117,44 @@ class MasterProductController {
         catProd,
         status,
         userName = user_id,
-        delegatedTo = delegated_to
+        delegatedTo = delegated_to,
       } = req.body;
 
-
       if (!productUnit) {
-        return res.status(400).json({ message: "Satuan terkecil Unit harus di isi!" });
+        return res.status(400).json({ message: 'Satuan terkecil Unit harus di isi!' });
       }
 
       if (!productType) {
-        return res.status(400).json({ message: "Type harus di isi!" });
+        return res.status(400).json({ message: 'Type harus di isi!' });
       }
 
       if (!jenisProd) {
-        return res.status(400).json({ message: "Jenis Produk Harus di isi" });
+        return res.status(400).json({ message: 'Jenis Produk Harus di isi' });
       }
 
       if (!productID) {
-        console.log({objectasdasd: productID});
+        console.log({ objectasdasd: productID });
         const queryGetProduct = `
         SELECT TOP 1 isnull(product_id, '') as Product_ID FROM m_product_auto_number where pk_id > (select top 1 PK_ID From m_product_auto_number where product_id in (select top 1 product_id from m_Product_template where isnull(product_periode,'') = '' and len(product_id) = 2 order by pk_Id desc)) order by pk_id
-        `
-        const [getProductID] = await sequelizeMSQL.query(queryGetProduct, {})
+        `;
+        const [getProductID] = await sequelizeMSQL.query(queryGetProduct, {});
         if (getProductID.length === 0) {
-          return res.status(400).json({ message: "Gagal mendapatkan Product ID" });
+          return res.status(400).json({ message: 'Gagal mendapatkan Product ID' });
         }
-        console.log({data: getProductID[0].Product_ID});
+        console.log({ data: getProductID[0].Product_ID });
         productID = getProductID[0].Product_ID;
-        console.log({productID});
+        console.log({ productID });
       }
 
-      if (!productID && (productCategory === "02" || productType === "IN")) {
-        return res.status(400).json({ message: "PRODUCT ID harus diisi !!" });
+      if (!productID && (productCategory === '02' || productType === 'IN')) {
+        return res.status(400).json({ message: 'PRODUCT ID harus diisi !!' });
       }
 
       const existingProduct = await sequelizeMSQL.query(
         "select COUNT(*) as jum from m_Product_template where isnull(Product_Periode,'') = '' and Product_ID like :productID",
         {
           type: QueryTypes.SELECT,
-          replacements: { productID: productID }
+          replacements: { productID: productID },
         }
       );
 
@@ -164,19 +162,19 @@ class MasterProductController {
         return res.status(400).json({ message: `Kode Product : ${productID} Sudah ada dalam database, mohon periksa kembali!` });
       }
 
-      if (productCategory === "02" && customer.substring(0, 2) !== productID.substring(0, 2)) {
-        return res.status(400).json({ message: "Kode Produk tidak valid" });
+      if (productCategory === '02' && customer.substring(0, 2) !== productID.substring(0, 2)) {
+        return res.status(400).json({ message: 'Kode Produk tidak valid' });
       }
 
       const existingIntermediate = await sequelizeMSQL.query(
         "select * from m_item_manufacturing_template where isnull(item_Periode,'') = '' and Item_ID = :productIntermediateID",
         {
           type: QueryTypes.SELECT,
-          replacements: { productIntermediateID: productIntermediateID }
+          replacements: { productIntermediateID: productIntermediateID },
         }
       );
-      console.log({existingIntermediate});
-      if (existingIntermediate.length === 0 && productType === "IN") {
+      console.log({ existingIntermediate });
+      if (existingIntermediate.length === 0 && productType === 'IN') {
         const newPKID = await sequelizeMSQL.query(
           "select max(PK_ID) + 1 as pkid from m_Item_Manufacturing_template where isnull(item_Periode,'') = ''",
           { type: QueryTypes.SELECT }
@@ -196,8 +194,8 @@ class MasterProductController {
             userName,
             cdob01,
             cdob02,
-            cdob03
-          }
+            cdob03,
+          },
         });
       }
 
@@ -245,11 +243,11 @@ class MasterProductController {
           cdob01,
           cdob02,
           cdob03,
-          productImport: (productRuangLingkup === "04" || productRuangLingkup === "05" || productName.toUpperCase().includes("OBESLIM")) ? 1 : 0
-        }
+          productImport: productRuangLingkup === '04' || productRuangLingkup === '05' || productName.toUpperCase().includes('OBESLIM') ? 1 : 0,
+        },
       });
 
-      if (productCategory === "02") {
+      if (productCategory === '02') {
         const insertCustomerProductSQL = `
           insert into m_Customer_Product (Cust_ID, Product_ID, Product_Init, Process_Date, User_ID, isActive, Delegated_to)
           values (:customerID, :productID, :productInit, GETDATE(), :userName, 1, :delegatedTo)
@@ -261,12 +259,12 @@ class MasterProductController {
             productID: productID,
             productInit,
             userName,
-            delegatedTo
-          }
+            delegatedTo,
+          },
         });
       }
 
-      res.status(200).json({ message: "Product has been saved successfully" });
+      res.status(200).json({ message: 'Product has been saved successfully' });
     } catch (error) {
       console.error('Error:', error);
       next(error);
@@ -275,10 +273,10 @@ class MasterProductController {
 
   static async getProductInit(productID) {
     const result = await sequelizeMSQL.query(
-      "select (isNULL(max(Product_init),-1))+1 as INIT from m_product where Product_ID like :productID and isActive = 0",
+      'select (isNULL(max(Product_init),-1))+1 as INIT from m_product where Product_ID like :productID and isActive = 0',
       {
         type: QueryTypes.SELECT,
-        replacements: { productID }
+        replacements: { productID },
       }
     );
     return result[0].INIT;
@@ -309,32 +307,32 @@ class MasterProductController {
         cdob03,
         jenisProd,
         userName = user_id,
-        delegatedTo = delegated_to
+        delegatedTo = delegated_to,
       } = req.body;
 
       if (!productNotPPI) {
-        return res.status(400).json({ message: "productNotPPI is required!" });
+        return res.status(400).json({ message: 'productNotPPI is required!' });
       }
 
       if (!productUnit) {
-        return res.status(400).json({ message: "Satuan terkecil Unit harus di isi!" });
+        return res.status(400).json({ message: 'Satuan terkecil Unit harus di isi!' });
       }
 
       if (!productType) {
-        return res.status(400).json({ message: "Type harus di isi!" });
+        return res.status(400).json({ message: 'Type harus di isi!' });
       }
 
       if (!jenisProd) {
-        return res.status(400).json({ message: "Jenis Produk Harus di isi" });
+        return res.status(400).json({ message: 'Jenis Produk Harus di isi' });
       }
 
       if (!productID) {
-        return res.status(400).json({ message: "PRODUCT ID harus diisi !!" });
+        return res.status(400).json({ message: 'PRODUCT ID harus diisi !!' });
       }
 
-      const strCDOB_01 = cdob01 ? "01" : "";
-      const strCDOB_02 = cdob02 ? "02" : "";
-      const strCDOB_03 = cdob03 ? "03" : "";
+      const strCDOB_01 = cdob01 ? '01' : '';
+      const strCDOB_02 = cdob02 ? '02' : '';
+      const strCDOB_03 = cdob03 ? '03' : '';
 
       let strSQL = `
         update m_Product_template set
@@ -362,10 +360,10 @@ class MasterProductController {
           CDOB_03 = :strCDOB_03
       `;
 
-      if (productRuangLingkup === "04" || productRuangLingkup === "05" || productName.toUpperCase().includes("OBESLIM")) {
-        strSQL += ", product_import = 1";
+      if (productRuangLingkup === '04' || productRuangLingkup === '05' || productName.toUpperCase().includes('OBESLIM')) {
+        strSQL += ', product_import = 1';
       } else {
-        strSQL += ", product_import = 0";
+        strSQL += ', product_import = 0';
       }
 
       strSQL += `
@@ -395,29 +393,29 @@ class MasterProductController {
           strCDOB_01,
           strCDOB_02,
           strCDOB_03,
-          productID: productID
-        }
+          productID: productID,
+        },
       });
 
-      res.status(200).json({ message: "Product has been updated successfully" });
+      res.status(200).json({ message: 'Product has been updated successfully' });
     } catch (error) {
       console.error('Error:', error);
       next(error);
     }
   }
 
-  static async getMappingID (req, res, next) {
+  static async getMappingID(req, res, next) {
     try {
       const { productType } = req.query;
       if (!productType) {
-        return res.status(400).json({ message: "productType is required!" });
+        return res.status(400).json({ message: 'productType is required!' });
       }
 
       const result = await MasterProductController.queryItemID(productType);
       const resp = {
-        data : result
-      }
-      console.log({data: result});
+        data: result,
+      };
+      console.log({ data: result });
       res.status(200).json(resp);
     } catch (error) {
       next(error);
@@ -428,13 +426,10 @@ class MasterProductController {
     const transaction = await sequelizeMSQL.transaction();
     try {
       const { user_id, delegated_to, nama_user } = req.user;
-      const {
-        productCategory,
-        productID
-      } = req.body;
+      const { productCategory, productID } = req.body;
 
       if (!productCategory) {
-        return res.status(400).json({ message: "productCategory dan productID harus di isi!" });
+        return res.status(400).json({ message: 'productCategory dan productID harus di isi!' });
       }
 
       const canApprove = await MasterProductController.cekApproverLine(user_id);
@@ -442,7 +437,7 @@ class MasterProductController {
       let sGetDate;
 
       if (!canApprove) {
-        return res.status(401).json({ message: "Anda tidak memiliki akses untuk approve" });
+        return res.status(401).json({ message: 'Anda tidak memiliki akses untuk approve' });
       }
 
       const dateQuery = `
@@ -452,13 +447,13 @@ class MasterProductController {
 
       const dateResult = await sequelizeMSQL.query(dateQuery, {
         type: QueryTypes.SELECT,
-        transaction
+        transaction,
       });
 
       sPeriode = dateResult[0]?.vPeriode;
       sGetDate = dateResult[0]?.GetNow;
 
-      if (productCategory == "01") {
+      if (productCategory == '01') {
         let sSQLA = `
           UPDATE m_item_manufacturing
           SET USER_ID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
@@ -520,21 +515,21 @@ class MasterProductController {
       AND product_id IN (SELECT product_id FROM m_Product_template WHERE ISNULL(Product_Periode, '') = '' AND Product_Category = '${productCategory}');
     `;
 
-    let sSQL2 = `
+      let sSQL2 = `
       INSERT INTO m_product_bahanaktif (PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, User_id, Delegated_to, Process_date)
       SELECT PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, '${user_id}' AS User_id, '${delegated_to}' AS Delegated_to, '${sGetDate}' AS Process_date
       FROM m_product_bahanaktif_template
       WHERE ISNULL(Product_Periode, '') = '${sPeriode}';
     `;
 
-    let sSQL3 = `
+      let sSQL3 = `
       INSERT INTO m_product_bahanaktif_template (PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, Product_Periode, Approve_date, User_Approve, User_Delegated, User_id, Delegated_to, Process_date)
       SELECT PK_ID, Product_ID, Product_BahanAktif, Product_Dosis, NULL AS Product_Periode, NULL AS Approve_date, NULL AS User_Approve, NULL AS User_Delegated, User_id, Delegated_to, Process_date
       FROM m_product_bahanaktif_template
       WHERE ISNULL(Product_Periode, '') = '${sPeriode}';
     `;
 
-    let sSQL4 = `
+      let sSQL4 = `
       UPDATE m_Product
       SET USER_ID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
       WHERE Product_Category = '${productCategory}';
@@ -545,8 +540,8 @@ class MasterProductController {
       WHERE ISNULL(Product_Periode, N'') = ''
       AND Product_Category = '${productCategory}';
     `;
-    console.log({sSQL4});
-    let sSQL5 = `
+      console.log({ sSQL4 });
+      let sSQL5 = `
       INSERT INTO m_Product (Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
         Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
         Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
@@ -568,8 +563,8 @@ class MasterProductController {
       WHERE ISNULL(Product_Periode, N'') = '${sPeriode}'
       AND Product_Category = '${productCategory}';
     `;
-      console.log({sSQL5});
-    let sSQL6 = `
+      console.log({ sSQL5 });
+      let sSQL6 = `
       INSERT INTO m_Product_template (Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
         Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
         Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
@@ -591,46 +586,100 @@ class MasterProductController {
       AND Product_Category = '${productCategory}';
     `;
 
-    await sequelizeMSQL.query(sSQL1, { transaction });
-    await sequelizeMSQL.query(sSQL2, { transaction });
-    await sequelizeMSQL.query(sSQL3, { transaction });
-    await sequelizeMSQL.query(sSQL4, { transaction });
-    await sequelizeMSQL.query(sSQL5, { transaction });
-    await sequelizeMSQL.query(sSQL6, { transaction });
+      await sequelizeMSQL.query(sSQL1, { transaction });
+      await sequelizeMSQL.query(sSQL2, { transaction });
+      await sequelizeMSQL.query(sSQL3, { transaction });
+      await sequelizeMSQL.query(sSQL4, { transaction });
+      await sequelizeMSQL.query(sSQL5, { transaction });
+      await sequelizeMSQL.query(sSQL6, { transaction });
 
-    const lastApproveDate = await MasterProductController.showLastApproveDate();
+      const lastApproveDate = await MasterProductController.showLastApproveDate();
 
+      const resp = {
+        message: 'Product has been approved successfully',
+        data: lastApproveDate,
+      };
 
-
-    const resp = {
-      message: "Product has been approved successfully",
-      data: lastApproveDate
-    }
-
-    await transaction.commit();
-    return res.status(200).json(resp);
+      await transaction.commit();
+      return res.status(200).json(resp);
     } catch (error) {
       console.error('Error:', error);
       await transaction.rollback();
       const resp = {
-        message: "gagal approve product, produk sudah di approve sebelumnya",
-        extraData: error?.message || 'internal server error'
-      }
+        message: 'gagal approve product, produk sudah di approve sebelumnya',
+        extraData: error?.message || 'internal server error',
+      };
       return res.status(500).json(resp);
     }
   }
 
   static async createBahanAktifByProductID(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
     try {
+      const { user_id, delegated_to, nama_user } = req.user;
+    } catch (error) {
+      console.log({ error });
+      next(error);
+    }
+  }
 
+  static async getBahanAktif(req, res, next) {
+    try {
+      const { productID } = req.query;
+      if (!productID) {
+        return res.status(400).json({ message: 'productID is required!' });
+      }
+
+      const result = await MasterProductController.getBahanAktifByProuductID(productID);
+      console.log({resulta: result});
+      const resp = {
+        message: 'OK',
+        data: result,
+      };
+      res.status(200).json(resp);
     } catch (error) {
       console.log({error});
       next(error);
     }
   }
 
+  static async getBahanAktifByProuductID(productID) {
+    if (!productID) {
+        return null;
+    }
+
+    const query = `
+        SELECT PK_ID, Product_ID, Product_BahanAktif, Product_Dosis
+        FROM m_product_bahanaktif_template
+        WHERE ISNULL(product_periode, '') = ''
+        AND product_id = :productID
+        ORDER BY 1
+    `;
+
+    try {
+        const result = await sequelizeMSQL.query(query, {
+            replacements: { productID },
+            type: sequelizeMSQL.QueryTypes.SELECT
+        });
+
+        console.log({result});
+        if (result.length === 0) {
+            return null;
+        }
+
+        return result.map(row => ({
+            PK_ID: row.PK_ID,
+            Product_ID: row.Product_ID,
+            Product_BahanAktif: row.Product_BahanAktif,
+            Product_Dosis: row.Product_Dosis
+        }));
+    } catch (error) {
+        return null;
+    }
+  }
+
   static async queryItemID(productType) {
-    if (productType === "IN") {
+    if (productType === 'IN') {
       const strSQL = `
         SELECT Item_ID, Group_Type, Item_Name, Item_Size, Item_Description, item_unit,
                item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
@@ -645,24 +694,24 @@ class MasterProductController {
 
         const itemIDs = [];
         if (grecLister.length > 0) {
-          grecLister.forEach(item => {
+          grecLister.forEach((item) => {
             itemIDs.push({
               itemID: item.Item_ID,
               itemName: item.Item_Name,
               master: item.Group_Type,
-              satuan: item.item_unit
+              satuan: item.item_unit,
             });
           });
 
           return itemIDs;
         } else {
-          throw new Error("Data Not Found!");
+          throw new Error('Data Not Found!');
         }
       } catch (error) {
         throw new Error(error.message);
       }
     } else {
-      throw new Error("Hanya untuk PRODUK ANTARA !!!");
+      throw new Error('Hanya untuk PRODUK ANTARA !!!');
     }
   }
 
@@ -681,7 +730,7 @@ class MasterProductController {
     });
 
     return result.length > 0;
-  }
+  };
 
   static async showLastApproveDate() {
     try {
@@ -701,7 +750,6 @@ class MasterProductController {
       throw error;
     }
   }
-
 }
 
 module.exports = MasterProductController;
