@@ -9,11 +9,10 @@ class MasterProductController {
       if (!productCategory) throw new MyError(400, 'productCategory is required');
 
       const sqlCode = `
-        select  A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
+      select A.CDOB_01, A.CDOB_02, A.CDOB_03, A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
       from vwProduct_template as A
       left join m_customer_product on A.product_id = m_customer_product.product_id
       left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
-      left join m_Product_template mpt on mpt.Product_ID = A.Product_ID
       where A.isActive = 1 and product_category = :productCategory order by A.Product_ID
       `;
       const _data = await sequelizeMSQL.query(sqlCode, {
@@ -30,6 +29,7 @@ class MasterProductController {
       next(error);
     }
   }
+
   static async fetchBentukSediaan(req, res, next) {
     try {
       const sqlCode = `
@@ -792,6 +792,74 @@ class MasterProductController {
           pkID: pkID,
           productID: productID,
         },
+        transaction,
+      });
+
+      await transaction.commit();
+      res.status(200).json({ message: 'Data has been deleted successfully' });
+    } catch (error) {
+      console.error('Error:', error);
+      await transaction.rollback();
+      res.status(500).json({ message: 'Failed to delete data', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async deleteProduct(req, res, next) {
+    const transaction = await sequelizeMSQL.transaction();
+    try {
+      const { productID } = req.body;
+
+      if (!productID) {
+        return res.status(400).json({ message: 'PRODUCT ID harus diisi !!' });
+      }
+
+      const checkFormulaQuery = `
+        SELECT * FROM m_PPI_Header
+        WHERE PPI_ProductID = :productID
+          AND isActive = 1
+      `;
+
+      const formulaResult = await sequelizeMSQL.query(checkFormulaQuery, {
+        replacements: { productID: productID.trim() },
+        type: QueryTypes.SELECT,
+      });
+
+      if (formulaResult.length > 0) {
+        return res.status(400).json({ message: 'Master product sudah ada di formula, tidak bisa di hapus, harap hapus formula jika ingin hapus produk' });
+      }
+
+      const checkRetainedQuery = `
+        SELECT DISTINCT prodid FROM t_Retained
+        UNION
+        SELECT DISTINCT prodid FROM t_Retained_2
+        UNION
+        SELECT DISTINCT prodid FROM t_Retained_sup
+      `;
+
+      const retainedResult = await sequelizeMSQL.query(checkRetainedQuery, {
+        type: QueryTypes.SELECT,
+      });
+
+      let deleteQuery;
+      if (retainedResult.length > 0) {
+        deleteQuery = `
+          UPDATE m_product_template
+          SET isActive = 0
+          WHERE product_id = :productID
+        `;
+      } else {
+        deleteQuery = `
+          DELETE FROM m_Product_template
+          WHERE ISNULL(Product_Periode, '') = ''
+            AND product_id LIKE :productID;
+          DELETE FROM m_product_bahanaktif_template
+          WHERE ISNULL(Product_Periode, '') = ''
+            AND product_id LIKE :productID
+        `;
+      }
+
+      await sequelizeMSQL.query(deleteQuery, {
+        replacements: { productID: productID.trim() },
         transaction,
       });
 
