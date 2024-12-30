@@ -643,6 +643,30 @@ class MasterProductController {
     }
   }
 
+  static async getLastApproveDate(req, res, next) {
+    try {
+      const sqlQuery = `
+        SELECT TOP 1 CONVERT(VARCHAR(20), Approve_date, 13) AS dtAppr
+        FROM m_Product_template
+        ORDER BY Approve_date DESC
+      `;
+
+      const result = await sequelizeMSQL.query(sqlQuery, {
+        type: QueryTypes.SELECT,
+      });
+
+      const lastApproveDate = result.length > 0 ? result[0]?.dtAppr : '';
+      const resp = {
+        message: 'OK',
+        data: { lastApproveDate },
+      };
+      res.status(200).json(resp);
+    } catch (error) {
+      console.error('Error fetching last approve date:', error);
+      next(error);
+    }
+  }
+
   static async getBahanAktifByProuductID(productID) {
     if (!productID) {
         return null;

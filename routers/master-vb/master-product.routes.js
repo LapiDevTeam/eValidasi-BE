@@ -18,6 +18,7 @@ masterProductRouter.post("/", authentication, MasterProductController.addNewProd
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
 masterProductRouter.get("/maping-itemID", MasterProductController.getMappingID);
 masterProductRouter.get("/bahanaktif", MasterProductController.getBahanAktif);
+masterProductRouter.get("/lastapprovedate", MasterProductController.getLastApproveDate);
 
 masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);
 
