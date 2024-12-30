@@ -16,6 +16,17 @@ masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 
 masterProductRouter.post("/", authentication, MasterProductController.addNewProduct);
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
+masterProductRouter.delete("/", authentication, MasterProductController.deleteProduct);
 masterProductRouter.get("/maping-itemID", MasterProductController.getMappingID);
+masterProductRouter.get("/bahanaktif", MasterProductController.getBahanAktif);
+masterProductRouter.post("/bahanaktif", authentication, MasterProductController.createBahanAktifByProductID);
+masterProductRouter.patch("/bahanaktif", authentication, MasterProductController.updateBahanAktifByProductID);
+masterProductRouter.delete("/bahanaktif", authentication, MasterProductController.deleteBahanAktifByProductID);
+masterProductRouter.get("/lastapprovedate", MasterProductController.getLastApproveDate);
+masterProductRouter.get("/print", MasterProductController.generateDAProduk);
+
+masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);
+
+
 
 module.exports = masterProductRouter
