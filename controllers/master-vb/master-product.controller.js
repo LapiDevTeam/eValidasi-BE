@@ -615,16 +615,6 @@ class MasterProductController {
     }
   }
 
-  static async createBahanAktifByProductID(req, res, next) {
-    const transaction = await sequelizeMSQL.transaction();
-    try {
-      const { user_id, delegated_to, nama_user } = req.user;
-    } catch (error) {
-      console.log({ error });
-      next(error);
-    }
-  }
-
   static async getBahanAktif(req, res, next) {
     try {
       const { productID } = req.query;
