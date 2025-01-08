@@ -208,9 +208,14 @@ const getPPIItems = async (req, res) => {
 };
 
 const getPPI = async (req, res) => {
-  const { search } = req.query;
+  const { search, isTemplate = 0 } = req.query;
 
   try {
+    let tableName = 'vwPPIHeaderWithProductOwner';
+    if (isTemplate != '0') {
+      tableName = 'vwPPIHeaderwithProductOwner_template';
+    }
+
     let strSQL = `
       SELECT
         PPI_ID,
@@ -234,14 +239,15 @@ const getPPI = async (req, res) => {
           ELSE product_owner
         END AS product_owner,
         PPI_LOT,
-        PPI_ED,
+        ${isTemplate == 0 ? 'PPI_ED,' : ''}
         ppi_revisi,
         pPI_batchsizekemasan,
         ISNULL(rendemen_min, 0) AS rendemen_min,
         PPI_Kemasan01
-      FROM vwPPIHeaderWithProductOwner
+      FROM ${tableName}
       WHERE isActive = 1
     `;
+
 
     if (search) {
       strSQL += ` AND (PPI_ProductID LIKE '${search}%' OR Product_Name LIKE '${search}%')`;
@@ -501,4 +507,68 @@ const exportStatusPembuat = async (req, res) => {
   }
 };
 
-module.exports = { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat };
+const getPPIGridData = async (req, res) => {
+  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.query;
+
+  if (!PPI_ID || !PPI_SubID || !PPI_ProductID || !PPI_ProductInit) {
+    return res.status(400).send({ message: "All parameters (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit) are required" });
+  }
+
+  try {
+    const strSQL = `
+      SELECT
+        PPI_ItemID,
+        ISNULL(group_name, 'OBAT JADI') AS group_name,
+        CASE
+          WHEN ISNULL(A.item_name, '') = ''
+          THEN B.Product_Name
+          ELSE A.Item_Name
+        END AS item_name,
+        item_size,
+        PPI_QTY AS PPI_QTY,
+        PPI_UnitID
+      FROM
+        vwPPIDetailwithItem AS A
+      LEFT JOIN
+        (
+          SELECT
+            Product_ID,
+            Product_Name
+          FROM
+            m_product
+          WHERE
+            Product_Name LIKE 'pelarut%'
+            OR Product_Name LIKE '%water%'
+            OR Product_Name LIKE '%infer%'
+        ) AS B
+        ON A.PPI_ItemID = B.Product_ID
+      WHERE
+        PPI_ID LIKE :PPI_ID
+        AND PPI_SubID LIKE :PPI_SubID
+        AND PPI_ProductID LIKE :PPI_ProductID
+        AND PPI_ProductInit = :PPI_ProductInit
+      ORDER BY
+        PPI_SeqID
+    `;
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: 'Data Not Found' });
+    }
+
+    const resp = {
+      message: 'OK',
+      data: result,
+    };
+
+    return res.status(200).send(resp);
+  } catch (error) {
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+module.exports = { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData };
