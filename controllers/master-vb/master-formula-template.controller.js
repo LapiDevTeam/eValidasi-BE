@@ -13,37 +13,37 @@ const createNewMasterFormulaTemplate = async (req, res) => {
 
     let {
       PPI_ID,
-      dcoPPI_Description,
-      TxtPPI_ProductID = '',
-      TxtPPI_BatchSize,
-      TXT_rendemen_min,
-      txt_pPI_batchsizekemasan,
-      TxtPPI_SubID,
-      TxtPPI_ProductInit,
-      dcoPPI_BatchSizeUnitID,
-      TxtPPI_Kemasan,
-      txtJumlahLOT,
-      Txt_kemas01,
-      DataGrid,
+      PPI_Description = '',
+      PPI_ProductID = '',
+      PPI_BatchSize,
+      rendemen_min,
+      PPI_batchsizekemasan = '',
+      PPI_SubID = '',
+      PPI_ProductInit = '',
+      PPI_BatchSizeUnitID = '',
+      PPI_Kemasan = '',
+      JumlahLOT = '',
+      kemas01 = '',
+      DataGrid = [],
       gstrUserName,
       gstrDelegatedTo,
       tag
     } = req.body;
 
     // Validate required fields
-    if (!PPI_ID || !dcoPPI_Description) {
+    if (!PPI_ID || !PPI_Description) {
       return res.status(400).json({ message: "Lengkapi Dahulu KODE PRODUK, OLAH/KEMAS, PS/TOLL-IN/TOLL-OUT !!!" });
     }
 
-    if (!TxtPPI_BatchSize || Number(TxtPPI_BatchSize) <= 0) {
+    if (!PPI_BatchSize || Number(PPI_BatchSize) <= 0) {
       return res.status(400).json({ message: "Batch size harus diisi, tidak boleh kosong." });
     }
 
-    if (isNaN(TXT_rendemen_min) || TXT_rendemen_min > 100) {
+    if (isNaN(rendemen_min) || rendemen_min > 100) {
       return res.status(400).json({ message: "Rendemen nilai Maximum 100 %." });
     }
 
-    if (isNaN(txt_pPI_batchsizekemasan) || Number(txt_pPI_batchsizekemasan) <= 0) {
+    if (isNaN(PPI_batchsizekemasan) || Number(PPI_batchsizekemasan) <= 0) {
       return res.status(400).json({ message: "Besar Bets dalam satuan jual, harus lebih besar dari nol !" });
     }
 
@@ -57,10 +57,10 @@ const createNewMasterFormulaTemplate = async (req, res) => {
        PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID,
        Delegated_To, isActive, ppi_lot, pPI_batchsizekemasan, rendemen_min, PPI_Kemasan01)
       VALUES
-      (:PPI_ID, :TxtPPI_SubID, :TxtPPI_ProductID, :TxtPPI_ProductInit,
-       :TxtPPI_BatchSize, :dcoPPI_BatchSizeUnitID, :TxtPPI_Kemasan, 'A',
-       :currentDateTime, :gstrUserName, :gstrDelegatedTo, '1', :txtJumlahLOT,
-       :txt_pPI_batchsizekemasan, :TXT_rendemen_min, :Txt_kemas01);
+      (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
+       :PPI_BatchSize, :PPI_BatchSizeUnitID, :PPI_Kemasan, 'A',
+       :currentDateTime, :gstrUserName, :gstrDelegatedTo, '1', :JumlahLOT,
+       :PPI_batchsizekemasan, :rendemen_min, :kemas01);
     `;
 
     // Process DataGrid
@@ -75,7 +75,7 @@ const createNewMasterFormulaTemplate = async (req, res) => {
           (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID,
            PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
           VALUES
-          (:PPI_ID, :TxtPPI_SubID, :TxtPPI_ProductID, :TxtPPI_ProductInit,
+          (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
            ${index + 1}, :ItemID, :QTY, :UnitID, :currentDateTime, :gstrUserName, :gstrDelegatedTo);
         `;
       }).filter(Boolean).join(' ');
@@ -100,19 +100,19 @@ const createNewMasterFormulaTemplate = async (req, res) => {
     await sequelizeMSQL.query(combinedSQL, {
       replacements: {
         PPI_ID,
-        TxtPPI_SubID,
-        TxtPPI_ProductID,
-        TxtPPI_ProductInit,
-        TxtPPI_BatchSize: parseFloat(TxtPPI_BatchSize).toFixed(3),
-        dcoPPI_BatchSizeUnitID,
-        TxtPPI_Kemasan,
+        PPI_SubID,
+        PPI_ProductID,
+        PPI_ProductInit,
+        PPI_BatchSize: parseFloat(PPI_BatchSize).toFixed(3),
+        PPI_BatchSizeUnitID,
+        PPI_Kemasan,
         currentDateTime,
         gstrUserName: gstrUserName || user_id,
         gstrDelegatedTo: gstrDelegatedTo || delegated_to,
-        txtJumlahLOT,
-        txt_pPI_batchsizekemasan,
-        TXT_rendemen_min,
-        Txt_kemas01,
+        JumlahLOT,
+        PPI_batchsizekemasan,
+        rendemen_min,
+        kemas01,
         tag
       },
       type: QueryTypes.INSERT
@@ -261,5 +261,110 @@ const exportStatusPembuat = async (req, res) => {
   }
 };
 
+const updateMasterFormulaTemplate = async (req, res) => {
+  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_lot, pPI_batchsizekemasan, rendemen_min, PPI_Kemasan01, DataGrid = [] } = req.body;
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user
 
-module.exports = { exportStatusPembuat, createNewMasterFormulaTemplate };
+  if (!PPI_ID && !PPI_SubID && !PPI_ProductID && !PPI_ProductInit) {
+    return res.status(400).send({ message: "All parameters (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit) are required" });
+  }
+
+  if (!PPI_BatchSize || Number(PPI_BatchSize) <= 0) {
+    return res.status(400).send({ message: "Besar Bets dalam satuan jual, harus lebih besar dari nol !" });
+  }
+
+  if (isNaN(rendemen_min) || rendemen_min > 100) {
+    return res.status(400).send({ message: "Rendemen nilai Maximum 100 %." });
+  }
+
+  try {
+    const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    // Delete existing records
+    const deleteSQL = `
+      DELETE FROM m_PPI_Detail_template
+      WHERE ISNULL(item_Periode, '') = '' AND
+        PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+    `;
+
+    // Process DataGrid
+    let detailSQL = '';
+    if (Array.isArray(DataGrid) && DataGrid.length > 0) {
+      detailSQL = DataGrid.map((row, index) => {
+        const { ItemID, QTY, UnitID } = row;
+        console.log({ItemID, test: 'asd'});
+        if (!ItemID || ItemID.includes('(NONE)')) return null;
+
+        return `
+          INSERT INTO m_PPI_Detail_template
+          (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID,
+           PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
+          VALUES
+          (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
+           ${index + 1}, '${ItemID}', '${QTY}', '${UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
+        `;
+      }).filter(Boolean).join(' ');
+    }
+
+    // Update header
+      const updateHeaderSQL = `
+      UPDATE m_PPI_Header_template
+      SET PPI_BatchSize = :PPI_BatchSize,
+          PPI_Kemasan = :PPI_Kemasan,
+          PPI_BatchSizeUnitID = :PPI_BatchSizeUnitID,
+          PPI_lot = :PPI_lot,
+          pPI_batchsizekemasan = :pPI_batchsizekemasan,
+          rendemen_min = :rendemen_min,
+          PPI_Kemasan01 = :PPI_Kemasan01
+      WHERE ISNULL(item_Periode, '') = '' AND
+            PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+    `;
+
+    console.log({updateHeaderSQL});
+    // Update product owner
+    const updateProductOwnerSQL = `
+      UPDATE m_product
+      SET Product_Owner = :deptID
+      WHERE Product_ID = :PPI_ProductID;
+
+      UPDATE m_Product_template
+      SET Product_Owner = :deptID
+      WHERE Product_ID = :PPI_ProductID AND ISNULL(Product_Periode, '') = '';
+    `;
+
+    const deptID = bagian_user;
+
+    // Combine all SQL
+    const combinedSQL = `${deleteSQL} ${detailSQL} ${updateHeaderSQL} ${updateProductOwnerSQL}`;
+
+    // Execute SQL
+    await sequelizeMSQL.query(combinedSQL, {
+      replacements: {
+        PPI_ID,
+        PPI_SubID,
+        PPI_ProductID,
+        PPI_ProductInit,
+        PPI_BatchSize: parseFloat(PPI_BatchSize).toFixed(3),
+        PPI_BatchSizeUnitID,
+        PPI_Kemasan,
+        currentDateTime,
+        gstrUserName: user_id,
+        gstrDelegatedTo: delegated_to,
+        PPI_lot,
+        pPI_batchsizekemasan,
+        rendemen_min,
+        PPI_Kemasan01,
+        tag: `${PPI_ID}${PPI_SubID}${PPI_ProductInit}`,
+        deptID
+      },
+      type: QueryTypes.INSERT
+    });
+
+    return res.status(200).json({ message: "Data has been updated successfully." });
+  } catch (error) {
+    console.error({ error });
+    return res.status(500).json({ message: "Error while updating master formula template", details: error.message });
+  }
+};
+
+module.exports = { exportStatusPembuat, createNewMasterFormulaTemplate, updateMasterFormulaTemplate };
