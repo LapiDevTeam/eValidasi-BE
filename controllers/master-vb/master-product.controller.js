@@ -6,12 +6,17 @@ const { getPagination, getPagingData } = require('../../helpers/pagination');
 class MasterProductController {
   static async fetchProduct(req, res, next) {
     try {
-      const { productCategory } = req.query;
+      const { productCategory, isTemplate = 1 } = req.query;
+      let viewName = 'vwProduct_template';
+
       if (!productCategory) throw new MyError(400, 'productCategory is required');
 
+      if (isTemplate == 0) {
+        viewName = 'vwProduct';
+      }
       const sqlCode = `
-      select A.CDOB_01, A.CDOB_02, A.CDOB_03, A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
-      from vwProduct_template as A
+      select A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
+      from ${viewName} as A
       left join m_customer_product on A.product_id = m_customer_product.product_id
       left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
       where A.isActive = 1 and product_category = :productCategory order by A.Product_ID
@@ -139,6 +144,7 @@ class MasterProductController {
         const queryGetProduct = `
         SELECT TOP 1 isnull(product_id, '') as Product_ID FROM m_product_auto_number where pk_id > (select top 1 PK_ID From m_product_auto_number where product_id in (select top 1 product_id from m_Product_template where isnull(product_periode,'') = '' and len(product_id) = 2 order by pk_Id desc)) order by pk_id
         `;
+        console.log({queryGetProduct});
         const [getProductID] = await sequelizeMSQL.query(queryGetProduct, {});
         if (getProductID.length === 0) {
           return res.status(400).json({ message: 'Gagal mendapatkan Product ID' });
@@ -615,16 +621,6 @@ class MasterProductController {
     }
   }
 
-  static async createBahanAktifByProductID(req, res, next) {
-    const transaction = await sequelizeMSQL.transaction();
-    try {
-      const { user_id, delegated_to, nama_user } = req.user;
-    } catch (error) {
-      console.log({ error });
-      next(error);
-    }
-  }
-
   static async getBahanAktif(req, res, next) {
     try {
       const { productID } = req.query;
@@ -951,11 +947,10 @@ class MasterProductController {
       const response = getPagingData(data, page, limit);
       return res.status(200).json(response);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error:', error, '@generateDAProduk');
       res.status(500).json({ message: 'Failed to export file', extraData: error.message || 'internal server error' });
     }
   }
-
 
   static async deleteProduct(req, res, next) {
     const transaction = await sequelizeMSQL.transaction();
@@ -1131,6 +1126,39 @@ class MasterProductController {
       console.error('Error fetching last approve date:', error);
       throw error;
     }
+  }
+
+  static async getGeneratedLink(req, res, next) {
+    try {
+      const { user_id, delegated_to } = req.user;
+      let { psn, id, tgl, fileN, uid = user_id, did = delegated_to, token } = req.query;
+
+      if(!user_id) throw new MyError(401, 'not authorized');
+
+      if (!psn || !id || !tgl || !fileN ) {
+        throw new MyError(400, 'All query parameters are required');
+      }
+
+      const execSP = await sequelizeMSQL.query(`SELECT dbo.fnGetToken('${user_id}') AS Token`, {
+        type: QueryTypes.SELECT,
+      });
+
+      token = execSP[0].Token;
+      if (!token || token === '') {
+        throw new MyError(500, 'Failed to generate token');
+      }
+
+      const link = MasterProductController.generateLink(psn, id, tgl, fileN, uid, did, token);
+
+      res.status(200).json({ link });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static generateLink(psn, id, tgl, fileN, uid, did, token) {
+    const urlEprintHub = process.env.EPRINTHUB_ENDPOINT || 'http://192.168.1.39:8080/eprinthub/PrintOffice.aspx'
+    return `${urlEprintHub}?psn=${psn}&id=${id}&tgl=${tgl}&FileN=${fileN}&UID=${uid}&DID=${did}&Token=${token}`;
   }
 }
 

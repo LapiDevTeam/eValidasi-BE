@@ -7,6 +7,7 @@ const masterPemasokRouter = require("./master-pemasok");
 const masterItemOri = require("./master-item-ori");
 const masterItemBahanKemasTemplateRouter = require("./master-item-bahan-kemas-template");
 const masterProductRouter = require("./master-product.routes");
+const masterFormulaRouter = require("./master-formula.routes.");
 
 // masterRouter.use(authentication);
 
@@ -19,5 +20,6 @@ masterRouter.use(
   masterItemBahanKemasTemplateRouter
 );
 masterRouter.use("/item-bahan-awal-template", masterBahanAwalTemplate);
+masterRouter.use("/formula", masterFormulaRouter );
 
 module.exports = masterRouter;
