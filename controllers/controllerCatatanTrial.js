@@ -19,7 +19,7 @@ const {
   t_hasilPengamatan,
   sequelize,
 } = require("../models");
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 const sql = require("mssql");
 const MyError = require("../helpers/errors");
@@ -36,8 +36,97 @@ const path = require("path");
 const fs = require("fs");
 const { generateAndReadTest } = require("../helpers/pdf.helper");
 const { PDFDocument, rgb } = require("pdf-lib");
+const puppeteer = require("puppeteer");
+const { verify } = require("../../LMS_BE/helpers/jwt");
+const logoPath = path.resolve(__dirname, "../publicuploads/logos.png");
+const logoBase64 = `data:image/png;base64,${fs
+  .readFileSync(logoPath)
+  .toString("base64")}`;
 
 class ControllerCatatanTrial {
+  static async printCatatanTrial(req, res) {
+    const { link, type, kode } = req.query;
+
+    console.log(type, "<< type");
+
+    // const payload = verify(link);
+
+    // console.log(payload.link, "< pay;oad");
+
+    // const link2 = "" + payload.link;
+    // const link2 =
+    //   "http://localhost:5174/ePengembanganFormula-dev/catatan-trial/print/398/padat";
+
+    // console.log(link2, "< link2");
+
+    let browser;
+    try {
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
+
+      await page.goto(link, { waitUntil: "networkidle0" });
+
+      await page.addStyleTag({
+        content: `
+          * {
+            font-size: 12px !important;
+            font-family: Arial, sans-serif;
+          }
+        `,
+      });
+
+      // Membuat PDF dalam bentuk buffer
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        displayHeaderFooter: true,
+        printBackground: true,
+        footerTemplate: `
+          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+            <tr>
+              <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+              <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
+              <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+              <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
+              <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+              <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
+              <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+              <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+            </tr>
+          </table>
+        `,
+        headerTemplate: `
+        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 60px; text-align: center;">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
+          <td style="border: 1px solid gray; height: 60px; text-align: center;">
+            <h1 style="font-weight: bold; font-size: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: Verdana, sans-serif;">
+              <span>${type}</span>
+            </h1>
+          </td>
+        </tr>
+      </table>
+      
+      
+        `,
+        margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
+      });
+
+      await browser.close();
+
+      res.end(pdfBuffer);
+    } catch (error) {
+      console.error("Error during printCatatanTrial:", error);
+
+      if (browser) await browser.close();
+
+      res
+        .status(500)
+        .send({ error: "An error occurred during PDF generation." });
+    }
+  }
+
   static async addPageNumbersToHalaman(req, res) {
     const { inputPath, outputPath } = req.body;
 
@@ -4253,7 +4342,7 @@ ORDER BY
         user_id,
         delegated_to,
         flag_update,
-        tableIndex
+        tableIndex,
       } = req.body;
 
       // Generate a unique ID for the new record
@@ -4280,72 +4369,77 @@ ORDER BY
       });
 
       return res.status(201).json({
-        message: 'Hasil pengamatan created successfully',
+        message: "Hasil pengamatan created successfully",
         data: newHasilPengamatan,
       });
     } catch (err) {
       console.log({ err });
       return res.status(500).json({
-        message: err?.message || 'Internal Server Error',
+        message: err?.message || "Internal Server Error",
       });
     }
   }
 
   static async getAllHasilPengamatan(req, res) {
     try {
-      let {tableIndex, colIndex, rowIndex, parameter, filePath} = req.query;
+      let { tableIndex, colIndex, rowIndex, parameter, filePath } = req.query;
       filePath = parseInt(filePath);
-      let where = {}
+      let where = {};
 
       if (!filePath) {
-        where['path'] = {
-            [Op.eq]: null
+        where["path"] = {
+          [Op.eq]: null,
         };
       } else {
-        where['path'] = {
-          [Op.ne]: null
+        where["path"] = {
+          [Op.ne]: null,
         };
       }
 
-      if (!parameter) throw new Error('Parameter harus di isi')
+      if (!parameter) throw new Error("Parameter harus di isi");
       if (!tableIndex || !colIndex || !rowIndex) {
-        where['parameter'] = parameter
+        where["parameter"] = parameter;
       } else {
-        where['tableIndex'] = tableIndex;
-        where['colIndex'] = colIndex;
-        where['rowIndex'] = rowIndex;
+        where["tableIndex"] = tableIndex;
+        where["colIndex"] = colIndex;
+        where["rowIndex"] = rowIndex;
       }
 
-      where['parameter'] = parameter;
+      where["parameter"] = parameter;
 
-      const allHasilPengamatan = await t_hasilPengamatan.findAll({where});
+      const allHasilPengamatan = await t_hasilPengamatan.findAll({ where });
       return res.status(200).json({
-        message: 'OK',
+        message: "OK",
         data: allHasilPengamatan,
       });
     } catch (err) {
-      console.log({err});
+      console.log({ err });
       return res.status(500).json({
-        message: err?.message || 'Internal Server Error',
+        message: err?.message || "Internal Server Error",
       });
     }
   }
 
-  static async updateHasilPengamatan (req, res) {
+  static async updateHasilPengamatan(req, res) {
     try {
       const { parameter, tableIndex, colIndex, rowIndex } = req.body;
       const updates = req.body.updates;
 
-      if (!parameter || tableIndex === undefined || colIndex === undefined || rowIndex === undefined) {
+      if (
+        !parameter ||
+        tableIndex === undefined ||
+        colIndex === undefined ||
+        rowIndex === undefined
+      ) {
         return res.status(400).json({
-          message: 'parameter, tableIndex, colIndex, and rowIndex are required.',
+          message:
+            "parameter, tableIndex, colIndex, and rowIndex are required.",
         });
       }
 
-
-      if (!updates || typeof updates !== 'object') {
+      if (!updates || typeof updates !== "object") {
         return res.status(400).json({
-          message: 'No updates provided or invalid update data.',
+          message: "No updates provided or invalid update data.",
         });
       }
 
@@ -4359,27 +4453,26 @@ ORDER BY
         },
       });
 
-
       if (!record) {
         return res.status(404).json({
-          message: 'Record not found.',
+          message: "Record not found.",
         });
       }
 
       await record.update(updates);
 
       return res.status(200).json({
-        message: 'Record updated successfully.',
+        message: "Record updated successfully.",
         data: record,
       });
     } catch (err) {
       console.error(err);
       return res.status(500).json({
-        message: 'Internal Server Error',
+        message: "Internal Server Error",
         error: err.message,
       });
     }
-  };
+  }
 }
 
 module.exports = ControllerCatatanTrial;

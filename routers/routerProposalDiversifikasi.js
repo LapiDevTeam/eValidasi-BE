@@ -4,6 +4,11 @@ const router = express.Router();
 const ControllerProposalDiversifikasi = require("../controllers/controllerProposalDiversifikasi");
 const { authentication } = require("../middlewares/authentication");
 
+router.get(
+  "/print-proposalDiversifikasi",
+  ControllerProposalDiversifikasi.printProposalDiversifikasi
+);
+
 router.post(
   "/create-proposal-diversifikasi",
   authentication,

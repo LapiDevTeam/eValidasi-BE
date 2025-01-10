@@ -9,6 +9,8 @@ const upload = multer({ storage });
 const ControllerFormulaFix = require("../controllers/controllerFormulaFix");
 const { authentication } = require("../middlewares/authentication");
 
+router.get("/print-formulaFix", ControllerFormulaFix.printFormulaFix);
+
 router.post(
   "/create-formulaFix",
   authentication,

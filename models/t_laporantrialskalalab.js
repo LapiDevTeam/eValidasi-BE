@@ -82,7 +82,7 @@ module.exports = (sequelize, DataTypes) => {
       productBriefNo: DataTypes.STRING,
       hasilStudiPraformulasiNo: DataTypes.STRING,
       protokolPenelitianNo: DataTypes.STRING,
-      status: DataTypes.STRING,
+      statusDokumen: DataTypes.STRING,
       rdSelection: DataTypes.STRING,
       lainlain: DataTypes.JSONB,
       permasalahan: DataTypes.TEXT,
