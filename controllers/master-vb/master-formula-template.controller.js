@@ -315,7 +315,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
           rendemen_min = :rendemen_min,
           PPI_Kemasan01 = :PPI_Kemasan01
       WHERE ISNULL(item_Periode, '') = '' AND
-            PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+            PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag;
     `;
 
     console.log({updateHeaderSQL});
@@ -336,6 +336,8 @@ const updateMasterFormulaTemplate = async (req, res) => {
     const combinedSQL = `${deleteSQL} ${detailSQL} ${updateHeaderSQL} ${updateProductOwnerSQL}`;
 
     // Execute SQL
+    const tag =  `${PPI_ID}${PPI_SubID}${PPI_ProductID}${PPI_ProductInit}`;
+    console.log({tag});
     await sequelizeMSQL.query(combinedSQL, {
       replacements: {
         PPI_ID,
@@ -352,7 +354,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
         pPI_batchsizekemasan,
         rendemen_min,
         PPI_Kemasan01,
-        tag: `${PPI_ID}${PPI_SubID}${PPI_ProductInit}`,
+        tag,
         deptID
       },
       type: QueryTypes.INSERT
@@ -469,7 +471,7 @@ const preApprove = async (req, res, next) => {
 const deleteMasterFormulaTemplate = async (req, res) => {
   const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.body;
   const { user_id, bagian_user } = req.user;
-
+  console.log({asasasasas: req.user});
   if (!PPI_ID || !PPI_SubID || !PPI_ProductID || !PPI_ProductInit) {
     return res.status(400).send({ message: 'Lengkapi Dahulu KODE PRODUK, OLAH/KEMAS, PS/TOLL-IN/TOLL-OUT !!!' });
   }
@@ -548,15 +550,9 @@ const deleteMasterFormulaTemplate = async (req, res) => {
         replacements: { tag },
         type: QueryTypes.DELETE,
       });
+      //CEK APPROVE
+      return res.status(200).send({ message: "Data has been deleted successfully." });
 
-      if (deleteResult) {
-        const cekApproval = await fnApprove([], [], 0);
-        if (cekApproval?.success) {
-          return res.status(400).send({ message: 'Cannot delete data that has been approved or rejected.' });
-        }
-        // await sbUpdateFUPTL(tag, user_id);
-        return res.status(200).send({ message: "Data has been deleted successfully." });
-      }
     }
   } catch (error) {
     console.error({ error });
