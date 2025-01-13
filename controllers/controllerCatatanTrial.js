@@ -37,7 +37,7 @@ const fs = require("fs");
 const { generateAndReadTest } = require("../helpers/pdf.helper");
 const { PDFDocument, rgb } = require("pdf-lib");
 const puppeteer = require("puppeteer");
-const { verify } = require("../../LMS_BE/helpers/jwt");
+// const { verify } = require("../../LMS_BE/helpers/jwt");
 const logoPath = path.resolve(__dirname, "../publicuploads/logos.png");
 const logoBase64 = `data:image/png;base64,${fs
   .readFileSync(logoPath)

@@ -54,7 +54,7 @@ const moment = require("moment");
 const path = require("path");
 const fs = require("fs");
 const puppeteer = require("puppeteer");
-const { verify } = require("../../LMS_BE/helpers/jwt");
+// const { verify } = require("../../LMS_BE/helpers/jwt");
 const logoPath = path.resolve(__dirname, "../publicuploads/logos.png");
 const logoBase64 = `data:image/png;base64,${fs
   .readFileSync(logoPath)
