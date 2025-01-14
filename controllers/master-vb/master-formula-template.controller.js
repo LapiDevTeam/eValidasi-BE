@@ -1179,7 +1179,92 @@ const getPrintOutData = async (req, res) => {
   }
 };
 
+const exportLockBatch = async (req, res) => {
+  try {
+    let strSQL = `
+      SELECT
+        b.product_name AS [Nama Produk],
+        a.PPI_ProductID AS [Kode Produk],
+        a.PPI_ID AS [PPI],
+        a.PPI_SubID AS [Kombinasi Formula],
+        a.PPI_Batchno AS [No.Batch],
+        a.PPI_Keterangan AS [Keterangan],
+        CONVERT(nvarchar(20), a.Process_Date, 121) AS [Tanggal],
+        c.emp_Name AS UserID,
+        d.emp_name AS [Delegasi Oleh]
+      FROM m_ppi_header_lock a
+      LEFT JOIN m_Product b ON a.ppi_productid = b.Product_ID
+      LEFT JOIN m_employee c ON a.User_ID = c.emp_NIK
+      LEFT JOIN m_employee d ON a.Delegated_to = d.emp_NIK
+      UNION ALL
+      SELECT
+        b.product_name AS [Nama Produk],
+        a.PPI_ProductID AS [Kode Produk],
+        a.PPI_ID AS [PPI],
+        a.PPI_SubID AS [Kombinasi Formula],
+        'All Batch' AS [No.Batch],
+        'Menunggu Persetujuan BPOM' AS [Keterangan],
+        CONVERT(nvarchar(20), a.Process_Date, 121) AS [Tanggal],
+        c.emp_Name AS UserID,
+        d.emp_name AS [Delegasi Oleh]
+      FROM m_ppi_header a
+      LEFT JOIN m_Product b ON a.ppi_productid = b.Product_ID
+      LEFT JOIN m_employee c ON a.User_ID = c.emp_NIK
+      LEFT JOIN m_employee d ON a.Delegated_to = d.emp_NIK
+      WHERE a.PPI_Status = 'I' AND a.isActive = 1
+    `;
 
+    const result = await sequelizeMSQL.query(strSQL, {
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet 1");
+
+    worksheet.addRow(["Excel Report"]);
+    worksheet.addRow([`Print On : ${new Date().toLocaleString()}`]);
+    worksheet.addRow([``]);
+
+    // Add headers
+    const headers = Object.keys(result[0]);
+    worksheet.addRow(headers);
+
+    // Add data
+    result.forEach((row) => {
+      worksheet.addRow(Object.values(row));
+    });
+
+    // Format cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        cell.font = { size: 8 };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    worksheet.columns.forEach(column => {
+      column.width = column.values.reduce((max, val) => Math.max(max, val.toString().length), 10);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=lock_batch_export.xlsx');
+    res.send(buffer);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: error.message });
+  }
+};
 
 
 module.exports = {
@@ -1193,5 +1278,6 @@ module.exports = {
   updateMasterFormulaTemplate,
   preApprove,
   deleteMasterFormulaTemplate,
-  getPrintOutData
+  getPrintOutData,
+  exportLockBatch
 };
