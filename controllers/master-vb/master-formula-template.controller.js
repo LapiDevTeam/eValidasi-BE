@@ -1047,6 +1047,151 @@ const approveMGR = async (req, res) => {
   }
 }
 
+const getPrintOutData = async (req, res) => {
+  try {
+    const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+    const { page, size, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, strFONomor, no_FO } = req.query;
+    const { limit, offset } = getPagination(page, size);
+
+    if (!user_id || !bagian_user) {
+      return res.status(400).send({ message: "Unauthorized, Silahkan login terlebih dahulu" });
+    }
+    let strDNCNo = '';
+    let strBypasDate = 'GETDATE()';
+
+    const printQueryStr1 = `
+    SELECT *
+    FROM m_ppi_printout
+    WHERE PPI_ProductID LIKE :PPI_ProductID
+      AND PPI_ProductInit = :PPI_ProductInit
+      AND PPI_ID LIKE :PPI_ID
+      AND PPI_DTNomor LIKE :PPI_DTNomor
+      AND CAST(RIGHT(PPI_DTTanggal, 4) + '/' + SUBSTRING(PPI_DTTanggal, 4, 2) + '/' + LEFT(PPI_DTTanggal, 2) AS DATETIME) <= GETDATE()
+    ORDER BY PPI_DTRevisi DESC
+  `;
+
+    const replacements1 = {
+      PPI_ProductID: `${PPI_ProductID}`,
+      PPI_ProductInit: PPI_ProductInit,
+      PPI_ID: `%${PPI_ID}%`,
+      subID: PPI_SubID,
+      PPI_DTNomor: `%${strFONomor}%`,
+      strBypasDate: strBypasDate
+    };
+
+    const results1 = await sequelizeMSQL.query(printQueryStr1, { replacements: replacements1, type: QueryTypes.SELECT });
+
+    if (results1.length === 0 || !results1) {
+      const printQueryStr2 = `
+      SELECT *
+      FROM m_PPI_PrintOut
+      WHERE PPI_ProductID LIKE 'NONE'
+        AND PPI_ProductInit = 0
+        AND PPI_ID LIKE :PPI_ID
+        AND PPI_DTNomor LIKE :PPI_DTNomor
+        AND CAST(RIGHT(PPI_DTTanggal, 4) + '/' + SUBSTRING(PPI_DTTanggal, 4, 2) + '/' + LEFT(PPI_DTTanggal, 2) AS DATETIME) <= :strBypasDate
+      ORDER BY PPI_DTRevisi DESC
+    `;
+
+      const replacements2 = {
+        PPI_ID: `${PPI_ID}`,
+        PPI_DTNomor: no_FO,
+        strBypasDate: strBypasDate
+      };
+
+      // const results2 = await sequelizeMSQL.query(printQueryStr2, { replacements: replacements2, type: QueryTypes.SELECT });
+
+      let dtTglBerlaku;
+      // if (results2.length > 0) {
+      //   const dateString = results2[0].PPI_DTTanggal;
+      //   dtTglBerlaku = moment(dateString, 'dd/MM/yyyy').toDate();
+      // }
+
+      const queryDataStr = `
+      SELECT * FROM (
+        SELECT
+          KODE,
+          MASTER,
+          [NAMA BAHAN BAKU] AS [NAMA BAHAN],
+          UKURAN,
+          [JUMLAH TEORITIS],
+          SATUAN,
+          NO,
+          ITEM_DESCRIPTION,
+          PPI_ProductID,
+          PPI_ProductInit,
+          Reg_BatchNo,
+          PPI_id,
+          PPI_SubID,
+          ROW_NUMBER() OVER (ORDER BY PPI_SeqID) AS row_num
+        FROM
+          [vwRegPPDetail_Mppi_template]
+        WHERE
+          PPI_ProductID LIKE :PPI_ProductID
+          AND PPI_ProductInit = :PPI_ProductInit
+          AND PPI_id LIKE :PPI_id
+          AND PPI_SubID LIKE :PPI_SubID
+      ) AS temp
+      WHERE row_num BETWEEN :startRow AND :endRow;
+    `;
+
+    const replacementsQueryData = {
+      PPI_ProductID: `%${PPI_ProductID}%`,
+      PPI_ProductInit: PPI_ProductInit,
+      PPI_id: `%${PPI_ID}%`,
+      PPI_SubID: `%${PPI_SubID}%`,
+      startRow: offset + 1,
+      endRow: offset + limit
+    };
+
+    const queryDataResult = await sequelizeMSQL.query(queryDataStr, { replacements: replacementsQueryData, type: QueryTypes.SELECT });
+    let dataCount = 0;
+    if (queryDataResult.length > 0) {
+      dataCount = queryDataResult.length;
+    }
+    const countQuery = `
+      SELECT COUNT(*) AS count
+      FROM [vwRegPPDetail_Mppi_template]
+      WHERE
+        PPI_ProductID LIKE :PPI_ProductID
+        AND PPI_ProductInit = :PPI_ProductInit
+        AND PPI_id LIKE :PPI_id
+        AND PPI_SubID LIKE :PPI_SubID
+    `;
+
+    const [total] = await sequelizeMSQL.query(countQuery, {
+      replacements: { PPI_ProductID, PPI_ProductInit, PPI_id: PPI_ID, PPI_SubID },
+    });
+
+    const data = {
+      rows: queryDataResult,
+      count: total[0]?.count
+    };
+
+    const response = getPagingData(data, page, limit);
+    return res.status(200).json(response);
+    }
+
+    return res.status(200).json({ department, userName, level });
+  } catch (error) {
+    console.error({ error });
+    return res.status(500).send({ message: error.message });
+  }
+};
 
 
-module.exports = { approveSPV, approveMGR, fnapproveSPV, fnApprove, checkApprovalLevel, exportStatusPembuat, createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, deleteMasterFormulaTemplate };
+
+
+module.exports = {
+  approveSPV,
+  approveMGR,
+  fnapproveSPV,
+  fnApprove,
+  checkApprovalLevel,
+  exportStatusPembuat,
+  createNewMasterFormulaTemplate,
+  updateMasterFormulaTemplate,
+  preApprove,
+  deleteMasterFormulaTemplate,
+  getPrintOutData
+};
