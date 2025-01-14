@@ -1,7 +1,7 @@
 const express = require("express");
 const masterFormulaRouter = express.Router();
 const { authentication, authenticationLoc } = require("../../middlewares/authentication");
-const { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData } = require("../../controllers/master-vb/master-formula.controller");
+const { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData, exportToExcel } = require("../../controllers/master-vb/master-formula.controller");
 const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData } = require("../../controllers/master-vb/master-formula-template.controller");
 
 // get Product
@@ -25,6 +25,8 @@ masterFormulaRouter.get("/ceklevelapprover", authentication, checkApprovalLevel)
 masterFormulaRouter.post("/approveSPV", authentication, approveSPV);
 masterFormulaRouter.post("/approve", authentication, approveMGR);
 masterFormulaRouter.get("/print", authentication, getPrintOutData);
+masterFormulaRouter.get("/export", exportToExcel);
+masterFormulaRouter.get("/pembuat-export-template", exportStatusPembuat);
 
 
 module.exports = masterFormulaRouter

@@ -571,4 +571,240 @@ const getPPIGridData = async (req, res) => {
   }
 };
 
-module.exports = { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData };
+const exportToExcel = async (req, res) => {
+  const { PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_SubID } = req.query;
+
+  try {
+    let strSQL;
+
+    if (PPI_ID && PPI_ProductID && PPI_ProductInit) {
+      strSQL = `
+        SELECT
+          b.PPI_Owner,
+          b.PPI_Description,
+          a.PPI_ID,
+          a.PPI_SubID,
+          a.PPI_ProductID,
+          b.Product_Name,
+          b.PPI_BatchSize,
+          b.PPI_BatchSizeUnitID,
+          b.PPI_Kemasan,
+          a.PPI_SeqID,
+          a.PPI_ItemID,
+          a.Group_Name,
+          a.Item_Name,
+          a.Item_Size,
+          a.PPI_QTY,
+          a.PPI_UnitID
+        FROM vwPPIDetailWithItem_template a
+        LEFT JOIN vwPPIHeaderWithProductOwner_template b
+          ON a.PPI_ID = b.PPI_ID
+          AND a.PPI_SubID = b.PPI_SubID
+          AND a.PPI_ProductID = b.PPI_ProductID
+          AND a.PPI_ProductInit = b.PPI_ProductInit
+        WHERE b.isActive = 1
+          AND b.PPI_Status = 'A'
+          AND a.PPI_ID LIKE :PPI_ID
+          AND a.PPI_SubID LIKE :PPI_SubID
+          AND a.PPI_ProductID LIKE :PPI_ProductID
+          AND a.PPI_ProductInit = :PPI_ProductInit
+        ORDER BY a.PPI_ProductID, a.PPI_SubID, a.PPI_ID, a.PPI_SeqID
+      `;
+    } else {
+      strSQL = "SELECT * FROM vwPPI_PRINT_template";
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet 1");
+
+    worksheet.addRow(["Master Formula (PROSEDUR PRODUKSI INDUK)"]);
+    worksheet.addRow([`Print On : ${new Date().toLocaleString()}`]);
+    worksheet.addRow([``]);
+
+    // Add headers
+    const headers = Object.keys(result[0]);
+    worksheet.addRow(headers);
+
+    // Add data
+    result.forEach((row) => {
+      worksheet.addRow(Object.values(row));
+    });
+
+    // Format cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        cell.font = { size: 8 };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    worksheet.columns.forEach(column => {
+      column.width = column.values.reduce((max, val) => Math.max(max, val.toString().length), 10);
+    });
+    worksheet.getCell('A1').font = { size: 12, bold: true };
+    worksheet.getRow(4).font = { size: 9, bold: true };
+    worksheet.mergeCells('A1:G1');
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=ppi_export.xlsx');
+    res.send(buffer);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+const exportStatus = async (req, res) => {
+  const { PPI_ProductID } = req.query;
+
+  try {
+    let strSQL;
+
+    if (!PPI_ProductID) {
+      strSQL = `
+        SELECT DISTINCT
+          '' AS PPI_ID,
+          D.Product_Name,
+          A.PPI_ProductID,
+          A.PPI_ItemID,
+          A.Item_Name,
+          A.Prc_ID,
+          A.Prc_Name,
+          CASE
+            WHEN ISNULL(B.Status_PPI, '') = '' THEN ''
+            ELSE ISNULL(B.Status_PPI, '')
+          END AS Status_PPI,
+          CASE
+            WHEN ISNULL(B.Priority, '') = '' THEN ''
+            ELSE ISNULL(B.Priority, '')
+          END AS Priority,
+          C.PPI_Description
+        FROM vw_PPI_Item_PRC_Status AS A
+        LEFT JOIN m_ppi_detail_not_produksi_temp AS B
+          ON A.PPI_ProductID = B.PPI_ProductID
+          AND A.PPI_ItemID = B.PPI_ItemID
+          AND A.Prc_ID = B.Item_prcID
+        LEFT JOIN m_PPI_Type_Owner AS C
+          ON C.PPI_Format = A.PPI_ID
+        LEFT JOIN m_product AS D
+          ON D.Product_ID = A.PPI_ProductID
+        ORDER BY A.PPI_ProductID, A.PPI_ItemID,
+          CASE
+            WHEN ISNULL(B.Status_PPI, '') = '' THEN ''
+            ELSE ISNULL(B.Status_PPI, '')
+          END,
+          CASE
+            WHEN ISNULL(B.Priority, '') = '' THEN ''
+            ELSE ISNULL(B.Priority, '')
+          END
+      `;
+    } else {
+      strSQL = `
+        SELECT DISTINCT
+          '' AS PPI_ID,
+          D.Product_Name,
+          A.PPI_ProductID,
+          A.PPI_ItemID,
+          A.Item_Name,
+          A.Prc_ID,
+          A.Prc_Name,
+          CASE
+            WHEN ISNULL(B.Status_PPI, '') = '' THEN ''
+            ELSE ISNULL(B.Status_PPI, '')
+          END AS Status_PPI,
+          CASE
+            WHEN ISNULL(B.Priority, '') = '' THEN ''
+            ELSE ISNULL(B.Priority, '')
+          END AS Priority,
+          C.PPI_Description
+        FROM vw_PPI_Item_PRC_Status AS A
+        LEFT JOIN m_ppi_detail_not_produksi_temp AS B
+          ON A.PPI_ProductID = B.PPI_ProductID
+          AND A.PPI_ItemID = B.PPI_ItemID
+          AND A.Prc_ID = B.Item_prcID
+        LEFT JOIN m_PPI_Type_Owner AS C
+          ON C.PPI_Format = A.PPI_ID
+        LEFT JOIN m_product AS D
+          ON D.Product_ID = A.PPI_ProductID
+        WHERE A.PPI_ProductID = :PPI_ProductID
+        ORDER BY A.PPI_ProductID, A.PPI_ItemID,
+          CASE
+            WHEN ISNULL(B.Status_PPI, '') = '' THEN ''
+            ELSE ISNULL(B.Status_PPI, '')
+          END,
+          CASE
+            WHEN ISNULL(B.Priority, '') = '' THEN ''
+            ELSE ISNULL(B.Priority, '')
+          END
+      `;
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { PPI_ProductID },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Sheet 1");
+
+    worksheet.addRow(["Excel Report"]);
+    worksheet.addRow([`Print On : ${new Date().toLocaleString()}`]);
+    worksheet.addRow([``]);
+
+    // Add headers
+    const headers = Object.keys(result[0]);
+    worksheet.addRow(headers);
+
+    // Add data
+    result.forEach((row) => {
+      worksheet.addRow(Object.values(row));
+    });
+
+    // Format cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        cell.font = { size: 8 };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    worksheet.columns.forEach(column => {
+      column.width = column.values.reduce((max, val) => Math.max(max, val.toString().length), 10);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=status_export.xlsx');
+    res.send(buffer);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: error.message });
+  }
+};
+
+module.exports = {exportStatus, exportToExcel, getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData };
