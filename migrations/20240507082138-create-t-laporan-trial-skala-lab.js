@@ -42,8 +42,9 @@ module.exports = {
       protokolPenelitianNo: {
         type: Sequelize.STRING,
       },
-      status: {
+      statusDokumen: {
         type: Sequelize.STRING,
+        defaultValue: "Draft",
       },
       rdSelection: {
         type: Sequelize.STRING,

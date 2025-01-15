@@ -8,27 +8,58 @@ router.post(
   authentication,
   ControllerLaporanTrialSkalaLab.createLaporanTrialSkalaLab
 );
+
+router.delete(
+  "/delete-laporan-trial-skala-lab/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.deleteLaporanTrialSkalaLab
+);
+
+router.put(
+  "/update-laporan-trial-skala-lab/:id",
+  ControllerLaporanTrialSkalaLab.updateLaporanTrialSkalaLab
+);
+
 router.post(
   "/aktivitas-dan-waktu-pencapaian",
   ControllerLaporanTrialSkalaLab.createAktivitasDanWaktuPencapaian
 );
 
 router.post(
-  "/create-kesimpulan-formula/:id",
+  "/create-kesimpulan-formula",
   ControllerLaporanTrialSkalaLab.createKesimpulanFormula
 );
-router.post(
-  "/create-ringkasan-hasil-studi-cpp/:id",
-  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
+router.put(
+  "/edit-kesimpulan-formula/:id",
+  ControllerLaporanTrialSkalaLab.editKesimpulanFormula
 );
+
 router.post(
-  "/create-ringkasan-hasil-studi-cma/:id",
-  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCma
-);
-router.post(
-  "/create-kesimpulan-proses-terpilih/:id",
+  "/create-kesimpulan-proses-terpilih",
   ControllerLaporanTrialSkalaLab.createKesimpulanProsesTerpilih
 );
+router.put(
+  "/edit-kesimpulan-proses-terpilih/:id",
+  ControllerLaporanTrialSkalaLab.editKesimpulanProsesTerpilih
+);
+
+router.post(
+  "/create-ringkasan-hasil-studi-cpp",
+  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCpp
+);
+router.put(
+  "/edit-ringkasan-hasil-studi-cpp/:id",
+  ControllerLaporanTrialSkalaLab.editRingkasanHasilStudiCpp
+);
+router.post(
+  "/create-ringkasan-hasil-studi-cma",
+  ControllerLaporanTrialSkalaLab.createRingkasanHasilStudiCma
+);
+router.put(
+  "/edit-ringkasan-hasil-studi-cma/:id",
+  ControllerLaporanTrialSkalaLab.editRingkasanHasilStudiCma
+);
+
 router.post(
   "/create-usulan-penelitian-produk",
   ControllerLaporanTrialSkalaLab.createUsulanPenelitianProduk
@@ -41,13 +72,25 @@ router.post(
   "/create-update-assessment-bahan-aktif",
   ControllerLaporanTrialSkalaLab.createUpdateAssessmentBahanAktif
 );
+router.put(
+  "/edit-update-assessment-bahan-aktif/:id",
+  ControllerLaporanTrialSkalaLab.editUpdateAssessmentBahanAktif
+);
 router.post(
   "/create-update-assessment-bahan-tambahan",
   ControllerLaporanTrialSkalaLab.createUpdateAssessmentBahanTambahan
 );
+router.put(
+  "/edit-update-assessment-bahan-tambahan/:id",
+  ControllerLaporanTrialSkalaLab.editUpdateAssessmentBahanTambahan
+);
 router.post(
   "/create-update-assessment-kemasan",
   ControllerLaporanTrialSkalaLab.createUpdateAssessmentKemasan
+);
+router.put(
+  "/edit-update-assessment-kemasan/:id",
+  ControllerLaporanTrialSkalaLab.editUpdateAssessmentKemasan
 );
 
 router.delete(

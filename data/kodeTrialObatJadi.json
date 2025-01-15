@@ -3,7 +3,7 @@
         "kodeProduk": "LPE",
         "namaObatJadi": "Lanos Kapsul SR",
         "komposisi": [
-            { "dosis": "5 mg", "bahanAktif": "Loratadine" },
+            { "dosis": "5 mg", "bahanAktif": "Pseudoephedrine HCl 60 mg & Loratadine" },
             { "dosis": "60 mg", "bahanAktif": "Pseudoephedrine HCl" }
         ]
         ,
@@ -59,7 +59,8 @@
         "kemasan": "Kotak @ 3 blister @ 10 kaplet salut selaput",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+        "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "ECB",
@@ -73,38 +74,21 @@
         "kemasan": "Kotak @ 3 blister @ 10 tablet salut selaput",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+            "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "NHQ",
-        "namaObatJadi": "Nu-Health Q10",
+        "namaObatJadi": "Nu-Health Maxvit Kaplet Salut Selaput",
         "komposisi":[
-            { "dosis": "40 mg", "bahanAktif": "Ginseng extract" },
-            { "dosis": "4000 IU", "bahanAktif": "Vitamin A" },
-            { "dosis": "2 mg", "bahanAktif": "Vitamin B1" },
-            { "dosis": "2 mg", "bahanAktif": "Vitamin B2" },
-            { "dosis": "1 mg", "bahanAktif": "Vitamin B6" },
-            { "dosis": "1 mcg", "bahanAktif": "Vitamin B12" },
-            { "dosis": "400 IU", "bahanAktif": "Vitamin D" },
-            { "dosis": "10 mg", "bahanAktif": "Vitamin E" },
-            { "dosis": "15 mg", "bahanAktif": "Nikotinamida" },
-            { "dosis": "10 mg", "bahanAktif": "Kalsium pantotenat" },
-            { "dosis": "11.4 mg", "bahanAktif": "Besi" },
-            { "dosis": "90.4 mg", "bahanAktif": "Kalsium" },
-            { "dosis": "1 mg", "bahanAktif": "Tembaga" },
-            { "dosis": "1 mg", "bahanAktif": "Mangan" },
-            { "dosis": "10 mg", "bahanAktif": "Magnesium" },
-            { "dosis": "1 mg", "bahanAktif": "Seng" },
-            { "dosis": "69.8 mg", "bahanAktif": "Dimethylaminoethanol Bitartrate" },
-            { "dosis": "0.2 mg", "bahanAktif": "Rutin" },
-            { "dosis": "8 mg", "bahanAktif": "Fosfor" },
-            { "dosis": "66 mg", "bahanAktif": "Fluorida" }
+            { "dosis": "100 mg", "bahanAktif": "Coenzyme Q10" }
         ]
         ,
-        "kemasan": "Kotak @ 1 Botol @ 30 kapsul",
+        "kemasan": "Kotak @ 1 Botol @ 30 kaplet salut selaput",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+            "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "TBL",
@@ -118,7 +102,8 @@
         "kemasan": "Kotak @ 10 amplop @ 1 strip @ 4 kaplet salut selaput",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+          "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "PMT",
@@ -140,15 +125,18 @@
             { "dosis": "1 mg", "bahanAktif": "Mangan" },
             { "dosis": "10 mg", "bahanAktif": "Magnesium" },
             { "dosis": "1 mg", "bahanAktif": "Seng" },
-            { "dosis": "69.8 mg", "bahanAktif": "Dimethylaminoethanol Bitartrate" },
+            { "dosis": "26 mg", "bahanAktif": "Dimethylaminoethanol Bitartrate" },
             { "dosis": "0.2 mg", "bahanAktif": "Rutin" },
-            { "dosis": "8 mg", "bahanAktif": "Fosfor" },
-            { "dosis": "66 mg", "bahanAktif": "Fluorida" }
+            { "dosis": "69.8 mg", "bahanAktif": "Fosfor" },
+            { "dosis": "0.2 mg", "bahanAktif": "Fluorida" },
+            { "dosis": "8 mg", "bahanAktif": "Potassium" },
+            { "dosis": "66 mg", "bahanAktif": "Lechitin" }
         ],        
         "kemasan": "Kotak @ Botol @ 30 Kaplet Salut Selaput",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+          "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "DOA",
@@ -162,7 +150,8 @@
         "kemasan": "Kotak @ 3 blister @ 10 tablet cepat larut",
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
-        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+        "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu",
+          "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "DOB",
@@ -177,6 +166,7 @@
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+      ,"keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "MMA",
@@ -191,6 +181,7 @@
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+   ,  "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "MMB",
@@ -205,6 +196,7 @@
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+   ,  "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "TGR",
@@ -359,6 +351,7 @@
         "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+    ,  "keterangan":"Write off"
     },
     {
         "kodeProduk": "THZ",
@@ -413,6 +406,7 @@
      , "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+    ,  "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "FNF",
@@ -470,6 +464,7 @@
      , "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+   ,  "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "HPR",
@@ -636,6 +631,7 @@
      , "rencana_berlaku": "2024-07-24 07:00:00.000 +0700",
         "rencana_revisi": 17,
         "rencana_alasan_desc": "Penambahan produk baru sesuai produk brief:\n- Me-Too Imunkid Sirup\n- Me-Too Imunkid Drops\n- Hyosin N-Butylbromide 10 mg + Paracetamol 500 mg Tablet\n- Silodosin 4 mg Tablet Salut Selaput\n- Me too Vipalbumin Plus Sachet\n- Ursodeoxycholic Acid 250 mg (Branded)\n- Me too Dulcolactose 3,35 g/5 mL Sirup\n- Hyaluronate Sodium 10 mg/mL Injeksi\n- Parecoxib 40 mg Serbuk Injeksi\n- Triamcinolone 4 mg Tablet\n- Montelukast Sodium 4 mg Sachet\n- Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Rosuvastatin 10 mg + Ezetimibe 10 mg Tablet Salut Selaput\n- Cysteine 20 mg Injeksi\n- Ranitidine 75 mg Sirup\n- Vortioxetine 10 mg Tablet Salut Selaput\n\nPenghapusan produk untuk ditransfer ke DA.RD.000001:\n- Proma-1 tablet kunyah\n\nPenghapusan produk impor, karena tidak memerlukan kode trial:\n- FLP -> Rhimys 0.5 mg / 2 ml Nebu"
+   ,  "keterangan":"Di-Drop"
     },
     {
         "kodeProduk": "LVT",
@@ -685,7 +681,7 @@
         "komposisi": [
             {
                 "dosis": "0.26-0.27 mg",
-                "bahanAktif": "Cetrorelix acetate (setara dengan cetrorelix 0.25 mg)"
+                "bahanAktif": "Serbuk Injeksi Cetrorelix acetate (setara dengan cetrorelix 0.25 mg)"
             }
         ],
         "kemasan": "Kotak @ 1 vial berisi serbuk untuk injeksi + ampul pelarut WFI 1 ml"
@@ -769,11 +765,11 @@
         "komposisi": [
             {
                 "dosis": "150 mg",
-                "bahanAktif": "Calcium elemental"
+                "bahanAktif": "Calcium elemental (dari Capolac milk Calcium 566.04 mg)"
             },
             {
                 "dosis": "7.5 mg",
-                "bahanAktif": "Zinc Elemental"
+                "bahanAktif": "Zinc Elemental (dari Zinc bisglycinate)"
             },
             {
                 "dosis": "200 IU",
@@ -834,7 +830,7 @@
     },
     {
         "kodeProduk": "URS",
-        "namaObatJadi": "Ursodeoxycholic 250 mg Kapsul",
+        "namaObatJadi": "Ursodeoxycholic 250 mg Kapsul (Ursodeoxycholic Acid 250 mg)",
         "komposisi": [
             {
                 "dosis": "250 mg",
@@ -848,7 +844,7 @@
     },
     {
         "kodeProduk": "ACS",
-        "namaObatJadi": "L-Acys Nebu 100 mg/ml",
+        "namaObatJadi": "L-Acys Nebu 100 mg/ml (Acetylcystein 100 mg/ml @ 3 ml)",
         "komposisi": [
             {
                 "dosis": "100 mg/ml @ 3 ml",
@@ -986,11 +982,11 @@
         "komposisi": [
             {
                 "dosis": "1140 mg",
-                "bahanAktif": "Amoksisilin sodium setara dengan Amoksisilin"
+                "bahanAktif": "Amoksisilin sodium setara dengan Amoksisilin 1 g"
             },
             {
                 "dosis": "238.25 mg",
-                "bahanAktif": "Klavulanat kalium setara dengan Asam klavulanat"
+                "bahanAktif": "Klavulanat kalium setara dengan Asam klavulanat 200 mg"
             }
         ],
         "kemasan": "Kotak @ 1 vial serbuk injeksi"
@@ -1074,7 +1070,7 @@
     },
     {
         "kodeProduk": "RFA",
-        "namaObatJadi": "Rhelafen Injeksi 4 ml",
+        "namaObatJadi": "Rhelafen Injeksi 4 ml (Ibuprofen Injeksi)",
         "komposisi": [
             {
                 "dosis": "100 mg/ml",
@@ -1269,8 +1265,8 @@
                 "bahanAktif": "Parecoxib serbuk injeksi"
             },
             {
-                "dosis": "2 mL",
-                "bahanAktif": "NaCl 0.9% (pelarut)"
+                "dosis": "2 mL per Ampul (pelarut)",
+                "bahanAktif": "NaCl 0.9% @"
             }
         ],
         "kemasan": "Kotak @ 1 vial parecoxib serbuk injeksi 40 mg + 1 ampul NaCl 0,9% sebanyak 2 mL (pelarut)"
@@ -1298,7 +1294,7 @@
         "komposisi": [
             {
                 "dosis": "4 mg",
-                "bahanAktif": "Montelukast Sodium"
+                "bahanAktif": "Montelukast Sodium setara dengan Montelukast"
             }
         ],
         "kemasan": "Kotak @ 30 sachet"
@@ -1311,12 +1307,8 @@
         "namaObatJadi": "Rosuvastatin 20 mg + Ezetimibe 10 mg Tablet Salut Selaput",
         "komposisi": [
             {
-                "dosis": "20 mg",
-                "bahanAktif": "Rosuvastatin Calcium"
-            },
-            {
                 "dosis": "10 mg",
-                "bahanAktif": "Ezetimibe"
+                "bahanAktif": "Kombinasi Rosuvastatin Calcium Eq. to Rosuvastatin 20 mg + Ezetimibe"
             }
         ],
         "kemasan": "Kotak @ 3 blister/strip @ 10 Tablet Salut Selaput"
@@ -1330,11 +1322,7 @@
         "komposisi": [
             {
                 "dosis": "10 mg",
-                "bahanAktif": "Rosuvastatin Calcium"
-            },
-            {
-                "dosis": "10 mg",
-                "bahanAktif": "Ezetimibe"
+                "bahanAktif": "Kombinasi Rosuvastatin Calcium Eq. to Rosuvastatin 10 mg + Ezetimibe"
             }
         ],
         "kemasan": "Kotak @ 3 blister/strip @ 10 Tablet Salut Selaput"
@@ -1369,7 +1357,7 @@
         "namaObatJadi": "Ranitidine 75 mg Sirup",
         "komposisi": [
             {
-                "dosis": "75 mg",
+                "dosis": "75 mg (kemasan botol 60 ml)",
                 "bahanAktif": "Ranitidine"
             }
         ],

@@ -38,6 +38,7 @@ const {
 const {
   getStatusLaporanTrialSkalaLab,
 } = require("../helpers/statusLaporanTrialSkalaLab");
+const { fetchApproverInisial } = require("../services/mssqlService");
 
 class ControllerLaporanTrialSkalaLab {
   static async findAllLaporanTrialSkalaLab(req, res) {
@@ -88,9 +89,156 @@ class ControllerLaporanTrialSkalaLab {
     try {
       const { id } = req.params;
 
-      await t_laporanTrialSkalaLab.destroy({
-        where: { id: id }, // Corrected the where clause
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findLaporanTrialSkalaLab = await t_laporanTrialSkalaLab.findByPk(
+        +id
+      );
+      if (!findLaporanTrialSkalaLab)
+        throw new MyError(404, "Form Formula Fix tidak di temukan");
+
+      // First, update all related records
+      // await t_formulaFix_status.update(
+      //   { user_id, delegated_to, flag_update },
+      //   { where: { FormulaFixID: +id } }
+      // );
+      await t_aktivitasDanWaktuPencapaian.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_kesimpulanFormulaTerpilih.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_ringkasanHasilStudiCpp.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_kesimpulanProsesTerpilih.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_usulanPenelitianProduk.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessment.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentBahanAktif.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentBahanTambahan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_updateRiskAssessmentKemasan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_ringkasanHasilStudiCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_studiScreeningSourceApi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_kriteriaPenerimaan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_studiCppTerhadapCqa.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_bahanAktifCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_bahanTambahanCma.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_hasilDanPembahasanOrientasi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+      await t_LTS_hasilPengamatan.update(
+        { user_id, delegated_to, flag_update },
+        { where: { LaporanTrialSkalaLabID: +id } }
+      );
+
+      // Next, delete all related records
+      // await t_formulaFix_status.destroy({ where: { FormulaFixID: +id } });
+      await t_aktivitasDanWaktuPencapaian.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
       });
+      await t_kesimpulanFormulaTerpilih.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_ringkasanHasilStudiCpp.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_kesimpulanProsesTerpilih.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_usulanPenelitianProduk.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessment.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentBahanAktif.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentBahanTambahan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_updateRiskAssessmentKemasan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_ringkasanHasilStudiCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_studiScreeningSourceApi.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_kriteriaPenerimaan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_studiCppTerhadapCqa.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_bahanAktifCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_bahanTambahanCma.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_hasilDanPembahasanOrientasi.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+      await t_LTS_hasilPengamatan.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
+
+      // Finally, update and delete the main record
+      await t_laporanTrialSkalaLab.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_laporanTrialSkalaLab.destroy({ where: { id: +id } });
 
       res.status(200).send({ msg: "succeed" });
     } catch (err) {
@@ -116,7 +264,7 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
       } = req.body;
 
@@ -134,12 +282,12 @@ class ControllerLaporanTrialSkalaLab {
       // console.log(existingLaporan.dataValues.status, "exis 12312312");
       if (
         existingLaporan &&
-        existingLaporan?.dataValues?.status === "Approved"
+        existingLaporan?.dataValues?.statusDokumen === "Approved"
       ) {
         newRevisi = existingLaporan?.revisi + 1;
       } else if (
         existingLaporan &&
-        existingLaporan?.dataValues?.status !== "Approved"
+        existingLaporan?.dataValues?.statusDokumen !== "Approved"
       ) {
         throw new MyError(
           404,
@@ -163,7 +311,7 @@ class ControllerLaporanTrialSkalaLab {
         hasilStudiPraformulasiNo,
         lainlain,
         ProductBriefId,
-        status,
+        statusDokumen,
         rdSelection,
         pic: nama_user || "",
         bagian: bagian_user || "",
@@ -179,6 +327,62 @@ class ControllerLaporanTrialSkalaLab {
       //     "Product masih Draft, menunggu status menjadi approved"
       //   );
       // }
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
+  static async updateLaporanTrialSkalaLab(req, res, next) {
+    try {
+      const { id } = req.params;
+      const {
+        nomor,
+        tanggal,
+        namaProduk,
+        komposisi,
+        kemasan,
+        alasan,
+        tujuan,
+        productBriefNo,
+        hasilStudiPraformulasiNo,
+        lainlain,
+        ProductBriefId,
+        statusDokumen,
+        rdSelection,
+      } = req.body;
+
+      const [updatedRowsCount] = await t_laporanTrialSkalaLab.update(
+        {
+          nomor: nomor || "",
+          tanggal: tanggal || "",
+          namaProduk: namaProduk,
+          komposisi: komposisi,
+          kemasan: kemasan,
+          alasan: alasan,
+          tujuan: tujuan,
+          productBriefNo: productBriefNo,
+          hasilStudiPraformulasiNo: hasilStudiPraformulasiNo,
+          lainlain: lainlain,
+          ProductBriefId: ProductBriefId,
+          statusDokumen: statusDokumen,
+          rdSelection: rdSelection,
+        },
+        {
+          where: { id: id },
+        }
+      );
+      console.log(updatedRowsCount, "< updated");
+
+      if (updatedRowsCount > 0) {
+        res.status(201).json({
+          message: "Data has been saved!",
+        });
+      } else {
+        res.status(404).json({
+          message: "Laporan Trial Skala Lab not found",
+        });
+      }
     } catch (err) {
       console.error(err);
       next(err);
@@ -202,6 +406,7 @@ class ControllerLaporanTrialSkalaLab {
         pembahasan,
         kesimpulan,
         tindakLanjut,
+        spesifikasiProdukJadi,
       } = req.body;
       const findLaporanTrialSkalaLabID = await t_laporanTrialSkalaLab.findByPk(
         +LaporanTrialSkalaLabID
@@ -224,6 +429,7 @@ class ControllerLaporanTrialSkalaLab {
           pembahasan: pembahasan,
           kesimpulan: kesimpulan,
           tindakLanjut: tindakLanjut,
+          spesifikasiProdukJadi: spesifikasiProdukJadi,
         },
         {
           where: {
@@ -277,7 +483,7 @@ class ControllerLaporanTrialSkalaLab {
       const { id } = req.params;
       const createKesimpulanFormula = await t_kesimpulanFormulaTerpilih.create({
         kesimpulanFormulaTerpilih,
-        LaporanTrialSkalaLabID: +id || null,
+        LaporanTrialSkalaLabID,
       });
 
       res.status(201).json({
@@ -289,19 +495,63 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+
+  static async editKesimpulanFormula(req, res, next) {
+    try {
+      const { kesimpulanFormulaTerpilih } = req.body;
+      const { id } = req.params;
+
+      // Pastikan ID valid
+      if (!id) {
+        return res.status(400).json({
+          message: "Invalid ID",
+        });
+      }
+
+      // Cari data berdasarkan ID
+      const kesimpulanFormula = await t_kesimpulanFormulaTerpilih.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Ganti `id` dengan nilai yang sesuai
+        },
+      });
+
+      console.log(kesimpulanFormula, "< aa");
+
+      if (!kesimpulanFormula) {
+        return res.status(404).json({
+          message: "Kesimpulan formula not found",
+        });
+      }
+
+      // Update data
+      const updatedKesimpulanFormula = await kesimpulanFormula.update({
+        kesimpulanFormulaTerpilih,
+      });
+
+      res.status(200).json({
+        message: "Success update kesimpulan formula",
+        data: updatedKesimpulanFormula,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async createRingkasanHasilStudiCpp(req, res, next) {
     const transaction = await sequelize.transaction();
     try {
-      const { data } = req.body;
+      const { data, LaporanTrialSkalaLabID } = req.body;
       const { id } = req.params;
 
       await Promise.all(
         data?.map(async (newItem) => {
+          console.log(LaporanTrialSkalaLabID, "< IDIDID");
           const createCMA = await t_ringkasanHasilStudiCpp.create(
             {
               title: newItem?.title || "",
               content: newItem?.content || [],
-              LaporanTrialSkalaLabID: +id || null,
+              LaporanTrialSkalaLabID,
             },
             { transaction }
           );
@@ -313,7 +563,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const newData = await t_ringkasanHasilStudiCpp.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID,
         },
       });
 
@@ -328,11 +578,55 @@ class ControllerLaporanTrialSkalaLab {
       }
     }
   }
+
+  static async editRingkasanHasilStudiCpp(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body; // Data baru yang dikirimkan
+      const { id } = req.params; // LaporanTrialSkalaLabID
+
+      // Step 1: Hapus data lama berdasarkan `LaporanTrialSkalaLabID`
+      await t_ringkasanHasilStudiCpp.destroy({
+        where: { LaporanTrialSkalaLabID: id },
+        transaction,
+      });
+
+      // Step 2: Tambahkan data baru
+      const newRecords = await Promise.all(
+        data?.map((newItem) =>
+          t_ringkasanHasilStudiCpp.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id,
+            },
+            { transaction }
+          )
+        )
+      );
+
+      await transaction.commit();
+
+      res.status(200).json({
+        message: "Success update ringkasan hasil studi CPP",
+        data: newRecords,
+      });
+    } catch (err) {
+      console.error("Error updating ringkasan hasil studi CPP:", err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+      res.status(500).json({
+        message: "Failed to update ringkasan hasil studi CPP",
+        error: err.message,
+      });
+    }
+  }
+
   static async createRingkasanHasilStudiCma(req, res, next) {
     const transaction = await sequelize.transaction();
     try {
-      const { data } = req.body;
-      const { id } = req.params;
+      const { data, LaporanTrialSkalaLabID } = req.body;
 
       await Promise.all(
         data?.map(async (newItem) => {
@@ -340,7 +634,7 @@ class ControllerLaporanTrialSkalaLab {
             {
               title: newItem?.title || "",
               content: newItem?.content || [],
-              LaporanTrialSkalaLabID: +id || null,
+              LaporanTrialSkalaLabID,
             },
             { transaction }
           );
@@ -352,7 +646,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const newData = await t_ringkasanHasilStudiCma.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID,
         },
       });
 
@@ -367,6 +661,48 @@ class ControllerLaporanTrialSkalaLab {
       }
     }
   }
+  static async editRingkasanHasilStudiCma(req, res, next) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      const { id } = req.params;
+
+      await t_ringkasanHasilStudiCma.destroy({
+        where: { LaporanTrialSkalaLabID: id },
+        transaction,
+      });
+
+      // Step 2: Tambahkan data baru
+      const newRecords = await Promise.all(
+        data?.map((newItem) =>
+          t_ringkasanHasilStudiCma.create(
+            {
+              title: newItem?.title || "",
+              content: newItem?.content || [],
+              LaporanTrialSkalaLabID: +id,
+            },
+            { transaction }
+          )
+        )
+      );
+
+      await transaction.commit();
+
+      res.status(200).json({
+        message: "Success update ringkasan hasil studi CMA",
+        data: newRecords,
+      });
+    } catch (err) {
+      console.error("Error updating ringkasan hasil studi CMA:", err);
+      if (transaction) {
+        await transaction.rollback();
+      }
+      res.status(500).json({
+        message: "Failed to update ringkasan hasil studi CMA",
+        error: err.message,
+      });
+    }
+  }
   static async createKesimpulanProsesTerpilih(req, res, next) {
     try {
       const { kesimpulanProsesTerpilih, LaporanTrialSkalaLabID } = req.body;
@@ -374,12 +710,53 @@ class ControllerLaporanTrialSkalaLab {
       const createKesimpulanProsesTerpilih =
         await t_kesimpulanProsesTerpilih.create({
           kesimpulanProsesTerpilih,
-          LaporanTrialSkalaLabID: +id || null,
+          LaporanTrialSkalaLabID,
         });
 
       res.status(201).json({
         message: "Success Create kesimpulan proses terpilih",
         data: createKesimpulanProsesTerpilih,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editKesimpulanProsesTerpilih(req, res, next) {
+    try {
+      const { kesimpulanProsesTerpilih } = req.body;
+      const { id } = req.params;
+
+      // Pastikan ID valid
+      if (!id) {
+        return res.status(400).json({
+          message: "Invalid ID",
+        });
+      }
+
+      // Cari data berdasarkan ID
+      const kesimpulanProses = await t_kesimpulanProsesTerpilih.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Ganti `id` dengan nilai yang sesuai
+        },
+      });
+
+      console.log(kesimpulanProses, "< aa");
+
+      if (!kesimpulanProses) {
+        return res.status(404).json({
+          message: "Kesimpulan proses not found",
+        });
+      }
+
+      // Update data
+      const updatedKesimpulanProses = await kesimpulanProses.update({
+        kesimpulanProsesTerpilih,
+      });
+
+      res.status(200).json({
+        message: "Success update kesimpulan proses",
+        data: updatedKesimpulanProses,
       });
     } catch (err) {
       console.error(err);
@@ -455,6 +832,43 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+  static async editUpdateAssessmentBahanAktif(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentBahanAktif.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+
   static async createUpdateAssessmentBahanTambahan(req, res, next) {
     try {
       const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
@@ -469,6 +883,44 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({
         message: "Success createUpdateAssessment",
         data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editUpdateAssessmentBahanTambahan(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentBahanTambahan.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      console.log(existingRecord, "< re");
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
       });
     } catch (err) {
       console.error(err);
@@ -490,6 +942,44 @@ class ControllerLaporanTrialSkalaLab {
       res.status(201).json({
         message: "Success createUpdateAssessment",
         data: createUpdateAssessment,
+      });
+    } catch (err) {
+      console.error(err);
+      next(err);
+    }
+  }
+  static async editUpdateAssessmentKemasan(req, res, next) {
+    try {
+      const { id } = req.params; // ID untuk menemukan record
+      const { cqaHeader, rows, LaporanTrialSkalaLabID } = req.body;
+      console.log(id, " <IIIIDD");
+      // Temukan record berdasarkan ID
+      const existingRecord = await t_updateRiskAssessmentKemasan.findOne({
+        where: {
+          LaporanTrialSkalaLabID: +id, // Pastikan `+id` adalah angka
+        },
+      });
+
+      console.log(existingRecord, "< re");
+
+      if (!existingRecord) {
+        return res.status(404).json({
+          message: "Record not found",
+        });
+      }
+
+      console.log(req.body, "< body");
+
+      // Perbarui record dengan data baru
+      const updatedRecord = await existingRecord.update({
+        cqaHeader,
+        rows,
+        LaporanTrialSkalaLabID,
+      });
+
+      res.status(200).json({
+        message: "Success editUpdateAssessment",
+        data: updatedRecord,
       });
     } catch (err) {
       console.error(err);
@@ -546,6 +1036,20 @@ class ControllerLaporanTrialSkalaLab {
       const apprDeptId = laporanTrialSkalaLabDetails.bagian;
       const apprNo = await checkStatusLaporanTrialSkalaLab(id);
       console.log(apprNo, "< < DEBt ID");
+
+      await Promise.all(
+        laporanTrialSkalaLabDetails.dataValues.approver_data.map(
+          async (el, index) => {
+            el.dataValues.approver_inisial = await fetchApproverInisial({
+              user_id: el.user_id,
+              delegated_to: el.delegated_to,
+            });
+
+            return el;
+          }
+        )
+      );
+
       const isApprove = await isApproveValidation(
         // productBriefDetail.nama_pegawai,
         "laporanTrialSkalaLab",
@@ -682,7 +1186,7 @@ class ControllerLaporanTrialSkalaLab {
         updateRiskAssessmentBahanAktif,
         updateRiskAssessmentBahanTambahan,
         updateRiskAssessmentKemasan,
-        ...(laporanTrialSkalaLabDetails?.dataValues || {}),
+        // ...(laporanTrialSkalaLabDetails?.dataValues || {}),
         isApprove,
       });
     } catch (err) {
@@ -956,23 +1460,22 @@ class ControllerLaporanTrialSkalaLab {
         nama_user
       );
       if (dataApprove.message) throw new MyError(400, dataApprove.message);
-      let status;
+      let statusDokumen;
       if (
         dataApprove.recordset.length > 0 &&
         dataApprove.recordset.Appr_DefinitionID !== 0
       )
-        status = getStatusLaporanTrialSkalaLab(
+        statusDokumen = getStatusLaporanTrialSkalaLab(
           dataApprove.recordset[0]?.Appr_DefinitionID
         );
-      if (dataApprove.recordset1.length === 0) status = "Approved";
+      if (dataApprove.recordset1.length === 0) statusDokumen = "Approved";
       if (is_approve === false) {
-        status = "Reject";
+        statusDokumen = "Reject";
         await t_laporanTrialSkalaLab_status.destroy({
           where: { LaporanTrialSkalaLabID: +id },
         });
       }
 
-      console.log(status, "<< STAUTS");
       console.log(dataApprove.recordset[0]?.Appr_DefinitionID, "<< record set");
 
       console.log(is_approve, "<<< iNI IS APPROVE");
@@ -990,7 +1493,7 @@ class ControllerLaporanTrialSkalaLab {
       });
       await t_laporanTrialSkalaLab.update(
         {
-          status: status,
+          statusDokumen: statusDokumen,
           alasan_reject: keterangan_reject,
           user_id,
           // delegated_to,
@@ -1066,7 +1569,7 @@ class ControllerLaporanTrialSkalaLab {
 
       const prevKriteria = await t_LTS_kriteriaPenerimaan.findAll({
         where: {
-          LaporanTrialSkalaLabID: id,
+          LaporanTrialSkalaLabID: +id,
         },
         order: [["id", "ASC"]],
       });

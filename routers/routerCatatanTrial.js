@@ -6,6 +6,7 @@ const {
   checkFileSizePublicPdf,
 } = require("../middlewares/upload.middleware.js");
 
+router.get("/print-catatanTrial", ControllerCatatanTrial.printCatatanTrial);
 router.post(
   "/duplicate-catatanTrial/:id",
   authentication,
