@@ -1300,7 +1300,7 @@ const createKeteranganApprove = async (req, res) => {
       } else {
         strSQL = `
           UPDATE m_ppi_header_lock_template
-          SET ppi_batchno = '${txtBatchLock}', ppi_keterangan = '${txtKeteranganLock}', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${bagian_user}'
+          SET ppi_batchno = '${txtBatchLock}', ppi_keterangan = '${txtKeteranganLock}', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${delegated_to}'
           WHERE PK_ID = '${PK_ID}'
         `;
       }
@@ -1315,8 +1315,6 @@ const createKeteranganApprove = async (req, res) => {
       `;
     }
 
-
-
     const result = await sequelizeMSQL.query(strSQL);
     await fnUpdateApprove(tag, user_id, delegated_to);
     console.log({result, status: '<--------------------------->'});
@@ -1330,7 +1328,7 @@ const createKeteranganApprove = async (req, res) => {
 
 const editKeteranganApprove = async (req, res) => {
   try {
-    const { user_id, bagian_user } = req.user;
+    const { user_id, bagian_user, delegated_to } = req.user;
     const { tag, checkAllBatch, PK_ID, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
 
     if (!tag || tag === '') {
@@ -1342,30 +1340,30 @@ const editKeteranganApprove = async (req, res) => {
     if (checkAllBatch === 1) {
       strSQL = `
         UPDATE m_ppi_header
-        SET ppi_status = 'I', process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+        SET ppi_status = 'I', process_date = GETDATE(), user_id = :user_id, delegated_to = :delegated_to
         WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
           AND ppi_status = 'A'
           AND isactive = 1
       `;
     } else {
       if (parseInt(PK_ID) === 0) {
-        if (txtBatchLock.trim() !== '') {
+        if (txtBatchLock !== '') {
           strSQL = `
             INSERT INTO m_ppi_header_lock (ppi_productid, ppi_productinit, ppi_id, ppi_subid, ppi_batchno, ppi_keterangan, process_date, user_id, delegated_to)
-            VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :PPI_SubID, :txtBatchLock, :txtKeteranganLock, GETDATE(), :user_id, :bagian_user)
+            VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :PPI_SubID, :txtBatchLock, :txtKeteranganLock, GETDATE(), :user_id, :delegated_to)
           `;
         }
       } else {
         strSQL = `
           UPDATE m_ppi_header_lock
-          SET ppi_batchno = :txtBatchLock, ppi_keterangan = :txtKeteranganLock, process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+          SET ppi_batchno = :txtBatchLock, ppi_keterangan = :txtKeteranganLock, process_date = GETDATE(), user_id = :user_id, delegated_to = :delegated_to
           WHERE PK_ID = :PK_ID
         `;
       }
 
       strSQL += `
         ;UPDATE m_ppi_header
-        SET ppi_status = 'A', process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+        SET ppi_status = 'A', process_date = GETDATE(), user_id = :user_id, delegated_to = :delegated_to
         WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
           AND ppi_status = 'I'
           AND isactive = 1
@@ -1375,7 +1373,7 @@ const editKeteranganApprove = async (req, res) => {
     const result = await sequelizeMSQL.query(strSQL, {
       replacements: {
         user_id,
-        bagian_user,
+        delegated_to,
         tag,
         PK_ID,
         txtBatchLock,
@@ -1388,7 +1386,7 @@ const editKeteranganApprove = async (req, res) => {
       type: QueryTypes.UPDATE
     });
 
-    await fnUpdateApprove(tag, user_id, bagian_user);
+    await fnUpdateApprove(tag, user_id, delegated_to);
     console.log({ result, status: '<--------------------------->' });
 
     return res.status(200).send({ message: 'Keterangan approve updated successfully' });
@@ -1397,6 +1395,47 @@ const editKeteranganApprove = async (req, res) => {
     return res.status(500).send({ message: 'Internal server error', details: error.message });
   }
 };
+
+const deleteKeteranganApprovePPI = async (req, res) => {
+  const { user_id, bagian_user, nama_user, joblevel_id_user, delegated_to } = req.user;
+  const { tag, blnEditBatchLock, PK_ID } = req.body;
+  const gstrUserName = user_id;
+  const gstrDelegatedTo = delegated_to;
+
+  if (!tag) {
+    return res.status(400).send({ message: "Formula produk belum dipilih" });
+  }
+
+  if (!PK_ID) {
+    return res.status(400).send({ message: "Invalid PK_ID" });
+  }
+
+  let strSQL = "";
+  if (blnEditBatchLock === false) {
+    strSQL = `
+      UPDATE m_ppi_header_lock_template
+      SET USER_ID='${gstrUserName}', Delegated_To='${gstrDelegatedTo}', process_date=GETDATE(), flag_update='Update For Delete'
+      WHERE PK_ID='${PK_ID}';
+      DELETE FROM m_ppi_header_lock_template
+      WHERE PK_ID='${PK_ID}';
+    `;
+  } else {
+    strSQL = `
+      UPDATE m_ppi_header_lock
+      SET USER_ID='${gstrUserName}', Delegated_To='${gstrDelegatedTo}', process_date=GETDATE(), flag_update='Update For Delete'
+      WHERE PK_ID='${PK_ID}';
+      DELETE FROM m_ppi_header_lock
+      WHERE PK_ID='${PK_ID}';
+    `;
+  }
+
+  try {
+    await sequelizeMSQL.query(strSQL, { type: QueryTypes.RAW });
+    res.status(200).send({ message: "Data has been deleted" });
+  } catch (error) {
+    res.status(500).send({ message: "Error deleting data", error });
+  }
+}
 
 const getLvwApprove = async (req, res) => {
   try {
@@ -1499,7 +1538,119 @@ const fnUpdateApprove = async (tag, user_id, delegated_to) => {
   }
 };
 
+const getListMergerPPI = async (req, res) => {
+  try {
+    const { blnEditBatchLock, PPI_ID, PPI_ProductID, PPI_SubID, strTempAlternatif } = req.query;
+
+    if (!PPI_ID || !PPI_ProductID || !PPI_SubID) {
+      return res.status(400).send({ message: "Required parameters are missing" });
+    }
+
+    let strSQL = '';
+
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT PPI_ID, PPI_ProductID, PPI_ProductInit, Product_Name, PPI_SubID,
+               CASE WHEN PPI_Status = 'A' THEN 'Active' ELSE 'Inactive' END AS Stat,
+               PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, PPI_Owner,
+               PPI_Description, PPI_Status,
+               CASE WHEN product_owner LIKE 'TM' THEN 'RD3' ELSE product_owner END AS product_owner,
+               PPI_LOT, PPI_revisi
+        FROM vwPPIHeaderwithProductOwner
+        WHERE isActive = 1
+          AND PPI_ID = :PPI_ID
+          AND PPI_ProductID = :PPI_ProductID
+          AND PPI_SubID <> :PPI_SubID
+      `;
+
+      if (strTempAlternatif && strTempAlternatif !== '') {
+        strSQL += ` AND PPI_SubID NOT IN (${strTempAlternatif})`;
+      }
+    } else {
+      strSQL = `
+        SELECT PPI_ID, PPI_ProductID, PPI_ProductInit, Product_Name, PPI_SubID,
+               CASE WHEN PPI_Status = 'A' THEN 'Active' ELSE 'Inactive' END AS Stat,
+               PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, PPI_Owner,
+               PPI_Description, PPI_Status,
+               CASE WHEN product_owner LIKE 'TM' THEN 'RD3' ELSE product_owner END AS product_owner,
+               PPI_LOT, PPI_revisi
+        FROM vwPPIHeaderwithProductOwner_template
+        WHERE isActive = 1
+          AND PPI_ID = :PPI_ID
+          AND PPI_ProductID = :PPI_ProductID
+          AND PPI_SubID <> :PPI_SubID
+      `;
+
+      if (strTempAlternatif && strTempAlternatif !== '') {
+        strSQL += ` AND PPI_SubID NOT IN (${strTempAlternatif})`;
+      }
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { PPI_ID, PPI_ProductID, PPI_SubID },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const createListMergerPPI = async (req, res) => {
+  try {
+    const { blnEditBatchLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, SubID_Alternatif } = req.body;
+    const { user_id, bagian_user, delegated_to } = req.user;
+    console.log({user: req.user});
+
+    if (!PPI_ProductID || !PPI_ProductInit || !PPI_ID || !PPI_SubID || !SubID_Alternatif) {
+      console.log({object: req.body});
+      return res.status(400).send({ message: "Required parameters are missing" });
+    }
+
+    let sql = '';
+
+    if (blnEditBatchLock === true) {
+      sql = `
+        INSERT INTO m_ppi_header_merger (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update)
+        VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :SubID_Alternatif, :PPI_SubID, NULL, GETDATE(), :user_id, :delegated_to, NULL)
+      `;
+    } else {
+      sql = `
+        INSERT INTO m_ppi_header_merger_template (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update)
+        VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :SubID_Alternatif, :PPI_SubID, NULL, GETDATE(), :user_id, :delegated_to, NULL)
+      `;
+    }
+
+    await sequelizeMSQL.query(sql, {
+      replacements: {
+        PPI_ProductID,
+        PPI_ProductInit,
+        PPI_ID,
+        SubID_Alternatif,
+        PPI_SubID,
+        user_id,
+        delegated_to
+      },
+      type: QueryTypes.INSERT
+    });
+
+    return res.status(200).send({ message: 'List Merger PPI created successfully' });
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
 module.exports = {
+  getListMergerPPI,
+  deleteKeteranganApprovePPI,
+  createListMergerPPI,
   getLvwApprove,
   editKeteranganApprove,
   createKeteranganApprove,
