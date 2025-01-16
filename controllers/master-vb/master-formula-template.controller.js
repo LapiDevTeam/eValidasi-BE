@@ -1266,8 +1266,243 @@ const exportLockBatch = async (req, res) => {
   }
 };
 
+const createKeteranganApprove = async (req, res) => {
+  try {
+    const { user_id, bagian_user, nama_user, joblevel_id_user, delegated_to } = req.user;
+    const { tag, checkAllBatch, PK_ID, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
+
+    if (!tag || tag === '') {
+      return res.status(400).send({ message: "Formula produk belum dipilih" });
+    }
+
+    let strSQL = '';
+
+    if (checkAllBatch === 1) {
+      strSQL = `
+        UPDATE m_ppi_header_template
+        SET ppi_status = 'I', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${delegated_to}'
+        WHERE tgl_berlaku IS NULL
+          AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+          AND ppi_status = 'A'
+          AND isactive = 1
+      `;
+    } else {
+      if (parseInt(PK_ID) === 0) {
+        if (txtBatchLock !== '') {
+          strSQL = `
+            INSERT INTO m_ppi_header_lock_Template (ppi_productid, ppi_productinit, ppi_id, ppi_subid, ppi_batchno, ppi_keterangan, process_date, user_id, delegated_to)
+            VALUES (
+              '${PPI_ProductID}', '${PPI_ProductInit}', '${PPI_ID}', '${PPI_SubID}',
+              '${txtBatchLock}', '${txtKeteranganLock}', GETDATE(), '${user_id}', '${delegated_to}'
+            )
+          `;
+        }
+      } else {
+        strSQL = `
+          UPDATE m_ppi_header_lock_template
+          SET ppi_batchno = '${txtBatchLock}', ppi_keterangan = '${txtKeteranganLock}', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${bagian_user}'
+          WHERE PK_ID = '${PK_ID}'
+        `;
+      }
+
+      strSQL += `
+        ;UPDATE m_ppi_header_template
+        SET ppi_status = 'A', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${delegated_to}'
+        WHERE tgl_berlaku IS NULL
+          AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+          AND ppi_status = 'I'
+          AND isactive = 1
+      `;
+    }
+
+
+
+    const result = await sequelizeMSQL.query(strSQL);
+    await fnUpdateApprove(tag, user_id, delegated_to);
+    console.log({result, status: '<--------------------------->'});
+
+    return res.status(200).send({ message: 'Keterangan approve updated successfully' });
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const editKeteranganApprove = async (req, res) => {
+  try {
+    const { user_id, bagian_user } = req.user;
+    const { tag, checkAllBatch, PK_ID, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
+
+    if (!tag || tag === '') {
+      return res.status(400).send({ message: "Formula produk belum dipilih" });
+    }
+
+    let strSQL = '';
+
+    if (checkAllBatch === 1) {
+      strSQL = `
+        UPDATE m_ppi_header
+        SET ppi_status = 'I', process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND ppi_status = 'A'
+          AND isactive = 1
+      `;
+    } else {
+      if (parseInt(PK_ID) === 0) {
+        if (txtBatchLock.trim() !== '') {
+          strSQL = `
+            INSERT INTO m_ppi_header_lock (ppi_productid, ppi_productinit, ppi_id, ppi_subid, ppi_batchno, ppi_keterangan, process_date, user_id, delegated_to)
+            VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :PPI_SubID, :txtBatchLock, :txtKeteranganLock, GETDATE(), :user_id, :bagian_user)
+          `;
+        }
+      } else {
+        strSQL = `
+          UPDATE m_ppi_header_lock
+          SET ppi_batchno = :txtBatchLock, ppi_keterangan = :txtKeteranganLock, process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+          WHERE PK_ID = :PK_ID
+        `;
+      }
+
+      strSQL += `
+        ;UPDATE m_ppi_header
+        SET ppi_status = 'A', process_date = GETDATE(), user_id = :user_id, delegated_to = :bagian_user
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND ppi_status = 'I'
+          AND isactive = 1
+      `;
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: {
+        user_id,
+        bagian_user,
+        tag,
+        PK_ID,
+        txtBatchLock,
+        txtKeteranganLock,
+        PPI_ProductID,
+        PPI_ProductInit,
+        PPI_ID,
+        PPI_SubID
+      },
+      type: QueryTypes.UPDATE
+    });
+
+    await fnUpdateApprove(tag, user_id, bagian_user);
+    console.log({ result, status: '<--------------------------->' });
+
+    return res.status(200).send({ message: 'Keterangan approve updated successfully' });
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const getLvwApprove = async (req, res) => {
+  try {
+    const { tag, blnEditBatchLock } = req.query;
+
+    if (!tag || tag === '') {
+      return res.status(400).send({ message: "Tag is required" });
+    }
+
+    let strSQL = '';
+
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT ppi_batchno, ppi_keterangan, PK_ID
+        FROM m_ppi_header_lock
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    } else {
+      strSQL = `
+        SELECT ppi_batchno, ppi_keterangan, PK_ID
+        FROM m_ppi_header_lock_template
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { tag },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    const response = {
+      items: result.map(row => ({
+        ppi_batchno: row.ppi_batchno,
+        ppi_keterangan: row.ppi_keterangan,
+        PK_ID: row.PK_ID
+      })),
+      chkAllBatch: 0,
+      txtBatchLockEnabled: true
+    };
+
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT ppi_status
+        FROM m_ppi_header
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    } else {
+      strSQL = `
+        SELECT ppi_status
+        FROM m_ppi_header_template
+        WHERE tgl_berlaku IS NULL
+          AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    }
+
+    const statusResult = await sequelizeMSQL.query(strSQL, {
+      replacements: { tag },
+      type: QueryTypes.SELECT
+    });
+
+    if (statusResult.length > 0) {
+      if (statusResult[0].ppi_status === 'A') {
+        response.chkAllBatch = 0;
+        response.txtBatchLockEnabled = true;
+      } else {
+        response.chkAllBatch = 1;
+        response.txtBatchLockEnabled = false;
+      }
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const fnUpdateApprove = async (tag, user_id, delegated_to) => {
+  try {
+    const sql = `
+      UPDATE m_PPI_Header_Template
+      SET spv_Approve_date = NULL, spv_user_approve = NULL, spv_user_Delegated = NULL, Process_Date = GETDATE(), USER_ID = :user_id, Delegated_To = :delegated_to
+      WHERE ISNULL(user_approve, '') = ''
+        AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+    `;
+
+    const result = await sequelizeMSQL.query(sql, {
+      replacements: { tag, user_id, delegated_to },
+      type: QueryTypes.UPDATE
+    });
+
+    return { success: true, result };
+  } catch (error) {
+    console.error('Error disapproving formula:', error);
+    return { success: false, message: 'Error disapproving formula', error };
+  }
+};
 
 module.exports = {
+  getLvwApprove,
+  editKeteranganApprove,
+  createKeteranganApprove,
   approveSPV,
   approveMGR,
   fnapproveSPV,
