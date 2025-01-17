@@ -94,6 +94,11 @@ class MasterProductController {
   static async addNewProduct(req, res, next) {
     try {
       const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+
+      if (!user_id || !bagian_user) return res.status(401).json({
+        message: 'Unauthorized request!'
+      });
+
       let {
         productCategory,
         productType,
@@ -241,13 +246,13 @@ class MasterProductController {
           userName,
           delegatedTo,
           productBatchSize: productBatchSize,
-          productOwner: productOwner,
+          productOwner: bagian_user,
           productBahanAktif: productBahanAktif,
           productBentukSediaan: productBentukSediaan,
           productKemasan: productKemasan,
           productDosis: productDosis,
           productRuangLingkup: productRuangLingkup,
-          productStatus: status,
+          productStatus,
           cdob01,
           cdob02,
           cdob03,
