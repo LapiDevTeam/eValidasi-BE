@@ -1269,7 +1269,7 @@ const exportLockBatch = async (req, res) => {
 const createKeteranganApprove = async (req, res) => {
   try {
     const { user_id, bagian_user, nama_user, joblevel_id_user, delegated_to } = req.user;
-    const { tag, checkAllBatch, PK_ID, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
+    const { tag, checkAllBatch, PK_ID = 0, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
 
     if (!tag || tag === '') {
       return res.status(400).send({ message: "Formula produk belum dipilih" });
@@ -1329,7 +1329,7 @@ const createKeteranganApprove = async (req, res) => {
 const editKeteranganApprove = async (req, res) => {
   try {
     const { user_id, bagian_user, delegated_to } = req.user;
-    const { tag, checkAllBatch, PK_ID, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
+    const { tag, checkAllBatch } = req.body;
 
     if (!tag || tag === '') {
       return res.status(400).send({ message: "Formula produk belum dipilih" });
