@@ -1602,6 +1602,53 @@ const getListMergerPPI = async (req, res) => {
   }
 };
 
+const refreshListMergerPPI = async (req, res) => {
+  try {
+    const { blnEditBatchLock, PPI_ID, PPI_ProductID, PPI_ProductInit } = req.query;
+
+    if (!PPI_ID || !PPI_ProductID || !PPI_ProductInit) {
+      return res.status(400).send({ message: "Required parameters are missing" });
+    }
+
+    let strSQL = '';
+
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT *
+        FROM m_ppi_header_merger
+        WHERE PPI_ID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    } else {
+      strSQL = `
+        SELECT *
+        FROM m_ppi_header_merger_template
+        WHERE ISNULL(user_approve, '') = ''
+          AND PPI_ID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    }
+
+    const result = await sequelizeMSQL.query(strSQL, {
+      replacements: { tag: `${PPI_ID}${PPI_ProductID}${PPI_ProductInit}` },
+      type: QueryTypes.SELECT
+    });
+
+    if (result.length === 0) {
+      return res.status(404).send({ message: "NO DATA FOUND !!!" });
+    }
+
+    const response = result
+      .map(row => ({
+        PPI_SubID: row.PPI_SubID,
+        PPI_SubID_Utama: row.PPI_SubID_Utama
+      }));
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
 const createListMergerPPI = async (req, res) => {
   try {
     const { blnEditBatchLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, SubID_Alternatif } = req.body;
@@ -1648,6 +1695,7 @@ const createListMergerPPI = async (req, res) => {
 };
 
 module.exports = {
+  refreshListMergerPPI,
   getListMergerPPI,
   deleteKeteranganApprovePPI,
   createListMergerPPI,
