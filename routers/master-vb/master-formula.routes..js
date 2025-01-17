@@ -2,7 +2,7 @@ const express = require("express");
 const masterFormulaRouter = express.Router();
 const { authentication, authenticationLoc } = require("../../middlewares/authentication");
 const { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData, exportToExcel } = require("../../controllers/master-vb/master-formula.controller");
-const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData, exportLockBatch, createKeteranganApprove, editKeteranganApprove, getLvwApprove, getListMergerPPI, createListMergerPPI, deleteKeteranganApprovePPI } = require("../../controllers/master-vb/master-formula-template.controller");
+const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData, exportLockBatch, createKeteranganApprove, editKeteranganApprove, getLvwApprove, getListMergerPPI, createListMergerPPI, deleteKeteranganApprovePPI, refreshListMergerPPI } = require("../../controllers/master-vb/master-formula-template.controller");
 
 // get Product
 masterFormulaRouter.get("/ppi-desc", getPPIDescription);
@@ -38,6 +38,7 @@ masterFormulaRouter.delete("/ket-approve", authentication, deleteKeteranganAppro
 
 //merger ppi
 masterFormulaRouter.get("/get-list-merger-ppi", getListMergerPPI);
+masterFormulaRouter.get("/refresh-list-merger-ppi", refreshListMergerPPI);
 masterFormulaRouter.post("/merger-ppi", authentication, createListMergerPPI);
 
 
