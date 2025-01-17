@@ -107,20 +107,14 @@ class ControllerCatatanTrial {
           </td>
         </tr>
       </table>
-      
-      
         `,
         margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
       });
-
       await browser.close();
-
       res.end(pdfBuffer);
     } catch (error) {
       console.error("Error during printCatatanTrial:", error);
-
       if (browser) await browser.close();
-
       res
         .status(500)
         .send({ error: "An error occurred during PDF generation." });
