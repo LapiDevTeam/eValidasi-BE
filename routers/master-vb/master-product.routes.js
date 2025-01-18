@@ -27,6 +27,7 @@ masterProductRouter.get("/print", MasterProductController.generateDAProduk);
 masterProductRouter.get("/print-getlink",authentication, MasterProductController.getGeneratedLink);
 
 masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);
+masterProductRouter.get("/getcdobstatus", MasterProductController.getCDOBstatus);
 
 
 

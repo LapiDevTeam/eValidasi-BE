@@ -1165,6 +1165,41 @@ class MasterProductController {
     const urlEprintHub = process.env.EPRINTHUB_ENDPOINT || 'http://192.168.1.39:8080/eprinthub/PrintOffice.aspx'
     return `${urlEprintHub}?psn=${psn}&id=${id}&tgl=${tgl}&FileN=${fileN}&UID=${uid}&DID=${did}&Token=${token}`;
   }
+
+  static async getCDOBstatus(req, res, next) {
+    try {
+      const {productID} = req.query;
+      console.log('MASUK');
+      if (!productID) return res.status(400).send('missing required parameters!');
+
+      const strSQL = `SELECT ISNULL(A.CDOB_01, '') as CDOB_01, ISNULL(A.CDOB_02, '') as CDOB_02, ISNULL(A.CDOB_03, '') as CDOB_03 from m_product_template A where product_ID = :productID AND ISNULL(A.product_periode, '') = ''`
+
+      const result = await sequelizeMSQL.query(strSQL, {
+        replacements: {
+          productID
+        }
+      })
+
+      const resp = {
+        message: 'OK'
+      }
+      if (!result || result.length <= 0 ) {
+        resp['data'] = null;
+      }
+
+      resp['data'] = result[0]
+
+      return res.status(200).json(resp);
+
+    } catch (error) {
+      console.log({error});
+      const resp = {
+        message: 'Internal server error',
+        details: error?.message
+      }
+      return res.status(500).json(resp)
+    }
+  }
 }
 
 module.exports = MasterProductController;
