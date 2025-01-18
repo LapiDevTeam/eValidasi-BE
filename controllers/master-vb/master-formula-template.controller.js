@@ -368,14 +368,14 @@ const updateMasterFormulaTemplate = async (req, res) => {
 };
 
 const preApprove = async (req, res, next) => {
-  const { PPI_ID, PPI_SubID, PPI_ProductInit } = req.body;
+  const { PPI_ID, PPI_ProductID, PPI_SubID, PPI_ProductInit } = req.body;
   const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
   // console.log({user: req.user});
   if (!PPI_ID || !PPI_SubID || !PPI_ProductInit) {
     return res.status(400).send({ message: "Formula produk belum dipilih, cek parameter" });
   }
 
-  const tag = `${PPI_ID}${PPI_SubID}${PPI_ProductInit}`;
+  const tag = `${PPI_ID}${PPI_SubID}${PPI_ProductID}${PPI_ProductInit}`;
 
   try {
     let strPeriode = moment().format('YYYYMMDD HH:mm:ss');
@@ -385,7 +385,7 @@ const preApprove = async (req, res, next) => {
 
     // Check ppi_ED
     const checkEDSQL = `
-      SELECT ISNULL(ppi_ED, 0) AS ppi_ED
+      SELECT ISNULL(ppi_ED, 0) AS ppi_ED, spv_Approve_date
       FROM m_PPI_Header_Template
       WHERE ISNULL(user_approve, '') = ''
         AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag
@@ -418,6 +418,7 @@ const preApprove = async (req, res, next) => {
       `;
     }
 
+    let arppovedDate = edResult?.length > 0 ? edResult[0]?.spv_Approve_date : null
     if (checkRevisiSQL) {
       const revisiResult = await sequelizeMSQL.query(checkRevisiSQL, {
         replacements: { tag },
@@ -433,7 +434,6 @@ const preApprove = async (req, res, next) => {
         }
       }
     }
-
     // Enable buttons and fields
     const response = {
       blnEditBatchLock: false,
@@ -457,7 +457,8 @@ const preApprove = async (req, res, next) => {
       fraApproveTop: 1680,
       fraApproveLeft: 120,
       Label12Visible: false,
-      lvwMergerPPIVisible: false
+      lvwMergerPPIVisible: false,
+      approvedBySPV: arppovedDate
     };
 
     return res.status(200).json(response);
@@ -880,6 +881,7 @@ const fnApprove = async (
 
 const fnapproveSPV = async (tag, userName, delegatedTo, revision) => {
   try {
+    console.log({tag2: tag});
     const query = `
       UPDATE m_PPI_Header_Template
       SET spv_Approve_date = GETDATE(),
@@ -1000,7 +1002,7 @@ const approveSPV = async (req, res) => {
     console.log({user: req.user});
     // console.log({user: req.user});
     const { tag, userName = user_id, delegatedTo = delegated_to, revision } = req.body;
-
+    console.log({tag});
     if (!tag || !userName) {
       return res.status(400).send({ message: "Tag and UserName are required" });
     }
