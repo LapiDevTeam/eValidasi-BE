@@ -1168,11 +1168,17 @@ class MasterProductController {
 
   static async getCDOBstatus(req, res, next) {
     try {
-      const {productID} = req.query;
+      const {productID, isTemplate} = req.query;
+      let tableName = 'm_product';
+
+      if (isTemplate) tableName = 'm_product_template';
       console.log('MASUK');
       if (!productID) return res.status(400).send('missing required parameters!');
 
-      const strSQL = `SELECT ISNULL(A.CDOB_01, '') as CDOB_01, ISNULL(A.CDOB_02, '') as CDOB_02, ISNULL(A.CDOB_03, '') as CDOB_03 from m_product_template A where product_ID = :productID AND ISNULL(A.product_periode, '') = ''`
+      const strSQL = `SELECT ISNULL(A.CDOB_01, '') as CDOB_01, ISNULL(A.CDOB_02, '') as CDOB_02, ISNULL(A.CDOB_03, '') as CDOB_03
+                FROM ${tableName} A
+                WHERE product_ID = :productID
+                ${isTemplate ? "AND ISNULL(A.product_periode, '') = ''" : ''}`;
 
       const result = await sequelizeMSQL.query(strSQL, {
         replacements: {
