@@ -425,7 +425,7 @@ const preApprove = async (req, res, next) => {
         type: QueryTypes.SELECT
       });
 
-      console.log({revisiResult});
+      // console.log({revisiResult});
       if (revisiResult.length > 0) {
         if (revisiResult[0].ppi_revisi !== "") {
           ppi_revisi = joblevel_id_user === 1 ?
@@ -434,6 +434,19 @@ const preApprove = async (req, res, next) => {
         }
       }
     }
+
+    const cekOriStr = `
+      SELECT A.* from m_ppi_header A
+      WHERE A.PPI_ID + A.PPI_SUBID + A.PPI_PRODUCTID + CONVERT(VARCHAR(1), A.PPI_PRODUCTINIT) LIKE :tag
+    `
+
+    const checkApproveMGR = await sequelizeMSQL.query(cekOriStr, {
+      replacements: { tag },
+      type: QueryTypes.SELECT
+    });
+
+    const approvedByMGR = checkApproveMGR?.length > 0 ? checkApproveMGR[0]?.Process_Date : null;
+
     // Enable buttons and fields
     const response = {
       blnEditBatchLock: false,
@@ -458,11 +471,11 @@ const preApprove = async (req, res, next) => {
       fraApproveLeft: 120,
       Label12Visible: false,
       lvwMergerPPIVisible: false,
-      approvedBySPV: arppovedDate
+      approvedBySPV: arppovedDate,
+      approvedByMGR,
     };
 
     return res.status(200).json(response);
-    return next();
   } catch (error) {
     console.error({ error });
     return res.status(500).send({ message: 'Error while pre-approving master formula template', details: error.message });
