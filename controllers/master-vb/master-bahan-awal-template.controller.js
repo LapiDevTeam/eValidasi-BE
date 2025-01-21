@@ -112,6 +112,8 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
 async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
   try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     let {
       item_ID,
       item_name,
@@ -128,9 +130,9 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
       item_packingSize = '',
       item_localIndent,
       strInput = '0',
-      username,
-      delegatedTo,
-      owner,
+      username = user_id,
+      delegatedTo = delegated_to,
+      owner = bagian_user,
       isHalal,
       row,
       itemStatus = '1'
