@@ -23,7 +23,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
             strInput = "0",
             username = user_id,
             delegatedTo = delegated_to,
-            owner,
+            owner = bagian_user,
             isHalal,
             row,
             itemStatus = "1",
@@ -76,10 +76,10 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
                 '${PK_ID}', 1, '${lblItem_ID}', '${item_name}', '${item_kodeGenerik}', '${item_groupID}',
                 '${item_type}', '${item_size}', '${item_description}', 'IDR', '0', '${item_unit}', '${item_minOrder}',
                 '${item_leadTime}', '${item_packingSize}', '${item_localIndent}', '${strInput}',
-                '${username}', '${delegatedTo}', GETDATE(), 1, '${owner}', '${isHalal}', '${row}', '${itemStatus}'
+                '${user_id}', '${delegated_to}', GETDATE(), 1, '${bagian_user}', '${isHalal}', '${row}', '${itemStatus}'
             )
         `;
-
+        console.log({user: req.user, insertQuery});
         await sequelizeMSQL.query(insertQuery, { type: QueryTypes.INSERT });
 
         return res.status(201).json({ message: `Data berhasil disimpan dengan kode: ${lblItem_ID}` });
