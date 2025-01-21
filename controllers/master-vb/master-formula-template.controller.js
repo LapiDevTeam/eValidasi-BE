@@ -1,7 +1,7 @@
 const e = require('cors');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { getPagination, getPagingData } = require('../../helpers/pagination');
-const { Sequelize } = require('../../models');
+const { Sequelize, sequelize } = require('../../models');
 const ExcelJS = require("exceljs");
 const { QueryTypes, fn } = require('sequelize');
 const moment = require('moment');
@@ -589,42 +589,71 @@ const fnApprove = async (
   ED,
   dcoPPI_Owner
 ) => {
-  // const transaction = await sequelizeMSQL.transaction();
+  const transaction = await sequelizeMSQL.transaction();
   try {
-    const strPeriode = moment().format('YYYYMMDD HH:mm:ss');
+    let strPeriode = moment().format('YYYYMMDD HH:mm:ss');
     const strTglBerlaku = moment().format('YYYY-MM-DD HH:mm:ss');
     let ppi_ED = 0;
     let ppi_revisi = '00';
-
+    let ppi_id = ''
     // Check ppi_ED
     const checkEDSQL = `
-    SELECT ISNULL(ppi_ED, 0) AS ppi_ED
+    SELECT ISNULL(ppi_ED, 0) AS ppi_ED, PPI_ID
     FROM m_PPI_Header_Template
     WHERE ISNULL(user_approve, '') = ''
       AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag
   `;
+
     const edResult = await sequelizeMSQL.query(checkEDSQL, {
       replacements: { tag },
       type: QueryTypes.SELECT,
+      transaction: transaction
     });
+
+    if (!edResult || edResult?.length <= 0) {
+      return {
+        error: false,
+        message: 'PPI Data not found',
+      };
+    }
 
     if (edResult.length > 0) {
       ppi_ED = edResult[0].ppi_ED;
+      ppi_id = edResult[0].PPI_ID;
     }
     console.log({ userName, deptID, delegatedTo, ppi_ED, ppi_revisi });
     const strAppr_Identity = userName;
 
-    let strSQL = `
-  DELETE FROM m_ppi_header_lock
-  WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+    const deleteStrSQL1 = `
+    DELETE FROM m_ppi_header_lock
+    WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag
+    `;
 
-  DELETE FROM m_ppi_header_lock_template
-  WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag;
-  `;
+    const deleteStrSQL2 = `
+    DELETE FROM m_ppi_header_lock_template
+    WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) LIKE :tag
+    `;
 
+   const deleteStrSQL1Result = await sequelizeMSQL.query(deleteStrSQL1, {
+    replacements: {
+      tag
+    },
+    type: QueryTypes.DELETE,
+    transaction
+   })
+   const deleteStrSQL2Result = await sequelizeMSQL.query(deleteStrSQL2, {
+    replacements: {
+      tag
+    },
+    type: QueryTypes.DELETE,
+    transaction
+   })
+
+   console.log({deleteStrSQL1Result, deleteStrSQL2Result});
+    let strInsertListApprovePPI = ''
     if (listApprovePPI.length > 0) {
       listApprovePPI.forEach((item) => {
-        strSQL += `
+        strInsertListApprovePPI += `
         INSERT INTO m_ppi_header_lock (ppi_productid, ppi_productinit, ppi_id, ppi_subid, ppi_batchno, ppi_keterangan, process_date, user_id, delegated_to)
         VALUES ('${productID}', '${productInit}', '${tag}', '${subID}', '${item.batchno}', '${item.keterangan}', GETDATE(), '${userName}', '${delegatedTo}');
 
@@ -634,47 +663,71 @@ const fnApprove = async (
       });
     }
 
+    if (strInsertListApprovePPI?.length > 0) {
+      const resultInsertListApprovePPI = await sequelizeMSQL.query(strInsertListApprovePPI, {
+        type: QueryTypes.INSERT,
+        transaction
+      })
+      console.log({resultInsertListApprovePPI});
+    }
+
+
     if (listMergerPPI.length > 0) {
       const strDateNow = moment().format('YYYY-MM-DD HH:mm:ss');
-      strSQL += `
+
+      const strDeleteMergerPPI = `
       DELETE FROM m_ppi_header_merger
       WHERE PPI_ProductID = '${productID}'
         AND ppi_productinit = '${productInit}'
-        AND ppi_id = '${tag}'
-        AND ppi_subid_utama = '${subID}';
+        AND ppi_id = '${ppi_id}'
+        AND ppi_subid_utama = '${subID}';`
 
-      INSERT INTO m_ppi_header_merger (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update, user_approve, user_Delegated, user_Approve_date)
+
+      const strInsertHeaderMergerPPI = `INSERT INTO m_ppi_header_merger (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update, user_approve, user_Delegated, user_Approve_date)
       SELECT PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, '${strDateNow}', User_ID, Delegated_to, flag_update, '${userName}', '${delegatedTo}', '${strDateNow}'
       FROM m_ppi_header_merger_Template
       WHERE ISNULL(user_approve, '') = ''
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = '${productInit}'
-        AND PPI_ID = '${tag}'
-        AND PPI_SubID_Utama = '${subID}';
+        AND PPI_ID = '${ppi_id}'
+        AND PPI_SubID_Utama = '${subID}';`
 
-      INSERT INTO m_ppi_header_merger_template (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update, user_approve, user_Delegated, user_Approve_date)
+      const strInsertHeaderMergerPPI_template = `INSERT INTO m_ppi_header_merger_template (PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update, user_approve, user_Delegated, user_Approve_date)
       SELECT PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, PPI_SubID_Utama, PPI_Keterangan, Process_Date, User_ID, Delegated_to, flag_update, '${userName}', '${delegatedTo}', '${strDateNow}'
       FROM m_ppi_header_merger_Template
       WHERE ISNULL(user_approve, '') = ''
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = '${productInit}'
-        AND PPI_ID = '${tag}'
-        AND PPI_SubID_Utama = '${subID}';
+        AND PPI_ID = '${ppi_id}'
+        AND PPI_SubID_Utama = '${subID}';`
 
-      UPDATE m_ppi_header_merger_Template
+      const strUpdateHeaderMergerPPI_template = `UPDATE m_ppi_header_merger_Template
       SET USER_ID = '${userName}', Delegated_to = '${delegatedTo}', Process_Date = '${strDateNow}'
       WHERE ISNULL(user_approve, '') = ''
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = '${productInit}'
-        AND PPI_ID = '${tag}'
+        AND PPI_ID = '${ppi_id}'
         AND PPI_SubID_Utama = '${subID}';
     `;
 
+      const resultDeleteMergerPPI = await sequelizeMSQL.query(strDeleteMergerPPI, { transaction });
+      const resultInsertHeaderMergerPPI = await sequelizeMSQL.query(strInsertHeaderMergerPPI, { transaction });
+      const resulInsertHeaderMergerPPI_template = await sequelizeMSQL.query(strInsertHeaderMergerPPI_template, { transaction });
+      const resultUpdateHeaderMergerPPI_template = await sequelizeMSQL.query(strUpdateHeaderMergerPPI_template, { transaction });
+
+      console.log({
+        resultDeleteMergerPPI,
+        resultInsertHeaderMergerPPI,
+        resulInsertHeaderMergerPPI_template,
+        resultUpdateHeaderMergerPPI_template
+      });
+
+    let strCombinedUpdatePPI = ''
       listMergerPPI.forEach((item) => {
-        strSQL += `
+        strCombinedUpdatePPI += `
         UPDATE m_PPI_Header_template
         SET ppi_revisi = '${revisiPPI}'
-        WHERE PPI_ID = '${tag}'
+        WHERE PPI_ID = '${ppi_id}'
           AND PPI_SubID = '${item.subID}'
           AND PPI_ProductID = '${productID}'
           AND PPI_ProductInit = ${productInit}
@@ -682,74 +735,94 @@ const fnApprove = async (
 
         UPDATE m_PPI_Header
         SET ppi_revisi = '${revisiPPI}'
-        WHERE PPI_ID = '${tag}'
+        WHERE PPI_ID = '${ppi_id}'
           AND PPI_SubID = '${item.subID}'
           AND PPI_ProductID = '${productID}'
           AND PPI_ProductInit = ${productInit};
       `;
       });
+
+      if (strCombinedUpdatePPI?.length > 0) {
+        const resultCombinedUpdatePPI = await sequelizeMSQL.query(strCombinedUpdatePPI, {
+          type: QueryTypes.UPDATE,
+          transaction
+        })
+
+        console.log({resultCombinedUpdatePPI});
+      }
     }
 
+
+
     // Additional SQL statements
-    const SQLdeleteOri = `
+    const strAdd1 = `
     UPDATE m_PPI_Detail
     SET USER_ID = '${userName}', Delegated_To = '${delegatedTo}', flag_update = 'Update For Delete'
-    WHERE PPI_ID = '${tag}'
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = '0';
+      AND PPI_ProductInit = '0';`
 
-    DELETE FROM m_PPI_Detail
-    WHERE PPI_ID = '${tag}'
+    const strAdd2 = `DELETE FROM m_PPI_Detail
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = 0;
+      AND PPI_ProductInit = 0;`
 
-    UPDATE m_PPI_Header
+    const strAdd3 = `UPDATE m_PPI_Header
     SET USER_ID = '${userName}', Delegated_To = '${delegatedTo}', flag_update = 'Update For Delete'
-    WHERE PPI_ID = '${tag}'
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = 0;
+      AND PPI_ProductInit = 0;`
 
-    DELETE FROM m_PPI_Header
-    WHERE PPI_ID = '${tag}'
+    const strAdd4 = `DELETE FROM m_PPI_Header
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = 0;
+      AND PPI_ProductInit = 0;`
 
-    UPDATE m_PPI_status
+    const strAdd5 = `UPDATE m_PPI_status
     SET USER_ID = '${userName}', Delegated_To = '${delegatedTo}', flag_update = 'Update For Delete'
-    WHERE ppi_no = '${tag}';
+    WHERE ppi_no = '${tag}';`
 
-    DELETE FROM m_PPI_status
-    WHERE ppi_no = '${tag}';
+    const strAdd6 = `DELETE FROM m_PPI_status
+    WHERE ppi_no = '${tag}';`
 
-    UPDATE m_PPI_Header_template
+    const strAdd7 = `UPDATE m_PPI_Header_template
     SET item_Periode = '${strPeriode}', tgl_berlaku = '${strTglBerlaku}', user_approve = '${userName}', user_Delegated = '${delegatedTo}'
-    WHERE PPI_ID = '${tag}'
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = 0
-      AND tgl_berlaku IS NULL;
+      AND PPI_ProductInit = 0`
 
-    UPDATE m_PPI_detail_template
+
+    const strAdd8 = `UPDATE m_PPI_detail_template
     SET item_Periode = '${strPeriode}', tgl_berlaku = '${strTglBerlaku}', user_approve = '${userName}', user_Delegated = '${delegatedTo}'
-    WHERE PPI_ID = '${tag}'
+    WHERE PPI_ID = '${ppi_id}'
       AND PPI_SubID = '${subID}'
       AND PPI_ProductID = '${productID}'
       AND PPI_ProductInit = 0
       AND tgl_berlaku IS NULL;
   `;
 
-    strSQL += SQLdeleteOri;
+    // execute additional queries
+    await sequelizeMSQL.query(strAdd1, { transaction });
+    await sequelizeMSQL.query(strAdd2, { transaction });
+    await sequelizeMSQL.query(strAdd3, { transaction });
+    await sequelizeMSQL.query(strAdd4, { transaction });
+    await sequelizeMSQL.query(strAdd5, { transaction });
+    await sequelizeMSQL.query(strAdd6, { transaction });
+    await sequelizeMSQL.query(strAdd7, { transaction });
+    await sequelizeMSQL.query(strAdd8, { transaction });
+
 
     const SQLInsertOri = `
       INSERT INTO m_PPI_Header (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, PPI_revisi, PPI_ED, pPI_batchsizekemasan, rendemen_min, default_kebutuhanbahan, PPI_Kemasan01)
-      SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, CAST(PPI_BatchSize AS FLOAT), PPI_BatchSizeUnitID, PPI_Kemasan, CAST(PPI_Status AS FLOAT), '${strTglBerlaku}', '${userName}', '${delegatedTo}', isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, '${revisiPPI}', ${ppi_ED}, ISNULL(pPI_batchsizekemasan, 0), ISNULL(rendemen_min, 0), default_kebutuhanbahan, PPI_Kemasan01
+      SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, CAST(PPI_BatchSize AS FLOAT), PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, '${strTglBerlaku}', '${userName}', '${delegatedTo}', isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, '${revisiPPI}', ${ppi_ED}, ISNULL(pPI_batchsizekemasan, 0), ISNULL(rendemen_min, 0), default_kebutuhanbahan, PPI_Kemasan01
       FROM m_PPI_Header_Template
       WHERE ISNULL(item_Periode, '') = '${strPeriode}'
-        AND PPI_ID = '${tag}'
+        AND PPI_ID = '${ppi_id}'
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
@@ -758,18 +831,20 @@ const fnApprove = async (
       SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID, PPI_ItemID, PPI_QTY, PPI_UnitID, '${strTglBerlaku}', '${userName}', '${delegatedTo}'
       FROM m_PPI_Detail_Template
       WHERE ISNULL(item_Periode, '') = '${strPeriode}'
-        AND PPI_ID = '${tag}'
+        AND PPI_ID = '${ppi_id}'
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
     `;
-    console.log({ SQLInsertOri });
+
+    const resultSQLInsertOri = await sequelizeMSQL.query(SQLInsertOri, { transaction });
+
     const SQLInsertTemp = `
       INSERT INTO m_PPI_Header_Template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, item_Periode, tgl_berlaku, user_approve, user_Delegated, ppi_revisi, PPI_ED, pPI_batchsizekemasan, rendemen_min, default_kebutuhanbahan, PPI_Kemasan01)
       SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, NULL, NULL, NULL, NULL, '${revisiPPI}', '${ppi_ED}', ISNULL(pPI_batchsizekemasan, 0), ISNULL(rendemen_min, 0), default_kebutuhanbahan, PPI_Kemasan01
       FROM m_PPI_Header_Template
       WHERE ISNULL(item_Periode, '') = '${strPeriode}'
-        AND PPI_ID = '${tag}'
+        AND PPI_ID = '${ppi_id}'
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
@@ -778,16 +853,18 @@ const fnApprove = async (
       SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID, PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, User_ID, Delegated_To, NULL, NULL, NULL, NULL
       FROM m_PPI_Detail_Template
       WHERE ISNULL(item_Periode, '') = '${strPeriode}'
-        AND PPI_ID = '${tag}'
+        AND PPI_ID = '${ppi_id}'
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
     `;
-    strSQL += `${SQLInsertOri} ${SQLInsertTemp}`;
+
+    const resultSQLInsertTemp = await sequelizeMSQL.query(SQLInsertTemp, { transaction });
+    console.log({resultSQLInsertTemp, resultSQLInsertOri});
 
     // Check if all batches should be updated
     if (checkAllBatch) {
-      strSQL += `
+      const strUpdate2 = `
         UPDATE m_ppi_header_template
         SET ppi_status = 'I', process_date = GETDATE(), user_id = '${userName}', delegated_to = '${delegatedTo}'
         WHERE tgl_berlaku IS NULL
@@ -801,8 +878,10 @@ const fnApprove = async (
           AND ppi_status = 'A'
           AND isactive = 1;
       `;
+      const resultstrUpdate2 = await sequelizeMSQL.query(strUpdate2, { transaction });
+      console.log({resultstrUpdate2});
     } else {
-      strSQL += `
+      const strUpdate3 = `
         UPDATE m_ppi_header_template
         SET ppi_status = 'A', process_date = GETDATE(), user_id = '${userName}', delegated_to = '${delegatedTo}'
         WHERE tgl_berlaku IS NULL
@@ -816,6 +895,8 @@ const fnApprove = async (
           AND ppi_status = 'I'
           AND isactive = 1;
       `;
+      const resultstrUpdate3 = await sequelizeMSQL.query(strUpdate3, { transaction });
+      console.log({resultstrUpdate3});
     }
 
     const checkRowSQL = `
@@ -857,32 +938,35 @@ const fnApprove = async (
       if (statusResult[0]?.RowCon > 0 && dcoPPI_Owner !== 'TOLL IN') {
         throw new Error('Mohon cek status Item Principle dan Priority harus terisi');
       }
-      strSQL += `
+      const strDeleteNotProd = `
         DELETE FROM m_ppi_detail_not_produksi
         WHERE PPI_ProductID = '${productID}';`;
 
-      strSQL += `INSERT INTO m_ppi_detail_not_produksi (PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_ItemID, Status_PPI, Process_Date, User_ID, Delegated_To, flag_update, Item_prcID, Priority)
+      const strInsertNotProd = `INSERT INTO m_ppi_detail_not_produksi (PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_ItemID, Status_PPI, Process_Date, User_ID, Delegated_To, flag_update, Item_prcID, Priority)
         SELECT PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_ItemID, Status_PPI, GETDATE(), '${userName}', '${delegatedTo}', NULL, Item_prcID, Priority
         FROM m_ppi_detail_not_produksi_temp;`;
-    }
 
-    await sequelizeMSQL.query(strSQL, {
-      replacements: {
-        userName,
-        delegatedTo,
-        tag,
-      },
-      // transaction,
-    });
+        const resultstrDeleteNotProd = await sequelizeMSQL.query(strDeleteNotProd, {
+          transaction
+        });
 
-    // await transaction.commit();
+        const resultstrInsertNotProd = await sequelizeMSQL.query(strInsertNotProd, {
+          transaction
+        });
+
+        console.log({
+          resultstrDeleteNotProd,
+          resultstrInsertNotProd
+        });
+      }
+      await transaction.commit();
     return {
       error: false,
       message: 'Master formula template approved successfully',
     };
   } catch (error) {
-    console.error({ error });
-    // await transaction.rollback();
+    console.error({ error, 'ASASASASASASAS': 'ASASASASSASASASAS' });
+    await transaction.rollback();
     const resp = {
       error: true,
       message: 'Cannot Approve Data.',
@@ -1044,7 +1128,7 @@ const approveSPV = async (req, res) => {
 const approveMGR = async (req, res) => {
   try {
     let { user_id, bagian_user, nama_user, joblevel_id_user, delegated_to } = req.user;
-
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
     const { listApprovePPI = [], listMergerPPI = [], checkAllBatch = 0, deptID = bagian_user, userName = user_id, delegatedTo = delegated_to, productID, productInit, tag, subID, revisiPPI, ED, dcoPPI_Owner = bagian_user } = req.body;
 
     const approveStatus = await fnApprove(listApprovePPI, listMergerPPI, checkAllBatch, userName, deptID, delegatedTo, productID, productInit, tag, subID, revisiPPI, ED, dcoPPI_Owner);
@@ -1459,6 +1543,7 @@ const deleteKeteranganApprovePPI = async (req, res) => {
       UPDATE m_ppi_header_lock
       SET USER_ID='${gstrUserName}', Delegated_To='${gstrDelegatedTo}', process_date=GETDATE(), flag_update='Update For Delete'
       WHERE PK_ID='${PK_ID}';
+
       DELETE FROM m_ppi_header_lock
       WHERE PK_ID='${PK_ID}';
     `;
@@ -1804,6 +1889,24 @@ const deleteMergerPPI = async (req, res) => {
     } else {
       return res.status(500).send({ message: "Error executing delete query" });
     }
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const updateStatusPembuat = async (req, res) => {
+  try {
+    const { user_id, bagian_user, delegated_to } = req.user;
+    if(!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    let { PPI_ID, PPI_SubID_Utama, PPI_ProductID, PPI_ProductInit, PPI_SubID, blnEditBatchLock, stat, keteranganStat, priority } = req.body;
+
+    if (!stat || !keteranganStat || !priority) return res.status(400).send('Missing required parameters');
+    if (isNaN(parseInt(priority))) return res.status(400).send('Wrong type of parameters, see lapi api docs for more detail');
+
+
+
+
   } catch (error) {
     console.log({ error });
     return res.status(500).send({ message: 'Internal server error', details: error.message });
