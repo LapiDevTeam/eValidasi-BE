@@ -151,7 +151,7 @@ const getProduct = async (req, res) => {
 };
 
 const getPPIItems = async (req, res) => {
-  const { PPI_ProductID, PPI_ID } = req.query;
+  const { PPI_ProductID, PPI_ID, isTemplate = 0 } = req.query;
 
   if (!PPI_ProductID || !PPI_ID) {
     return res.status(400).send({ message: 'PPI_ProductID and PPI_ID are required' });
@@ -218,6 +218,7 @@ const getPPI = async (req, res) => {
 
     let strSQL = `
       SELECT
+        PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) as tag,
         PPI_ID,
         PPI_ProductID,
         PPI_ProductInit,

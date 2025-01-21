@@ -5,6 +5,7 @@ const { Sequelize } = require("../../models");
 const { QueryTypes } = require("sequelize");
 
 const masterBahanAwalTemplate_CREATE = async (req, res) => {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     try {
         const {
             item_ID,
@@ -20,14 +21,15 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
             item_packingSize = "",
             item_localIndent,
             strInput = "0",
-            username,
-            delegatedTo,
+            username = user_id,
+            delegatedTo = delegated_to,
             owner,
             isHalal,
             row,
             itemStatus = "1",
         } = req.body;
 
+        if (!user_id || user_id === "") return res.status(401).send("Unauthorized request!");
         let lblItem_ID = "";
 
         if (!item_groupID || !item_name) {
@@ -38,32 +40,10 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
             return res.status(400).json({ message: "Satuan harus diisi!" });
         }
 
-        if (!isNaN(item_groupID.charAt(0))) {
-            const query1 = `
-                SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3)
-                FROM m_Item_Manufacturing_template
-                WHERE ISNUMERIC(LEFT(Item_ID, 1)) = 1
-                  AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}___'
-            `;
+        lblItem_ID = await generateItemID(item_groupID);
+        // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
 
-            const [result] = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
-            lblItem_ID = `${item_groupID} ${result ? result[""] : "001"}`;
-            console.log({result1: result, lblItem_ID});
-        } else {
-
-            const query2 = `
-                SELECT CASE
-                    WHEN ISNUMERIC(RIGHT(MAX(Item_ID), 1)) = 1 THEN '${item_groupID} ${item_ID}A'
-                    ELSE '${item_groupID} ${item_ID}' + CHAR(ASCII(RIGHT(MAX(Item_ID), 1)) + 1)
-                END AS autonum
-                FROM m_Item_Manufacturing_template
-                WHERE Item_ID LIKE '${item_groupID} ${item_ID}%'
-            `;
-
-            const [result] = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
-            lblItem_ID = result ? result["autonum"] : `${item_groupID} ${item_ID}`;
-        }
-
+        console.log({lblItem_ID});
         if (item_type === "BAHAN KEMAS") {
             const query3 = `
                 SELECT Item_MonthUjiUlang
@@ -112,6 +92,8 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
 async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
   try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     let {
       item_ID,
       item_name,
@@ -128,9 +110,9 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
       item_packingSize = '',
       item_localIndent,
       strInput = '0',
-      username,
-      delegatedTo,
-      owner,
+      username = user_id,
+      delegatedTo = delegated_to,
+      owner = bagian_user,
       isHalal,
       row,
       itemStatus = '1'
@@ -231,7 +213,9 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
 
 async function masterBahanAwalTemplate_UPDATE(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const { item_ID, insertRevisi = false, txtUkuranHistory = '', ...fieldsToUpdate } = req.body;
 
     if (!item_ID) {
@@ -345,7 +329,9 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
 
 async function masterBahanAwalTemplate_DELETE(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const { item_ID } = req.body;
 
     if (!item_ID) {
@@ -441,8 +427,10 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
 
 async function masterBahanAwalTemplate_APPROVE(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
-    const { TxtGroup_ID, gstrUserName, gstrDelegatedTo } = req.body;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
+    const { TxtGroup_ID, gstrUserName = user_id, gstrDelegatedTo = delegated_to } = req.body;
 
     if (!TxtGroup_ID || TxtGroup_ID.trim() === "") {
       return res.status(500).json({
@@ -657,9 +645,11 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
 }
 
 async function masterItemPrinciple_CREATE(req, res, next) {
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   const transaction = await sequelizeMSQL.transaction();
   let statusRev = false;
   try {
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const {
       item_ID,
       prc_ID,
@@ -822,8 +812,10 @@ async function masterItemPrinciple_CREATE(req, res, next) {
 }
 
 async function masterItemPrinciple_UPDATE(req, res) {
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   const transaction = await sequelizeMSQL.transaction();
   try {
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const {
       item_ID,
       prc_ID,
@@ -945,8 +937,10 @@ async function masterItemPrinciple_UPDATE(req, res) {
 }
 
 async function masterItemPrinciple_DELETE(req, res, next) {
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   const transaction = await sequelizeMSQL.transaction();
   try {
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const { item_ID, prc_ID, supp_ID } = req.body;
 
     if (!item_ID || !prc_ID || !supp_ID) {
@@ -1511,6 +1505,43 @@ async function getPKID() {
     return null;
   }
 }
+
+const generateItemID = async (item_groupID) => {
+  if (!item_groupID) {
+    throw new Error("Item group ID is required");
+  }
+
+  let lblItem_ID = "";
+
+  if (!isNaN(item_groupID.charAt(0))) {
+    console.log("QUERY1");
+    const query1 = `
+      SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3) AS newItemID
+      FROM m_Item_Manufacturing_template
+      WHERE ISNUMERIC(LEFT(Item_ID, 1)) = 1
+        AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}___'
+    `;
+
+    const result = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
+    console.log({result});
+    lblItem_ID = `${item_groupID} ${result.length > 0 ? result[0].newItemID : "001"}`;
+  } else {
+    console.log('QUERY2');
+    const query2 = `
+      SELECT '${item_groupID} ' + RIGHT('00' + CAST(CAST(ISNULL(SUBSTRING(MAX(Item_ID), CHARINDEX(' ', MAX(Item_ID)) + 1, 3), 0) AS INTEGER) + 1 AS VARCHAR), 3) AS newItemID
+      FROM m_Item_Manufacturing_template
+      WHERE Item_ID LIKE '${item_groupID} %'
+    `;
+
+    const result = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
+      lblItem_ID = result.length > 0 ? result[0].newItemID : `${item_groupID} 001`
+    if (item_groupID !== "RH") {
+      lblItem_ID = lblItem_ID + '.000'
+    }
+  }
+
+  return lblItem_ID;
+};
 
 
  module.exports = { checkPeriodController, getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }

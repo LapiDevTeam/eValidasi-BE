@@ -94,6 +94,11 @@ class MasterProductController {
   static async addNewProduct(req, res, next) {
     try {
       const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+
+      if (!user_id || !bagian_user) return res.status(401).json({
+        message: 'Unauthorized request!'
+      });
+
       let {
         productCategory,
         productType,
@@ -241,13 +246,13 @@ class MasterProductController {
           userName,
           delegatedTo,
           productBatchSize: productBatchSize,
-          productOwner: productOwner,
+          productOwner: bagian_user,
           productBahanAktif: productBahanAktif,
           productBentukSediaan: productBentukSediaan,
           productKemasan: productKemasan,
           productDosis: productDosis,
           productRuangLingkup: productRuangLingkup,
-          productStatus: status,
+          productStatus,
           cdob01,
           cdob02,
           cdob03,
@@ -1159,6 +1164,47 @@ class MasterProductController {
   static generateLink(psn, id, tgl, fileN, uid, did, token) {
     const urlEprintHub = process.env.EPRINTHUB_ENDPOINT || 'http://192.168.1.39:8080/eprinthub/PrintOffice.aspx'
     return `${urlEprintHub}?psn=${psn}&id=${id}&tgl=${tgl}&FileN=${fileN}&UID=${uid}&DID=${did}&Token=${token}`;
+  }
+
+  static async getCDOBstatus(req, res, next) {
+    try {
+      const {productID, isTemplate} = req.query;
+      let tableName = 'm_product';
+
+      if (isTemplate) tableName = 'm_product_template';
+      console.log('MASUK');
+      if (!productID) return res.status(400).send('missing required parameters!');
+
+      const strSQL = `SELECT ISNULL(A.CDOB_01, '') as CDOB_01, ISNULL(A.CDOB_02, '') as CDOB_02, ISNULL(A.CDOB_03, '') as CDOB_03
+                FROM ${tableName} A
+                WHERE product_ID = :productID
+                ${isTemplate ? "AND ISNULL(A.product_periode, '') = ''" : ''}`;
+
+      const result = await sequelizeMSQL.query(strSQL, {
+        replacements: {
+          productID
+        }
+      })
+
+      const resp = {
+        message: 'OK'
+      }
+      if (!result || result.length <= 0 ) {
+        resp['data'] = null;
+      }
+
+      resp['data'] = result[0]
+
+      return res.status(200).json(resp);
+
+    } catch (error) {
+      console.log({error});
+      const resp = {
+        message: 'Internal server error',
+        details: error?.message
+      }
+      return res.status(500).json(resp)
+    }
   }
 }
 
