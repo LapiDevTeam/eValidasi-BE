@@ -1043,9 +1043,9 @@ const approveSPV = async (req, res) => {
 
 const approveMGR = async (req, res) => {
   try {
-    let { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
+    let { user_id, bagian_user, nama_user, joblevel_id_user, delegated_to } = req.user;
 
-    const { listApprovePPI = [], listMergerPPI = [], checkAllBatch = 0, deptID = bagian_user, userName = user_id, delegatedTo, productID, productInit, tag, subID, revisiPPI, ED, dcoPPI_Owner } = req.body;
+    const { listApprovePPI = [], listMergerPPI = [], checkAllBatch = 0, deptID = bagian_user, userName = user_id, delegatedTo = delegated_to, productID, productInit, tag, subID, revisiPPI, ED, dcoPPI_Owner = bagian_user } = req.body;
 
     const approveStatus = await fnApprove(listApprovePPI, listMergerPPI, checkAllBatch, userName, deptID, delegatedTo, productID, productInit, tag, subID, revisiPPI, ED, dcoPPI_Owner);
 
@@ -1065,14 +1065,16 @@ const approveMGR = async (req, res) => {
 const getPrintOutData = async (req, res) => {
   try {
     const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-    const { page, size, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, strFONomor, no_FO } = req.query;
+    let { page, size, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID, strFONomor, no_FO = 'RD' } = req.query;
     const { limit, offset } = getPagination(page, size);
-
+    let dtTglBerlaku;
+    console.log({user: req.user});
     if (!user_id || !bagian_user) {
       return res.status(400).send({ message: "Unauthorized, Silahkan login terlebih dahulu" });
     }
     let strDNCNo = '';
     let strBypasDate = 'GETDATE()';
+    let PPI_DTNomorSTR = ''
 
     const printQueryStr1 = `
     SELECT *
@@ -1088,7 +1090,7 @@ const getPrintOutData = async (req, res) => {
     const replacements1 = {
       PPI_ProductID: `${PPI_ProductID}`,
       PPI_ProductInit: PPI_ProductInit,
-      PPI_ID: `%${PPI_ID}%`,
+      PPI_ID: `${PPI_ID}`,
       subID: PPI_SubID,
       PPI_DTNomor: `%${strFONomor}%`,
       strBypasDate: strBypasDate
@@ -1096,31 +1098,48 @@ const getPrintOutData = async (req, res) => {
 
     const results1 = await sequelizeMSQL.query(printQueryStr1, { replacements: replacements1, type: QueryTypes.SELECT });
 
+    if (results1.length > 0 ) {
+      const dateString = results1[0].PPI_DTTanggal;
+        dtTglBerlaku = moment(dateString, 'DD/MM/YYYY').format('MM/D/YYYY');
+        PPI_DTNomorSTR = results1[0]?.PPI_DTNomor;
+        console.log({results1});
+        if (!strFONomor || strFONomor === '') strFONomor = results1[0]?.PPI_DTNomor
+    }
+
+
+
     if (results1.length === 0 || !results1) {
       const printQueryStr2 = `
-      SELECT *
-      FROM m_PPI_PrintOut
-      WHERE PPI_ProductID LIKE 'NONE'
+      SELECT
+        CONVERT(DATETIME, RIGHT(PPI_DTTanggal, 4) + '/' + SUBSTRING(PPI_DTTanggal, 4, 2) + '/' + LEFT(PPI_DTTanggal, 2), 120) AS datetime,
+        *
+      FROM
+        m_ppi_printout
+      WHERE
+        PPI_ProductID LIKE 'NONE'
         AND PPI_ProductInit = 0
         AND PPI_ID LIKE :PPI_ID
         AND PPI_DTNomor LIKE :PPI_DTNomor
-        AND CAST(RIGHT(PPI_DTTanggal, 4) + '/' + SUBSTRING(PPI_DTTanggal, 4, 2) + '/' + LEFT(PPI_DTTanggal, 2) AS DATETIME) <= :strBypasDate
-      ORDER BY PPI_DTRevisi DESC
+        AND CONVERT(DATETIME, RIGHT(PPI_DTTanggal, 4) + '/' + SUBSTRING(PPI_DTTanggal, 4, 2) + '/' + LEFT(PPI_DTTanggal, 2), 120) <= GETDATE()
+      ORDER BY
+        PPI_DTRevisi DESC
     `;
 
       const replacements2 = {
         PPI_ID: `${PPI_ID}`,
-        PPI_DTNomor: no_FO,
+        PPI_DTNomor: `%${no_FO}%`,
         strBypasDate: strBypasDate
       };
 
-      // const results2 = await sequelizeMSQL.query(printQueryStr2, { replacements: replacements2, type: QueryTypes.SELECT });
+      const results2 = await sequelizeMSQL.query(printQueryStr2, { replacements: replacements2, type: QueryTypes.SELECT });
 
-      let dtTglBerlaku;
-      // if (results2.length > 0) {
-      //   const dateString = results2[0].PPI_DTTanggal;
-      //   dtTglBerlaku = moment(dateString, 'dd/MM/yyyy').toDate();
-      // }
+      if (results2.length > 0) {
+        const dateString = results2[0].PPI_DTTanggal;
+        dtTglBerlaku = moment(dateString, 'DD/MM/YYYY').format('MM/D/YYYY');
+        console.log({results2});
+        if (!strFONomor || strFONomor === '') strFONomor = results2[0]?.PPI_DTNomor
+      }
+    }
 
       const queryDataStr = `
       SELECT * FROM (
@@ -1184,10 +1203,11 @@ const getPrintOutData = async (req, res) => {
     };
 
     const response = getPagingData(data, page, limit);
-    return res.status(200).json(response);
-    }
 
-    return res.status(200).json({ department, userName, level });
+
+    response['No_Doc'] = strFONomor;
+    return res.status(200).json(response);
+
   } catch (error) {
     console.error({ error });
     return res.status(500).send({ message: error.message });
