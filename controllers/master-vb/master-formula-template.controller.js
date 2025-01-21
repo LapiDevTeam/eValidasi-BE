@@ -1748,6 +1748,14 @@ const deleteMergerPPI = async (req, res) => {
           AND PPI_SubID = :PPI_SubID
           AND ISNULL(user_approve, '') = ''
       `
+    if (blnEditBatchLock === true) {
+      sqlSelect1 = `
+        DELETE FROM m_ppi_header_merger
+        WHERE PPI_ID + PPI_SubID_Utama + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND PPI_SubID = :PPI_SubID
+      `;
+    }
+
     const replacementsSelect = {
       tag: `${PPI_ID}${PPI_SubID_Utama}${PPI_ProductID}${PPI_ProductInit}`,
       PPI_SubID
@@ -1762,7 +1770,7 @@ const deleteMergerPPI = async (req, res) => {
     }
 
     let sql = '';
-    if (blnEditBatchLock === 'true') {
+    if (blnEditBatchLock === true) {
       sql = `
         DELETE FROM m_ppi_header_merger
         WHERE PPI_ID + PPI_SubID_Utama + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
