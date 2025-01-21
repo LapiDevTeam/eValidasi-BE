@@ -1729,6 +1729,80 @@ const createListMergerPPI = async (req, res) => {
   }
 };
 
+const deleteMergerPPI = async (req, res) => {
+  try {
+    const { user_id, bagian_user, delegated_to } = req.user;
+    if(!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    const { PPI_ID, PPI_SubID_Utama, PPI_ProductID, PPI_ProductInit, PPI_SubID, blnEditBatchLock } = req.body;
+    console.log({});
+
+
+    if (!PPI_ID || !PPI_SubID_Utama || !PPI_ProductID || !PPI_ProductInit || !PPI_SubID) {
+      return res.status(400).send({ message: "Required parameters are missing" });
+    }
+
+    let sqlSelect1 = `
+        SELECT * FROM m_ppi_header_merger_template
+        WHERE ISNULL(user_approve, '') = ''
+          AND PPI_ID + PPI_SubID_Utama + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND PPI_SubID = :PPI_SubID
+          AND ISNULL(user_approve, '') = ''
+      `
+    const replacementsSelect = {
+      tag: `${PPI_ID}${PPI_SubID_Utama}${PPI_ProductID}${PPI_ProductInit}`,
+      PPI_SubID
+    };
+    const selectResult = await sequelizeMSQL.query(sqlSelect1, {
+      replacements: replacementsSelect
+    })
+
+    let dataToBeDeleted
+    if (selectResult?.length > 0) {
+      dataToBeDeleted = selectResult[0]
+    }
+
+    let sql = '';
+    if (blnEditBatchLock === 'true') {
+      sql = `
+        DELETE FROM m_ppi_header_merger
+        WHERE PPI_ID + PPI_SubID_Utama + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND PPI_SubID = :PPI_SubID
+      `;
+    } else {
+      sql = `
+        DELETE FROM m_ppi_header_merger_template
+        WHERE ISNULL(user_approve, '') = ''
+          AND PPI_ID + PPI_SubID_Utama + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+          AND PPI_SubID = :PPI_SubID
+          AND ISNULL(user_approve, '') = ''
+      `;
+    }
+
+    const replacements = {
+      tag: `${PPI_ID}${PPI_SubID_Utama}${PPI_ProductID}${PPI_ProductInit}`,
+      PPI_SubID
+    };
+
+    let result
+    if(dataToBeDeleted) {
+      result = await sequelizeMSQL.query(sql, { replacements, type: QueryTypes.DELETE });
+    }
+
+    if (result) {
+      return res.status(200).json({
+        message: 'Operation success',
+        details: dataToBeDeleted
+      })
+    } else {
+      return res.status(500).send({ message: "Error executing delete query" });
+    }
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+
 module.exports = {
   refreshListMergerPPI,
   getListMergerPPI,
@@ -1748,5 +1822,6 @@ module.exports = {
   preApprove,
   deleteMasterFormulaTemplate,
   getPrintOutData,
-  exportLockBatch
+  exportLockBatch,
+  deleteMergerPPI
 };
