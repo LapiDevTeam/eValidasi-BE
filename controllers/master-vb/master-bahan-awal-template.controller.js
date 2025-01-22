@@ -430,9 +430,9 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
   const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
-    const { TxtGroup_ID, gstrUserName = user_id, gstrDelegatedTo = delegated_to } = req.body;
+    const { item_groupID, gstrUserName = user_id, gstrDelegatedTo = delegated_to } = req.body;
 
-    if (!TxtGroup_ID || TxtGroup_ID.trim() === "") {
+    if (!item_groupID || item_groupID.trim() === "") {
       return res.status(500).json({
         message: "Group KODE tidak boleh dikosongkan !!!",
       });
@@ -485,7 +485,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
           SELECT DISTINCT Item_ID
           FROM m_Item_Manufacturing_template
           WHERE ISNULL(item_Periode, '') = ''
-            AND Item_Group = :TxtGroup_ID
+            AND Item_Group = :item_groupID
         );
 
       UPDATE m_Item_Manufacturing_template
@@ -495,7 +495,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
         user_approve = :gstrUserName,
         user_delegated = :gstrDelegatedTo
       WHERE ISNULL(item_Periode, '') = ''
-        AND Item_Group = :TxtGroup_ID;
+        AND Item_Group = :item_groupID;
     `;
 
     const xSQL2 = `
@@ -506,7 +506,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
         Item_ID, 1, 0, :sqlAppr_Identity, :sqlDtTime, :gstrUserName, :gstrDelegatedTo
       FROM m_Item_Manufacturing_template
       WHERE ISNULL(item_Periode, '') = :sqlPeriode
-        AND Item_Group = :TxtGroup_ID;
+        AND Item_Group = :item_groupID;
     `;
 
     const zSQL1 = `
@@ -518,15 +518,27 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       WHERE Item_ID IN (
         SELECT DISTINCT Item_ID
         FROM m_Item_Manufacturing
-        WHERE Item_Group = :TxtGroup_ID
+        WHERE Item_Group = :item_groupID
       );
 
       DELETE FROM m_Item_Manufacturing_Supplier
       WHERE Item_ID IN (
         SELECT DISTINCT Item_ID
         FROM m_Item_Manufacturing
-        WHERE Item_Group = :TxtGroup_ID
+        WHERE Item_Group = :item_groupID
       );
+    `;
+
+    const zSQL2 = `
+      INSERT INTO m_Item_Manufacturing_Supplier (
+        Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID,
+        item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung
+      )
+      SELECT
+        Item_ID, Item_PrcID, Item_SuppID, :sqlDtTime AS Process_Date, :gstrUserName AS User_ID, :gstrDelegatedTo AS Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID,
+        item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung
+      FROM m_Item_Manufacturing_Supplier_template
+      WHERE ISNULL(item_Periode, '') = :sqlPeriode
     `;
 
     const zSQL3 = `
@@ -551,10 +563,10 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
         USER_ID = :gstrUserName,
         Delegated_To = :gstrDelegatedTo,
         flag_update = 'Update For Delete'
-      WHERE Item_Group = :TxtGroup_ID;
+      WHERE Item_Group = :item_groupID;
 
       DELETE FROM m_Item_Manufacturing
-      WHERE Item_Group = :TxtGroup_ID;
+      WHERE Item_Group = :item_groupID;
     `;
 
     const vSQL2 = `
@@ -579,46 +591,100 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       WHERE ISNULL(item_Periode, '') = :sqlPeriode;
     `;
 
+    const updateQuery1 = `
+    UPDATE m_Item_Manufacturing_Status
+    SET USER_ID = :gstrUserName, Delegated_To = :gstrDelegatedTo, flag_update = 'Update For Delete'
+    WHERE Item_ID IN (
+      SELECT Item_ID
+      FROM m_Item_Manufacturing
+      WHERE Item_Group = :item_groupID
+    )
+  `;
+  const deleteQuery1 = `
+    DELETE FROM m_Item_Manufacturing_Status
+    WHERE Item_ID IN (
+      SELECT Item_ID
+      FROM m_Item_Manufacturing
+      WHERE Item_Group = :item_groupID
+    )
+  `;
 
-    await sequelizeMSQL.query(xSQL1, {
+  const insertQuery1 = `
+    INSERT INTO m_Item_Manufacturing_template (
+      PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+      Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
+      User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR,
+      Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode, tgl_berlaku, user_approve, user_delegated
+    )
+    SELECT
+      PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
+      Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 AS Item_Status, Item_BJ,
+      User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR,
+      Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, NULL AS item_Periode, NULL AS tgl_berlaku, NULL AS user_approve, NULL AS user_delegated
+    FROM m_Item_Manufacturing_template
+    WHERE ISNULL(item_Periode, N'') = :sqlPeriode
+    `;
+
+    await sequelizeMSQL.query(insertQuery1, {
+      replacements: { sqlPeriode },
+      transaction,
+    });
+
+
+
+    const resultxSQL1 = await sequelizeMSQL.query(xSQL1, {
       replacements: {
         sqlPeriode,
         sqlDtTime,
         gstrUserName,
         gstrDelegatedTo,
-        TxtGroup_ID,
+        item_groupID,
       },
       transaction,
     });
 
-    await sequelizeMSQL.query(xSQL2, {
+    const resultUpdateQuery1 = await sequelizeMSQL.query(updateQuery1, {
+      replacements: { gstrUserName, gstrDelegatedTo, item_groupID },
+      transaction,
+    });
+    const resultDeleteQuery1 = await sequelizeMSQL.query(deleteQuery1, {
+      replacements: { item_groupID },
+      transaction,
+    });
+
+    const resultxSQL2 = await sequelizeMSQL.query(xSQL2, {
       replacements: {
         sqlPeriode,
         sqlDtTime,
         sqlAppr_Identity,
         gstrUserName,
         gstrDelegatedTo,
-        TxtGroup_ID,
+        item_groupID,
       },
       transaction,
     });
 
-    await sequelizeMSQL.query(zSQL1, {
-      replacements: { TxtGroup_ID, gstrUserName, gstrDelegatedTo },
+    const resultzSQL1 = await sequelizeMSQL.query(zSQL1, {
+      replacements: { item_groupID, gstrUserName, gstrDelegatedTo },
       transaction,
     });
 
-    await sequelizeMSQL.query(zSQL3, {
+    const resultzSQL2 = await sequelizeMSQL.query(zSQL2, {
+      replacements: { sqlDtTime, gstrUserName, gstrDelegatedTo, sqlPeriode },
+      transaction,
+    });
+
+    const resultzSQL3 = await sequelizeMSQL.query(zSQL3, {
       replacements: { sqlPeriode, sqlDtTime, gstrUserName, gstrDelegatedTo },
       transaction,
     });
 
-    await sequelizeMSQL.query(vSQL1, {
-      replacements: { TxtGroup_ID, gstrUserName, gstrDelegatedTo },
+    const resultvSQL1 =  await sequelizeMSQL.query(vSQL1, {
+      replacements: { item_groupID, gstrUserName, gstrDelegatedTo },
       transaction,
     });
 
-    await sequelizeMSQL.query(vSQL2, {
+    const resultvSQL2 = await sequelizeMSQL.query(vSQL2, {
       replacements: {
         sqlPeriode,
         sqlDtTime,
@@ -628,6 +694,17 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       transaction,
     });
 
+    console.log({
+      resultxSQL1,
+      resultxSQL2,
+      resultzSQL1,
+      resultzSQL2,
+      resultzSQL3,
+      resultUpdateQuery1,
+      resultDeleteQuery1,
+      resultvSQL1,
+      resultvSQL2,
+    });
     await transaction.commit();
     // await transaction.rollback();
     return res.status(200).json({

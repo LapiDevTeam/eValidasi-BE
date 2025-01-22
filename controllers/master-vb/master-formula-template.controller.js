@@ -5,6 +5,7 @@ const { Sequelize, sequelize } = require('../../models');
 const ExcelJS = require("exceljs");
 const { QueryTypes, fn } = require('sequelize');
 const moment = require('moment');
+const { getItemSupplier_template } = require('./master-bahan-awal-template.controller');
 
 
 const createNewMasterFormulaTemplate = async (req, res) => {
@@ -1895,26 +1896,107 @@ const deleteMergerPPI = async (req, res) => {
   }
 };
 
-const updateStatusPembuat = async (req, res) => {
+const updateItemPRC = async (req, res) => {
+  const transaction = await sequelizeMSQL.transaction();
   try {
     const { user_id, bagian_user, delegated_to } = req.user;
-    if(!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
-    let { PPI_ID, PPI_SubID_Utama, PPI_ProductID, PPI_ProductInit, PPI_SubID, blnEditBatchLock, stat, keteranganStat, priority } = req.body;
+    const {
+      PPI_ProductID,
+      items,
+      gstrUserName = user_id,
+      gstrDelegatedTo = delegated_to,
+      dcoPPI_Owner = bagian_user,
+    } = req.body;
 
-    if (!stat || !keteranganStat || !priority) return res.status(400).send('Missing required parameters');
-    if (isNaN(parseInt(priority))) return res.status(400).send('Wrong type of parameters, see lapi api docs for more detail');
+    if (!PPI_ProductID || !items || items.length === 0) {
+      return res
+        .status(400)
+        .send({ message: "Required parameters are missing or no items to save" });
+    }
 
+    // Validate items
+    const invalidItem = items.find(
+      (item) => !item.Status_PPI || parseInt(item.Priority) <= 0
+    );
 
+    if (invalidItem) {
+      if (dcoPPI_Owner !== "TOLL IN") {
+        return res.status(400).send({
+          message: `Item: ${invalidItem.PPI_ItemID} belum ada status atau priority!`,
+        });
+      } else {
+        return res.status(200).send({
+          message: "Operation cancelled for TOLL IN owner",
+        });
+      }
+    }
 
+    await sequelizeMSQL.query(
+      `DELETE FROM m_ppi_detail_not_produksi_temp WHERE PPI_ProductID = '${PPI_ProductID}'`,
+      { transaction }
+    );
 
+    const values = items
+      .map((item) => {
+        return `(
+          '${item.PPI_ID || ""}',
+          '${item.PPI_SubID || ""}',
+          '${item.PPI_ProductID}',
+          '0',
+          '${item.PPI_ItemID}',
+          '${item.Status_PPI}',
+          GETDATE(),
+          '${gstrUserName}',
+          '${gstrDelegatedTo}',
+          '${item.Prc_ID}',
+          '${item.Priority}',
+          '${item.default_PC || ""}'
+        )`;
+      })
+      .join(", ");
+
+    const sqlInsert = `
+      INSERT INTO m_ppi_detail_not_produksi_temp (
+        PPI_ID,
+        PPI_SubID,
+        PPI_ProductID,
+        PPI_ProductInit,
+        PPI_ItemID,
+        Status_PPI,
+        Process_Date,
+        User_ID,
+        Delegated_To,
+        Item_prcID,
+        priority,
+        default_PC
+      ) VALUES ${values};
+    `;
+
+    // Execute bulk insert
+    await sequelizeMSQL.query(sqlInsert, { transaction });
+
+    await transaction.commit();
+    return res
+      .status(200)
+      .send({ message: "Items have been saved successfully" });
   } catch (error) {
-    console.log({ error });
-    return res.status(500).send({ message: 'Internal server error', details: error.message });
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error('Error rolling back transaction:', rollbackError);
+      }
+    }
+    console.error({ error });
+    return res.status(500).send({ message: "Internal server error", details: error.message });
   }
 };
 
 
+
+
 module.exports = {
+  updateItemPRC,
   refreshListMergerPPI,
   getListMergerPPI,
   deleteKeteranganApprovePPI,

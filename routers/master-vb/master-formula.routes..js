@@ -2,7 +2,7 @@ const express = require("express");
 const masterFormulaRouter = express.Router();
 const { authentication, authenticationLoc } = require("../../middlewares/authentication");
 const { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData, exportToExcel } = require("../../controllers/master-vb/master-formula.controller");
-const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData, exportLockBatch, createKeteranganApprove, editKeteranganApprove, getLvwApprove, getListMergerPPI, createListMergerPPI, deleteKeteranganApprovePPI, refreshListMergerPPI, deleteMergerPPI } = require("../../controllers/master-vb/master-formula-template.controller");
+const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData, exportLockBatch, createKeteranganApprove, editKeteranganApprove, getLvwApprove, getListMergerPPI, createListMergerPPI, deleteKeteranganApprovePPI, refreshListMergerPPI, deleteMergerPPI, updateItemPRC } = require("../../controllers/master-vb/master-formula-template.controller");
 
 // get Product
 masterFormulaRouter.get("/ppi-desc", getPPIDescription);
@@ -15,6 +15,7 @@ masterFormulaRouter.get("/ppi", getPPI);
 masterFormulaRouter.get("/ppi-export", exportPPI);
 masterFormulaRouter.get("/ppi-formula", authentication, getPPIGridData);
 masterFormulaRouter.get("/pembuat-export", exportStatusPembuat);
+masterFormulaRouter.patch("/pembuat-edit", authentication, updateItemPRC );
 
 // template
 masterFormulaRouter.post("/create-template", authentication, createNewMasterFormulaTemplate);
