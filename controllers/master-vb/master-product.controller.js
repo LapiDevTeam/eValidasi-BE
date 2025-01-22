@@ -873,7 +873,7 @@ class MasterProductController {
 
   static async generateDAProduk(req, res, next) {
     try {
-      const { productCategory, page = 0, size = 10 } = req.query;
+      const { productCategory, page = 0, size = 10, isTemplate = 'true' } = req.query;
 
       if (!productCategory) {
         return res.status(400).json({ message: 'Product category is required!' });
@@ -884,7 +884,9 @@ class MasterProductController {
       let file;
       let queryString;
       let countString;
-
+      let tableName = 'vwProduct_template';
+      if (isTemplate !== 'true') tableName = 'vwProduct';
+      console.log({tableName});
       if (productCategory === '01') {
         file = 'DA.RD.000001_Rev11.doc';
         queryString = `
@@ -896,7 +898,7 @@ class MasterProductController {
                    ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
                    CASE WHEN product_notppi = 1 THEN '-' ELSE 'Ada' END AS customer, ISNULL(product_status, '-') AS product_status,
                    A.Kategori_prod
-            FROM vwProduct_template A
+            FROM ${tableName} A
             WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
           ) AS Result
           WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit
@@ -904,7 +906,7 @@ class MasterProductController {
         `;
         countString = `
           SELECT COUNT(*) AS count
-          FROM vwProduct_template A
+          FROM ${tableName} A
           WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
         `;
       } else {
@@ -917,7 +919,7 @@ class MasterProductController {
                    CASE WHEN ISNULL(Product_Unit, '(none)') = '(none)' THEN '-' ELSE product_unit END AS Product_Unit,
                    ISNULL(Product_VolumeInBox, 0) AS Product_VolumeInBox, ISNULL(Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
                    ISNULL(C.Cust_Name, '-') AS customer
-            FROM vwProduct_template A
+            FROM ${tableName} A
             LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
             LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
             WHERE A.isActive = 1 AND A.product_category = :productCategory
@@ -927,7 +929,7 @@ class MasterProductController {
         `;
         countString = `
           SELECT COUNT(*) AS count
-          FROM vwProduct_template A
+          FROM ${tableName} A
           LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
           LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
           WHERE A.isActive = 1 AND A.product_category = :productCategory
