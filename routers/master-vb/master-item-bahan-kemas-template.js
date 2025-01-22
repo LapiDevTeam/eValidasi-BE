@@ -1,5 +1,6 @@
 const express = require("express");
 const MasterItemBahanKemasTemplateController = require("../../controllers/master-vb/master-item-bahan-kemas-template-controller");
+const MasterItemBahanAWALTemplateController = require("../../controllers/master-vb/master-bahan-awal-template.controller");
 const { authentication } = require("../../middlewares/authentication");
 const masterItemBahanKemasTemplateRouter = express.Router();
 
@@ -20,7 +21,7 @@ masterItemBahanKemasTemplateRouter.get(
 );
 masterItemBahanKemasTemplateRouter.post(
   "/approve",
-  MasterItemBahanKemasTemplateController.masterItemBahanTemplateApprover
+  MasterItemBahanAWALTemplateController.masterBahanAwalTemplate_APPROVE
 );
 masterItemBahanKemasTemplateRouter.get(
   "/pembuat-template",
