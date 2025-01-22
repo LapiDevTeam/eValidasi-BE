@@ -161,6 +161,7 @@ const getPPIItems = async (req, res) => {
     return res.status(400).send({ message: 'Invalid PPI_ID format' });
   }
 
+
   try {
     const strSQL = `
       SELECT DISTINCT
@@ -187,7 +188,41 @@ const getPPIItems = async (req, res) => {
       ORDER BY A.PPI_ProductID, A.PPI_ItemID, ISNULL(B.Status_PPI, ''), ISNULL(B.Priority, '')
     `;
 
-    const result = await sequelizeMSQL.query(strSQL, {
+    const strSQLTemplate = `
+      SELECT DISTINCT
+        '' AS PPI_ID,
+        A.PPI_ProductID,
+        A.PPI_ItemID,
+        A.Item_Name,
+        A.Prc_ID,
+        A.Prc_Name,
+        CASE
+          WHEN ISNULL(B.Status_PPI, '') = '' THEN ''
+          ELSE ISNULL(B.Status_PPI, '')
+        END AS Status_PPI,
+        CASE
+          WHEN ISNULL(B.Priority, '') = '' THEN ''
+          ELSE ISNULL(B.Priority, '')
+        END AS Priority,
+        CAST(ISNULL(B.default_PC, 0) AS INT) AS default_PC
+      FROM vw_PPI_Item_PRC_Status AS A
+      LEFT JOIN m_ppi_detail_not_produksi_temp AS B
+        ON A.PPI_ProductID = B.PPI_ProductID
+        AND A.PPI_ItemID = B.PPI_ItemID
+        AND A.Prc_ID = B.Item_prcID
+      WHERE A.PPI_ProductID = :PPI_ProductID
+      ORDER BY A.PPI_ItemID
+    `;
+
+    let result;
+    if (isTemplate == '0') {
+      result = await sequelizeMSQL.query(strSQL, {
+        replacements: { PPI_ProductID },
+        type: QueryTypes.SELECT,
+      });
+    }
+
+    result = await sequelizeMSQL.query(strSQLTemplate, {
       replacements: { PPI_ProductID },
       type: QueryTypes.SELECT,
     });
