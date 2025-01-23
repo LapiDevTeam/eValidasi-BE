@@ -215,17 +215,18 @@ const getPPIItems = async (req, res) => {
     `;
 
     let result;
+    console.log({asd: isTemplate == '0'});
     if (isTemplate == '0') {
       result = await sequelizeMSQL.query(strSQL, {
         replacements: { PPI_ProductID },
         type: QueryTypes.SELECT,
       });
+    } else {
+      result = await sequelizeMSQL.query(strSQLTemplate, {
+        replacements: { PPI_ProductID },
+        type: QueryTypes.SELECT,
+      });
     }
-
-    result = await sequelizeMSQL.query(strSQLTemplate, {
-      replacements: { PPI_ProductID },
-      type: QueryTypes.SELECT,
-    });
 
     if (result.length === 0) {
       return res.status(404).send({ message: 'Data Not Found' });
