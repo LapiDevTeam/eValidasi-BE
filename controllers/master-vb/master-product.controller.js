@@ -606,7 +606,7 @@ class MasterProductController {
       await sequelizeMSQL.query(sSQL5, { transaction });
       await sequelizeMSQL.query(sSQL6, { transaction });
 
-      const lastApproveDate = await MasterProductController.showLastApproveDate();
+      const lastApproveDate = null;
 
       const resp = {
         message: 'Product has been approved successfully',
