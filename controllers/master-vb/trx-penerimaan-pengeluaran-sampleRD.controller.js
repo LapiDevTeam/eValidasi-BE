@@ -1,0 +1,629 @@
+const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
+const { getPagination, getPagingData } = require('../../helpers/pagination');
+const ExcelJS = require("exceljs");
+const { QueryTypes } = require('sequelize');
+const moment = require('moment');
+
+async function getStockData(rak, barang = '') {
+
+  if (!rak) throw new Error('Rak is required');
+
+  let query = `
+      SELECT DISTINCT
+          A.PK_ID_Item,
+          A.Itemid AS Kode_Barang,
+          A.itemname,
+          A.Rak,
+          A.principle,
+          A.supplier,
+          A.Batchno,
+          A.analisa,
+          A.expDate,
+          A.saldoawal + A.masuk - A.keluar AS SaldoAkhir
+      FROM t_NP_Sample_Stock A
+      WHERE A.rak = :rak
+      AND (A.saldoawal + A.masuk - A.keluar) > 0
+  `;
+
+  if (barang !== '') {
+      query += ` AND A.itemname LIKE :barang `;
+  }
+
+  query += ` ORDER BY A.itemname `;
+
+  const replacements = { rak };
+  if (barang !== '') {
+      replacements.barang = `%${barang}%`;
+  }
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          replacements,
+          type: QueryTypes.SELECT
+      });
+
+      return results;
+  } catch (error) {
+      console.error('Error fetching stock data:', error);
+      throw error;
+  }
+}
+
+async function exportStockDataToExcel(req, res, next) {
+  const { rak, barang = '' } = req.query;
+
+  try {
+    const stockData = await getStockData(rak, barang);
+
+    if (!stockData || stockData.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    const currentDate = moment().format('DD-MMM-YYYY');
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`${rak}`);
+
+    worksheet.addRow(["STOCK AKTUAL SAMPLE RD SYSTEM"]);
+    worksheet.addRow([`Periode Cetak: ${currentDate}`]);
+    worksheet.addRow([]);
+    worksheet.addRow(["Rak: ", rak]);
+    worksheet.addRow([]);
+
+    // Add column headers to a specific row (e.g., row 6)
+    worksheet.getRow(9).values = [
+      'NO', 'PK_ID_Item', 'Kode Barang', 'Nama Barang', 'Kode Rak', 'Principle', 'Supplier', 'Batch No', 'No Analisa', 'Expired Date', 'Saldo Akhir'
+    ];
+
+    // Define worksheet columns (optional, for setting column widths)
+    worksheet.columns = [
+      { key: 'no', width: 5 },
+      { key: 'PK_ID_Item', width: 15 },
+      { key: 'Kode_Barang', width: 15 },
+      { key: 'itemname', width: 50 },
+      { key: 'Rak', width: 10 },
+      { key: 'principle', width: 30 },
+      { key: 'supplier', width: 30 },
+      { key: 'Batchno', width: 15 },
+      { key: 'analisa', width: 15 },
+      { key: 'expDate', width: 15 },
+      { key: 'SaldoAkhir', width: 15 }
+    ];
+
+    // Add stock data rows
+    stockData.forEach((data, index) => {
+      worksheet.addRow({
+        no: index + 1,
+        ...data
+      });
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=stock_data.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error exporting stock data to Excel:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function fnGetRakNotEmpty() {
+  let query = `
+      SELECT DISTINCT rak FROM t_NP_Sample_Stock;
+  `;
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length > 0) {
+          const promises = results.map(async (e) => {
+              let queryEach = `
+              SELECT Count(*) as total FROM t_NP_Sample_Stock WHERE rak = '${e.rak}'
+              `;
+
+              const resultsEach = await sequelizeMSQL.query(queryEach, {
+                  type: QueryTypes.SELECT
+              });
+
+              return {
+                  rak: e.rak,
+                  total: resultsEach[0].total
+              };
+          });
+
+          const detailedResults = await Promise.all(promises);
+          return detailedResults;
+      }
+      return results;
+  } catch (error) {
+      console.error('Error fetching rak data:', error);
+      throw error;
+  }
+}
+
+async function GetTerimaID() {
+  const query = `
+      SELECT ISNULL(MAX(PKID), 0) + 1 AS TerimaID
+      FROM t_NP_Sample_masuk
+  `;
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length > 0) {
+          return results[0].TerimaID;
+      } else {
+          return 1;
+      }
+  } catch (error) {
+      console.error('Error fetching PK_ID_Item:', error);
+      throw error;
+  }
+}
+
+async function GetPKID() {
+  const query = `
+      SELECT ISNULL(MAX(PK_ID_item), 0) + 1 AS TerimaID
+      FROM t_NP_Sample_Stock
+  `;
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length > 0) {
+          return results[0].TerimaID;
+      } else {
+          return 1;
+      }
+  } catch (error) {
+      console.error('Error fetching PK_ID_Item:', error);
+      throw error;
+  }
+}
+
+async function fnIsItemID(ItemID, ItemName, analisa, batchno, Principle, Supplier, rak) {
+  const query = `
+      SELECT COUNT(*) as jum
+      FROM t_NP_Sample_Stock
+      WHERE ItemID = :ItemID
+      AND ItemName = :ItemName
+      AND Analisa = :analisa
+      AND batchno = :batchno
+      AND Principle = :Principle
+      AND Supplier = :Supplier
+      AND Rak = :rak
+  `;
+
+  const replacements = { ItemID, ItemName, analisa, batchno, Principle, Supplier, rak };
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          replacements,
+          type: QueryTypes.SELECT
+      });
+
+      return results[0].jum > 0; // true if data exists, false otherwise
+  } catch (error) {
+      console.error('Error checking item ID:', error);
+      throw error;
+  }
+}
+
+async function fnGetPKID_item(ItemID, ItemName, analisa, batchno, Principle, Supplier, rak) {
+  const query = `
+      SELECT TOP 1 PK_ID_Item
+      FROM t_NP_Sample_Stock
+      WHERE ItemID = :ItemID
+      AND ItemName = :ItemName
+      AND Analisa = :analisa
+      AND batchno = :batchno
+      AND Principle = :Principle
+      AND Supplier = :Supplier
+      AND rak = :rak
+      ORDER BY PK_ID_Item
+  `;
+
+  const replacements = { ItemID, ItemName, analisa, batchno, Principle, Supplier, rak };
+
+  try {
+      const results = await sequelizeMSQL.query(query, {
+          replacements,
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length === 0) {
+          return "";
+      } else {
+          return results[0].PK_ID_Item.toString();
+      }
+  } catch (error) {
+      console.error('Error fetching PK_ID_Item:', error);
+      throw error;
+  }
+}
+
+async function getStockDataByRak(req, res, next) {
+  try {
+      const { rak, barang } = req.query;
+      if (!rak) return res.status(400).json({ message: 'Rak is required' });
+
+      const results = await getStockData(rak, barang) || [];
+      const resp = {
+        message: 'OK',
+        data: results
+      }
+      res.status(200).json(resp);
+  } catch (error) {
+      console.error('Error fetching stock data:', error);
+      res.status(500).json({ message: 'Error fetching stock data' });
+  }
+}
+
+async function getRakNotEmpty(req, res, next) {
+  try {
+      const results = await fnGetRakNotEmpty() || [];
+      const resp = {
+        message: 'OK',
+        data: results
+      }
+      return res.status(200).json(resp);
+  } catch (error) {
+      console.error('Error fetching rak data:', error);
+      return res.status(500).json({ message: 'Error fetching rak data' });
+  }
+}
+
+async function browseItem(req, res, next) {
+  try {
+    const { user_id = '', delegated_to = '', nama_user = '', bagian_user } = req.user;
+    if (!user_id || user_id === '') {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { gudang, year = '', noMR = '', rak, type, kelompokBahan = 'BB' } = req.query;
+    const scopeGudang = ['PC', 'RD'];
+
+    if (!gudang || gudang === '' || !scopeGudang.includes(gudang) || !type || type === '' || !rak || rak === '') {
+      return res.status(400).json({ message: 'Invalid request', request: req.query });
+    }
+
+    if (gudang === 'PC') {
+
+      let strSQL;
+
+      if (year === "" || !year) {
+          // NORMAL Cari yang normal satu tahun terakhir
+          strSQL = `SELECT MR_No, mr_seqid, MR_ItemID AS Kode_Bahan, Item_Name AS nama_bahan, ISNULL(Principle, '') AS Principle, ISNULL(Supplier, '') AS Supplier, DNC_BATCHNO,
+                    MR_DNcNo AS NoAnalisa, ISNULL(ExpDate, '1900-01-01') AS ExpDate, MR_DNcQTY AS Qty, MR_itemUnit AS Unit, '' AS PKIDItem
+                    FROM v_MI_BahanAwal_RD
+                    WHERE mr_RDPKID IS NULL AND MR_No LIKE '%${noMR}%'`;
+      } else {
+          // BY YEAR cari berdasarkan tahun
+          strSQL = `SELECT MR_No, mr_seqid, MR_ItemID AS Kode_Bahan, Item_Name AS nama_bahan, ISNULL(Principle, '') AS Principle, ISNULL(Supplier, '') AS Supplier, DNC_BATCHNO,
+                    MR_DNcNo AS NoAnalisa, ISNULL(ExpDate, '1900-01-01') AS ExpDate, MR_DNcQTY AS Qty, MR_itemUnit AS Unit, '' AS PKIDItem
+                    FROM v_MI_BahanAwal_RD_By_MR_year
+                    WHERE mr_RDPKID IS NULL`;
+
+          if (year && year !== "") {
+              strSQL += ` AND MR_Year = ${year}`;
+          }
+
+          if (noMR && noMR !== "") {
+              strSQL += ` AND MR_No LIKE '%${noMR}%'`;
+          }
+
+      }
+
+      if (kelompokBahan === "BAHAN KEMAS") {
+          strSQL += " AND Item_Type = 'BK'";
+      } else {
+          strSQL += " AND Item_Type = 'BB'";
+      }
+
+      strSQL += " ORDER BY MR_ItemID";
+
+      const results = await sequelizeMSQL.query(strSQL, {
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length > 0) {
+          return res.status(200).json({ message: 'OK', data: results });
+      } else {
+          return res.status(200).json({ message: 'Data not found' });
+      }
+
+    }
+
+    if (gudang === 'RD') {
+      let strSQL = `SELECT B.ItemID, B.ItemName, B.Principle, B.Supplier, B.batchno AS BatchLot, B.Analisa, ISNULL(B.ExpDate, '1900-01-01') AS ExpDate,
+                  B.MinStock, B.satuan, B.rak, B.masuk + B.saldoawal - B.keluar AS saldo, B.PK_ID_Item, B.KelBahan
+                  FROM t_NP_Sample_Stock B
+                  WHERE B.typeinput LIKE '${type}' AND B.rak LIKE '${rak}'`;
+
+      const results = await sequelizeMSQL.query(strSQL, {
+          type: QueryTypes.SELECT
+      });
+
+      if (results.length > 0) {
+        return res.status(200).json({ message: 'OK', data: results });
+      } else {
+        return res.status(200).json({ message: 'Data not found' });
+      }
+    }
+    console.log('NOT FOUND');
+    return res.status(200).json({ message: 'Data not found' });
+  } catch (error) {
+    console.log({ error });
+    return res.status(500).json({ message: 'Internal server error', detail: error?.message });
+  }
+}
+
+async function cmdSimpanMasuk(req, res, next) {
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    if (!user_id || user_id === '') {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const {
+      txtID_trans,
+      txtPKID_item,
+      txtJum,
+      txtNama_bhn,
+      txtMin,
+      txtExpDate,
+      txtPrincl,
+      txtSupp,
+      lblLokasi,
+      txtnotes,
+      txtAlert,
+      txtRemainDay,
+      txtUkuran,
+      txtKomposisi,
+      sMRno,
+      sMRSeq,
+      txtNoBatch,
+      txtKelompokBahan,
+      txtKode_bhn,
+      txtNoAnalisa,
+      txtTypeInput,
+      txtSatuan
+    } = req.body;
+    let stEdit = false;
+
+    if (txtNoBatch.toUpperCase() !== txtNoBatch.Tag?.toUpperCase() || txtNoAnalisa.toUpperCase() !== txtNoAnalisa.Tag.toUpperCase()) {
+      stEdit = true;
+    }
+
+    if (!txtKelompokBahan && !txtKode_bhn && !txtNoBatch && !txtNoAnalisa) {
+      return res.status(400).json({ message: 'Harap isi bahan! (kode bahan, no batch dan no analisa harus di isi)' });
+    }
+
+    if (!txtTypeInput || !txtKelompokBahan) {
+      return res.status(400).json({ message: 'Type Input, bahan dan kelompok harus di isi' });
+    }
+
+    if (!txtSatuan) {
+      return res.status(400).json({ message: 'Satuan harap di isi' });
+    }
+
+    if (!txtID_trans) {
+      if (!txtPKID_item) {
+          if (await fnIsItemID(txtKode_bhn, txtNama_bhn, txtNoAnalisa, txtNoBatch, txtPrincl, txtSupp, lblLokasi.Caption)) {
+              txtPKID_item = await fnGetPKID_item(txtKode_bhn, txtNama_bhn, txtNoAnalisa, txtNoBatch, txtPrincl, txtSupp, lblLokasi.Caption);
+          }
+      }
+
+      if (parseFloat(txtJum) <= 0) return res.status(400).json({ message: 'Jumlah tidak boleh 0' });
+      if (!txtNama_bhn) return res.status(400).json({ message: 'Harap isi nama barang' });
+      if (parseFloat(txtMin) <= 0 && txtTypeInput !== "Koreksi Masuk") return res.status(400).json({ message: 'Min Stock tidak boleh 0' });
+
+      if (txtTypeInput !== "Koreksi Masuk") {
+          if (!txtNoBatch || !txtNoAnalisa) {
+              return res.status(400).json({ message: 'Nomor batch dan No analisa harap diisi!' });
+          }
+      }
+
+      if (new Date(txtExpDate) <= new Date("1900-01-01")) return res.status(400).json({ message: 'Harap cek Expirate date?' });
+
+      const sTerimaID = await GetTerimaID();
+      const sPK_IDITEM = txtPKID_item || await GetPKID();
+      // return res.send({ sTerimaID, sPK_IDITEM });
+      const SQL_tMasuk = `INSERT INTO t_NP_Sample_masuk (PKID, Tanggal, PK_ID_item, Jumlah, Note, apprSPV, apprSPVdate, UserID, Delegated_To, Process_date, flag_update)
+                          VALUES ('${sTerimaID}', GETDATE(), '${sPK_IDITEM}', '${txtJum}', '${txtnotes}', NULL, NULL, '${user_id}', '${delegated_to}', GETDATE(), NULL)`;
+      await sequelizeMSQL.query(SQL_tMasuk, { transaction });
+      console.log('EXECUTED SQL_tMasuk INSERT');
+
+      let SQL_tStock;
+      if (!txtPKID_item) {
+          SQL_tStock = `INSERT INTO t_NP_Sample_Stock (Periode, PK_ID_Item, ItemID, ItemName, Analisa, batchno, rak, saldoawal, masuk, keluar, UserID, Delegated_To, Process_date, BatchDate, Principle, Supplier, TypeInput, KelBahan, ExpDate, MinStock, satuan, Alert, RemainDay, Ukuran, Komposisi)
+                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption.trim()}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${new Date(txtExpDate).toISOString().split('T')[0]}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
+          await sequelizeMSQL.query(SQL_tStock, { transaction });
+          console.log('EXECUTED SQL_tStock INSERT');
+      } else {
+          SQL_tStock = `UPDATE t_NP_Sample_Stock SET masuk = masuk + ${parseFloat(txtJum)}, UserID = '${user_id}', Delegated_To = '${delegated_to}', Process_date = GETDATE(), ExpDate = '${new Date(txtExpDate).toISOString().split('T')[0]}', MinStock = '${parseFloat(txtMin)}', satuan = '${txtSatuan}', Alert = '${txtAlert}', RemainDay = '${txtRemainDay}', Ukuran = '${txtUkuran}', Komposisi = '${txtKomposisi}' WHERE PK_ID_Item = '${sPK_IDITEM}'`;
+          await sequelizeMSQL.query(SQL_tStock, { transaction });
+          console.log('EXECUTED SQL_tStock UPDATE');
+      }
+
+      let sSave3 = '';
+      if (txtTypeInput === "Internal" && sMRno && sMRSeq) {
+          sSave3 = `UPDATE t_Bon_Keluar_Bahan_Awal_DNC SET mr_rdpkid = '${sTerimaID}' WHERE mr_no = '${sMRno}' AND mr_seqid = '${sMRSeq}' AND MR_DNcNo = '${txtNoAnalisa}'`;
+          await sequelizeMSQL.query(sSave3, { transaction });
+      }
+
+      await transaction.rollback();
+      return res.status(200).json({ message: 'OK', data: { sTerimaID, sPK_IDITEM } });
+    }
+
+    if (txtID_trans || txtID_trans !== '') {
+
+      if (txtTypeInput === "Internal") {
+        // if (!await User_Access("SAMPLE RD MASUK SIMPAN FORMULATOR")) {
+        //   return res.status(403).json({ message: 'Maaf anda tidak dapat Access!', detail: 'No Access: SAMPLE RD MASUK SIMPAN FORMULATOR' });
+        // }
+      }
+
+      if (txtTypeInput.startsWith("External") || txtTypeInput === "External Kompetitor") {
+        // if (!await User_Access("SAMPLE RD MASUK SIMPAN ADMIN")) {
+        //   return res.status(403).json({ message: 'Maaf anda tidak dapat Access!', detail: 'No Access: SAMPLE RD MASUK SIMPAN ADMIN' });
+        // }
+      }
+
+      if (txtTypeInput === "Koreksi Masuk") {
+        // if (!await User_Access("SAMPLE RD MASUK SIMPAN SPV")) {
+        //   return res.status(403).json({ message: 'Maaf anda tidak dapat Access!', detail: 'No Access: SAMPLE RD MASUK SIMPAN SPV' });
+        // }
+      }
+
+      const sSQL1 = `SELECT ISNULL(SUM(ISNULL(keluar, 0)), 0) AS jum FROM t_NP_Sample_Stock WHERE itemid = '${txtKode_bhn.Tag}' AND itemName LIKE '${txtNama_bhn.Tag}' AND batchno = '${txtNoBatch.Tag}' AND analisa = '${txtNoAnalisa.Tag}' AND rak = '${lblLokasi.Caption}'`;
+      const rs = await sequelizeMSQL.query(sSQL1, { type: QueryTypes.SELECT });
+
+      if (txtJum !== txtJum.Tag && parseFloat(rs[0]?.jum) > 0) {
+        return res.status(400).json({ message: 'Sudah ada transaksi keluar', detail: 'Tidak bisa keluar barang' });
+      }
+
+      const sSQL1Update = `UPDATE t_NP_Sample_masuk SET ItemName='${txtNama_bhn}', ItemID='${txtKode_bhn}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', Principle='${txtPrincl}', Supplier='${txtSupp}', ExpDate='${new Date(txtExpDate).toISOString().split('T')[0]}', Alert='${txtAlert}', RemainDay='${txtRemainDay}', MinStock='${txtMin}', Note='${txtnotes}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE itemid='${txtKode_bhn.Tag}' AND analisa='${txtNoAnalisa.Tag}' AND batchlot='${txtNoBatch.Tag}' AND koderak='${lblLokasi.Caption}'`;
+      await sequelizeMSQL.query(sSQL1Update, { transaction });
+      const sSQL3 = `UPDATE m_NP_Sample SET ItemID='${txtKode_bhn}', ItemName='${txtNama_bhn}', Principle='${txtPrincl}', Supplier='${txtSupp}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', ExpDate='${new Date(txtExpDate).toISOString().split('T')[0]}', MinStock='${txtMin}', satuan='${txtSatuan}', alert='${txtAlert}', remainday='${txtRemainDay}', ukuran='${txtUkuran}', komposisi='${txtKomposisi}', UserID='${user_id}', Delegated_To='${delegated_to}' WHERE ItemID='${txtKode_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}'`;
+      await sequelizeMSQL.query(sSQL3, { transaction });
+      const sSQL5 = `
+        UPDATE m_NP_Sample SET BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}' WHERE ItemID='${txtKode_bhn.Tag}' AND ItemName='${txtNama_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}';
+        UPDATE t_NP_Sample_Stock SET ItemID='${txtKode_bhn}', ItemName='${txtNama_bhn}', batchno='${txtNoBatch}', Analisa='${txtNoAnalisa}' WHERE ItemID='${txtKode_bhn.Tag}' AND ItemName='${txtNama_bhn.Tag}' AND batchno='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}' AND rak='${lblLokasi.Caption}';
+        UPDATE t_NP_Sample_keluar_d SET ItemID='${txtKode_bhn}', ItemName='${txtNama_bhn}', Principle='${txtPrincl}', Supplier='${txtSupp}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}' WHERE ItemID='${txtKode_bhn.Tag}' AND ItemName='${txtNama_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}' AND KodeRak='${lblLokasi.Caption}'
+      `;
+      await sequelizeMSQL.query(sSQL5, { transaction });
+      await transaction.commit();
+
+      return res.status(200).json({ message: 'OK', });
+    }
+  } catch (error) {
+    console.log({ error });
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error('Error rolling back transaction:', rollbackError);
+      }
+    }
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function cmdDeleteMasuk(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+  const { txtID_trans, txtPKID_item, txtJum } = req.body;
+
+  // if (!await User_Access("NP WAREHOUSE STOCK IN OUT")) {
+  //   return res.status(403).json({ message: "Anda tidak memiliki akses" });
+  // }
+
+  if (!txtID_trans) {
+    return res.status(400).json({ message: "Harap pilih item yang akan di hapus" });
+  }
+
+  try {
+    const strTemp = `SELECT COUNT(*) as jum FROM t_NP_Sample_keluar_d WHERE PK_ID_Item = '${txtPKID_item}'`;
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp[0].jum > 0) {
+      return res.status(400).json({ message: "Tidak bisa hapus karena sudah ada transaksi keluar" });
+    }
+
+
+    const transaction = await sequelizeMSQL.transaction();
+
+    try {
+      const sSQL1 = `
+        UPDATE t_NP_Sample_masuk SET USERID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete' WHERE PKID = '${txtID_trans}';
+        DELETE FROM t_NP_Sample_masuk WHERE PKID = '${txtID_trans}';
+      `;
+
+      const sPK_ID_Item = (await sequelizeMSQL.query(`SELECT TOP 1 PK_ID_item FROM t_NP_Sample_masuk WHERE PKID = '${txtID_trans}'`, { type: QueryTypes.SELECT }))[0]?.PK_ID_item;
+
+      const sSQL2 = `
+        UPDATE t_NP_Sample_Stock SET masuk=masuk-${txtJum}, UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE PK_ID_Item='${sPK_ID_Item}';
+      `;
+
+      const sSQL3 = `
+        UPDATE t_Bon_Keluar_Bahan_Awal_detail SET mr_rdPKID = NULL
+        FROM t_Bon_Keluar_Bahan_Awal_detail A
+        INNER JOIN (SELECT TOP 1 * FROM t_Bon_Keluar_Bahan_Awal_detail WHERE mr_rdPKID = '${txtID_trans}') B
+        ON A.MR_RDPKID = B.MR_RDPKID
+        WHERE A.mr_rdPKID = '${txtID_trans}';
+      `;
+
+      await sequelizeMSQL.query(sSQL1 + sSQL2 + sSQL3, { transaction });
+
+      await transaction.commit();
+      return res.status(200).json({ message: "Data has been deleted" });
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    return res.status(500).json({ message: 'Internal ', detail: error?.message });
+  }
+}
+
+async function cmdApproveMasuk(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+  const { txtID_trans } = req.body;
+
+  try {
+    let sql = `
+        UPDATE t_NP_Sample_masuk
+        SET apprspv='${user_id}', apprDelegated='${delegated_to}', apprspvdate=GETDATE()
+        WHERE PKID='${txtID_trans}'
+      `;
+
+    const result = await sequelizeMSQL.query(sql, { type: QueryTypes.UPDATE });
+
+    if (result) {
+      return res.status(200).json({ message: 'Data has been approved' });
+    } else {
+      return res.status(500).json({ message: 'Gagal Approve/Disapprove data!' });
+    }
+  } catch (error) {
+    console.error('Error approving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function getStockByDate(req, res, next) {
+  const { tgl1, tgl2, kdbrg = "", nmbrg = "", lblLokasi } = req.query;
+
+  try {
+    const strTemp = `
+      SELECT A.PKID, B.TypeInput, B.KelBahan, A.Tanggal, B.Rak, B.ItemID, B.ItemName, B.Principle, B.Supplier, B.batchno, B.Analisa,
+             REPLACE(CONVERT(CHAR(11), B.ExpDate, 106), ' ', '-') as ExpDate, B.Alert, B.RemainDay, A.Jumlah, B.MinStock, A.Note,
+             A.apprSPV, A.apprSPVdate, A.UserID, A.Delegated_To, A.Process_date, B.kelbahan, B.satuan, B.ukuran, B.komposisi, B.PK_ID_Item
+      FROM t_NP_Sample_masuk A
+      LEFT JOIN t_NP_Sample_Stock B ON A.PK_ID_item = B.PK_ID_Item
+      WHERE A.tanggal BETWEEN '${tgl1}' AND '${tgl2}'
+        AND B.itemID LIKE '%${kdbrg}%'
+        AND B.ItemName LIKE '%${nmbrg}%'
+        AND B.rak = '${lblLokasi}'
+      ORDER BY A.Tanggal
+    `;
+
+    const results = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT }) || [];
+    return res.status(200).json({ message: 'OK', data: results });
+
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+module.exports = {  exportStockDataToExcel, getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, cmdApproveMasuk };
