@@ -8,6 +8,7 @@ const masterItemOri = require("./master-item-ori");
 const masterItemBahanKemasTemplateRouter = require("./master-item-bahan-kemas-template");
 const masterProductRouter = require("./master-product.routes");
 const masterFormulaRouter = require("./master-formula.routes.");
+const trxSampleRDRouter = require("./penerimaan-pengeluaran-sampleRD.routes");
 
 // masterRouter.use(authentication);
 
@@ -21,5 +22,6 @@ masterRouter.use(
 );
 masterRouter.use("/item-bahan-awal-template", masterBahanAwalTemplate);
 masterRouter.use("/formula", masterFormulaRouter );
+masterRouter.use("/rdsample", trxSampleRDRouter );
 
 module.exports = masterRouter;
