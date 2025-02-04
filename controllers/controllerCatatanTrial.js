@@ -107,20 +107,14 @@ class ControllerCatatanTrial {
           </td>
         </tr>
       </table>
-      
-      
         `,
         margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
       });
-
       await browser.close();
-
       res.end(pdfBuffer);
     } catch (error) {
       console.error("Error during printCatatanTrial:", error);
-
       if (browser) await browser.close();
-
       res
         .status(500)
         .send({ error: "An error occurred during PDF generation." });
@@ -257,13 +251,14 @@ class ControllerCatatanTrial {
       });
       const perhitunganZatAktif = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: +id },
+        order: [["id", "ASC"]],
       });
       const formulaCatatanTrial = await t_formulaCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
       });
       const metodePembuatan = await t_metodePembuatan.findAll({
         where: { CatatanTrialID: +id },
-        order: [["createdAt", "ASC"]], // Untuk ascending
+        order: [["id", "ASC"]], // Untuk ascending
       });
 
       const prosesPadat = await t_prosesCatatanTrialPadat.findAll({
@@ -335,6 +330,7 @@ class ControllerCatatanTrial {
         // Fetch perhitunganZatAktif associated with the current CatatanTrialID
         const perhitunganZatAktif = await t_perhitunganZatAktif.findAll({
           where: { CatatanTrialID: +id },
+          order: [["id", "ASC"]], //
         });
 
         // If perhitunganZatAktif exists, create the new perhitungan record
