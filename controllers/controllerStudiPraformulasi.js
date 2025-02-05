@@ -138,35 +138,39 @@ class ControllerStudiPraformulasi {
         headerTemplate: `
          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
+  
     <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;">
       <img src="${logoBase64}" alt="lapilogo" width="100">
     </td>
+
     <td style="border: 1px solid gray; height: 100px; text-align: center; font-weight: bold;">
       Studi Praformulasi
     </td>
-    <td style="border: 1px solid gray; width: 220px; text-align: left; vertical-align: top; padding: 5px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <tr>
-          <td style="border: 1px solid gray; padding: 5px; width: 50%;">Nomor</td>
-          <td style="border: 1px solid gray; padding: 5px; width: 50%;">${kode}</td>
-        </tr>
-        <tr>
-          <td style="border: 1px solid gray; padding: 5px;">Tanggal Penyusunan</td>
-          <td style="border: 1px solid gray; padding: 5px;">${tanggalPenyusunan}</td>
-        </tr>
-        <tr>
-          <td style="border: 1px solid gray; padding: 5px;">Revisi</td>
-          <td style="border: 1px solid gray; padding: 5px;">${revisi}</td>
-        </tr>
-      </table>
-    </td>
+
+    <td style="width: 220px; height: 100px; border: 1px solid gray; vertical-align: center;">
+  <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
+    <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+      <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Nomor</div>
+      <div style="width: 50%; padding: 5px;">${kode}</div>
+    </div>
+    <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+      <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Tanggal Penyusunan</div>
+      <div style="width: 50%; padding: 5px;">${tanggalPenyusunan}</div>
+    </div>
+    <div style="display: flex; flex: 1;">
+      <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Revisi</div>
+      <div style="width: 50%; padding: 5px;">${revisi}</div>
+    </div>
+  </div>
+</td>
+    
   </tr>
 </table>
 
         
         
           `,
-        margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
+        margin: { bottom: "60px", top: "150px", left: "70px", right: "80px" },
       });
 
       await browser.close();
