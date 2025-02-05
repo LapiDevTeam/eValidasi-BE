@@ -3,6 +3,8 @@ const { getPagination, getPagingData } = require('../../helpers/pagination');
 const ExcelJS = require("exceljs");
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
+const User_Access = require('../../helpers/master-vb.helper');
+
 
 async function getStockData(rak, barang = '') {
 
@@ -142,6 +144,21 @@ async function fnGetRakNotEmpty() {
   } catch (error) {
       console.error('Error fetching rak data:', error);
       throw error;
+  }
+}
+
+async function GetTerimaID_Keluar() {
+  try {
+    const strSQL = "SELECT ISNULL(MAX(PKID), 0) + 1 AS TerimaID FROM t_NP_Sample_keluar_m";
+    const rsNo = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+    if (rsNo.length > 0) {
+      return rsNo[0].TerimaID;
+    } else {
+      return "";
+    }
+  } catch (error) {
+    console.error('Error fetching TerimaID:', error);
+    throw error;
   }
 }
 
@@ -446,7 +463,7 @@ async function cmdSimpanMasuk(req, res, next) {
       let SQL_tStock;
       if (!txtPKID_item) {
           SQL_tStock = `INSERT INTO t_NP_Sample_Stock (Periode, PK_ID_Item, ItemID, ItemName, Analisa, batchno, rak, saldoawal, masuk, keluar, UserID, Delegated_To, Process_date, BatchDate, Principle, Supplier, TypeInput, KelBahan, ExpDate, MinStock, satuan, Alert, RemainDay, Ukuran, Komposisi)
-                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption.trim()}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${new Date(txtExpDate).toISOString().split('T')[0]}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
+                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${new Date(txtExpDate).toISOString().split('T')[0]}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
           await sequelizeMSQL.query(SQL_tStock, { transaction });
           console.log('EXECUTED SQL_tStock INSERT');
       } else {
@@ -626,4 +643,407 @@ async function getStockByDate(req, res, next) {
   }
 }
 
-module.exports = {  exportStockDataToExcel, getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, cmdApproveMasuk };
+async function btnSaveKeluar(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+  const {
+    txtIDTrans,
+    txtBatchSize,
+    txtTypeOut,
+    txtNamaProd,
+    txtKodeProd,
+    txtFormula,
+    cboSediaan,
+    txtNoPermintaan,
+    txtTglTrial,
+    txtTrialKe,
+    txtPIC,
+    txtNote,
+    txtBatchSatuan,
+    txtBatchKet,
+    txtExpiredDate,
+    txtFasilitas_trial,
+    txtRH,
+    txtSuhu
+  } = req.body;
+
+  let strMsg = txtIDTrans ? " edit " : " input ";
+
+  if (isNaN(txtBatchSize) || txtBatchSize.includes(",")) {
+    return res.status(400).json({ message: "Tidak Bisa simpan karena Besar bets Trial, harus numeric" });
+  }
+
+  if (!txtTypeOut) {
+    return res.status(400).json({ message: "Harap pilih Type Out" });
+  }
+
+  // if (txtTypeOut === "Sample") {
+  //   if (!await User_Access("SAMPLE RD KELUAR SIMPAN ADMIN")) {
+  //     return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN ADMIN" });
+  //   }
+  // } else {
+  //   if (!await User_Access("SAMPLE RD KELUAR SIMPAN SPV")) {
+  //     return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN SPV" });
+  //   }
+  // }
+
+  if (txtTypeOut.toUpperCase() !== "KOREKSI KELUAR" && txtTypeOut.toUpperCase() !== "KELUAR (LAIN - LAIN)") {
+    if (!txtNamaProd) return res.status(400).json({ message: "Data Nama Produk harap diisi" });
+    if (!txtKodeProd) return res.status(400).json({ message: "Data Kode Produk harap diisi" });
+    if (!txtFormula) return res.status(400).json({ message: "Data formula harap diisi" });
+    if (!cboSediaan) return res.status(400).json({ message: "Harap pilih formula sediaan" });
+    if (isNaN(txtBatchSize)) return res.status(400).json({ message: "besar bets trial harus numeric!" });
+  }
+
+  if (txtTypeOut === "Trial") {
+    if (!txtKodeProd || !txtNamaProd || !txtFormula) {
+      return res.status(400).json({ message: "Harap di isi Kode Produksi, Nama Produk dan Formula" });
+    }
+  } else if (txtTypeOut.toUpperCase() !== "KOREKSI KELUAR" && txtTypeOut.toUpperCase() !== "KELUAR (LAIN - LAIN)") {
+    if (!txtNamaProd) return res.status(400).json({ message: "Nama Produk harap di isi" });
+  }
+
+  try {
+    const transaction = await sequelizeMSQL.transaction();
+
+    if (!txtIDTrans) {
+      const sTransId = await GetTerimaID_Keluar();
+      const sSave = `
+        INSERT INTO t_NP_Sample_keluar_m (PKID, TypeInput, Tgl, KodeProd, NamaProd, NoPermintaan, TglTrial, TrialKe, PICPelaksana, formula, Note, UserID, Delegated_To, Process_date, batchsize, batchSatuan, batchKet, expiredDate, formula_sediaan, fasilitas_trial, RH, Suhu)
+        VALUES ('${sTransId}', '${txtTypeOut}', GETDATE(), '${txtKodeProd}', '${txtNamaProd}', '${txtNoPermintaan}', '${txtTglTrial}', '${txtTrialKe}', '${txtPIC}', '${txtFormula}', '${txtNote}', '${user_id}', '${delegated_to}', GETDATE(), '${txtBatchSize}', '${txtBatchSatuan}', '${txtBatchKet}', '${txtExpiredDate}', '${cboSediaan}', '${txtFasilitas_trial}', '${txtRH}', '${txtSuhu}')
+      `;
+      await sequelizeMSQL.query(sSave, { transaction });
+      await transaction.commit();
+      return res.status(200).json({ message: "Data has been saved", data: { sTransId } });
+    } else {
+      console.log('MASUK ELSE -----------------------');
+
+      // if (!await User_Access("NP WAREHOUSE STOCK IN OUT")) {
+      //   return res.status(403).json({ message: "Anda tidak memiliki akses untuk edit data!" });
+      // }
+
+      const sSQL = `
+        UPDATE t_NP_Sample_keluar_m
+        SET TypeInput='${txtTypeOut}', KodeProd='${txtKodeProd}', NamaProd='${txtNamaProd}', NoPermintaan='${txtNoPermintaan}', TglTrial='${txtTglTrial}', TrialKe='${txtTrialKe}', PICPelaksana='${txtPIC}', formula='${txtFormula}', Note='${txtNote}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE(), batchsize='${txtBatchSize}', batchSatuan='${txtBatchSatuan}', batchKet='${txtBatchKet}', expiredDate='${txtExpiredDate}', formula_sediaan='${cboSediaan}', fasilitas_trial='${txtFasilitas_trial}', RH='${txtRH}', Suhu='${txtSuhu}'
+        WHERE PKID='${txtIDTrans}'
+      `;
+      await sequelizeMSQL.query(sSQL, { transaction });
+      await transaction.commit();
+      return res.status(200).json({ message: "Data has been updated" });
+    }
+  } catch (error) {
+    console.error('Error saving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function cekForumulaExisting(req, res, next) {
+  try {
+    const { txtFormula } = req.query;
+    if (txtFormula || txtFormula !== "") {
+      const strSQL = `SELECT COUNT(*) AS jum FROM t_NP_Sample_keluar_m WHERE formula = '${txtFormula}'`;
+      const rs = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+      if (rs[0].jum > 0) {
+        return res.status(400).json({ message: `Formula ini sudah ada : ${txtFormula}.` });
+      }
+      return res.status(200).json({ message: 'OK' });
+    }
+  } catch (error) {
+    console.log({error});
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function cmdApproveKeluar(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+
+  if (!user_id || user_id === '') {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const { txtIDTrans } = req.body;
+
+  if (!txtIDTrans || txtIDTrans === '') {
+    return res.status(400).json({ message: "Sequence ID belum dipilih!" });
+  }
+
+  try {
+    const sql = `
+      UPDATE t_NP_Sample_keluar_m
+      SET apprID_delegated = '${delegated_to}', apprid = '${user_id}', apprdate = GETDATE()
+      WHERE PKID = '${txtIDTrans}'
+    `;
+
+    const result = await sequelizeMSQL.query(sql, { type: QueryTypes.UPDATE });
+
+    if (result) {
+      return res.status(200).json({ message: "Sukses Approve data!" });
+    } else {
+      return res.status(500).json({ message: "Gagal simpan data" });
+    }
+  } catch (error) {
+    console.error('Error approving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function cmdAddNewKeluar(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+
+  if (!user_id || user_id === '') {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const {
+    txtIDTrans,
+    txtBatchSize,
+    txtTypeOut,
+    txtNamaProd,
+    txtKodeProd,
+    txtFormula,
+    cboSediaan,
+    txtNoPermintaan,
+    txtTglTrial,
+    txtTrialKe,
+    txtPIC,
+    txtNote,
+    txtBatchSatuan,
+    txtBatchKet,
+    txtExpiredDate,
+    txtFasilitas_trial,
+    txtRH,
+    txtSuhu,
+    txtQty,
+    txtSaldo,
+    txtIdSubtrans,
+    txt_PK_ID_Item,
+    txtNoteDetil
+  } = req.body;
+
+  if (!await User_Access("NP WAREHOUSE STOCK IN OUT", user_id)) {
+    return res.status(403).json({ message: "Anda tidak memiliki akses" });
+  }
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "Harap Pilih formula produk!" });
+  }
+
+  if (txtTypeOut === "Sample") {
+    if (!await User_Access("SAMPLE RD KELUAR SIMPAN ADMIN" , user_id)) {
+      return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN ADMIN" });
+    }
+  } else {
+    if (!await User_Access("SAMPLE RD KELUAR SIMPAN SPV" , user_id)) {
+      return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN SPV" });
+    }
+  }
+
+  if (txtTypeOut.toUpperCase() !== "KOREKSI KELUAR" && txtTypeOut.toUpperCase() !== "KELUAR (LAIN - LAIN)") {
+    if (!txtNamaProd) {
+      return res.status(400).json({ message: "Harap isi nama produk!" });
+    }
+  }
+
+  if (parseFloat(txtQty) > parseFloat(txtSaldo) || parseFloat(txtSaldo) <= 0) {
+    return res.status(400).json({ message: "Jumlah keluar tidak boleh nol atau tidak boleh lebih besar dari stock!" });
+  }
+
+  if (parseFloat(txtQty) <= 0 || !txtQty) {
+    return res.status(400).json({ message: "Masukan nilai Qty keluar nya" });
+  }
+
+  if (txtIdSubtrans) {
+    return res.status(400).json({ message: "Tidak bisa tambah data, hapus kemudian tambah lagi" });
+  }
+
+  try {
+    const transaction = await sequelizeMSQL.transaction();
+
+    let sTransId = txtIDTrans || await GetTerimaID_Keluar();
+
+    if (txtTypeOut === "Trial" || txtTypeOut === "Pilot") {
+      if (!txtKodeProd || !txtNamaProd || !txtFormula) {
+        return res.status(400).json({ message: "Harap di isi Kode Produksi, Nama Produk dan Formula" });
+      }
+    } else if (txtTypeOut.toUpperCase() !== "KOREKSI KELUAR" && txtTypeOut.toUpperCase() !== "KELUAR (LAIN - LAIN)") {
+      if (!txtNamaProd) {
+        return res.status(400).json({ message: "Nama Produk harap di isi" });
+      }
+    }
+
+    if (!txtIDTrans && txtFormula) {
+      const strSQL = `SELECT COUNT(*) AS jum FROM t_NP_Sample_keluar_m WHERE formula = '${txtFormula}'`;
+      const rs = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+      if (rs[0].jum > 0) {
+        return res.status(400).json({ message: `Formula ini sudah ada : ${txtFormula}` });
+      }
+    }
+
+    const strSQL = `SELECT TOP 1 PKID FROM t_NP_Sample_keluar_m WHERE PKID = '${sTransId}'`;
+    const rs = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+    if (rs.length === 0) {
+      const sSave = `
+        INSERT INTO t_NP_Sample_keluar_m (PKID, TypeInput, Tgl, KodeProd, NamaProd, NoPermintaan, TglTrial, TrialKe, PICPelaksana, formula, Note, UserID, Delegated_To, Process_date, batchsize, batchSatuan, batchKet, expiredDate)
+        VALUES ('${sTransId}', '${txtTypeOut}', GETDATE(), '${txtKodeProd}', '${txtNamaProd}', '${txtNoPermintaan}', '${txtTglTrial}', '${txtTrialKe}', '${txtPIC}', '${txtFormula}', '${txtNote}', '${user_id}', '${delegated_to}', GETDATE(), '${txtBatchSize}', '${txtBatchSatuan}', '${txtBatchKet}', '${txtExpiredDate}')
+      `;
+      await sequelizeMSQL.query(sSave, { transaction });
+    }
+
+    const sSave2 = `
+      INSERT INTO t_NP_Sample_keluar_d (PKID, PK_ID_item, Saldo, Qty, Note, UserID, Delegated_To, Process_date, flag_update)
+      VALUES ('${sTransId}', '${txt_PK_ID_Item}', '${txtSaldo}', '${txtQty}', '${txtNoteDetil}', '${user_id}', '${delegated_to}', GETDATE(), NULL)
+    `;
+
+    const sSave3 = `
+      UPDATE t_NP_Sample_Stock
+      SET keluar = keluar + ABS(${parseFloat(txtQty)}), UserID = '${user_id}', Delegated_To = '${delegated_to}', Process_date = GETDATE()
+      WHERE PK_ID_Item = '${txt_PK_ID_Item}'
+    `;
+
+    await sequelizeMSQL.query(sSave2, { transaction });
+    await sequelizeMSQL.query(sSave3, { transaction });
+
+    await transaction.commit();
+
+    return res.status(200).json({ message: "Data has been saved", data: { sTransId } });
+  } catch (error) {
+    console.error('Error saving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function btnDeleteDetail(req, res, next) {
+  const { user_id, delegated_to } = req.user;
+  const { txtIdSubtrans, txtIDTrans, txtTypeOut, txtQty, txt_PK_ID_Item } = req.body;
+
+  if (!await User_Access("NP WAREHOUSE STOCK IN OUT", user_id)) {
+    return res.status(403).json({ message: "Anda tidak memiliki akses" });
+  }
+
+  if (!txtIdSubtrans || !txtIDTrans) {
+    return res.status(400).json({ message: "Anda harap pilih ID Trans dulu" });
+  }
+
+  if (txtTypeOut === "Sample") {
+    if (!await User_Access("SAMPLE RD KELUAR SIMPAN ADMIN", user_id)) {
+      return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN ADMIN" });
+    }
+  } else {
+    if (!await User_Access("SAMPLE RD KELUAR SIMPAN SPV", user_id)) {
+      return res.status(403).json({ message: "Anda tidak punya akses : SAMPLE RD KELUAR SIMPAN SPV" });
+    }
+  }
+
+  try {
+    const transaction = await sequelizeMSQL.transaction();
+
+    let Vstat = false;
+
+    const rs = await sequelizeMSQL.query(`SELECT COUNT(SubPKID) AS jum FROM t_NP_Sample_keluar_d WHERE PKID = '${txtIDTrans}'`, { type: QueryTypes.SELECT });
+    if (rs[0].jum <= 1) {
+      Vstat = true;
+      const sSave1 = `
+        UPDATE t_NP_Sample_keluar_m
+        SET USERID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
+        WHERE PKID = '${txtIDTrans}';
+        DELETE FROM t_NP_Sample_keluar_m WHERE PKID = '${txtIDTrans}'
+      `;
+      await sequelizeMSQL.query(sSave1, { transaction });
+    }
+
+    const sSave2 = `
+      UPDATE t_NP_Sample_keluar_d
+      SET USERID='${user_id}', Delegated_To='${delegated_to}', flag_update='Update For Delete'
+      WHERE SubPKID = '${txtIdSubtrans}';
+      DELETE FROM t_NP_Sample_keluar_d WHERE SubPKID = '${txtIdSubtrans}'
+    `;
+
+    const sSave3 = `
+      UPDATE t_NP_Sample_Stock
+      SET keluar = keluar - ABS(${parseFloat(txtQty)}), UserID = '${user_id}', Delegated_To = '${delegated_to}', Process_date = GETDATE()
+      WHERE PK_ID_Item = '${txt_PK_ID_Item}'
+    `;
+
+    await sequelizeMSQL.query(sSave2, { transaction });
+    await sequelizeMSQL.query(sSave3, { transaction });
+
+    await transaction.commit();
+
+    return res.status(200).json({ message: "Data has been deleted" });
+  } catch (error) {
+    console.error('Error deleting data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function btnPrint(req, res, next) {
+  const { txtIDTrans, txtBatchSize, txtBatchKet } = req.body;
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "Sequence ID belum dipilih!" });
+  }
+
+  try {
+    const rs = await sequelizeMSQL.query(`EXEC spt_rep_sampleFormula '${txtIDTrans}'`, { type: QueryTypes.SELECT });
+    console.log({rs, asdasd: 'asasasas'});
+    if (rs.length > 0) {
+      const rsJum = rs.length;
+
+      const page1 = rs[0] || null;
+
+      if (!page1) return res.status(404).json({ message: "Data tidak ada" });
+
+      const sSQL = `
+        SELECT B.emp_Name AS user1, CASE WHEN A.Delegated_To = A.UserID THEN '' ELSE 'an. ' + C.emp_Name END AS user2,
+               A.Process_date AS userDt, D.emp_Name AS apprMgr1,
+               CASE WHEN A.apprID_delegated = A.apprID THEN '' ELSE 'an. ' + E.emp_Name END AS apprMgr2, A.apprDate
+        FROM t_NP_Sample_keluar_m A
+        LEFT JOIN m_employee B ON A.Delegated_To = B.emp_NIK
+        LEFT JOIN m_employee C ON A.UserID = C.emp_NIK
+        LEFT JOIN m_employee D ON A.apprID_delegated = D.emp_NIK
+        LEFT JOIN m_employee E ON A.apprID = E.emp_NIK
+        WHERE A.PKID = '${txtIDTrans}'
+      `;
+      const rs2 = await sequelizeMSQL.query(sSQL, { type: QueryTypes.SELECT });
+
+      const page2 = {
+        ttdSPV1: rs2[0].user1,
+        ttdSPV2: rs2[0].user2,
+        ttdSPVDt: new Date(rs2[0].userDt).toLocaleString(),
+        ttdMGR1: rs2[0].apprMgr1,
+        ttdMGR2: rs2[0].apprMgr2,
+        ttdMGRDt: new Date(rs2[0].apprDate).toLocaleString(),
+        lbl_JumTrial: `(${txtBatchSize} ${txtBatchKet})**`
+      };
+
+      // console.log("Page 1:", page1);
+      // console.log("Page 2:", page2);
+
+      return res.status(200).json({ message: "Print successful", page1, page2 });
+    } else {
+      return res.status(404).json({ message: "Data tidak ada" });
+    }
+  } catch (error) {
+    console.error('Error printing data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+
+
+module.exports = {
+  btnPrint,
+  btnDeleteDetail,
+  cmdAddNewKeluar,
+  cmdApproveKeluar,
+  btnSaveKeluar,
+  cekForumulaExisting,
+  exportStockDataToExcel,
+  getStockDataByRak,
+  getRakNotEmpty,
+  browseItem,
+  cmdSimpanMasuk,
+  cmdDeleteMasuk,
+  getStockByDate,
+  cmdApproveMasuk,
+};
