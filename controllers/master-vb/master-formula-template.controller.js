@@ -1449,7 +1449,7 @@ const createKeteranganApprove = async (req, res) => {
 const editKeteranganApprove = async (req, res) => {
   try {
     const { user_id, bagian_user, delegated_to } = req.user;
-    const { tag, checkAllBatch } = req.body;
+    const { tag, checkAllBatch, PK_ID = 0, txtBatchLock, txtKeteranganLock, PPI_ProductID, PPI_ProductInit, PPI_ID, PPI_SubID } = req.body;
 
     if (!tag || tag === '') {
       return res.status(400).send({ message: "Formula produk belum dipilih" });
@@ -1470,21 +1470,23 @@ const editKeteranganApprove = async (req, res) => {
         if (txtBatchLock !== '') {
           strSQL = `
             INSERT INTO m_ppi_header_lock (ppi_productid, ppi_productinit, ppi_id, ppi_subid, ppi_batchno, ppi_keterangan, process_date, user_id, delegated_to)
-            VALUES (:PPI_ProductID, :PPI_ProductInit, :PPI_ID, :PPI_SubID, :txtBatchLock, :txtKeteranganLock, GETDATE(), :user_id, :delegated_to)
-          `;
+          VALUES (
+              '${PPI_ProductID}', '${PPI_ProductInit}', '${PPI_ID}', '${PPI_SubID}',
+              '${txtBatchLock}', '${txtKeteranganLock}', GETDATE(), '${user_id}', '${delegated_to}'
+            )          `;
         }
       } else {
         strSQL = `
           UPDATE m_ppi_header_lock
-          SET ppi_batchno = :txtBatchLock, ppi_keterangan = :txtKeteranganLock, process_date = GETDATE(), user_id = :user_id, delegated_to = :delegated_to
-          WHERE PK_ID = :PK_ID
+          SET ppi_batchno = '${txtBatchLock}', ppi_keterangan = '${txtKeteranganLock}', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${delegated_to}'
+          WHERE PK_ID = '${PK_ID}'
         `;
       }
 
       strSQL += `
         ;UPDATE m_ppi_header
-        SET ppi_status = 'A', process_date = GETDATE(), user_id = :user_id, delegated_to = :delegated_to
-        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+        SET ppi_status = 'A', process_date = GETDATE(), user_id = '${user_id}', delegated_to = '${delegated_to}'
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
           AND ppi_status = 'I'
           AND isactive = 1
       `;
