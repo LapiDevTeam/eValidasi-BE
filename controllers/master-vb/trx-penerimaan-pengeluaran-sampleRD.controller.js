@@ -391,7 +391,7 @@ async function cmdSimpanMasuk(req, res, next) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const {
+    let {
       txtID_trans,
       txtPKID_item,
       txtJum,
@@ -440,7 +440,7 @@ async function cmdSimpanMasuk(req, res, next) {
           }
       }
 
-      if (parseFloat(txtJum) <= 0) return res.status(400).json({ message: 'Jumlah tidak boleh 0' });
+      if (parseFloat(txtJum) <= 0 && txtTypeInput != 'Edit') return res.status(400).json({ message: 'Jumlah tidak boleh 0' });
       if (!txtNama_bhn) return res.status(400).json({ message: 'Harap isi nama barang' });
       if (parseFloat(txtMin) <= 0 && txtTypeInput !== "Koreksi Masuk") return res.status(400).json({ message: 'Min Stock tidak boleh 0' });
 
