@@ -363,7 +363,7 @@ async function browseItem(req, res, next) {
       let strSQL = `SELECT B.ItemID, B.ItemName, B.Principle, B.Supplier, B.batchno AS BatchLot, B.Analisa, ISNULL(B.ExpDate, '1900-01-01') AS ExpDate,
                   B.MinStock, B.satuan, B.rak, B.masuk + B.saldoawal - B.keluar AS saldo, B.PK_ID_Item, B.KelBahan
                   FROM t_NP_Sample_Stock B
-                  WHERE B.typeinput LIKE '${type}' AND B.rak LIKE '${rak}'`;
+                  WHERE B.typeinput LIKE '${type == 'Edit' ? '%' : type}' AND B.rak LIKE '${rak}'`;
 
       const results = await sequelizeMSQL.query(strSQL, {
           type: QueryTypes.SELECT
@@ -1029,10 +1029,33 @@ async function btnPrint(req, res, next) {
   }
 }
 
+async function getHistoryData(req, res, next) {
+  const { txtKodeBahan, txtBatchno, txtNoAnalisa, txtRak } = req.query;
+
+  if (!txtKodeBahan && !txtBatchno && !txtNoAnalisa && !txtRak) {
+    return res.status(400).json({ message: "Harap pilih Kode Bahan" });
+  }
+
+  try {
+    const strTemp = `EXEC spNPHistory '${txtKodeBahan}'`;
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      return res.status(200).json({ message: "OK", data: recTemp });
+    } else {
+      return res.status(404).json({ message: "Data tidak ada" });
+    }
+  } catch (error) {
+    console.error('Error retrieving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 
 
 module.exports = {
   btnPrint,
+  getHistoryData,
   btnDeleteDetail,
   cmdAddNewKeluar,
   cmdApproveKeluar,
