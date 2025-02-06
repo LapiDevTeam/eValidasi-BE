@@ -47,18 +47,6 @@ class ControllerCatatanTrial {
   static async printCatatanTrial(req, res) {
     const { link, type, kode } = req.query;
 
-    console.log(type, "<< type");
-
-    // const payload = verify(link);
-
-    // console.log(payload.link, "< pay;oad");
-
-    // const link2 = "" + payload.link;
-    // const link2 =
-    //   "http://localhost:5174/ePengembanganFormula-dev/catatan-trial/print/398/padat";
-
-    // console.log(link2, "< link2");
-
     let browser;
     try {
       const browser = await puppeteer.launch();
@@ -224,11 +212,11 @@ class ControllerCatatanTrial {
       const resp = {
         error: false,
         msg: "File berhasil diunggah",
-        url: `${url}/api/v1/upload/file/${fn}`, // URL for accessing the file
-        filename: "pdf-" + fn, // Return the actual file path on the server
+        url: `${url}/api/v1/upload/file/${fn}`,
+        filename: "pdf-" + fn,
       };
 
-      return res.status(200).send(resp); // Send the response with file info
+      return res.status(200).send(resp);
     } catch (error) {
       console.log({ error, msg: "@uploadPDFpublic.controller" });
       resp.msg = error.message || "Terjadi kendala";
@@ -237,12 +225,9 @@ class ControllerCatatanTrial {
   }
 
   static async handleDuplicate(req, res, next) {
-    console.log("xixixi");
     const { id } = req.params;
-    console.log(id, "< id");
 
     try {
-      // Step 1: Fetch data from all tables where CatatanTrialID matches the given id
       const catatanTrial = await t_catatanTrial.findOne({
         where: { id: +id },
       });
@@ -1160,9 +1145,6 @@ ORDER BY
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
-          //cek kalo gada id , create baru
-          console.log(newItem, "< idnem");
-
           if (!newItem?.id) {
             const created = await t_metodePembuatan.create(
               {
@@ -1376,8 +1358,6 @@ ORDER BY
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
 
-      console.log(data, "< DAT");
-
       const {
         user_id,
         delegated_to,
@@ -1429,20 +1409,6 @@ ORDER BY
         dataArray?.map(async (newItem) => {
           //cek kalo gada id , create baru
           if (!newItem?.id) {
-            console.log(
-              {
-                jam: newItem?.jam || "",
-                gelatinTank: newItem?.gelatinTank || "",
-                gelatinBox: newItem?.gelatinBox || "",
-                hopper: newItem?.hopper || "",
-                needle: newItem?.needle || "",
-                pumpHeating: newItem?.pumpHeating || "",
-                setDensity: newItem?.setDensity || "",
-                jogSpeed: newItem?.jogSpeed || "",
-              },
-              "<<< asdasdas"
-            );
-
             const created = await t_prosesCatatanTrialPadat.create(
               {
                 kodeTrial: newItem?.kodeTrial || "",
@@ -1932,7 +1898,6 @@ ORDER BY
     const transaction = await sequelize.transaction();
     try {
       const { data } = req.body;
-      console.log(data, "<< dat");
 
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
@@ -1984,14 +1949,6 @@ ORDER BY
 
       await Promise.all(
         data?.map(async (newItem) => {
-          //cek kalo gada id , create baru
-          console.log(
-            newItem?.spesifikasiKeseragamanBobotKapsulKosong,
-            "<< TESSSSSS"
-          );
-
-          console.log(!newItem.id, "< IIIIIIDDD");
-
           if (!newItem?.id) {
             const created = await t_pengamatanAwalPadat.create(
               {
@@ -2385,12 +2342,8 @@ ORDER BY
     try {
       const { data } = req.body;
 
-      console.log(data, "<< DATA");
-
       const flag_update = "UPDATE FOR DELETE";
       const { id } = req.params;
-
-      console.log(id, "<< id");
 
       const {
         user_id,
@@ -2441,9 +2394,6 @@ ORDER BY
       const dataArray = data.flat();
       await Promise.all(
         dataArray?.map(async (newItem) => {
-          console.log(newItem, "< new item");
-
-          //cek kalo gada id , create baru
           if (!newItem?.id) {
             const created = await t_formulaCatatanTrial.create(
               {
@@ -2528,118 +2478,6 @@ ORDER BY
     }
   }
 
-  // // handle post dan edit formula catatan trial
-  // static async createFormulaCatatanTrial(req, res, next) {
-  //   try {
-  //     const {
-  //       tujuanTrial,
-  //       tiapSediaan,
-  //       besarBets,
-  //       overmaat,
-  //       satuan,
-  //       bentukSediaan,
-  //       kodeTrials,
-  //       detailFormula,
-  //       CatatanTrialID,
-  //     } = req.body;
-
-  //     console.log(req.body, "<< body");
-
-  //     const { user_id, delegated_to } = req.user;
-
-  //     const createFormula = await t_formulaCatatanTrial.create({
-  //       tujuanTrial: tujuanTrial,
-  //       tiapSediaan: tiapSediaan,
-  //       besarBets: besarBets,
-  //       overmaat: overmaat,
-  //       satuan: satuan,
-  //       bentukSediaan: bentukSediaan,
-  //       kodeTrials: kodeTrials,
-  //       detailFormula: detailFormula,
-  //       CatatanTrialID: +CatatanTrialID,
-  //       user_id,
-  //       delegated_to,
-  //     });
-
-  //     res.status(201).json({
-  //       message: "Success Create Formula Catatan Trial",
-  //       data: createFormula,
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     next(err);
-  //   }
-  // }
-  // static async updateFormulaCatatanTrial(req, res, next) {
-  //   try {
-  //     const { id } = req.params; // Ambil id catatan trial dari URL
-
-  //     const {
-  //       tujuanTrial,
-  //       tiapSediaan,
-  //       besarBets,
-  //       overmaat,
-  //       satuan,
-  //       bentukSediaan,
-  //       kodeTrials,
-  //       detailFormula,
-  //     } = req.body;
-
-  //     const cat = await t_catatanTrial.findByPk(+id);
-  //     if (cat?.statusDokumen === "Reject") {
-  //       await t_catatanTrial_status.destroy({
-  //         where: { CatatanTrialID: +id },
-  //       });
-  //       await t_catatanTrial.update(
-  //         {
-  //           is_approve_1: "",
-  //           approver_name_1: "",
-  //           approver_user_id_1: "",
-  //           approver_delegated_to_1: "",
-  //           approver_tanggal_1: null,
-  //           keterangan_reject_1: "",
-  //           statusDokumen: "Draft",
-  //         },
-  //         {
-  //           where: {
-  //             id,
-  //           },
-  //         }
-  //       );
-  //     }
-
-  //     const [updatedRowsCount] = await t_formulaCatatanTrial.update(
-  //       {
-  //         tujuanTrial: tujuanTrial || "",
-  //         tiapSediaan: tiapSediaan || "",
-  //         besarBets: +besarBets || null,
-  //         overmaat: +overmaat || null,
-  //         satuan: satuan || "",
-  //         bentukSediaan: bentukSediaan || "",
-  //         kodeTrials: kodeTrials || "",
-  //         detailFormula: detailFormula || null,
-  //       },
-  //       {
-  //         where: { id: +id },
-  //       }
-  //     );
-
-  //     if (updatedRowsCount > 0) {
-  //       res.status(201).json({
-  //         message: "formula Catatan Trial updated successfully",
-  //       });
-  //     } else {
-  //       res.status(404).json({
-  //         message: "formula Catatan Trial not found",
-  //       });
-  //     }
-  //   } catch (err) {
-  //     console.log(err, "<<<< ERROR");
-  //     next(err);
-  //   }
-  // }
-
-  // handle post dan edit pengamatan awal cair
   static async createPengamatanAwalCair(req, res, next) {
     try {
       const { pengamatanAwalCair, CatatanTrialID } = req.body;
@@ -2671,7 +2509,7 @@ ORDER BY
     try {
       const { id } = req.params;
 
-      const pengamatanAwalCairData = req.body.data; // Access req.body.data
+      const pengamatanAwalCairData = req.body.data;
       const cat = await t_catatanTrial.findByPk(+id);
       if (cat?.statusDokumen === "Reject") {
         await t_catatanTrial_status.destroy({
@@ -2712,7 +2550,6 @@ ORDER BY
       next(err);
     }
   }
-  // handle post dan edit pengamatan awal steril
 
   static async createPengamatanAwalSteril(req, res, next) {
     try {
@@ -2743,7 +2580,7 @@ ORDER BY
   }
   static async updatePengamatanAwalSteril(req, res, next) {
     try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
+      const { id } = req.params;
       const cat = await t_catatanTrial.findByPk(+id);
       if (cat?.statusDokumen === "Reject") {
         await t_catatanTrial_status.destroy({
@@ -2767,7 +2604,7 @@ ORDER BY
         );
       }
 
-      const pengamatanAwalSterilData = req.body.data; // Access req.body.data
+      const pengamatanAwalSterilData = req.body.data;
 
       const updatedPengamatanSteril = t_pengamatanAwalSteril.update(
         {
@@ -2854,7 +2691,7 @@ ORDER BY
   }
   static async updatePengamatanAwalPadat(req, res, next) {
     try {
-      const { id } = req.params; // Ambil id catatan trial dari URL
+      const { id } = req.params;
 
       const cat = await t_catatanTrial.findByPk(+id);
       if (cat?.statusDokumen === "Reject") {
@@ -2941,7 +2778,6 @@ ORDER BY
     }
   }
 
-  // handle post dan edit distribusi ukuran partikel
   static async createDistribusiUkuranPartikel(req, res, next) {
     try {
       const { headers, content, CatatanTrialID } = req.body;
@@ -3111,16 +2947,11 @@ ORDER BY
   }
   static async deletePengamatanAwalLanjutan(req, res, next) {
     try {
-      const { id } = req.params; // Getting CatatanTrialID from req.params
+      const { id } = req.params;
 
-      console.log(req.params, "< PARAMS");
-
-      // Find the record by CatatanTrialID
       const pengamatanLanjutan = await t_pengamatanLanjutan.findOne({
         where: { CatatanTrialID: +id },
       });
-
-      console.log(pengamatanLanjutan, "< aa");
 
       if (!pengamatanLanjutan) {
         return res.status(404).json({
@@ -3478,8 +3309,6 @@ ORDER BY
   }
   static async updateUpload(req, res) {
     try {
-      console.log("xixixixixi");
-
       const { CatatanTrialID } = req.params;
       const cat = await t_catatanTrial.findByPk(+CatatanTrialID);
       if (cat?.statusDokumen === "Reject") {
@@ -3504,21 +3333,17 @@ ORDER BY
         );
       }
       const upload = req.body;
-      console.log(upload, "< 123");
 
       const findCatatanTrialID = await t_catatanTrial.findByPk(+CatatanTrialID);
 
-      console.log(findCatatanTrialID.id, "< ID");
-
       if (!findCatatanTrialID) throw { name: "NotFound" };
       const updateUpload = await t_catatanTrial.update(
-        { upload }, // Directly using upload array
+        { upload },
         {
           where: { id: findCatatanTrialID.id },
           returning: true,
         }
       );
-      console.log(updateUpload, "<< update");
 
       res.status(200).json(updateUpload);
     } catch (err) {
@@ -3755,9 +3580,6 @@ ORDER BY
   static async getCatatanTrialDetails(req, res, next) {
     try {
       const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
-      // const user = req.user;
-
-      // const user_id = user?.user?.log_NIK;
 
       const { id } = req.params;
 
@@ -3808,8 +3630,6 @@ ORDER BY
           ],
         });
       }
-
-      console.log(catatanTrialDetails, "< DETEL");
 
       catatanTrialDetails.dataValues.approver_inisial_1 =
         await fetchApproverInisial({
