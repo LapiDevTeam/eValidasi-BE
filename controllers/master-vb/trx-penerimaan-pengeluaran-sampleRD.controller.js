@@ -363,7 +363,7 @@ async function browseItem(req, res, next) {
       let strSQL = `SELECT B.ItemID, B.ItemName, B.Principle, B.Supplier, B.batchno AS BatchLot, B.Analisa, ISNULL(B.ExpDate, '1900-01-01') AS ExpDate,
                   B.MinStock, B.satuan, B.rak, B.masuk + B.saldoawal - B.keluar AS saldo, B.PK_ID_Item, B.KelBahan
                   FROM t_NP_Sample_Stock B
-                  WHERE B.typeinput LIKE '${type}' AND B.rak LIKE '${rak}'`;
+                  WHERE B.typeinput LIKE '${type == 'Edit' ? '%' : type}' AND B.rak LIKE '${rak}'`;
 
       const results = await sequelizeMSQL.query(strSQL, {
           type: QueryTypes.SELECT
@@ -391,7 +391,7 @@ async function cmdSimpanMasuk(req, res, next) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const {
+    let {
       txtID_trans,
       txtPKID_item,
       txtJum,
@@ -440,7 +440,7 @@ async function cmdSimpanMasuk(req, res, next) {
           }
       }
 
-      if (parseFloat(txtJum) <= 0) return res.status(400).json({ message: 'Jumlah tidak boleh 0' });
+      if (parseFloat(txtJum) <= 0 && txtTypeInput != 'Edit') return res.status(400).json({ message: 'Jumlah tidak boleh 0' });
       if (!txtNama_bhn) return res.status(400).json({ message: 'Harap isi nama barang' });
       if (parseFloat(txtMin) <= 0 && txtTypeInput !== "Koreksi Masuk") return res.status(400).json({ message: 'Min Stock tidak boleh 0' });
 
@@ -1029,10 +1029,70 @@ async function btnPrint(req, res, next) {
   }
 }
 
+async function getHistoryData(req, res, next) {
+  const { txtKodeBahan, txtBatchno, txtNoAnalisa, txtRak } = req.query;
 
+  if (!txtKodeBahan && !txtBatchno && !txtNoAnalisa && !txtRak) {
+    return res.status(400).json({ message: "Harap pilih Kode Bahan" });
+  }
+
+  try {
+    const strTemp = `EXEC spNPHistory '${txtKodeBahan}'`;
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      return res.status(200).json({ message: "OK", data: recTemp });
+    } else {
+      return res.status(404).json({ message: "Data tidak ada" });
+    }
+  } catch (error) {
+    console.error('Error retrieving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function findHistoryByKodeBahan(req, res, next) {
+  const { strQuickSearch } = req.query;
+
+  try {
+    let strSQL = `
+      SELECT A.ItemID, A.ItemName, Principle, Supplier, A.batchno AS BatchLot, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.PK_ID_Item
+      FROM t_NP_Sample_Stock A
+    `;
+
+    if (strQuickSearch) {
+      strSQL += ` WHERE A.itemid LIKE '${strQuickSearch}%'`;
+    }
+
+    const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+    if (grecLister.length > 0) {
+      const selectedItem = grecLister[0];
+      const response = {
+        txtKodeBahan: selectedItem.ItemID,
+        txtNamaBahan: selectedItem.ItemName,
+        txtPrinciple: selectedItem.Principle,
+        txtSuplier: selectedItem.Supplier,
+        txtBatchno: selectedItem.BatchLot,
+        txtNoAnalisa: selectedItem.Analisa,
+        txtRak: selectedItem.rak,
+        txtKodeBahanTag: selectedItem.PK_ID_Item
+      };
+
+      return res.status(200).json({ message: "OK", data: response });
+    } else {
+      return res.status(404).json({ message: "Data Belum Tersedia!" });
+    }
+  } catch (error) {
+    console.error('Error finding data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
 module.exports = {
+  findHistoryByKodeBahan,
   btnPrint,
+  getHistoryData,
   btnDeleteDetail,
   cmdAddNewKeluar,
   cmdApproveKeluar,

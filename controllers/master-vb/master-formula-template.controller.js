@@ -289,10 +289,11 @@ const updateMasterFormulaTemplate = async (req, res) => {
     // Process DataGrid
     let detailSQL = '';
     if (Array.isArray(DataGrid) && DataGrid.length > 0) {
+      console.log({DataGrid});
       detailSQL = DataGrid.map((row, index) => {
-        const { ItemID, QTY, UnitID } = row;
-        console.log({ItemID, test: 'asd'});
-        if (!ItemID || ItemID.includes('(NONE)')) return null;
+        const { PPI_ItemID, PPI_QTY = '0', PPI_UnitID } = row;
+        console.log({PPI_ItemID, test: 'asd'});
+        if (!PPI_ItemID || PPI_ItemID.includes('(NONE)')) return null;
 
         return `
           INSERT INTO m_PPI_Detail_template
@@ -300,10 +301,12 @@ const updateMasterFormulaTemplate = async (req, res) => {
            PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
           VALUES
           (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
-           ${index + 1}, '${ItemID}', '${QTY}', '${UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
+           ${index + 1}, '${PPI_ItemID}', '${PPI_QTY}', '${PPI_UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
         `;
       }).filter(Boolean).join(' ');
     }
+
+    console.log({detailSQL});
 
     // Update header
       const updateHeaderSQL = `
@@ -483,11 +486,87 @@ const preApprove = async (req, res, next) => {
   }
 };
 
+const enableGrid = async (req, res) => {
+  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, txtJumlahLOT, txt_pPI_batchsizekemasan, TXT_rendemen_min } = req.query;
+  const { user_id, delegated_to } = req.user;
+
+  try {
+
+    const dataGridEnabled = true;
+    let query = `
+      SELECT PPI_ItemID, group_name, item_name, item_size, PPI_QTY, PPI_UnitID
+      FROM vwPPIDetailwithItem_template
+      WHERE PPI_ID LIKE '${PPI_ID}'
+        AND PPI_SubID LIKE '${PPI_SubID}'
+        AND PPI_ProductID LIKE '${PPI_ProductID}'
+        AND PPI_ProductInit = '${PPI_ProductInit}'
+      ORDER BY PPI_SeqID
+    `;
+
+    let adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
+
+    if (adodc2.length === 0) {
+      // If no records found, insert new records
+      let queryCheck = `
+        SELECT PPI_ID
+        FROM m_PPI_Header_template
+        WHERE ISNULL(item_Periode, '') = ''
+          AND PPI_ID LIKE '${PPI_ID}'
+          AND PPI_SubID LIKE '${PPI_SubID}'
+          AND PPI_ProductID LIKE '${PPI_ProductID}'
+          AND PPI_ProductInit = '${PPI_ProductInit}'
+      `;
+
+      const adodc9 = await sequelizeMSQL.query(queryCheck, { type: QueryTypes.SELECT });
+
+      let insertDetailQuery = `
+        INSERT INTO m_PPI_Detail_template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID, PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
+        VALUES ('${PPI_ID}', '${PPI_SubID}', '${PPI_ProductID}', '${PPI_ProductInit}', '1', '(NONE)', '0', '(NONE)', '${new Date().toISOString()}', '${user_id}', '${delegated_to}')
+      `;
+
+      if (adodc9.length === 0) {
+        let insertHeaderQuery = `
+          INSERT INTO m_PPI_Header_template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, ppi_lot, pPI_batchsizekemasan, rendemen_min)
+          VALUES ('${PPI_ID}', '${PPI_SubID}', '${PPI_ProductID}', '${PPI_ProductInit}', '0', '(NONE)', '(NONE)', 'A', '${new Date().toISOString()}', '${user_id}', '${delegated_to}', '1', '${parseFloat(txtJumlahLOT)}', '${txt_pPI_batchsizekemasan}', '${parseFloat(TXT_rendemen_min)}')
+        `;
+        insertDetailQuery = insertHeaderQuery + '; ' + insertDetailQuery;
+      }
+
+      await sequelizeMSQL.query(insertDetailQuery, { type: QueryTypes.INSERT });
+
+      adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
+
+      return res.status(200).json({ message: "Grid enabled and data inserted", dataGridEnabled, dataGridFocus, fieldsDisabled, buttonsDisabled });
+    } else {
+      // If records found, refresh the grid
+      const adodc11Query = `
+        SELECT TOP 1 PPI_ItemID, group_name, item_name, item_size, PPI_QTY, PPI_UnitID
+        FROM vwPPIDetailwithItem_template
+        WHERE PPI_ID LIKE '${PPI_ID}'
+          AND PPI_SubID LIKE '${PPI_SubID}'
+          AND PPI_ProductID LIKE '${PPI_ProductID}'
+          AND PPI_ProductInit = '${PPI_ProductInit}'
+      `;
+
+      const adodc11 = await sequelizeMSQL.query(adodc11Query, { type: QueryTypes.SELECT });
+
+      return res.status(200).json({ message: "OK", data: adodc2 });
+    }
+  } catch (error) {
+    console.error('Error enabling grid:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 const deleteMasterFormulaTemplate = async (req, res) => {
   const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.body;
   const { user_id, bagian_user } = req.user;
   console.log({asasasasas: req.user});
-  if (!PPI_ID || !PPI_SubID || !PPI_ProductID || !PPI_ProductInit) {
+
+  if (!user_id || user_id === '') {
+    return res.status(401).send({ message: 'User ID is required' });
+  }
+  if (!PPI_ID || !PPI_ProductID || !PPI_ProductInit) {
     return res.status(400).send({ message: 'Lengkapi Dahulu KODE PRODUK, OLAH/KEMAS, PS/TOLL-IN/TOLL-OUT !!!' });
   }
 
@@ -1994,11 +2073,106 @@ const updateItemPRC = async (req, res) => {
   }
 };
 
+const sbApprButton = async (req, res) => {
+  const { tag } = req.query;
+  try {
+    const { user_id } = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    let cmdApproveEnabled = false;
+    let sLevel = await fnCekLevel(user_id);
+    console.log({sLevel});
+    let isCheck = false;
 
+    if (tag && (sLevel === 1 || sLevel === 2)) {
+      const sql = `
+        SELECT ppi_status
+        FROM m_ppi_header
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+      `;
+      const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+      if (rs.length === 0) {
+        isCheck = true;
+      } else {
+        const strIsActive = rs[0].ppi_status;
+        if (strIsActive === "A") {
+          isCheck = true;
+        } else {
+          isCheck = false;
+        }
+      }
+    }
+
+    if (isCheck) {
+      if (sLevel === 0) {
+        cmdApproveEnabled = false;
+      } else {
+        cmdApproveEnabled = false;
+        if (!await fnCurr(user_id) && sLevel === 1) {
+          cmdApproveEnabled = true;
+        } else if (await fnCurr(user_id) && sLevel === 2) {
+          cmdApproveEnabled = true;
+        }
+      }
+    } else {
+      cmdApproveEnabled = false;
+    }
+
+    const cmdApprovePPIEnabled = cmdApproveEnabled;
+
+    return res.status(200).json({ cmdApproveEnabled, cmdApprovePPIEnabled });
+  } catch (error) {
+    console.error('Error in sbApprButton:', error);
+    return res.status(500).json({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const fnCekLevel = async (user_id) => {
+  try {
+    const sql = `
+      SELECT ISNULL(appr_no, 0) AS levelID
+      FROM m_Approver_Lines
+      WHERE Appr_ApplicationCode LIKE 'PPI'
+        AND Appr_ID = '${user_id}'
+    `;
+    const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+
+    if (rs.length === 0) {
+      return 0;
+    } else {
+      return parseInt(rs[0].levelID, 10);
+    }
+  } catch (error) {
+    console.error('Error in fnCekLevel:', error);
+    throw new Error('Internal server error');
+  }
+};
+
+const fnCurr = async (tag) => {
+  try {
+    const sql = `
+      SELECT ISNULL(spv_user_approve, '-') AS spvApp
+      FROM m_PPI_Header_Template
+      WHERE ISNULL(user_approve, '') = ''
+        AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+    `;
+    const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+
+    if (rs.length === 0 || rs[0].spvApp === '-') {
+      return false;
+    } else {
+      return true;
+    }
+  } catch (error) {
+    console.error('Error in fnCurr:', error);
+    throw new Error('Internal server error');
+  }
+};
 
 
 module.exports = {
+  sbApprButton,
   updateItemPRC,
+  enableGrid,
   refreshListMergerPPI,
   getListMergerPPI,
   deleteKeteranganApprovePPI,

@@ -2,7 +2,7 @@ const express = require("express");
 const trxSampleRDRouter = express.Router();
 
 const { authentication } = require("../../middlewares/authentication");
-const { getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, exportStockDataToExcel, btnSaveKeluar, cekForumulaExisting, cmdApproveKeluar, cmdAddNewKeluar, btnDeleteDetail, btnPrint } = require("../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller");
+const { getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, exportStockDataToExcel, btnSaveKeluar, cekForumulaExisting, cmdApproveKeluar, cmdAddNewKeluar, btnDeleteDetail, btnPrint, getHistoryData, cmdApproveMasuk, findHistoryByKodeBahan } = require("../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller");
 
 trxSampleRDRouter.get("/rak", getStockDataByRak);
 trxSampleRDRouter.get("/rak-export", exportStockDataToExcel);
@@ -12,6 +12,7 @@ trxSampleRDRouter.get("/stockbydate", getStockByDate);
 
 trxSampleRDRouter.post("/masuk", authentication, cmdSimpanMasuk);
 trxSampleRDRouter.delete("/masuk", authentication, cmdDeleteMasuk);
+trxSampleRDRouter.post("/masuk-approve", authentication, cmdApproveMasuk);
 
 
 trxSampleRDRouter.get("/keluar-cek-formula-exist", cekForumulaExisting);
@@ -21,6 +22,9 @@ trxSampleRDRouter.post("/keluar-detail", authentication, cmdAddNewKeluar);
 trxSampleRDRouter.delete("/keluar-detail", authentication, btnDeleteDetail);
 
 trxSampleRDRouter.post("/keluar-print", authentication, btnPrint);
+
+trxSampleRDRouter.get("/history", getHistoryData);
+trxSampleRDRouter.get("/history-bykodebahan", findHistoryByKodeBahan);
 
 
 module.exports = trxSampleRDRouter
