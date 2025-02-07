@@ -1052,7 +1052,7 @@ async function getHistoryData(req, res, next) {
 }
 
 async function findHistoryByKodeBahan(req, res, next) {
-  const { strQuickSearch } = req.body;
+  const { strQuickSearch } = req.query;
 
   try {
     let strSQL = `

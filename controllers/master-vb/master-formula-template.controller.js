@@ -289,10 +289,11 @@ const updateMasterFormulaTemplate = async (req, res) => {
     // Process DataGrid
     let detailSQL = '';
     if (Array.isArray(DataGrid) && DataGrid.length > 0) {
+      console.log({DataGrid});
       detailSQL = DataGrid.map((row, index) => {
-        const { ItemID, QTY, UnitID } = row;
-        console.log({ItemID, test: 'asd'});
-        if (!ItemID || ItemID.includes('(NONE)')) return null;
+        const { PPI_ItemID, PPI_QTY = '0', PPI_UnitID } = row;
+        console.log({PPI_ItemID, test: 'asd'});
+        if (!PPI_ItemID || PPI_ItemID.includes('(NONE)')) return null;
 
         return `
           INSERT INTO m_PPI_Detail_template
@@ -300,10 +301,12 @@ const updateMasterFormulaTemplate = async (req, res) => {
            PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
           VALUES
           (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
-           ${index + 1}, '${ItemID}', '${QTY}', '${UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
+           ${index + 1}, '${PPI_ItemID}', '${PPI_QTY}', '${PPI_UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
         `;
       }).filter(Boolean).join(' ');
     }
+
+    console.log({detailSQL});
 
     // Update header
       const updateHeaderSQL = `
@@ -480,6 +483,78 @@ const preApprove = async (req, res, next) => {
   } catch (error) {
     console.error({ error });
     return res.status(500).send({ message: 'Error while pre-approving master formula template', details: error.message });
+  }
+};
+
+const enableGrid = async (req, res) => {
+  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, txtJumlahLOT, txt_pPI_batchsizekemasan, TXT_rendemen_min } = req.query;
+  const { user_id, delegated_to } = req.user;
+
+  try {
+
+    const dataGridEnabled = true;
+    let query = `
+      SELECT PPI_ItemID, group_name, item_name, item_size, PPI_QTY, PPI_UnitID
+      FROM vwPPIDetailwithItem_template
+      WHERE PPI_ID LIKE '${PPI_ID}'
+        AND PPI_SubID LIKE '${PPI_SubID}'
+        AND PPI_ProductID LIKE '${PPI_ProductID}'
+        AND PPI_ProductInit = '${PPI_ProductInit}'
+      ORDER BY PPI_SeqID
+    `;
+
+    const adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
+
+    if (adodc2.length === 0) {
+      // If no records found, insert new records
+      let queryCheck = `
+        SELECT PPI_ID
+        FROM m_PPI_Header_template
+        WHERE ISNULL(item_Periode, '') = ''
+          AND PPI_ID LIKE '${PPI_ID}'
+          AND PPI_SubID LIKE '${PPI_SubID}'
+          AND PPI_ProductID LIKE '${PPI_ProductID}'
+          AND PPI_ProductInit = '${PPI_ProductInit}'
+      `;
+
+      const adodc9 = await sequelizeMSQL.query(queryCheck, { type: QueryTypes.SELECT });
+
+      let insertDetailQuery = `
+        INSERT INTO m_PPI_Detail_template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_SeqID, PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
+        VALUES ('${PPI_ID}', '${PPI_SubID}', '${PPI_ProductID}', '${PPI_ProductInit}', '1', '(NONE)', '0', '(NONE)', '${new Date().toISOString()}', '${user_id}', '${delegated_to}')
+      `;
+
+      if (adodc9.length === 0) {
+        let insertHeaderQuery = `
+          INSERT INTO m_PPI_Header_template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, ppi_lot, pPI_batchsizekemasan, rendemen_min)
+          VALUES ('${PPI_ID}', '${PPI_SubID}', '${PPI_ProductID}', '${PPI_ProductInit}', '0', '(NONE)', '(NONE)', 'A', '${new Date().toISOString()}', '${user_id}', '${delegated_to}', '1', '${parseFloat(txtJumlahLOT)}', '${txt_pPI_batchsizekemasan}', '${parseFloat(TXT_rendemen_min)}')
+        `;
+        insertDetailQuery = insertHeaderQuery + '; ' + insertDetailQuery;
+      }
+
+      await sequelizeMSQL.query(insertDetailQuery, { type: QueryTypes.INSERT });
+
+      adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
+
+      return res.status(200).json({ message: "Grid enabled and data inserted", dataGridEnabled, dataGridFocus, fieldsDisabled, buttonsDisabled });
+    } else {
+      // If records found, refresh the grid
+      const adodc11Query = `
+        SELECT TOP 1 PPI_ItemID, group_name, item_name, item_size, PPI_QTY, PPI_UnitID
+        FROM vwPPIDetailwithItem_template
+        WHERE PPI_ID LIKE '${PPI_ID}'
+          AND PPI_SubID LIKE '${PPI_SubID}'
+          AND PPI_ProductID LIKE '${PPI_ProductID}'
+          AND PPI_ProductInit = '${PPI_ProductInit}'
+      `;
+
+      const adodc11 = await sequelizeMSQL.query(adodc11Query, { type: QueryTypes.SELECT });
+
+      return res.status(200).json({ message: "OK", data: adodc2 });
+    }
+  } catch (error) {
+    console.error('Error enabling grid:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -1999,6 +2074,7 @@ const updateItemPRC = async (req, res) => {
 
 module.exports = {
   updateItemPRC,
+  enableGrid,
   refreshListMergerPPI,
   getListMergerPPI,
   deleteKeteranganApprovePPI,
