@@ -1051,9 +1051,46 @@ async function getHistoryData(req, res, next) {
   }
 }
 
+async function findHistoryByKodeBahan(req, res, next) {
+  const { strQuickSearch } = req.body;
 
+  try {
+    let strSQL = `
+      SELECT A.ItemID, A.ItemName, Principle, Supplier, A.batchno AS BatchLot, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.PK_ID_Item
+      FROM t_NP_Sample_Stock A
+    `;
+
+    if (strQuickSearch) {
+      strSQL += ` WHERE A.itemid LIKE '${strQuickSearch}%'`;
+    }
+
+    const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+    if (grecLister.length > 0) {
+      const selectedItem = grecLister[0];
+      const response = {
+        txtKodeBahan: selectedItem.ItemID,
+        txtNamaBahan: selectedItem.ItemName,
+        txtPrinciple: selectedItem.Principle,
+        txtSuplier: selectedItem.Supplier,
+        txtBatchno: selectedItem.BatchLot,
+        txtNoAnalisa: selectedItem.Analisa,
+        txtRak: selectedItem.rak,
+        txtKodeBahanTag: selectedItem.PK_ID_Item
+      };
+
+      return res.status(200).json({ message: "OK", data: response });
+    } else {
+      return res.status(404).json({ message: "Data Belum Tersedia!" });
+    }
+  } catch (error) {
+    console.error('Error finding data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
 module.exports = {
+  findHistoryByKodeBahan,
   btnPrint,
   getHistoryData,
   btnDeleteDetail,
