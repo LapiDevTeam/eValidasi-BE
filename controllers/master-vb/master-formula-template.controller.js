@@ -503,7 +503,7 @@ const enableGrid = async (req, res) => {
       ORDER BY PPI_SeqID
     `;
 
-    const adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
+    let adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
 
     if (adodc2.length === 0) {
       // If no records found, insert new records
@@ -562,7 +562,11 @@ const deleteMasterFormulaTemplate = async (req, res) => {
   const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.body;
   const { user_id, bagian_user } = req.user;
   console.log({asasasasas: req.user});
-  if (!PPI_ID || !PPI_SubID || !PPI_ProductID || !PPI_ProductInit) {
+
+  if (!user_id || user_id === '') {
+    return res.status(401).send({ message: 'User ID is required' });
+  }
+  if (!PPI_ID || !PPI_ProductID || !PPI_ProductInit) {
     return res.status(400).send({ message: 'Lengkapi Dahulu KODE PRODUK, OLAH/KEMAS, PS/TOLL-IN/TOLL-OUT !!!' });
   }
 
@@ -2069,10 +2073,104 @@ const updateItemPRC = async (req, res) => {
   }
 };
 
+const sbApprButton = async (req, res) => {
+  const { tag } = req.query;
+  try {
+    const { user_id } = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    let cmdApproveEnabled = false;
+    let sLevel = await fnCekLevel(user_id);
+    console.log({sLevel});
+    let isCheck = false;
 
+    if (tag && (sLevel === 1 || sLevel === 2)) {
+      const sql = `
+        SELECT ppi_status
+        FROM m_ppi_header
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+      `;
+      const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+      if (rs.length === 0) {
+        isCheck = true;
+      } else {
+        const strIsActive = rs[0].ppi_status;
+        if (strIsActive === "A") {
+          isCheck = true;
+        } else {
+          isCheck = false;
+        }
+      }
+    }
+
+    if (isCheck) {
+      if (sLevel === 0) {
+        cmdApproveEnabled = false;
+      } else {
+        cmdApproveEnabled = false;
+        if (!await fnCurr(user_id) && sLevel === 1) {
+          cmdApproveEnabled = true;
+        } else if (await fnCurr(user_id) && sLevel === 2) {
+          cmdApproveEnabled = true;
+        }
+      }
+    } else {
+      cmdApproveEnabled = false;
+    }
+
+    const cmdApprovePPIEnabled = cmdApproveEnabled;
+
+    return res.status(200).json({ cmdApproveEnabled, cmdApprovePPIEnabled });
+  } catch (error) {
+    console.error('Error in sbApprButton:', error);
+    return res.status(500).json({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const fnCekLevel = async (user_id) => {
+  try {
+    const sql = `
+      SELECT ISNULL(appr_no, 0) AS levelID
+      FROM m_Approver_Lines
+      WHERE Appr_ApplicationCode LIKE 'PPI'
+        AND Appr_ID = '${user_id}'
+    `;
+    const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+
+    if (rs.length === 0) {
+      return 0;
+    } else {
+      return parseInt(rs[0].levelID, 10);
+    }
+  } catch (error) {
+    console.error('Error in fnCekLevel:', error);
+    throw new Error('Internal server error');
+  }
+};
+
+const fnCurr = async (tag) => {
+  try {
+    const sql = `
+      SELECT ISNULL(spv_user_approve, '-') AS spvApp
+      FROM m_PPI_Header_Template
+      WHERE ISNULL(user_approve, '') = ''
+        AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE '${tag}'
+    `;
+    const rs = await sequelizeMSQL.query(sql, { type: QueryTypes.SELECT });
+
+    if (rs.length === 0 || rs[0].spvApp === '-') {
+      return false;
+    } else {
+      return true;
+    }
+  } catch (error) {
+    console.error('Error in fnCurr:', error);
+    throw new Error('Internal server error');
+  }
+};
 
 
 module.exports = {
+  sbApprButton,
   updateItemPRC,
   enableGrid,
   refreshListMergerPPI,
