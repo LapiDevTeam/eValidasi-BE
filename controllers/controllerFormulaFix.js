@@ -98,7 +98,7 @@ class ControllerFormulaFix {
         
         
           `,
-        margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
+        margin: { bottom: "70px", top: "110px", left: "70px", right: "80px" },
       });
 
       await browser.close();
