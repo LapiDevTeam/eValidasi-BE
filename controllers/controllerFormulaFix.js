@@ -72,9 +72,9 @@ class ControllerFormulaFix {
             <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
               <tr>
                 <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD</td>
+                <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD.000095</td>
                 <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
+                <td style="border: 1px solid gray; width: 15%; text-align: center;">06/02/2024</td>
                 <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
                 <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
                 <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
