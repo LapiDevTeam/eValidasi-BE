@@ -1,7 +1,10 @@
 const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
 const { getPagination, getPagingData } = require("../../helpers/pagination");
 const { Sequelize } = require("../../models");
-
+const fs = require('fs');
+const puppeteer = require('puppeteer');
+const path = require('path');
+const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 const { QueryTypes } = require("sequelize");
 
 const masterBahanAwalTemplate_CREATE = async (req, res) => {
@@ -1616,5 +1619,108 @@ const generateItemID = async (item_groupID) => {
   return lblItem_ID;
 };
 
+function getBase64Image(filePath) {
+  const image = fs.readFileSync(filePath);
+  return `data:image/jpeg;base64,${image.toString('base64')}`;
+}
 
- module.exports = { checkPeriodController, getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+async function printTest(req, res) {
+  const { link, type, kode } = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+    await page.goto(link, { waitUntil: 'networkidle0' });
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: 12px !important;
+          font-family: Arial, sans-serif;
+        }
+      `,
+    });
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: `
+        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+          <tr>
+            <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+            <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
+            <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+            <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
+            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+            <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
+            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+            <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+          </tr>
+        </table>
+      `,
+      headerTemplate: `
+        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+          <tr>
+            <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
+              <img src="${logoBase64}" alt="lapilogo" width="100">
+            </td>
+
+            <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
+              DAFTAR
+            </td>
+
+            <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
+              <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
+                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                    <span>Nomor</span>
+                  </div>
+                  <div style="width: 50%; padding: 5px;">${kode}</div>
+                </div>
+                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                    <span>Tanggal</span>
+                  </div>
+                  <div style="width: 50%; padding: 5px;">TANGGAL</div>
+                </div>
+                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                    <span>Revisi</span>
+                  </div>
+                  <div style="width: 50%; padding: 5px;">REVISI</div>
+                </div>
+                <div style="display: flex; flex: 1;">
+                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                    <span>Halaman</span>
+                  </div>
+                  <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
+              Studi Praformulasi
+            </td>
+          </tr>
+        </table>
+        `,
+      margin: { bottom: '60px', top: '130px', left: '70px', right: '80px' },
+    });
+    await browser.close();
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printCatatanTrial:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+
+
+ module.exports = { printTest, checkPeriodController, getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
