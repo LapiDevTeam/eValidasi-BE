@@ -1423,6 +1423,65 @@ async function getViewDPBATemplate(req, res, next) {
     }
 
     const response = getPagingData(data, page, limit);
+    let file = "";
+    switch (item_group) {
+      case "C":
+        file = "DA.RD.000010";
+        break;
+      case "A":
+        file = "DA.RD.000011";
+        break;
+      case "AB":
+        file = "DA.RD.000012";
+        break;
+      case "BA":
+        file = "DA.RD.000013";
+        break;
+      case "BB":
+        file = "DA.RD.000014";
+        break;
+      case "B":
+        file = "DA.RD.000015";
+        break;
+      case "BR":
+        file = "DA.RD.000016";
+        break;
+      case "L":
+        file = "DA.RD.000017";
+        break;
+      case "E":
+        file = "DA.RD.000018";
+        break;
+      case "D":
+        file = "DA.RD.000019";
+        break;
+      case "K":
+        file = "DA.RD.000020";
+        break;
+      case "IN":
+        file = "DA.RD.000005";
+        break;
+      case "PR":
+        file = "DA.RD.000008";
+        break;
+      case "CO":
+        file = "DA.RD.000007";
+        break;
+      case "FL":
+        file = "DA.RD.000006";
+        break;
+      case "AC":
+        file = "DA.RD.000004";
+        break;
+      case "02A":
+      case "02B":
+        // file = "DA.RD.000021"; // Uncomment when ready
+        break;
+      default:
+        file = "DA.RD.000009";
+    }
+
+    response['nomorDocument'] = file;
     return res.status(200).json(response)
 
   } catch (error) {
