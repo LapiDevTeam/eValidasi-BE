@@ -1692,6 +1692,11 @@ async function printTest(req, res) {
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
+
+    await page.setExtraHTTPHeaders({
+      'authentication': token
+    });
+
     await page.goto(link, { waitUntil: 'networkidle0' });
 
     await page.addStyleTag({

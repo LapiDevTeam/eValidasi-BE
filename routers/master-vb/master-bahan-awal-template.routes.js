@@ -5,9 +5,9 @@ const router = express.Router();
 
 router.post("/approve", authentication, masterBahanAwalTemplate_APPROVE);
 
-router.get("/print-data", authentication, getViewDPBATemplate);
+router.get("/print-data", getViewDPBATemplate);
 
-router.get("/print", authentication, printTest);
+router.get("/print", printTest);
 
 router.post("/", authentication, masterBahanAwalTemplate_CREATE);
 
