@@ -1693,9 +1693,9 @@ async function printTest(req, res) {
 
     const logoBase64 = getBase64Image(logoPath);
 
-    await page.setExtraHTTPHeaders({
-      'authentication': token
-    });
+    // await page.setExtraHTTPHeaders({
+    //   'authentication': token
+    // });
 
     await page.goto(link, { waitUntil: 'networkidle0' });
 
