@@ -1684,7 +1684,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '' } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token } = req.query;
 
   let browser;
   try {
@@ -1761,7 +1761,7 @@ async function printTest(req, res) {
           </tr>
         </table>
         `,
-      margin: { bottom: '60px', top: '130px', left: '70px', right: '80px' },
+      margin: { bottom: '60px', top: '130px', left: '40px', right: '40px' },
     });
     await browser.close();
     res.end(pdfBuffer);
