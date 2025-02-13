@@ -1713,6 +1713,7 @@ async function printTest(req, res) {
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
+      footerTemplate: ` `,
       headerTemplate: `
         <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
           <tr>
