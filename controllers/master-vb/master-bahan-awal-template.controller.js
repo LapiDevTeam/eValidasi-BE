@@ -1625,7 +1625,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '' } = req.query;
 
   let browser;
   try {
@@ -1649,20 +1649,6 @@ async function printTest(req, res) {
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
-      footerTemplate: `
-        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
-          <tr>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
-            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
-            <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
-            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
-            <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
-          </tr>
-        </table>
-      `,
       headerTemplate: `
         <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
           <tr>
@@ -1686,13 +1672,13 @@ async function printTest(req, res) {
                   <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
                     <span>Tanggal</span>
                   </div>
-                  <div style="width: 50%; padding: 5px;">TANGGAL</div>
+                  <div style="width: 50%; padding: 5px;">${tanggal}</div>
                 </div>
                 <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
                   <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
                     <span>Revisi</span>
                   </div>
-                  <div style="width: 50%; padding: 5px;">REVISI</div>
+                  <div style="width: 50%; padding: 5px;">${revisi}</div>
                 </div>
                 <div style="display: flex; flex: 1;">
                   <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
@@ -1706,7 +1692,7 @@ async function printTest(req, res) {
 
           <tr>
             <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
-              Studi Praformulasi
+              ${judul}
             </td>
           </tr>
         </table>
