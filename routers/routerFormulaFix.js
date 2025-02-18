@@ -56,6 +56,8 @@ router.put(
   authentication,
   ControllerFormulaFix.handleSaveProsesPengemasan
 );
+
+router.get("/namaBahanBaku-formulaFix", ControllerFormulaFix.namaBahanBakuFormulaFix);
 // save dan edit rancangan
 router.put(
   "/handle-rancangan-spesifikasi-obat-jadi/:id",
