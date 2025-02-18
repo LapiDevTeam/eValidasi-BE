@@ -65,7 +65,7 @@ router.put(
   ControllerFormulaFix.handleSaveRancanganSpesifikasiObatJadi
 );
 
-router.get("/find-produsen", ControllerFormulaFix.findNamaBahanBaku);
+router.post("/find-produsen", ControllerFormulaFix.findNamaBahanBaku);
 router.get("/get-komposisi-01", ControllerFormulaFix.findAllKomposisi);
 
 router.get(

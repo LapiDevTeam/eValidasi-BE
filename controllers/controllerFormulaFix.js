@@ -582,10 +582,10 @@ class ControllerFormulaFix {
       await sql.connect(config);
 
       const request = new sql.Request();
-      const { nama, kode } = req.query;
+      const { nama, kode } = req.body;
 
-    // Define the main query with UNION inside a CTE (Common Table Expression)
-let query = `
+      // Define the main query with UNION inside a CTE (Common Table Expression)
+      let query = `
 WITH CombinedItems AS (
   SELECT 
     a.Item_ID AS Item_Id, 
@@ -600,23 +600,31 @@ WITH CombinedItems AS (
 SELECT * FROM CombinedItems WHERE 1=1
 `;
 
-// Add dynamic filters if parameters are provided
-if (nama) {
-query += ` AND ItemName = @nama `;
-request.input("nama", sql.VarChar, nama);
-}
-if (kode) {
-query += ` AND Item_Id = @kode `;
-request.input("kode", sql.VarChar, kode);
-}
+      // Add dynamic filters if parameters are provided
+      if (nama) {
+        console.log(nama,"< nama");
+        
+        query += ` AND ItemName = @nama `;
+        request.input("nama", sql.VarChar, nama);
+      }
+      if (kode) {
+        console.log(kode,"< kode");
+        
+        query += ` AND Item_Id = @kode `;
+        request.input("kode", sql.VarChar, kode);
+      }
 
-query += ` ORDER BY Item_Id;`;
+      query += ` ORDER BY Item_Id;`;
 
-const { recordset } = await request.query(query);
+      console.log(query, "< query");
 
-if (recordset.length === 0) {
-return res.status(404).json({ message: "Produsen not found" });
-}
+      const { recordset } = await request.query(query);
+
+      console.log(recordset, "< aa");
+
+      if (recordset.length === 0) {
+        return res.status(404).json({ message: "Produsen not found" });
+      }
 
       // Send the result
       res.status(200).json(recordset);
@@ -1327,40 +1335,40 @@ return res.status(404).json({ message: "Produsen not found" });
     }
   }
 
-   static async namaBahanBakuFormulaFix(req, res) {
-      try {
-        const config = {
-          user: process.env.MS_SQL_DB_USER,
-          password: process.env.MS_SQL_DB_PWD,
-          server: process.env.MS_SQL_DB_SERVER,
-          database: process.env.MS_SQL_DB_NAME,
-          options: {
-            encrypt: false,
-            trustServerCertificate: true,
-          },
-        };
-  
-        sql.connect(config, function (err) {
-          if (err) console.log(err);
-          const request = new sql.Request();
-          request.query(
-            `
+  static async namaBahanBakuFormulaFix(req, res) {
+    try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      sql.connect(config, function (err) {
+        if (err) console.log(err);
+        const request = new sql.Request();
+        request.query(
+          `
             select a.Item_ID as ItemID, a.item_name as ItemName, c.Prc_Name as principle from m_item_manufacturing a
 left join m_item_manufacturing_supplier b on a.Item_ID = b.Item_ID 
 left join m_principle c on c.prc_ID = b.Item_PrcID
 left join t_np_sample_stock np on np.ItemID = a.Item_ID
 where a. isActive = 1 and b.isActive = 1;
             `,
-            async function (err, { recordset }) {
-              if (err) console.log(err);
-              res.status(200).json(recordset);
-            }
-          );
-        });
-      } catch (err) {
-        console.log(err);
-      }
+          async function (err, { recordset }) {
+            if (err) console.log(err);
+            res.status(200).json(recordset);
+          }
+        );
+      });
+    } catch (err) {
+      console.log(err);
     }
+  }
 
   static async updateDataStabilitas(req, res) {
     try {
