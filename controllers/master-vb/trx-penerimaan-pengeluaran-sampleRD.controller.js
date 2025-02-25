@@ -1092,7 +1092,18 @@ async function findHistoryByKodeBahan(req, res, next) {
 async function loadGridMaster(req, res, next) {
   const dateNow = new Date();
   const convertedDate = moment(dateNow).format('YYYY-MM-DD');
-  const { dtCari1= '2025-02-07', dtCari2 = convertedDate, txtcariProd } = req.query;
+  let { dtCari1, dtCari2 = convertedDate, txtcariProd } = req.query;
+
+  // Mengurangi 30 hari dari dtCari2 jika dtCari1 tidak disediakan
+  if (!dtCari1) {
+    const thirtyDaysAgo = moment(dtCari2).subtract(30, 'days').toDate();
+    dtCari1 = moment(thirtyDaysAgo).format('YYYYMMDD');
+  } else {
+    dtCari1 = moment(dtCari1).format('YYYYMMDD');
+  }
+
+  dtCari2 = moment(dtCari2).format('YYYYMMDD');
+
   try {
     const strTemp = `
       SELECT PKID, TypeInput, Tgl, KodeProd, NamaProd, formula, Note, ISNULL(batchsize, '') AS batchsize, ISNULL(batchSatuan, '') AS batchSatuan, ISNULL(batchKet, '') AS batchKet, ISNULL(expiredDate, '') AS expiredDate, NoPermintaan, TglTrial, TrialKe, PICPelaksana, fasilitas_trial, formula_sediaan, ISNULL(RH, 0) AS RH, ISNULL(Suhu, 0) AS Suhu
@@ -1101,7 +1112,6 @@ async function loadGridMaster(req, res, next) {
         AND (ISNULL(NamaProd, '') LIKE '%${txtcariProd}%' OR ISNULL(formula, '') LIKE '%${txtcariProd}%')
       ORDER BY Tgl
     `;
-
 
     const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
 
