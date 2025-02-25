@@ -1089,6 +1089,55 @@ async function findHistoryByKodeBahan(req, res, next) {
   }
 }
 
+async function loadGridMaster(req, res, next) {
+  const dateNow = new Date();
+  const convertedDate = moment(dateNow).format('YYYY-MM-DD');
+  const { dtCari1= '2025-02-07', dtCari2 = convertedDate, txtcariProd } = req.query;
+  try {
+    const strTemp = `
+      SELECT PKID, TypeInput, Tgl, KodeProd, NamaProd, formula, Note, ISNULL(batchsize, '') AS batchsize, ISNULL(batchSatuan, '') AS batchSatuan, ISNULL(batchKet, '') AS batchKet, ISNULL(expiredDate, '') AS expiredDate, NoPermintaan, TglTrial, TrialKe, PICPelaksana, fasilitas_trial, formula_sediaan, ISNULL(RH, 0) AS RH, ISNULL(Suhu, 0) AS Suhu
+      FROM t_NP_Sample_keluar_m
+      WHERE CONVERT(VARCHAR(8), Tgl, 112) BETWEEN '${dtCari1}' AND '${dtCari2}'
+        AND (ISNULL(NamaProd, '') LIKE '%${txtcariProd}%' OR ISNULL(formula, '') LIKE '%${txtcariProd}%')
+      ORDER BY Tgl
+    `;
+
+
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      const lvMaster = recTemp.map(item => ({
+        PKID: item.PKID,
+        TypeInput: item.TypeInput,
+        Tgl: item.Tgl,
+        KodeProd: item.KodeProd,
+        NamaProd: item.NamaProd,
+        formula: item.formula,
+        Note: item.Note,
+        batchsize: item.batchsize,
+        batchSatuan: item.batchSatuan,
+        batchKet: item.batchKet,
+        expiredDate: moment(item.expiredDate).format('YYYY/MM/DD'),
+        NoPermintaan: item.NoPermintaan,
+        TglTrial: moment(item.TglTrial).format('YYYY/MM/DD'),
+        TrialKe: item.TrialKe,
+        PICPelaksana: item.PICPelaksana,
+        fasilitas_trial: item.fasilitas_trial,
+        formula_sediaan: item.formula_sediaan,
+        RH: item.RH,
+        Suhu: item.Suhu
+      }));
+
+      return res.status(200).json({ message: 'OK', data: lvMaster });
+    } else {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+  } catch (error) {
+    console.error('Error loading grid master:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 module.exports = {
   findHistoryByKodeBahan,
   btnPrint,
@@ -1106,4 +1155,5 @@ module.exports = {
   cmdDeleteMasuk,
   getStockByDate,
   cmdApproveMasuk,
+  loadGridMaster
 };
