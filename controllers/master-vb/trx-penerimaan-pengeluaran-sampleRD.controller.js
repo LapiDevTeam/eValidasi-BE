@@ -1227,6 +1227,70 @@ async function searchNoPermintaan(req, res, next) {
   }
 }
 
+async function fnIsApprove(pkid) {
+  try {
+    const sql = `
+      SELECT TOP 1 ISNULL(apprid, '') AS appr
+      FROM t_NP_Sample_keluar_m
+      WHERE PKID LIKE :pkid
+    `;
+
+    const rs = await sequelizeMSQL.query(sql, {
+      replacements: { pkid },
+      type: QueryTypes.SELECT
+    });
+
+    if (rs.length > 0 && rs[0].appr !== '') {
+      return true; // already approved
+    } else {
+      return false; // not approved
+    }
+  } catch (error) {
+    console.error('Error checking approval status:', error);
+    throw error;
+  }
+}
+
+async function sbCekTombolPrint(req, res, next) {
+  let { txtIDTrans } = req.query;
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "txtIDTrans is required" });
+  }
+
+  try {
+    const { user_id , nama_user, inisial_user, jabatan_user, joblevel_id_user, bagian_user, delegated_to} = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
+    let fnUserLevel = joblevel_id_user;
+    console.log({user: req.user});
+    const isApproved = await fnIsApprove(txtIDTrans);
+
+    const response = {
+      btnPrintEnabled: false,
+      CmdAddNewEnabled: true,
+      btnSaveEnabled: true,
+      btnDeleteDetailEnabled: true,
+      cmdApproveEnabled: false
+    };
+
+    if (isApproved) {
+      response.btnPrintEnabled = true;
+      response.CmdAddNewEnabled = false;
+      response.btnSaveEnabled = false;
+      response.btnDeleteDetailEnabled = false;
+    }
+
+    if (fnUserLevel) {
+      response.cmdApproveEnabled = !isApproved;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error checking button states:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 // ---- HISTORY
 
 async function getHistoryData(req, res, next) {
@@ -1478,5 +1542,6 @@ module.exports = {
   loadGriddetil,
   searchByKodeBahan,
   handleItemPrint,
-  searchNoPermintaan
+  searchNoPermintaan,
+  sbCekTombolPrint
 };
