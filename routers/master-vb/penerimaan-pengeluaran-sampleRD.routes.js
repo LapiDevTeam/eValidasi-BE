@@ -2,7 +2,7 @@ const express = require("express");
 const trxSampleRDRouter = express.Router();
 
 const { authentication } = require("../../middlewares/authentication");
-const { getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, exportStockDataToExcel, btnSaveKeluar, cekForumulaExisting, cmdApproveKeluar, cmdAddNewKeluar, btnDeleteDetail, btnPrint, getHistoryData, cmdApproveMasuk, findHistoryByKodeBahan, loadGridMaster, loadGriddetil, searchByKodeBahan } = require("../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller");
+const { getStockDataByRak, getRakNotEmpty, browseItem, cmdSimpanMasuk, cmdDeleteMasuk, getStockByDate, exportStockDataToExcel, btnSaveKeluar, cekForumulaExisting, cmdApproveKeluar, cmdAddNewKeluar, btnDeleteDetail, btnPrint, getHistoryData, cmdApproveMasuk, findHistoryByKodeBahan, loadGridMaster, loadGriddetil, searchByKodeBahan, handleItemPrint, searchNoPermintaan } = require("../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller");
 
 trxSampleRDRouter.get("/rak", getStockDataByRak);
 trxSampleRDRouter.get("/rak-export", exportStockDataToExcel);
@@ -15,6 +15,7 @@ trxSampleRDRouter.delete("/masuk", authentication, cmdDeleteMasuk);
 trxSampleRDRouter.post("/masuk-approve", authentication, cmdApproveMasuk);
 
 
+trxSampleRDRouter.get("/keluar-no-permintaan", searchNoPermintaan);
 trxSampleRDRouter.get("/keluar-grid-data", loadGridMaster);
 trxSampleRDRouter.get("/keluar-grid-detail", loadGriddetil);
 trxSampleRDRouter.get("/keluar-bahan", searchByKodeBahan);
@@ -28,6 +29,7 @@ trxSampleRDRouter.post("/keluar-print", authentication, btnPrint);
 
 trxSampleRDRouter.get("/history", getHistoryData);
 trxSampleRDRouter.get("/history-bykodebahan", findHistoryByKodeBahan);
+trxSampleRDRouter.get("/history-print", handleItemPrint);
 
 
 module.exports = trxSampleRDRouter
