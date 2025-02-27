@@ -1029,66 +1029,6 @@ async function btnPrint(req, res, next) {
   }
 }
 
-async function getHistoryData(req, res, next) {
-  const { txtKodeBahan, txtBatchno, txtNoAnalisa, txtRak } = req.query;
-
-  if (!txtKodeBahan && !txtBatchno && !txtNoAnalisa && !txtRak) {
-    return res.status(400).json({ message: "Harap pilih Kode Bahan" });
-  }
-
-  try {
-    const strTemp = `EXEC spNPHistory '${txtKodeBahan}'`;
-    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
-
-    if (recTemp.length > 0) {
-      return res.status(200).json({ message: "OK", data: recTemp });
-    } else {
-      return res.status(404).json({ message: "Data tidak ada" });
-    }
-  } catch (error) {
-    console.error('Error retrieving data:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-}
-
-async function findHistoryByKodeBahan(req, res, next) {
-  const { strQuickSearch } = req.query;
-
-  try {
-    let strSQL = `
-      SELECT A.ItemID, A.ItemName, Principle, Supplier, A.batchno AS BatchLot, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.PK_ID_Item
-      FROM t_NP_Sample_Stock A
-    `;
-
-    if (strQuickSearch) {
-      strSQL += ` WHERE A.itemid LIKE '${strQuickSearch}%'`;
-    }
-
-    const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
-
-    if (grecLister.length > 0) {
-      const selectedItem = grecLister[0];
-      const response = {
-        txtKodeBahan: selectedItem.ItemID,
-        txtNamaBahan: selectedItem.ItemName,
-        txtPrinciple: selectedItem.Principle,
-        txtSuplier: selectedItem.Supplier,
-        txtBatchno: selectedItem.BatchLot,
-        txtNoAnalisa: selectedItem.Analisa,
-        txtRak: selectedItem.rak,
-        txtKodeBahanTag: selectedItem.PK_ID_Item
-      };
-
-      return res.status(200).json({ message: "OK", data: response });
-    } else {
-      return res.status(404).json({ message: "Data Belum Tersedia!" });
-    }
-  } catch (error) {
-    console.error('Error finding data:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-}
-
 async function loadGridMaster(req, res, next) {
   const dateNow = new Date();
   const convertedDate = moment(dateNow).format('YYYY-MM-DD');
@@ -1247,6 +1187,276 @@ async function searchByKodeBahan(req, res, next) {
   }
 }
 
+async function searchNoPermintaan(req, res, next) {
+  const { noPermintaan } = req.query;
+
+  if (!noPermintaan) {
+    return res.status(400).json({ message: "No permintaan is required" });
+  }
+
+  try {
+    const strSQL = `
+      SELECT
+        no_permintaan,
+        tgl_permintaan,
+        dept,
+        nama_barang,
+        batch,
+        principle,
+        Supplier,
+        alasan_permintaan
+      FROM t_permintaan_jasa_NP
+      WHERE ISNULL(no_permintaan, '') <> ''
+      AND no_permintaan LIKE :noPermintaan
+      ORDER BY tgl_permintaan DESC
+    `;
+
+    const grecLister = await sequelizeMSQL.query(strSQL, {
+      replacements: { noPermintaan: `%${noPermintaan}%` },
+      type: QueryTypes.SELECT
+    });
+
+    if (grecLister.length > 0) {
+      return res.status(200).json({ message: "OK", data: grecLister });
+    } else {
+      return res.status(404).json({ message: "Data Belum Tersedia!" });
+    }
+  } catch (error) {
+    console.error('Error searching no permintaan:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// ---- HISTORY
+
+async function getHistoryData(req, res, next) {
+  const { PK_ID_Item, txtBatchno, txtNoAnalisa, txtRak } = req.query;
+
+  if (!PK_ID_Item && !txtBatchno && !txtNoAnalisa && !txtRak) {
+    return res.status(400).json({ message: "Harap pilih Kode Bahan" });
+  }
+
+  try {
+    const strTemp = `EXEC spNPHistory '${PK_ID_Item}'`;
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      return res.status(200).json({ message: "OK", data: recTemp });
+    } else {
+      return res.status(404).json({ message: "Data tidak ada" });
+    }
+  } catch (error) {
+    console.error('Error retrieving data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function findHistoryByKodeBahan(req, res, next) {
+  const { itemID, itemName } = req.query;
+
+  try {
+    let strSQL = `
+      SELECT A.ItemID, A.ItemName, Principle, Supplier, A.batchno AS BatchLot, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.PK_ID_Item
+      FROM t_NP_Sample_Stock A WHERE 1=1
+    `;
+
+    if (itemID) {
+      strSQL += ` AND A.itemid LIKE '${itemID}%'`;
+    }
+    if (itemName) {
+      strSQL += ` AND A.itemName LIKE '%${itemName}%'`;
+    }
+
+    const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+    if (grecLister.length > 0) {
+      const selectedItem = grecLister|| []
+
+      return res.status(200).json({ message: "OK", data: selectedItem });
+    } else {
+      return res.status(404).json({ message: "Data Belum Tersedia!" });
+    }
+  } catch (error) {
+    console.error('Error finding data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function handleItemPrint(req, res, next) {
+  const { itemID } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT DISTINCT B.ItemName, B.batchno AS batchlot, B.principle, B.expDate, B.itemid, B.Analisa, B.supplier, B.kelbahan
+      FROM t_NP_Sample_masuk A
+      RIGHT JOIN t_NP_Sample_Stock B ON A.PK_ID_item = B.PK_ID_item
+      WHERE B.PK_ID_item = :itemID
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const strKelompokBahan = recTemp[0]?.kelbahan?.toUpperCase();
+    console.log({strKelompokBahan});
+
+    switch (strKelompokBahan) {
+      case "BAHAN KEMAS":
+        return await sbPrint_BahanKemas(req, res, next);
+      case "BAHAN BAKU AKTIF":
+        return await sbPrint_BahanBakuAktif(req, res, next);
+      case "BAHAN BAKU TAMBAHAN":
+        return await sbPrint_BahanTambahan(req, res, next);
+      default:
+        return await sbPrint_BahanLain(req, res, next);
+    }
+  } catch (error) {
+    console.error('Error handling item print:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanKemas(req, res, next) {
+  const { itemID, page, size } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strTemp = `
+      SELECT * FROM (
+        SELECT
+          B.ItemName,
+          B.batchno AS batchlot,
+          B.principle,
+          B.expDate,
+          B.itemid,
+          B.Analisa,
+          B.supplier,
+          B.kelbahan,
+          ROW_NUMBER() OVER (ORDER BY B.ItemName) AS row_num
+        FROM t_NP_Sample_Stock B
+        WHERE B.PK_ID_item = :itemID
+      ) AS temp
+      WHERE row_num BETWEEN :offset AND :offset + :limit
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID, limit, offset: offset + 1 },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const totalItems = await sequelizeMSQL.query(`
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock B
+      WHERE B.PK_ID_item = :itemID
+    `, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    const response = getPagingData({ rows: recTemp, count: totalItems[0].count }, page, limit);
+
+    console.log("Printing Bahan Kemas...");
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error printing Bahan Kemas:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanBakuAktif(req, res, next) {
+  const { itemID } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT DISTINCT
+        B.ItemName,
+        B.batchno AS batchlot,
+        B.principle,
+        B.expDate,
+        B.itemid,
+        B.Analisa,
+        B.supplier,
+        B.kelbahan
+      FROM t_NP_Sample_Stock B
+      WHERE B.PK_ID_item = :itemID
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const reportData = recTemp[0];
+
+    const historyQuery = `
+      EXEC spNPHistory_Print :itemID
+    `;
+
+    const historyData = await sequelizeMSQL.query(historyQuery, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    const filteredData = historyData.filter(item => item.nomor);
+
+    console.log("Printing Bahan Baku Aktif...");
+    return res.status(200).json({ message: "Printing Bahan Baku Aktif...", header: reportData, data: filteredData });
+  } catch (error) {
+    console.error('Error printing Bahan Baku Aktif:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanTambahan(req, res, next) {
+  console.log("Printing Bahan Tambahan...");
+  try {
+
+    return res.status(200).json({ message: "Printing Bahan Tambahan..." });
+  } catch (error) {
+    console.log({name: "sbPrint_BahanTambahan", error });
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanLain(req, res, next) {
+  console.log("Printing Bahan Lain...");
+  try {
+
+    return res.status(200).json({ message: "Printing Bahan Lain..." });
+  } catch (error) {
+    console.log({name: "sbPrint_BahanLain", error });
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+
+
 module.exports = {
   findHistoryByKodeBahan,
   btnPrint,
@@ -1266,5 +1476,7 @@ module.exports = {
   cmdApproveMasuk,
   loadGridMaster,
   loadGriddetil,
-  searchByKodeBahan
+  searchByKodeBahan,
+  handleItemPrint,
+  searchNoPermintaan
 };
