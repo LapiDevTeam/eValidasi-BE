@@ -1029,15 +1029,276 @@ async function btnPrint(req, res, next) {
   }
 }
 
-async function getHistoryData(req, res, next) {
-  const { txtKodeBahan, txtBatchno, txtNoAnalisa, txtRak } = req.query;
+async function loadGridMaster(req, res, next) {
+  const dateNow = new Date();
+  const convertedDate = moment(dateNow).format('YYYY-MM-DD');
+  let { dtCari1, dtCari2 = convertedDate, txtcariProd } = req.query;
 
-  if (!txtKodeBahan && !txtBatchno && !txtNoAnalisa && !txtRak) {
+  // Mengurangi 30 hari dari dtCari2 jika dtCari1 tidak disediakan
+  if (!dtCari1) {
+    const thirtyDaysAgo = moment(dtCari2).subtract(30, 'days').toDate();
+    dtCari1 = moment(thirtyDaysAgo).format('YYYYMMDD');
+  } else {
+    dtCari1 = moment(dtCari1).format('YYYYMMDD');
+  }
+
+  dtCari2 = moment(dtCari2).format('YYYYMMDD');
+
+  try {
+    const strTemp = `
+      SELECT PKID, TypeInput, Tgl, KodeProd, NamaProd, formula, Note, ISNULL(batchsize, '') AS batchsize, ISNULL(batchSatuan, '') AS batchSatuan, ISNULL(batchKet, '') AS batchKet, ISNULL(expiredDate, '') AS expiredDate, NoPermintaan, TglTrial, TrialKe, PICPelaksana, fasilitas_trial, formula_sediaan, ISNULL(RH, 0) AS RH, ISNULL(Suhu, 0) AS Suhu
+      FROM t_NP_Sample_keluar_m
+      WHERE CONVERT(VARCHAR(8), Tgl, 112) BETWEEN '${dtCari1}' AND '${dtCari2}'
+        AND (ISNULL(NamaProd, '') LIKE '%${txtcariProd}%' OR ISNULL(formula, '') LIKE '%${txtcariProd}%')
+      ORDER BY Tgl
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      const lvMaster = recTemp.map(item => ({
+        PKID: item.PKID,
+        TypeInput: item.TypeInput,
+        Tgl: item.Tgl,
+        KodeProd: item.KodeProd,
+        NamaProd: item.NamaProd,
+        formula: item.formula,
+        Note: item.Note,
+        batchsize: item.batchsize,
+        batchSatuan: item.batchSatuan,
+        batchKet: item.batchKet,
+        expiredDate: moment(item.expiredDate).format('YYYY/MM/DD'),
+        NoPermintaan: item.NoPermintaan,
+        TglTrial: moment(item.TglTrial).format('YYYY/MM/DD'),
+        TrialKe: item.TrialKe,
+        PICPelaksana: item.PICPelaksana,
+        fasilitas_trial: item.fasilitas_trial,
+        formula_sediaan: item.formula_sediaan,
+        RH: item.RH,
+        Suhu: item.Suhu
+      }));
+
+      return res.status(200).json({ message: 'OK', data: lvMaster });
+    } else {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+  } catch (error) {
+    console.error('Error loading grid master:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function loadGriddetil(req, res, next) {
+  const { txtIDTrans } = req.query;
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "txtIDTrans is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT A.PKID, A.SubPKID, B.ItemID, B.ItemName, B.Principle, B.Supplier, B.batchno AS BatchLot, B.Analisa, B.rak AS KodeRak, A.Saldo, A.Qty, A.Note, A.UserID, A.Delegated_To, A.Process_date, B.satuan, B.ExpDate, B.PK_ID_Item
+      FROM t_NP_Sample_keluar_d A
+      LEFT JOIN t_NP_Sample_Stock B ON A.PK_ID_item = B.PK_ID_Item
+      WHERE A.PKID = '${txtIDTrans}'
+      ORDER BY 2
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
+
+    if (recTemp.length > 0) {
+      const lvDetail = recTemp.map(item => ({
+        PKID: item.PKID,
+        SubPKID: item.SubPKID,
+        ItemID: item.ItemID,
+        ItemName: item.ItemName,
+        Principle: item.Principle,
+        Supplier: item.Supplier,
+        BatchLot: item.BatchLot,
+        Analisa: item.Analisa,
+        KodeRak: item.KodeRak,
+        Saldo: item.Saldo,
+        Qty: item.Qty,
+        Note: item.Note,
+        UserID: item.UserID,
+        Delegated_To: item.Delegated_To,
+        Process_date: item.Process_date,
+        satuan: item.satuan,
+        ExpDate: moment(item.ExpDate).format('DD-MMM-YYYY'),
+        PK_ID_Item: item.PK_ID_Item
+      }));
+
+      return res.status(200).json({ message: 'OK', data: lvDetail });
+    } else {
+      return res.status(404).json({ message: 'Data not found' });
+    }
+  } catch (error) {
+    console.error('Error loading grid detail:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function searchByKodeBahan(req, res, next) {
+  const { txtIDTrans, txtTypeOut, cboSediaan } = req.query;
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "Harap pilih transaksi keluar" });
+  }
+
+  if (txtTypeOut?.toUpperCase() !== "KOREKSI KELUAR" && txtTypeOut?.toUpperCase() !== "KELUAR (LAIN - LAIN)") {
+    if (!cboSediaan) {
+      return res.status(400).json({ message: "Harap pilih formula sediaan" });
+    }
+  }
+
+  const strKode = req.query.strKode || null;
+  const strName = req.query.strName || null;
+  const strBatchNo = req.query.strBatchNo || null;
+  const gStrListerTag = "Kode,Nama,Principle,Supplier,No Batch,No Analisa,Rak, Saldo, Satuan, PK ID Item";
+  let strSQL = `
+    SELECT DISTINCT A.ItemID, A.ItemName, A.Principle, A.Supplier, A.batchno, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.satuan, A.PK_ID_Item
+    FROM t_NP_Sample_Stock A
+    WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+  `;
+
+  if (strKode) {
+    strSQL += ` AND A.itemid LIKE '${strKode}%'`;
+  }
+
+  if (strName) {
+    strSQL += ` AND A.itemName LIKE '${strName}%'`;
+  }
+
+  if (strBatchNo) {
+    strSQL += ` AND A.batchno LIKE '${strBatchNo}%'`;
+  }
+
+  try {
+    const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
+
+    if (grecLister.length > 0) {
+      return res.status(200).json({ message: "OK", data: grecLister });
+    } else {
+      return res.status(200).json({ message: "Data Belum Tersedia!", data: [] });
+    }
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function searchNoPermintaan(req, res, next) {
+  const { noPermintaan } = req.query;
+
+
+  try {
+    const strSQL = `
+      SELECT
+        no_permintaan,
+        tgl_permintaan,
+        dept,
+        nama_barang,
+        batch,
+        principle,
+        Supplier,
+        alasan_permintaan
+      FROM t_permintaan_jasa_NP
+      WHERE ISNULL(no_permintaan, '') <> ''
+      ${noPermintaan ? `AND no_permintaan LIKE :noPermintaan` : ''}
+      ORDER BY tgl_permintaan DESC
+    `;
+
+    const grecLister = await sequelizeMSQL.query(strSQL, {
+      replacements: { noPermintaan: `%${noPermintaan}%` },
+      type: QueryTypes.SELECT
+    });
+
+    if (grecLister.length > 0) {
+      return res.status(200).json({ message: "OK", data: grecLister });
+    } else {
+      return res.status(404).json({ message: "Data Belum Tersedia!" });
+    }
+  } catch (error) {
+    console.error('Error searching no permintaan:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function fnIsApprove(pkid) {
+  try {
+    const sql = `
+      SELECT TOP 1 ISNULL(apprid, '') AS appr
+      FROM t_NP_Sample_keluar_m
+      WHERE PKID LIKE :pkid
+    `;
+
+    const rs = await sequelizeMSQL.query(sql, {
+      replacements: { pkid },
+      type: QueryTypes.SELECT
+    });
+
+    if (rs.length > 0 && rs[0].appr !== '') {
+      return true; // already approved
+    } else {
+      return false; // not approved
+    }
+  } catch (error) {
+    console.error('Error checking approval status:', error);
+    throw error;
+  }
+}
+
+async function sbCekTombolPrint(req, res, next) {
+  let { txtIDTrans } = req.query;
+
+  if (!txtIDTrans) {
+    return res.status(400).json({ message: "txtIDTrans is required" });
+  }
+
+  try {
+    const { user_id , nama_user, inisial_user, jabatan_user, joblevel_id_user, bagian_user, delegated_to} = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
+    let fnUserLevel = joblevel_id_user;
+    console.log({user: req.user});
+    const isApproved = await fnIsApprove(txtIDTrans);
+
+    const response = {
+      btnPrintEnabled: false,
+      CmdAddNewEnabled: true,
+      btnSaveEnabled: true,
+      btnDeleteDetailEnabled: true,
+      cmdApproveEnabled: false
+    };
+
+    if (isApproved) {
+      response.btnPrintEnabled = true;
+      response.CmdAddNewEnabled = false;
+      response.btnSaveEnabled = false;
+      response.btnDeleteDetailEnabled = false;
+    }
+
+    if (fnUserLevel) {
+      response.cmdApproveEnabled = !isApproved;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error checking button states:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// ---- HISTORY
+
+async function getHistoryData(req, res, next) {
+  const { PK_ID_Item, txtBatchno, txtNoAnalisa, txtRak } = req.query;
+
+  if (!PK_ID_Item && !txtBatchno && !txtNoAnalisa && !txtRak) {
     return res.status(400).json({ message: "Harap pilih Kode Bahan" });
   }
 
   try {
-    const strTemp = `EXEC spNPHistory '${txtKodeBahan}'`;
+    const strTemp = `EXEC spNPHistory '${PK_ID_Item}'`;
     const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
 
     if (recTemp.length > 0) {
@@ -1052,34 +1313,27 @@ async function getHistoryData(req, res, next) {
 }
 
 async function findHistoryByKodeBahan(req, res, next) {
-  const { strQuickSearch } = req.query;
+  const { itemID, itemName } = req.query;
 
   try {
     let strSQL = `
       SELECT A.ItemID, A.ItemName, Principle, Supplier, A.batchno AS BatchLot, A.Analisa, A.rak, A.saldoawal + A.masuk - A.keluar AS saldo, A.PK_ID_Item
-      FROM t_NP_Sample_Stock A
+      FROM t_NP_Sample_Stock A WHERE 1=1
     `;
 
-    if (strQuickSearch) {
-      strSQL += ` WHERE A.itemid LIKE '${strQuickSearch}%'`;
+    if (itemID) {
+      strSQL += ` AND A.itemid LIKE '${itemID}%'`;
+    }
+    if (itemName) {
+      strSQL += ` AND A.itemName LIKE '%${itemName}%'`;
     }
 
     const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
 
     if (grecLister.length > 0) {
-      const selectedItem = grecLister[0];
-      const response = {
-        txtKodeBahan: selectedItem.ItemID,
-        txtNamaBahan: selectedItem.ItemName,
-        txtPrinciple: selectedItem.Principle,
-        txtSuplier: selectedItem.Supplier,
-        txtBatchno: selectedItem.BatchLot,
-        txtNoAnalisa: selectedItem.Analisa,
-        txtRak: selectedItem.rak,
-        txtKodeBahanTag: selectedItem.PK_ID_Item
-      };
+      const selectedItem = grecLister|| []
 
-      return res.status(200).json({ message: "OK", data: response });
+      return res.status(200).json({ message: "OK", data: selectedItem });
     } else {
       return res.status(404).json({ message: "Data Belum Tersedia!" });
     }
@@ -1088,6 +1342,181 @@ async function findHistoryByKodeBahan(req, res, next) {
     return res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+async function handleItemPrint(req, res, next) {
+  const { itemID } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT DISTINCT B.ItemName, B.batchno AS batchlot, B.principle, B.expDate, B.itemid, B.Analisa, B.supplier, B.kelbahan
+      FROM t_NP_Sample_masuk A
+      RIGHT JOIN t_NP_Sample_Stock B ON A.PK_ID_item = B.PK_ID_item
+      WHERE B.PK_ID_item = :itemID
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const strKelompokBahan = recTemp[0]?.kelbahan?.toUpperCase();
+    console.log({strKelompokBahan});
+
+    switch (strKelompokBahan) {
+      case "BAHAN KEMAS":
+        return await sbPrint_BahanKemas(req, res, next);
+      case "BAHAN BAKU AKTIF":
+        return await sbPrint_BahanBakuAktif(req, res, next);
+      case "BAHAN BAKU TAMBAHAN":
+        return await sbPrint_BahanTambahan(req, res, next);
+      default:
+        return await sbPrint_BahanLain(req, res, next);
+    }
+  } catch (error) {
+    console.error('Error handling item print:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanKemas(req, res, next) {
+  const { itemID, page, size } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strTemp = `
+      SELECT * FROM (
+        SELECT
+          B.ItemName,
+          B.batchno AS batchlot,
+          B.principle,
+          B.expDate,
+          B.itemid,
+          B.Analisa,
+          B.supplier,
+          B.kelbahan,
+          ROW_NUMBER() OVER (ORDER BY B.ItemName) AS row_num
+        FROM t_NP_Sample_Stock B
+        WHERE B.PK_ID_item = :itemID
+      ) AS temp
+      WHERE row_num BETWEEN :offset AND :offset + :limit
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID, limit, offset: offset + 1 },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const totalItems = await sequelizeMSQL.query(`
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock B
+      WHERE B.PK_ID_item = :itemID
+    `, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    const response = getPagingData({ rows: recTemp, count: totalItems[0].count }, page, limit);
+
+    console.log("Printing Bahan Kemas...");
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error printing Bahan Kemas:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanBakuAktif(req, res, next) {
+  const { itemID } = req.query;
+
+  if (!itemID) {
+    return res.status(400).json({ message: "Item ID is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT DISTINCT
+        B.ItemName,
+        B.batchno AS batchlot,
+        B.principle,
+        B.expDate,
+        B.itemid,
+        B.Analisa,
+        B.supplier,
+        B.kelbahan
+      FROM t_NP_Sample_Stock B
+      WHERE B.PK_ID_item = :itemID
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data not found" });
+    }
+
+    const reportData = recTemp[0];
+
+    const historyQuery = `
+      EXEC spNPHistory_Print :itemID
+    `;
+
+    const historyData = await sequelizeMSQL.query(historyQuery, {
+      replacements: { itemID },
+      type: QueryTypes.SELECT
+    });
+
+    const filteredData = historyData.filter(item => item.nomor);
+
+    console.log("Printing Bahan Baku Aktif...");
+    return res.status(200).json({ message: "Printing Bahan Baku Aktif...", header: reportData, data: filteredData });
+  } catch (error) {
+    console.error('Error printing Bahan Baku Aktif:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanTambahan(req, res, next) {
+  console.log("Printing Bahan Tambahan...");
+  try {
+
+    return res.status(200).json({ message: "Printing Bahan Tambahan..." });
+  } catch (error) {
+    console.log({name: "sbPrint_BahanTambahan", error });
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function sbPrint_BahanLain(req, res, next) {
+  console.log("Printing Bahan Lain...");
+  try {
+
+    return res.status(200).json({ message: "Printing Bahan Lain..." });
+  } catch (error) {
+    console.log({name: "sbPrint_BahanLain", error });
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+
 
 module.exports = {
   findHistoryByKodeBahan,
@@ -1106,4 +1535,10 @@ module.exports = {
   cmdDeleteMasuk,
   getStockByDate,
   cmdApproveMasuk,
+  loadGridMaster,
+  loadGriddetil,
+  searchByKodeBahan,
+  handleItemPrint,
+  searchNoPermintaan,
+  sbCekTombolPrint
 };
