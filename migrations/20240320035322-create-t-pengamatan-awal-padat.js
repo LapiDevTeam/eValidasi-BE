@@ -165,10 +165,16 @@ module.exports = {
       syaratWarna: {
         type: Sequelize.STRING,
       },
+      spesifikasiWarna: {
+        type: Sequelize.STRING,
+      },
       hasilWarna: {
         type: Sequelize.STRING,
       },
       syaratBauAroma: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiBauAroma: {
         type: Sequelize.STRING,
       },
       hasilBauAroma: {
@@ -177,10 +183,16 @@ module.exports = {
       syaratRasa: {
         type: Sequelize.STRING,
       },
+      spesifikasiRasa: {
+        type: Sequelize.STRING,
+      },
       hasilRasa: {
         type: Sequelize.STRING,
       },
       syaratPh: {
+        type: Sequelize.STRING,
+      },
+    spesifikasiPh: {
         type: Sequelize.STRING,
       },
       hasilPh: {
@@ -189,10 +201,16 @@ module.exports = {
       syaratBj: {
         type: Sequelize.STRING,
       },
+      spesifikasiBj: {
+        type: Sequelize.STRING,
+      },
       hasilBj: {
         type: Sequelize.STRING,
       },
       syaratViskositas: {
+        type: Sequelize.STRING,
+      },
+      spesifikasiViskositas: {
         type: Sequelize.STRING,
       },
       hasilViskositas: {

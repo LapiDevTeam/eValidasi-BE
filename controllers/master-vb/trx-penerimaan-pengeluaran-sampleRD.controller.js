@@ -1190,9 +1190,6 @@ async function searchByKodeBahan(req, res, next) {
 async function searchNoPermintaan(req, res, next) {
   const { noPermintaan } = req.query;
 
-  if (!noPermintaan) {
-    return res.status(400).json({ message: "No permintaan is required" });
-  }
 
   try {
     const strSQL = `
@@ -1207,7 +1204,7 @@ async function searchNoPermintaan(req, res, next) {
         alasan_permintaan
       FROM t_permintaan_jasa_NP
       WHERE ISNULL(no_permintaan, '') <> ''
-      AND no_permintaan LIKE :noPermintaan
+      ${noPermintaan ? `AND no_permintaan LIKE :noPermintaan` : ''}
       ORDER BY tgl_permintaan DESC
     `;
 
