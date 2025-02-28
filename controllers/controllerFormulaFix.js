@@ -72,9 +72,9 @@ class ControllerFormulaFix {
             <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
               <tr>
                 <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD</td>
+                <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD.000095</td>
                 <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
+                <td style="border: 1px solid gray; width: 15%; text-align: center;">06/02/2024</td>
                 <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
                 <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
                 <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
@@ -98,7 +98,7 @@ class ControllerFormulaFix {
         
         
           `,
-        margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
+        margin: { bottom: "70px", top: "110px", left: "70px", right: "80px" },
       });
 
       await browser.close();
@@ -582,59 +582,45 @@ class ControllerFormulaFix {
       await sql.connect(config);
 
       const request = new sql.Request();
-      const { nama, kode } = req.query;
+      const { nama, kode } = req.body;
 
       // Define the main query with UNION inside a CTE (Common Table Expression)
       let query = `
-        WITH CombinedItems AS (
-          SELECT DISTINCT 
-              ItemID AS Item_Id, 
-              ItemName AS ItemName, 
-              principle AS Produsen
-          FROM 
-              t_NP_Sample_Stock 
-          WHERE 
-              ItemID IS NOT NULL 
-              AND ItemID <> '' 
-              AND ItemID <> '-'
-  
-          UNION 
-  
-          SELECT 
-              a.item_id AS Item_Id, 
-              b.item_name AS ItemName, 
-              c.prc_name AS Produsen 
-          FROM 
-              m_item_manufacturing_supplier a
-          LEFT JOIN 
-              m_item_manufacturing b ON a.item_id = b.item_id
-          LEFT JOIN 
-              m_principle c ON a.item_prcid = c.prc_id
-          LEFT JOIN 
-              m_supplier d ON a.item_suppid = d.supp_id
-          WHERE 
-              a.isactive = 1
-              AND b.isactive = 1 
-              AND c.isactive = 1 
-              AND d.isactive = 1 
-              AND b.item_type = 'BB'
-        )
-        SELECT * FROM CombinedItems WHERE 1=1
-      `;
+WITH CombinedItems AS (
+  SELECT 
+    a.Item_ID AS Item_Id, 
+    a.item_name AS ItemName, 
+    c.Prc_Name AS Produsen 
+  FROM m_item_manufacturing a
+  LEFT JOIN m_item_manufacturing_supplier b ON a.Item_ID = b.Item_ID 
+  LEFT JOIN m_principle c ON c.prc_ID = b.Item_PrcID
+  LEFT JOIN t_np_sample_stock np ON np.ItemID = a.Item_ID
+  WHERE a.isActive = 1 AND b.isActive = 1
+)
+SELECT * FROM CombinedItems WHERE 1=1
+`;
 
       // Add dynamic filters if parameters are provided
       if (nama) {
+        console.log(nama,"< nama");
+        
         query += ` AND ItemName = @nama `;
         request.input("nama", sql.VarChar, nama);
       }
       if (kode) {
+        console.log(kode,"< kode");
+        
         query += ` AND Item_Id = @kode `;
         request.input("kode", sql.VarChar, kode);
       }
 
-      query += ` ORDER BY Item_Id, Produsen;`;
+      query += ` ORDER BY Item_Id;`;
+
+      console.log(query, "< query");
 
       const { recordset } = await request.query(query);
+
+      console.log(recordset, "< aa");
 
       if (recordset.length === 0) {
         return res.status(404).json({ message: "Produsen not found" });
@@ -1346,6 +1332,41 @@ class ControllerFormulaFix {
       if (transaction) {
         await transaction.rollback();
       }
+    }
+  }
+
+  static async namaBahanBakuFormulaFix(req, res) {
+    try {
+      const config = {
+        user: process.env.MS_SQL_DB_USER,
+        password: process.env.MS_SQL_DB_PWD,
+        server: process.env.MS_SQL_DB_SERVER,
+        database: process.env.MS_SQL_DB_NAME,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+        },
+      };
+
+      sql.connect(config, function (err) {
+        if (err) console.log(err);
+        const request = new sql.Request();
+        request.query(
+          `
+            select a.Item_ID as ItemID, a.item_name as ItemName, c.Prc_Name as principle from m_item_manufacturing a
+left join m_item_manufacturing_supplier b on a.Item_ID = b.Item_ID 
+left join m_principle c on c.prc_ID = b.Item_PrcID
+left join t_np_sample_stock np on np.ItemID = a.Item_ID
+where a. isActive = 1 and b.isActive = 1;
+            `,
+          async function (err, { recordset }) {
+            if (err) console.log(err);
+            res.status(200).json(recordset);
+          }
+        );
+      });
+    } catch (err) {
+      console.log(err);
     }
   }
 
