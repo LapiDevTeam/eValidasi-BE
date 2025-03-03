@@ -478,7 +478,7 @@ async function cmdSimpanMasuk(req, res, next) {
           await sequelizeMSQL.query(sSave3, { transaction });
       }
 
-      await transaction.rollback();
+      await transaction.commit();
       return res.status(200).json({ message: 'OK', data: { sTerimaID, sPK_IDITEM } });
     }
 
@@ -1516,9 +1516,118 @@ async function sbPrint_BahanLain(req, res, next) {
   }
 }
 
+// ---- PINDAH LOKASI
+
+async function cmdRefreshData_pindahLokasi(req, res, next) {
+  const { rak = '', txtFilter = '', page, size } = req.query;
+
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strSQL = `
+      SELECT * FROM (
+        SELECT
+          ROW_NUMBER() OVER (ORDER BY A.ItemName) AS row_num,
+          A.ItemID,
+          A.ItemName,
+          A.Principle,
+          A.Supplier,
+          A.batchNo AS BatchLot,
+          A.Analisa,
+          A.rak,
+          A.saldoawal + A.masuk - A.keluar AS saldo,
+          A.PK_ID_Item
+        FROM t_NP_Sample_Stock A
+        WHERE A.saldoawal + A.masuk - A.keluar > 0
+          AND A.rak LIKE :rak
+          AND (A.ItemID LIKE :txtFilter OR A.ItemName LIKE :txtFilter)
+      ) AS temp
+      WHERE row_num BETWEEN :offset AND :offset + :limit
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strSQL, {
+      replacements: { rak: `%${rak}%`, txtFilter: `%${txtFilter}%`, limit, offset: offset + 1 },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan!" });
+    }
+
+    const totalItemsQuery = `
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock A
+      WHERE A.saldoawal + A.masuk - A.keluar > 0
+        AND A.rak LIKE :rak
+        AND (A.ItemID LIKE :txtFilter OR A.ItemName LIKE :txtFilter)
+    `;
+
+    const totalItemsResult = await sequelizeMSQL.query(totalItemsQuery, {
+      replacements: { rak: `%${rak}%`, txtFilter: `%${txtFilter}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItems = totalItemsResult[0].count;
+    const response = getPagingData({ rows: recTemp, count: totalItems }, page, limit);
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function cmdReport_pindahLokasi(req, res, next) {
+  const { cboRak, lvDetail } = req.body;
+
+  if (!cboRak) {
+    return res.status(400).json({ message: "Rak tujuan pindah, harap diisi!" });
+  }
+
+  if (!lvDetail || !Array.isArray(lvDetail) || lvDetail.length === 0) {
+    return res.status(400).json({ message: "Harap cheklist data yang akan di pindahkan!" });
+  }
+
+  try {
+    // const strPKID = await GetTerimaID_Keluar();
+    // const strPKIDMasuk = await GetTerimaID();
+
+    let SQLStr = '';
+    let i = 0;
+    lvDetail.forEach(item => {
+      SQLStr += `
+        UPDATE t_NP_Sample_Stock
+        SET from_update = 'Pindah Rak', rak = :cboRak
+        WHERE PK_ID_Item = :PK_ID_Item;
+      `;
+    });
+
+    const replacements = lvDetail.map(item => ({
+      cboRak,
+      PK_ID_Item: item.PK_ID_Item
+    }));
+
+    await sequelizeMSQL.transaction(async (transaction) => {
+      for (const replacement of replacements) {
+        await sequelizeMSQL.query(SQLStr, {
+          replacements: replacement,
+          type: QueryTypes.UPDATE,
+          transaction
+        });
+      }
+    });
+
+    return res.status(200).json({ message: "Data has been saved" });
+  } catch (error) {
+    console.error('Error moving stock:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
 
 module.exports = {
+  cmdReport_pindahLokasi,
+  cmdRefreshData_pindahLokasi,
   findHistoryByKodeBahan,
   btnPrint,
   getHistoryData,
