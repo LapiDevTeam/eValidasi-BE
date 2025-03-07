@@ -27,6 +27,10 @@ const {
   sbCekTombolPrint,
   cmdRefreshData_pindahLokasi,
   cmdReport_pindahLokasi,
+  getAlertData,
+  getExpiringSoonItems,
+  getBelowMinStockItems,
+  generateExcelReport,
 } = require('../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller');
 
 trxSampleRDRouter.get('/rak', getStockDataByRak);
@@ -61,6 +65,10 @@ trxSampleRDRouter.get('/history-print', handleItemPrint);
 trxSampleRDRouter.get('/pindah-refresh', cmdRefreshData_pindahLokasi);
 trxSampleRDRouter.post('/pindah-rak', cmdReport_pindahLokasi);
 
+// ALERT
+trxSampleRDRouter.get('/alert-expired', getExpiringSoonItems);
+trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItems);
+trxSampleRDRouter.get('/alert-print', generateExcelReport);
 
 
 module.exports = trxSampleRDRouter;

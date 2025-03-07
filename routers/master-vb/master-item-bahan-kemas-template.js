@@ -21,7 +21,7 @@ masterItemBahanKemasTemplateRouter.get(
 );
 masterItemBahanKemasTemplateRouter.post(
   "/approve",
-  MasterItemBahanAWALTemplateController.masterBahanAwalTemplate_APPROVE
+  MasterItemBahanAWALTemplateController.cmdApprove
 );
 masterItemBahanKemasTemplateRouter.get(
   "/pembuat-template",
