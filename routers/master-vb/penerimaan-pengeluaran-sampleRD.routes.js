@@ -31,6 +31,9 @@ const {
   getExpiringSoonItems,
   getBelowMinStockItems,
   generateExcelReport,
+  searchProducts,
+  getDetailByPKID,
+  exportProductDetailsToExcel,
 } = require('../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller');
 
 trxSampleRDRouter.get('/rak', getStockDataByRak);
@@ -69,6 +72,11 @@ trxSampleRDRouter.post('/pindah-rak', cmdReport_pindahLokasi);
 trxSampleRDRouter.get('/alert-expired', getExpiringSoonItems);
 trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItems);
 trxSampleRDRouter.get('/alert-print', generateExcelReport);
+
+// FORMULA
+trxSampleRDRouter.get('/formula-products', searchProducts );
+trxSampleRDRouter.get('/formula-detail', getDetailByPKID);
+trxSampleRDRouter.get('/formula-export', exportProductDetailsToExcel);
 
 
 module.exports = trxSampleRDRouter;
