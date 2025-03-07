@@ -989,7 +989,7 @@ async function btnPrint(req, res, next) {
     if (rs.length > 0) {
       const rsJum = rs.length;
 
-      const page1 = rs[0] || null;
+      const page1 = rs || null;
 
       if (!page1) return res.status(404).json({ message: "Data tidak ada" });
 
