@@ -989,7 +989,7 @@ async function btnPrint(req, res, next) {
     if (rs.length > 0) {
       const rsJum = rs.length;
 
-      const page1 = rs[0] || null;
+      const page1 = rs || null;
 
       if (!page1) return res.status(404).json({ message: "Data tidak ada" });
 
@@ -1016,10 +1016,16 @@ async function btnPrint(req, res, next) {
         lbl_JumTrial: `(${txtBatchSize} ${txtBatchKet})**`
       };
 
+      const footer = {
+        NoDoc: "FO.RD.000073",
+        Tanggal: "18/06/2021",
+        Revisi: "02",
+      }
+
       // console.log("Page 1:", page1);
       // console.log("Page 2:", page2);
 
-      return res.status(200).json({ message: "Print successful", page1, page2 });
+      return res.status(200).json({ message: "Print successful", page1, page2, footer });
     } else {
       return res.status(404).json({ message: "Data tidak ada" });
     }
@@ -1624,8 +1630,417 @@ async function cmdReport_pindahLokasi(req, res, next) {
   }
 }
 
+// ---- ALERT
+
+async function getExpiringSoonItems(req, res, next) {
+  const { searchText = '', page, size, rawdata = '0' } = req.query;
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strTemp1 = `
+      SELECT DISTINCT
+        A.typeinput,
+        tanggal tglmasuk,
+        A.rak AS koderak,
+        A.itemid,
+        A.itemName,
+        A.principle,
+        A.supplier,
+        A.batchno AS batchlot,
+        A.analisa,
+        A.expdate,
+        (A.saldoawal + A.masuk - A.keluar) AS stockAkhir,
+        ROW_NUMBER() OVER (ORDER BY A.expdate) AS row_num
+      FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE A.expdate <= DATEADD(day, 10, GETDATE())
+        AND (A.saldoawal + A.masuk - A.keluar) > 0
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+    `;
+
+    const recTemp1 = await sequelizeMSQL.query(strTemp1, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItemsQuery = `
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE A.expdate <= DATEADD(day, 10, GETDATE())
+        AND (A.saldoawal + A.masuk - A.keluar) > 0
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+    `;
+
+    const totalItemsResult = await sequelizeMSQL.query(totalItemsQuery, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItems = totalItemsResult[0].count;
+    const response = getPagingData({ rows: recTemp1, count: totalItems }, page, limit);
+
+    if (rawdata === '1') return recTemp1;
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function getBelowMinStockItems(req, res, next) {
+  const { searchText = '', page = 0, size = 50, rawdata = '0' } = req.query;
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strTemp2 = `
+      SELECT DISTINCT
+        A.itemid,
+        A.itemName,
+        A.principle,
+        A.supplier,
+        A.batchno AS batchlot,
+        A.Analisa,
+        A.Expdate,
+        (A.saldoawal + A.masuk - A.keluar) AS stockAkhir,
+        A.minstock,
+        ROW_NUMBER() OVER (ORDER BY A.itemName) AS row_num
+      FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+        AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+    `;
+
+    const recTemp2 = await sequelizeMSQL.query(strTemp2, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItemsQuery = `
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+        AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+    `;
+
+    const totalItemsResult = await sequelizeMSQL.query(totalItemsQuery, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItems = totalItemsResult[0].count;
+    const response = getPagingData({ rows: recTemp2, count: totalItems }, page, limit);
+
+    if (rawdata === '1') return recTemp2;
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function generateExcelReport(req, res, next) {
+  const {size = 10000, page = 0} = req.query;
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const currentDate = moment().format('YYYY-MMM-DD');
+
+    // Create "Expired" sheet
+    const expiredSheet = workbook.addWorksheet('Expired');
+    expiredSheet.addRow(['Laporan Bahan Sudah Expired']);
+    expiredSheet.addRow([`Tanggal Print : ${currentDate}`]);
+    expiredSheet.addRow([]);
+    expiredSheet.addRow([
+      'Type Input', 'Tgl Masuk', 'Kode Rak', 'Kode Bahan', 'Nama Bahan', 'Principle', 'Supplier', 'Batch No', 'No Analisa', 'Expired Date', 'Stock Akhir'
+    ]);
+
+    // Set column widths
+    expiredSheet.columns = [
+      { width: 15 }, { width: 28 }, { width: 20 }, { width: 21 }, { width: 21 },
+      { width: 16 }, { width: 17 }, { width: 18 }, { width: 14 }, { width: 11 }, { width: 11 }
+    ];
+
+    const mockReq = {
+      query: {
+        searchText: '',
+        page,
+        size,
+        rawdata: '1'
+      }
+    };
+
+    const mockRes = {
+      status: (statusCode) => ({
+        json: (data) => data
+      })
+    };
+
+    const expiredData = await getExpiringSoonItems(mockReq, mockRes, next) || [];
+    console.log({mockRes, expiredData});
+
+    expiredData.forEach((item, index) => {
+      expiredSheet.addRow([
+        item.typeinput, item.tglmasuk, item.koderak, item.itemid, item.itemName,
+        item.principle, item.supplier, item.batchlot, item.analisa, item.expdate, item.stockAkhir
+      ]);
+    });
+
+    // Apply border and style
+    const expiredRange = expiredSheet.getRows(4, expiredData.length + 1);
+    expiredRange.forEach(row => {
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+    expiredSheet.getRow(4).font = { bold: true, size: 12 };
+
+    // Create "Stock Minimum" sheet
+    const stockMinSheet = workbook.addWorksheet('Stock Minimum');
+    stockMinSheet.addRow(['Laporan Bahan Stock Minimum']);
+    stockMinSheet.addRow([`Tanggal Print : ${currentDate}`]);
+    stockMinSheet.addRow([]);
+    stockMinSheet.addRow([
+      'Kode Bahan', 'Nama Bahan', 'Principle', 'Supplier', 'Batch No', 'No Analisa', 'Expired Date', 'Stock Akhir', 'Minimum Stock'
+    ]);
+
+    // Set column widths
+    stockMinSheet.columns = [
+      { width: 15 }, { width: 28 }, { width: 20 }, { width: 21 }, { width: 21 },
+      { width: 16 }, { width: 17 }, { width: 18 }, { width: 14 }
+    ];
+
+    // Add data rows (replace with actual data)
+    const stockMinData = await getBelowMinStockItems(mockReq, mockRes, next) || [];
+    stockMinData.forEach((item, index) => {
+      stockMinSheet.addRow([
+        item.itemid, item.itemName, item.principle, item.supplier, item.batchlot,
+        item.Analisa, item.Expdate, item.stockAkhir, item.minstock
+      ]);
+    });
+
+    // Apply border and style
+    const stockMinRange = stockMinSheet.getRows(4, stockMinData.length + 1);
+    stockMinRange.forEach(row => {
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+    stockMinSheet.getRow(4).font = { bold: true, size: 12 };
+
+    // Send the workbook as a response
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=report.xlsx');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error generating Excel report:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+// ---- FORMULA
+
+async function searchProducts(req, res, next) {
+  const { searchText } = req.query;
+
+  if (!searchText) {
+    return res.status(400).json({ message: "Harap isi Kode Produk, Nama produk atau Formula!" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT PKID, Formula, Tgl, KodeProd, NamaProd, Note
+      FROM t_NP_Sample_keluar_m
+      WHERE KodeProd LIKE :searchText
+        OR NamaProd LIKE :searchText
+        OR Formula LIKE :searchText
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan!" });
+    }
+
+    return res.status(200).json({ message: "OK", data: recTemp });
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function getDetailByPKID(req, res, next) {
+  const { pkid } = req.query;
+
+  if (!pkid) {
+    return res.status(400).json({ message: "PKID is required" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT A.tgl, A.Formula, C.ItemID, C.ItemName, C.Principle, C.Supplier, C.batchno AS BatchLot, C.Analisa, C.rak AS KodeRak, B.Qty, B.Note
+      FROM t_NP_Sample_keluar_m A
+      INNER JOIN t_NP_Sample_keluar_d B ON A.pkid = B.PKID
+      LEFT JOIN t_NP_Sample_Stock C ON C.PK_ID_item = B.PK_ID_item
+      WHERE A.PKID LIKE :pkid
+      ORDER BY 1
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { pkid },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan!" });
+    }
+
+    return res.status(200).json({ message: "OK", data: recTemp });
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+async function exportProductDetailsToExcel(req, res, next) {
+  const { searchText } = req.query;
+
+  if (!searchText) {
+    return res.status(400).json({ message: "Harap pilih Kode Produk" });
+  }
+
+  try {
+    const strTemp = `
+      SELECT PKID, Formula, Tgl
+      FROM t_NP_Sample_keluar_m
+      WHERE KodeProd LIKE :searchText
+        OR NamaProd LIKE :searchText
+        OR Formula LIKE :searchText
+    `;
+
+    const recTemp = await sequelizeMSQL.query(strTemp, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    if (recTemp.length === 0) {
+      return res.status(404).json({ message: "Data tidak ditemukan!" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const currentDate = new Date().toISOString().split('T')[0];
+
+    for (const record of recTemp) {
+      const { PKID, Formula, Tgl } = record;
+
+      // Create a unique sheet name
+      let sheetName = Formula || `Sheet${PKID}`;
+      let sheetIndex = 1;
+      while (workbook.getWorksheet(sheetName)) {
+        sheetName = `${Formula || `Sheet${PKID}`}_${sheetIndex}`;
+        sheetIndex++;
+      }
+
+      const worksheet = workbook.addWorksheet(sheetName);
+
+      // Format the date
+      const formattedDate = moment(Tgl).format('M/D/YYYY h:mm:ss A');
+
+      // Add header rows
+      worksheet.addRow([`Formula: ${Formula}`]);
+      worksheet.addRow([`Tanggal: ${formattedDate}`]);
+      worksheet.addRow([]);
+      worksheet.addRow(['No', 'Nama Bahan', 'Kode Bahan', 'Principles', 'Supplier', 'No. Batch', 'No. Analisa', 'Jumlah Pengambilan', 'Harga Satuan', 'Biaya']);
+
+      // Set column widths
+      worksheet.columns = [
+        { width: 6 }, { width: 28 }, { width: 20 }, { width: 21 }, { width: 21 },
+        { width: 16 }, { width: 17 }, { width: 18 }, { width: 14 }, { width: 11 }
+      ];
+
+      // Fetch detail data
+      const detailQuery = `
+        SELECT C.ItemName, C.ItemID, C.Principle, C.Supplier, C.batchno AS BatchLot, C.Analisa, B.Qty
+        FROM t_NP_Sample_keluar_m A
+        INNER JOIN t_NP_Sample_keluar_d B ON A.PKID = B.PKID
+        LEFT JOIN t_NP_Sample_Stock C ON C.PK_ID_item = B.PK_ID_item
+        WHERE A.PKID LIKE :PKID
+        ORDER BY A.Tgl
+      `;
+
+      const recTemp1 = await sequelizeMSQL.query(detailQuery, {
+        replacements: { PKID },
+        type: QueryTypes.SELECT
+      });
+
+      // Add detail rows
+      recTemp1.forEach((item, index) => {
+        worksheet.addRow([
+          index + 1,
+          item.ItemName,
+          item.ItemID,
+          item.Principle,
+          item.Supplier,
+          item.BatchLot,
+          item.Analisa,
+          item.Qty,
+          '', // Harga Satuan (not provided in the query)
+          ''  // Biaya (not provided in the query)
+        ]);
+      });
+
+      // Apply border and style
+      const rowCount = recTemp1.length > 21 ? recTemp1.length + 5 : 21;
+      for (let i = 4; i <= rowCount; i++) {
+        const row = worksheet.getRow(i);
+        row.eachCell(cell => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      }
+
+      worksheet.getRow(4).font = { bold: true, size: 12 };
+    }
+
+    // Send the workbook as a response
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=product_details_${currentDate}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error exporting product details to Excel:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
 module.exports = {
+  exportProductDetailsToExcel,
+  searchProducts,
+  getDetailByPKID,
+  generateExcelReport,
+  getExpiringSoonItems,
+  getBelowMinStockItems,
   cmdReport_pindahLokasi,
   cmdRefreshData_pindahLokasi,
   findHistoryByKodeBahan,
