@@ -392,6 +392,49 @@ class ControllerProtokolValidasi {
       console.log(err);
     }
   }
+
+  static async deleteProtokolValidasi(req, res) {
+    try {
+      const { id } = req.params;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+      } = req.user;
+
+      const flag_update = "UPDATE FOR DELETE";
+
+      const findProtokol = await t_protokolValidasi.findByPk(+id);
+      if (!findProtokol)
+        throw new MyError(404, "Form Protokol Validasi tidak di temukan");
+
+      // First, update all related records
+      await t_protokolValidasi_status.update(
+        { user_id, delegated_to, flag_update },
+        { where: { ProtokolValidasiID: +id } }
+      );
+  
+
+      // Next, delete all related records
+      await t_protokolValidasi_status.destroy({ where: { ProtokolValidasiID: +id } });
+    
+
+      // Finally, update and delete the main record
+      await t_protokolValidasi.update(
+        { user_id, delegated_to, flag_update },
+        { where: { id: +id } }
+      );
+      await t_protokolValidasi.destroy({ where: { id: +id } });
+
+      res.status(200).send({ msg: "succeed" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ msg: "error" });
+    }
+  }
 }
 
 module.exports = ControllerProtokolValidasi;

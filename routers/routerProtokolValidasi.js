@@ -32,6 +32,11 @@ router.get(
   authentication,
   ControllerProtokolValidasi.getProtokolValidasi
 );
+router.delete(
+  "/delete-protokol-validasi/:id",
+  authentication,
+  ControllerProtokolValidasi.deleteProtokolValidasi
+);
 router.get(
   "/get-upload-protokol/:id",
   authentication,
