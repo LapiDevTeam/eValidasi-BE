@@ -1016,10 +1016,16 @@ async function btnPrint(req, res, next) {
         lbl_JumTrial: `(${txtBatchSize} ${txtBatchKet})**`
       };
 
+      const footer = {
+        NoDoc: "FO.RD.000073",
+        Tanggal: "18/06/2021",
+        Revisi: "02",
+      }
+
       // console.log("Page 1:", page1);
       // console.log("Page 2:", page2);
 
-      return res.status(200).json({ message: "Print successful", page1, page2 });
+      return res.status(200).json({ message: "Print successful", page1, page2, footer });
     } else {
       return res.status(404).json({ message: "Data tidak ada" });
     }
