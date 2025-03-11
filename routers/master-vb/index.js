@@ -9,6 +9,7 @@ const masterItemBahanKemasTemplateRouter = require("./master-item-bahan-kemas-te
 const masterProductRouter = require("./master-product.routes");
 const masterFormulaRouter = require("./master-formula.routes.");
 const trxSampleRDRouter = require("./penerimaan-pengeluaran-sampleRD.routes");
+const trxKoreksiStockRDRouter = require("./koreksi-stockRD.routes.js");
 
 // masterRouter.use(authentication);
 
@@ -23,5 +24,6 @@ masterRouter.use(
 masterRouter.use("/item-bahan-awal-template", masterBahanAwalTemplate);
 masterRouter.use("/formula", masterFormulaRouter );
 masterRouter.use("/rdsample", trxSampleRDRouter );
+masterRouter.use("/koreksi-stockrd", trxKoreksiStockRDRouter );
 
 module.exports = masterRouter;

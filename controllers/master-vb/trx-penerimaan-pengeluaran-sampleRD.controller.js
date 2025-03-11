@@ -1319,7 +1319,7 @@ async function getHistoryData(req, res, next) {
 }
 
 async function findHistoryByKodeBahan(req, res, next) {
-  const { itemID, itemName } = req.query;
+  const { itemID, itemName, batchno } = req.query;
 
   try {
     let strSQL = `
@@ -1332,6 +1332,10 @@ async function findHistoryByKodeBahan(req, res, next) {
     }
     if (itemName) {
       strSQL += ` AND A.itemName LIKE '%${itemName}%'`;
+    }
+
+    if (batchno) {
+      strSQL += ` AND A.batchno LIKE '%${batchno}%'`;
     }
 
     const grecLister = await sequelizeMSQL.query(strSQL, { type: QueryTypes.SELECT });
