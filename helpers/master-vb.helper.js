@@ -42,6 +42,5 @@ async function retmid() {
   return asdb;
 }
 
-// retmid();
-
 module.exports = userAccess;
+// retmid();
