@@ -1884,7 +1884,7 @@ async function getBelowMinStockItems(req, res, next) {
 }
 
 async function generateExcelReport(req, res, next) {
-  const {size = 10000, page = 0} = req.query;
+  const {size = 10000, page = 0, searchText = ''} = req.query;
   try {
     const workbook = new ExcelJS.Workbook();
     const currentDate = moment().format('YYYY-MMM-DD');
@@ -1906,7 +1906,7 @@ async function generateExcelReport(req, res, next) {
 
     const mockReq = {
       query: {
-        searchText: '',
+        searchText,
         page,
         size,
         rawdata: '1'
