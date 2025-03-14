@@ -264,7 +264,7 @@ async function fnGetSeqID(noDoc) {
       replacements: { noDoc },
       type: QueryTypes.SELECT
     });
-
+    console.log({results});
     if (results.length > 0) {
       return results[0].SeqID;
     } else {
@@ -300,6 +300,32 @@ async function fnCekRowCount(noDoc) {
   }
 }
 
+async function fnCekExist(noDoc, kodeBahan, noRef) {
+  try {
+    const query = `
+      SELECT COUNT(*) AS jum
+      FROM T_Koreksi_EG
+      WHERE No_Doc = :noDoc
+        AND Kode = :kodeBahan
+        AND No_Ref = :noRef
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { noDoc, kodeBahan, noRef },
+      type: QueryTypes.SELECT
+    });
+
+    if (results.length > 0) {
+      return results[0].jum > 0;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error('Error checking existence:', error);
+    return false;
+  }
+}
+
 module.exports = {
   fnGetStatusNo,
   fnCekJobLevel,
@@ -310,4 +336,5 @@ module.exports = {
   fnGetNewNoDoc,
   fnGetSeqID,
   fnCekRowCount,
+  fnCekExist
 };

@@ -3,7 +3,7 @@ const { getPagination, getPagingData } = require('../../helpers/pagination');
 const ExcelJS = require("exceljs");
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
-const { fnGetStatusNo, fnGetUserApprNo, fnCekJobLevel, Get_DeptID, isApproverStatus, fnGetSeqID, fnCekRowCount, fnGetNewNoDoc } = require('../../helpers/validation-rd.helper');
+const { fnGetStatusNo, fnGetUserApprNo, fnCekJobLevel, Get_DeptID, isApproverStatus, fnGetSeqID, fnCekRowCount, fnGetNewNoDoc, fnCekExist } = require('../../helpers/validation-rd.helper');
 const MyError = require('../../helpers/errors');
 
 async function sbCekButton(req, res, next) {
@@ -437,7 +437,7 @@ async function cmdSave(req, res, next) {
   try {
     let sql = "";
 
-    if (!seqID) { // NEW Save
+    if (!seqID || seqID === "") { // NEW Save
       if (!noDoc) {
         noDoc = await fnGetNewNoDoc();
       } else {
@@ -477,8 +477,8 @@ async function cmdSave(req, res, next) {
       `;
     }
 
-    if (!seqID || seqID === 0 || seqID === '') seqID = await fnGetSeqID();
-
+    if (!seqID || seqID === 0 || seqID === '') seqID = await fnGetSeqID(noDoc);
+    console.log({seqID});
     await sequelizeMSQL.query(sql, {
       replacements: {
         noDoc,
