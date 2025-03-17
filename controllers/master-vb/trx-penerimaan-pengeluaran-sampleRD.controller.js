@@ -1773,7 +1773,7 @@ async function cmdReport_pindahLokasi(req, res, next) {
 // ---- ALERT
 
 async function getExpiringSoonItems(req, res, next) {
-  const { searchText = '', page, size, rawdata = '0' } = req.query;
+  const { searchText = '', page, size, rawdata = '0', sort = 'A.expdate ASC' } = req.query;
   const { limit, offset } = getPagination(page, size);
 
   try {
@@ -1790,7 +1790,7 @@ async function getExpiringSoonItems(req, res, next) {
         A.analisa,
         A.expdate,
         (A.saldoawal + A.masuk - A.keluar) AS stockAkhir,
-        ROW_NUMBER() OVER (ORDER BY A.expdate) AS row_num
+        ROW_NUMBER() OVER (ORDER BY ${sort}) AS row_num
       FROM t_NP_Sample_Stock A
       LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
       WHERE A.expdate <= DATEADD(day, 10, GETDATE())
@@ -1884,7 +1884,7 @@ async function getBelowMinStockItems(req, res, next) {
 }
 
 async function generateExcelReport(req, res, next) {
-  const {size = 10000, page = 0} = req.query;
+  const { size = 10000, page = 0, searchText = '' } = req.query;
   try {
     const workbook = new ExcelJS.Workbook();
     const currentDate = moment().format('YYYY-MMM-DD');
@@ -1906,10 +1906,11 @@ async function generateExcelReport(req, res, next) {
 
     const mockReq = {
       query: {
-        searchText: '',
+        searchText,
         page,
         size,
-        rawdata: '1'
+        rawdata: '1',
+        sort: 'A.expdate ASC' // Ensure sorting by Expired Date
       }
     };
 
@@ -1920,7 +1921,10 @@ async function generateExcelReport(req, res, next) {
     };
 
     const expiredData = await getExpiringSoonItems(mockReq, mockRes, next) || [];
-    console.log({mockRes, expiredData});
+    console.log({ mockRes, expiredData });
+
+    // Sort the data by Expired Date
+    expiredData.sort((a, b) => new Date(a.expdate) - new Date(b.expdate));
 
     expiredData.forEach((item, index) => {
       expiredSheet.addRow([
