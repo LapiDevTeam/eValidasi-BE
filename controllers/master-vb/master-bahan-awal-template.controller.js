@@ -1514,10 +1514,11 @@ const getLatestRevisionNumber = async (req, res) => {
       return res.status(400).json({ message: 'Item group is required.' });
     }
 
+    // Query to fetch the latest revision number where `appr_date` is null
     const query = `
       SELECT TOP 1 no_revisi
       FROM m_item_manufacturing_revisions
-      WHERE Item_Group = :item_group
+      WHERE Item_Group = :item_group AND appr_date IS NULL
       ORDER BY no_revisi DESC
     `;
 
@@ -1526,10 +1527,30 @@ const getLatestRevisionNumber = async (req, res) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
+    // If no result is found, fallback to fetch the latest revision number
     if (!result) {
-      return res.status(404).json({ message: 'No revisions found for the given item group.' });
+      const fallbackQuery = `
+        SELECT TOP 1 no_revisi
+        FROM m_item_manufacturing_revisions
+        WHERE Item_Group = :item_group
+        ORDER BY no_revisi DESC
+      `;
+
+      const [fallbackResult] = await sequelizeMSQL.query(fallbackQuery, {
+        replacements: { item_group },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      // If no fallback result is found, return 1 as the first revision number
+      if (!fallbackResult) {
+        return res.status(200).json({ no_revisi: 1 });
+      }
+
+      // Increment the fallback result by 1
+      return res.status(200).json({ no_revisi: parseInt(fallbackResult.no_revisi, 10) + 1 });
     }
 
+    // Return the latest revision number from the first query
     return res.status(200).json({ no_revisi: parseInt(result.no_revisi, 10) });
   } catch (error) {
     console.error('Error fetching latest revision number:', error);
@@ -1587,6 +1608,96 @@ const approveRevisionByItemGroup = async (item_group, user_id, delegated_to) => 
     console.error('Error approving revision:', error);
     await transaction.rollback();
     return 0; // Approval failed
+  }
+};
+
+const updateOrCreateRevision = async (req, res) => {
+  const { item_group, no_revisi, tgl_revisi, alasan_desc } = req.body;
+  const { user_id, delegated_to } = req.user; // Assuming user info is available in req.user
+
+  if (!item_group || !no_revisi || !tgl_revisi || !alasan_desc) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  // Validate tgl_revisi
+  const cutoffDate = new Date('2025-02-25');
+  const inputDate = new Date(tgl_revisi);
+
+  if (inputDate < cutoffDate) {
+    return res.status(400).json({ message: "tgl_revisi cannot be earlier than 25th February 2025." });
+  }
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    // Check if a record with the given no_revisi exists
+    const queryCheck = `
+      SELECT TOP 1 PK_ID
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group AND no_revisi = :no_revisi
+    `;
+
+    const [existingRecord] = await sequelizeMSQL.query(queryCheck, {
+      replacements: { item_group, no_revisi },
+      type: QueryTypes.SELECT,
+    });
+
+    if (existingRecord) {
+      // Update the existing record
+      const queryUpdate = `
+        UPDATE m_item_manufacturing_revisions
+        SET alasan_desc = :alasan_desc,
+            tgl_revisi = :tgl_revisi
+        WHERE no_revisi = :no_revisi AND Item_Group = :item_group
+      `;
+
+      await sequelizeMSQL.query(queryUpdate, {
+        replacements: {
+          no_revisi,
+          tgl_revisi,
+          alasan_desc,
+          item_group,
+          pk_id: existingRecord.PK_ID,
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      return res.status(200).json({ message: "Revision updated successfully." });
+    } else {
+      // Create a new record
+      const queryInsert = `
+        INSERT INTO m_item_manufacturing_revisions (
+          Item_Group,
+          no_revisi,
+          tgl_revisi,
+          alasan_desc,
+          Process_Date
+        )
+        VALUES (
+          :item_group,
+          :no_revisi,
+          :tgl_revisi,
+          :alasan_desc,
+          GETDATE()
+        )
+      `;
+
+      await sequelizeMSQL.query(queryInsert, {
+        replacements: {
+          item_group,
+          no_revisi,
+          tgl_revisi,
+          alasan_desc
+        },
+        transaction,
+      });
+
+      await transaction.commit();
+      return res.status(201).json({ message: "Revision created successfully." });
+    }
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error in updateOrCreateRevision:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -1719,7 +1830,7 @@ async function getViewDPBATemplate(req, res, next) {
         FROM
             m_item_manufacturing_revisions
         WHERE
-            item_group = :item_group
+            item_group = :item_group and appr_date is not null
         ORDER BY
             no_revisi DESC
     `;
@@ -2270,5 +2381,6 @@ module.exports = {
   createRevision,
   getLatestRevisionNumber,
   createRevisionWithSameNumber,
-  approveRevisionByItemGroup
+  approveRevisionByItemGroup,
+  updateOrCreateRevision
 };
