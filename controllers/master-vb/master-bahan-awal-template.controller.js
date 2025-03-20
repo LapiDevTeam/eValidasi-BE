@@ -1,75 +1,76 @@
-const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
-const { getPagination, getPagingData } = require("../../helpers/pagination");
-const { Sequelize } = require("../../models");
+const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
+const { getPagination, getPagingData } = require('../../helpers/pagination');
+const { Sequelize } = require('../../models');
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 const path = require('path');
 const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
-const { QueryTypes } = require("sequelize");
+const { QueryTypes } = require('sequelize');
+const moment = require('moment');
 
 const masterBahanAwalTemplate_CREATE = async (req, res) => {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    try {
-        const {
-            item_ID,
-            item_name,
-            item_kodeGenerik,
-            item_groupID,
-            item_type,
-            item_size,
-            item_description,
-            item_unit,
-            item_minOrder = "",
-            item_leadTime = "",
-            item_packingSize = "",
-            item_localIndent,
-            strInput = "0",
-            username = user_id,
-            delegatedTo = delegated_to,
-            owner = bagian_user,
-            isHalal,
-            row,
-            itemStatus = "1",
-        } = req.body;
+  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+  try {
+    const {
+      item_ID,
+      item_name,
+      item_kodeGenerik,
+      item_groupID,
+      item_type,
+      item_size,
+      item_description,
+      item_unit,
+      item_minOrder = '',
+      item_leadTime = '',
+      item_packingSize = '',
+      item_localIndent,
+      strInput = '0',
+      username = user_id,
+      delegatedTo = delegated_to,
+      owner = bagian_user,
+      isHalal,
+      row,
+      itemStatus = '1',
+    } = req.body;
 
-        if (!user_id || user_id === "") return res.status(401).send("Unauthorized request!");
-        let lblItem_ID = "";
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    let lblItem_ID = '';
 
-        if (!item_groupID || !item_name) {
-            return res.status(400).json({ message: "Nama Barang harus diisi dan tidak boleh kosong!!!" });
-        }
+    if (!item_groupID || !item_name) {
+      return res.status(400).json({ message: 'Nama Barang harus diisi dan tidak boleh kosong!!!' });
+    }
 
-        if (!item_unit) {
-            return res.status(400).json({ message: "Satuan harus diisi!" });
-        }
+    if (!item_unit) {
+      return res.status(400).json({ message: 'Satuan harus diisi!' });
+    }
 
-        lblItem_ID = await generateItemID(item_groupID);
-        // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
+    lblItem_ID = await generateItemID(item_groupID);
+    // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
 
-        console.log({lblItem_ID});
-        if (item_type === "BAHAN KEMAS") {
-            const query3 = `
+    console.log({ lblItem_ID });
+    if (item_type === 'BAHAN KEMAS') {
+      const query3 = `
                 SELECT Item_MonthUjiUlang
                 FROM t_item_manuf_ujiulangDefault
                 WHERE item_id LIKE '${item_groupID}'
             `;
 
-            const [ujiulangResult] = await sequelizeMSQL.query(query3, { type: QueryTypes.SELECT });
-            if (ujiulangResult) {
-                console.log(`Default Uji Ulang Period: ${ujiulangResult.Item_MonthUjiUlang} bulan`);
-            }
-        }
+      const [ujiulangResult] = await sequelizeMSQL.query(query3, { type: QueryTypes.SELECT });
+      if (ujiulangResult) {
+        console.log(`Default Uji Ulang Period: ${ujiulangResult.Item_MonthUjiUlang} bulan`);
+      }
+    }
 
-        const query4 = `
+    const query4 = `
             SELECT MAX(PK_ID) + 1 AS PKID
             FROM m_Item_Manufacturing_template
             WHERE ISNULL(item_Periode, '') = ''
         `;
 
-        const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
-        const PK_ID = pkidResult ? pkidResult.PKID : 1;
+    const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
+    const PK_ID = pkidResult ? pkidResult.PKID : 1;
 
-        const insertQuery = `
+    const insertQuery = `
             INSERT INTO m_Item_Manufacturing_template (
                 PK_ID, isactive, Item_ID, Item_Name, Item_BPOMGenerik, Item_group, Item_type,
                 item_size, item_Description, Item_Currency, item_price, item_unit, Item_MinOrder,
@@ -82,14 +83,14 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
                 '${user_id}', '${delegated_to}', GETDATE(), 1, '${bagian_user}', '${isHalal}', '${row}', '${itemStatus}'
             )
         `;
-        console.log({user: req.user, insertQuery});
-        await sequelizeMSQL.query(insertQuery, { type: QueryTypes.INSERT });
+    console.log({ user: req.user, insertQuery });
+    await sequelizeMSQL.query(insertQuery, { type: QueryTypes.INSERT });
 
-        return res.status(201).json({ message: `Data berhasil disimpan dengan kode: ${lblItem_ID}` });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Terjadi kesalahan saat menyimpan data.", error: error.message });
-    }
+    return res.status(201).json({ message: `Data berhasil disimpan dengan kode: ${lblItem_ID}` });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Terjadi kesalahan saat menyimpan data.', error: error.message });
+  }
 };
 
 async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
@@ -118,14 +119,14 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
       owner = bagian_user,
       isHalal,
       row,
-      itemStatus = '1'
-    } = req.body
+      itemStatus = '1',
+    } = req.body;
 
-    const PK_ID = await getPKID() || null;
+    const PK_ID = (await getPKID()) || null;
 
     if (!PK_ID || PK_ID?.length <= 0) throw new Error(`Failed to get PK_ID, check db connection`);
 
-    if (!item_ID && !item_groupID) throw new Error(`Item ID or Item Group Id Cannot be undefined`)
+    if (!item_ID && !item_groupID) throw new Error(`Item ID or Item Group Id Cannot be undefined`);
 
     if (!item_ID && item_groupID) {
       item_ID = await getItemIdByGroupId(item_groupID);
@@ -193,8 +194,8 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
       logging: (query, queryObject) => {
         // console.log('Executing query:', query);
       },
-      transaction
-    })
+      transaction,
+    });
 
     // await transaction.rollback();
     await transaction.commit();
@@ -202,14 +203,14 @@ async function masterBahanAwalTemplate_CREATE_BAK(req, res, next) {
     const resp = {
       message: 'OK',
       data: null,
-    }
+    };
     return res.status(201).json(resp);
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     await transaction.rollback();
     return res.status(500).json({
       message: 'ERROR',
-      data: error?.message || 'Internal Server Error'
+      data: error?.message || 'Internal Server Error',
     });
   }
 }
@@ -223,46 +224,44 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
 
     if (!item_ID) {
       return res.status(400).json({
-        message: "Item_ID is required.",
+        message: 'Item_ID is required.',
       });
     }
 
     if (Object.keys(fieldsToUpdate).length === 0) {
       return res.status(400).json({
-        message: "No fields provided to update.",
+        message: 'No fields provided to update.',
       });
     }
 
     const setClause = Object.entries(fieldsToUpdate)
       .map(([key, value]) => {
-        const escapedValue =
-          typeof value === "string" ? `'${value.replace(/'/g, "''")}'` : value;
+        const escapedValue = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
         return `${key} = ${escapedValue}`;
       })
-      .join(", ");
+      .join(', ');
 
-
-      if (insertRevisi && (txtUkuranHistory || txtUkuranHistory !== '' )) {
-        const queryGetPrs = `
+    if (insertRevisi && (txtUkuranHistory || txtUkuranHistory !== '')) {
+      const queryGetPrs = `
         select A.Item_PrcID,B.Prc_Name
         from m_Item_Manufacturing_supplier A
         LEFT JOIN m_principle B on B.Prc_ID=A.Item_PrcID
         where A.Item_ID='${item_ID}'
         `;
 
-        const resultGetPrs = await sequelizeMSQL.query(queryGetPrs, {
-          type: Sequelize.QueryTypes.SELECT,
-          logging: (query, queryObject) => {},
-        });
+      const resultGetPrs = await sequelizeMSQL.query(queryGetPrs, {
+        type: Sequelize.QueryTypes.SELECT,
+        logging: (query, queryObject) => {},
+      });
 
-        if (resultGetPrs?.length <= 0) {
-          console.log({ resultGetPrs: resultGetPrs[0] });
+      if (resultGetPrs?.length <= 0) {
+        console.log({ resultGetPrs: resultGetPrs[0] });
 
-          const insertPromises = resultGetPrs[0].map(async (element) => {
-            const item_nameRevisi = setClause?.item_name || '';
-            const item_PrcID = element?.item_PrcID || '';
-            const item_prcName = element?.item_prcName || '';
-            const queryInsertRevisi = `
+        const insertPromises = resultGetPrs[0].map(async (element) => {
+          const item_nameRevisi = setClause?.item_name || '';
+          const item_PrcID = element?.item_PrcID || '';
+          const item_prcName = element?.item_prcName || '';
+          const queryInsertRevisi = `
                   INSERT INTO t_RevisionCode_Reminder
                   (Tanggal, Item_ID, Item_Name, Item_PrcID, Item_PrcName, Ukuran_Lama, update_as_status)
                   VALUES (
@@ -276,22 +275,21 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
                   )
               `;
 
-            return sequelizeMSQL.query(queryInsertRevisi, {
-              type: Sequelize.QueryTypes.INSERT,
-              logging: (query, queryObject) => {},
-              transaction,
-            });
+          return sequelizeMSQL.query(queryInsertRevisi, {
+            type: Sequelize.QueryTypes.INSERT,
+            logging: (query, queryObject) => {},
+            transaction,
           });
+        });
 
-
-          try {
-            const insertRevisiResults = await Promise.all(insertPromises);
-            console.log('Insert operations completed:', insertRevisiResults);
-          } catch (error) {
-            console.error('Error in inserting data:', error);
-          }
+        try {
+          const insertRevisiResults = await Promise.all(insertPromises);
+          console.log('Insert operations completed:', insertRevisiResults);
+        } catch (error) {
+          console.error('Error in inserting data:', error);
         }
       }
+    }
 
     const queryUpdate = `
       UPDATE [m_Item_Manufacturing_template]
@@ -305,18 +303,17 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
     const updatedData = await sequelizeMSQL.query(queryUpdate, {
       type: Sequelize.QueryTypes.UPDATE,
       logging: (query, queryObject) => {
-        console.log({query});
+        console.log({ query });
       },
-      transaction
+      transaction,
     });
 
-
-    console.log({updatedData});
+    console.log({ updatedData });
     await transaction.commit();
     // await transaction.rollback();
 
     const resp = {
-      message: "OK",
+      message: 'OK',
       data: null,
     };
     return res.status(200).json(resp);
@@ -325,7 +322,7 @@ async function masterBahanAwalTemplate_UPDATE(req, res, next) {
     await transaction.rollback();
     return res.status(500).json({
       message: 'ERROR',
-      data: error?.message || 'Internal Server Error'
+      data: error?.message || 'Internal Server Error',
     });
   }
 }
@@ -339,11 +336,11 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
 
     if (!item_ID) {
       return res.status(400).json({
-        message: "Item_ID is required.",
+        message: 'Item_ID is required.',
       });
     }
 
-    const cekBonKeluarData = await checkItemBeforeDelete(item_ID) || null;
+    const cekBonKeluarData = (await checkItemBeforeDelete(item_ID)) || null;
 
     if (!cekBonKeluarData || cekBonKeluarData?.length <= 0) {
       const ppiCount = await countJumlahPPI(item_ID);
@@ -414,7 +411,7 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
     await transaction.commit();
 
     const resp = {
-      message: "Operation completed successfully.",
+      message: 'Operation completed successfully.',
       data: null,
     };
     return res.status(200).json(resp);
@@ -423,7 +420,7 @@ async function masterBahanAwalTemplate_DELETE(req, res, next) {
     console.log({ error });
     return res.status(500).json({
       message: 'ERROR',
-      data: error?.message || 'Internal Server Error'
+      data: error?.message || 'Internal Server Error',
     });
   }
 }
@@ -435,9 +432,9 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const { item_groupID, gstrUserName = user_id, gstrDelegatedTo = delegated_to } = req.body;
 
-    if (!item_groupID || item_groupID === "") {
+    if (!item_groupID || item_groupID === '') {
       return res.status(500).json({
-        message: "Group KODE tidak boleh dikosongkan !!!",
+        message: 'Group KODE tidak boleh dikosongkan !!!',
       });
     }
 
@@ -469,11 +466,11 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
 
     if (!approver || approver.length === 0) {
       return res.status(500).json({
-        message: "Can not approve data",
+        message: 'Can not approve data',
       });
     }
 
-    const sqlAppr_Identity = approver[0]?.Appr_Identity || "0000";
+    const sqlAppr_Identity = approver[0]?.Appr_Identity || '0000';
 
     // Step 3: Build queries
     const xSQL1 = `
@@ -603,7 +600,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       WHERE Item_Group = :item_groupID
     )
   `;
-  const deleteQuery1 = `
+    const deleteQuery1 = `
     DELETE FROM m_Item_Manufacturing_Status
     WHERE Item_ID IN (
       SELECT Item_ID
@@ -612,7 +609,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
     )
   `;
 
-  const insertQuery1 = `
+    const insertQuery1 = `
     INSERT INTO m_Item_Manufacturing_template (
       PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,
       Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ,
@@ -632,8 +629,6 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       replacements: { sqlPeriode },
       transaction,
     });
-
-
 
     const resultxSQL1 = await sequelizeMSQL.query(xSQL1, {
       replacements: {
@@ -682,7 +677,7 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
       transaction,
     });
 
-    const resultvSQL1 =  await sequelizeMSQL.query(vSQL1, {
+    const resultvSQL1 = await sequelizeMSQL.query(vSQL1, {
       replacements: { item_groupID, gstrUserName, gstrDelegatedTo },
       transaction,
     });
@@ -711,15 +706,15 @@ async function masterBahanAwalTemplate_APPROVE(req, res, next) {
     await transaction.commit();
     // await transaction.rollback();
     return res.status(200).json({
-      message: "Data has been approved for this period!",
+      message: 'Data has been approved for this period!',
     });
   } catch (error) {
     const resp = {
-      message: "ERROR",
-    }
+      message: 'ERROR',
+    };
     await transaction.rollback();
-    console.log({error, name: error?.name});
-    if(error?.name == 'SequelizeUniqueConstraintError' ) resp['data'] = 'Data Sudah Approve'
+    console.log({ error, name: error?.name });
+    if (error?.name == 'SequelizeUniqueConstraintError') resp['data'] = 'Data Sudah Approve';
     return res.status(500).json(resp);
   }
 }
@@ -745,26 +740,26 @@ async function masterItemPrinciple_CREATE(req, res, next) {
       nomorSertifikatHalal,
       docPendukungHalal,
       ukuranBaru = '',
-      ukuranLama = ''
+      ukuranLama = '',
     } = req.body;
 
     if (!item_ID) throw new Error(`Item ID wajib diisi!`);
 
-    if (!txtHalal || txtHalal === '') throw new Error(`Harap pilih Halal/Non Halal!`)
+    if (!txtHalal || txtHalal === '') throw new Error(`Harap pilih Halal/Non Halal!`);
 
-    if (!prc_ID || prc_ID === '') throw new Error(`Harap pilih principlenya`)
+    if (!prc_ID || prc_ID === '') throw new Error(`Harap pilih principlenya`);
 
     const principleDetail = await getPrcById(prc_ID);
 
     let isHalal = 0;
-    let stringSertifikat = ``
+    let stringSertifikat = ``;
 
     if (txtHalal === 'Halal') {
       isHalal = 1;
       if (typeof lembagaHalal === 'undefined' || typeof nomorSertifikatHalal === 'undefined' || typeof halalExpDate === 'undefined') {
         stringSertifikat = '';
       } else {
-        stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`
+        stringSertifikat = `${lembagaHalal}${nomorSertifikatHalal}${halalExpDate}`;
       }
     }
 
@@ -775,23 +770,24 @@ async function masterItemPrinciple_CREATE(req, res, next) {
 
     if (!cekRevisi) {
       const getDateTime = new Date();
-      item_revision = '00'
+      item_revision = '00';
       item_revisionDate = getDateTime.toISOString().replace('T', ' ').slice(0, 19).replace(/-/g, '/');
-      item_revisionUserID = user_id
-      item_revisionDelegatedTo = delegated_to
-      item_revisionKet =  ''
-      statusRev = false
+      item_revisionUserID = user_id;
+      item_revisionDelegatedTo = delegated_to;
+      item_revisionKet = '';
+      statusRev = false;
     }
-    console.log({cekRevisi});
+    console.log({ cekRevisi });
     if (cekRevisi) {
       item_revision = cekRevisi?.item_revision;
-      item_revisionDate = cekRevisi?.item_revisionDate ? cekRevisi.item_revisionDate.toISOString().replace('T', ' ').slice(0, 19).replace(/-/g, '/') : '';
+      item_revisionDate = cekRevisi?.item_revisionDate
+        ? cekRevisi.item_revisionDate.toISOString().replace('T', ' ').slice(0, 19).replace(/-/g, '/')
+        : '';
       item_revisionUserID = cekRevisi?.item_revisionUserId;
       item_revisionDelegatedTo = cekRevisi?.item_revisionDelegatedTo;
       item_revisionKet = cekRevisi?.item_ket;
       statusRev = true;
     }
-
 
     console.log({ cekItem, cekRevisi });
     if (cekItem && principleDetail) {
@@ -822,7 +818,7 @@ async function masterItemPrinciple_CREATE(req, res, next) {
         console.log({ queryRevisi });
       }
     }
-    console.log({stringSertifikat});
+    console.log({ stringSertifikat });
     const queryInsert = `
     INSERT INTO m_item_Manufacturing_Supplier_template (
         Item_ID,
@@ -874,15 +870,14 @@ async function masterItemPrinciple_CREATE(req, res, next) {
 
     await transaction.commit();
     return res.status(200).json({
-      message: "OK",
+      message: 'OK',
     });
-
   } catch (error) {
     const resp = {
-      message: "ERROR",
-    }
+      message: 'ERROR',
+    };
     await transaction.rollback();
-    console.log({error, name: error?.name});
+    console.log({ error, name: error?.name });
     return res.status(500).json(resp);
   }
 }
@@ -913,23 +908,23 @@ async function masterItemPrinciple_UPDATE(req, res) {
 
     if (!item_ID) {
       await transaction.rollback();
-      return res.status(400).json({ message: "Item ID tidak boleh kosong" });
+      return res.status(400).json({ message: 'Item ID tidak boleh kosong' });
     }
 
     if (!txtHalal) {
       await transaction.rollback();
-      return res.status(400).json({ message: "Harap pilih Halal/Non Halal!" });
+      return res.status(400).json({ message: 'Harap pilih Halal/Non Halal!' });
     }
 
     let strIsHalal;
     let strSertifikat;
 
-    if (txtHalal === "Halal") {
+    if (txtHalal === 'Halal') {
       strIsHalal = 1;
       strSertifikat = `
         , Lembaga=:lembagaHalal
         , Nomor_sertifikat=:nomorSertifikatHalal
-        , Masa_berlaku_date=${txtHalalMasaBerlaku === "-" ? "NULL" : ":dtpHalalMasaBerlaku"}
+        , Masa_berlaku_date=${txtHalalMasaBerlaku === '-' ? 'NULL' : ':dtpHalalMasaBerlaku'}
         , Dok_Pendukung=:docPendukungHalal
       `;
     } else {
@@ -1004,11 +999,11 @@ async function masterItemPrinciple_UPDATE(req, res) {
 
     await transaction.commit();
 
-    res.status(200).json({ message: "Data berhasil disimpan!" });
+    res.status(200).json({ message: 'Data berhasil disimpan!' });
   } catch (error) {
     await transaction.rollback();
-    console.error("Error updating item:", error);
-    res.status(500).json({ message: "Terjadi kesalahan. Silakan coba lagi." });
+    console.error('Error updating item:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan. Silakan coba lagi.' });
   }
 }
 
@@ -1021,7 +1016,7 @@ async function masterItemPrinciple_DELETE(req, res, next) {
 
     if (!item_ID || !prc_ID || !supp_ID) {
       return res.status(400).json({
-        message: "Item_ID, prc_ID, and supp_ID are required.",
+        message: 'Item_ID, prc_ID, and supp_ID are required.',
       });
     }
 
@@ -1033,17 +1028,14 @@ async function masterItemPrinciple_DELETE(req, res, next) {
     //   }
     // );
 
-    const itemType = await sequelizeMSQL.query(
-      `SELECT Item_Type FROM m_item_manufacturing_template WHERE Item_ID = :item_ID`,
-      {
-        replacements: { item_ID: item_ID },
-        type: Sequelize.QueryTypes.SELECT,
-      }
-    );
+    const itemType = await sequelizeMSQL.query(`SELECT Item_Type FROM m_item_manufacturing_template WHERE Item_ID = :item_ID`, {
+      replacements: { item_ID: item_ID },
+      type: Sequelize.QueryTypes.SELECT,
+    });
 
-    let strSQL = "";
+    let strSQL = '';
 
-    if (itemType[0].Item_Type === "BK") {
+    if (itemType[0].Item_Type === 'BK') {
       strSQL += `
         DELETE FROM m_Item_Manufacturing_revisionDelete
         WHERE Item_ID = :item_ID AND Item_PrcID = :prc_ID AND Item_SuppID = :supp_ID;
@@ -1073,13 +1065,13 @@ async function masterItemPrinciple_DELETE(req, res, next) {
 
     await transaction.commit();
     return res.status(200).json({
-      message: "Data berhasil dihapus!",
+      message: 'Data berhasil dihapus!',
     });
   } catch (error) {
     await transaction.rollback();
-    console.error("Error deleting item:", error);
+    console.error('Error deleting item:', error);
     return res.status(500).json({
-      message: "Terjadi kesalahan. Silakan coba lagi.",
+      message: 'Terjadi kesalahan. Silakan coba lagi.',
     });
   }
 }
@@ -1090,7 +1082,7 @@ async function getItemSupplier_template(req, res, next) {
 
     if (!item_ID) {
       return res.status(400).json({
-        message: "Item_ID is required.",
+        message: 'Item_ID is required.',
       });
     }
 
@@ -1098,11 +1090,11 @@ async function getItemSupplier_template(req, res, next) {
 
     if (!itemDetails || itemDetails.length === 0) {
       return res.status(404).json({
-        message: "Item not found.",
+        message: 'Item not found.',
       });
     }
 
-    const response = itemDetails.map(item => ({
+    const response = itemDetails.map((item) => ({
       Item_ID: item.Item_ID,
       Item_Name: item.Item_Name,
       Item_BPOMgenerik: item.item_bpomgenerik,
@@ -1114,8 +1106,8 @@ async function getItemSupplier_template(req, res, next) {
       Supp_ID: item.Supp_ID,
       Supp_Name: item.Supp_Name,
       IsActive: item.IsActive,
-      IsDefault: item.IsDefault ? "True" : "False",
-      Item_Revision: item.Item_Revision || "00",
+      IsDefault: item.IsDefault ? 'True' : 'False',
+      Item_Revision: item.Item_Revision || '00',
       Input_Date: item.input_date,
       IsHalal: item.isHalal,
       Lembaga: item.Lembaga,
@@ -1125,14 +1117,14 @@ async function getItemSupplier_template(req, res, next) {
     }));
 
     return res.status(200).json({
-      message: "OK",
+      message: 'OK',
       data: response,
     });
   } catch (error) {
-    console.error("Error in getItemSupplier_template:", error);
+    console.error('Error in getItemSupplier_template:', error);
     return res.status(500).json({
-      message: "ERROR",
-      data: error?.message || "Internal Server Error",
+      message: 'ERROR',
+      data: error?.message || 'Internal Server Error',
     });
   }
 }
@@ -1142,7 +1134,7 @@ async function getHistorySupplier_template(req, res) {
     const { item_ID } = req.query;
 
     if (!item_ID) {
-      return res.status(400).json({ message: "Item_ID is required." });
+      return res.status(400).json({ message: 'Item_ID is required.' });
     }
 
     const query = `
@@ -1172,13 +1164,13 @@ async function getHistorySupplier_template(req, res) {
     });
 
     if (historyData.length === 0) {
-      return res.status(404).json({ message: "Data Not Found!" });
+      return res.status(404).json({ message: 'Data Not Found!' });
     }
 
-    return res.status(200).json({ message: "OK", data: historyData });
+    return res.status(200).json({ message: 'OK', data: historyData });
   } catch (error) {
-    console.error("Error fetching history:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error('Error fetching history:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 }
 
@@ -1187,18 +1179,18 @@ async function checkPeriodController(req, res) {
     const { item_groupID } = req.query;
 
     if (!item_groupID) {
-      return res.status(400).json({ message: "TxtGroup_ID is required." });
+      return res.status(400).json({ message: 'TxtGroup_ID is required.' });
     }
 
     const result = await checkPeriod(item_groupID);
 
     return res.status(200).json({
-      message: "Period check completed.",
+      message: 'Period check completed.',
       data: result,
     });
   } catch (error) {
-    console.error("Error in checkPeriodController:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error('Error in checkPeriodController:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 }
 
@@ -1236,7 +1228,7 @@ async function checkPeriod(TxtGroup_ID) {
       };
     }
   } catch (error) {
-    console.error("Error checking period:", error);
+    console.error('Error checking period:', error);
     throw error;
   }
 }
@@ -1303,7 +1295,7 @@ const getItemDetails = async (item_ID) => {
 
     return result;
   } catch (error) {
-    console.error("Error fetching item details:", error);
+    console.error('Error fetching item details:', error);
     return null;
   }
 };
@@ -1312,33 +1304,31 @@ const getPrinciple = async (item_ID) => {
   try {
     const query = `
     SELECT TOP 1 item_type from m_item_manufacturing_template WHERE ISNULL(item_periode, '') = '' and item_type = 'BK' and item_ID = '${item_ID}' and ISNUMERIC(LEFT(item_ID, 1)) = 0
-    `
+    `;
     const result = await sequelizeMSQL.query(query, {
       replacements: { item_ID },
     });
     return result[0];
-
   } catch (error) {
-    console.log({error, name: 'getPrinciple'});
+    console.log({ error, name: 'getPrinciple' });
     return null;
   }
-}
+};
 
 const getPrcById = async (prc_ID) => {
   try {
     const query = `
     SELECT TOP 1 * from m_principle where prc_ID = ${prc_ID} and isActive = 1;
-    `
+    `;
     const result = await sequelizeMSQL.query(query, {
       replacements: { prc_ID },
     });
     return result[0][0];
-
   } catch (error) {
-    console.log({error, name: 'getPrcById'});
+    console.log({ error, name: 'getPrcById' });
     return null;
   }
-}
+};
 
 const getRevisi = async (item_ID, prc_ID) => {
   try {
@@ -1365,9 +1355,238 @@ const getRevisi = async (item_ID, prc_ID) => {
   } catch (error) {
     console.error({
       error,
-      name: 'getRevisi'
+      name: 'getRevisi',
     });
     return null;
+  }
+};
+
+const getRevisionsDA = async (req, res) => {
+  try {
+    const { item_group } = req.query;
+
+    if (!item_group) {
+      return res.status(400).json({ message: 'Item group is required.' });
+    }
+
+    const query = `
+      SELECT
+        PK_ID,
+        Item_Group,
+        no_revisi,
+        tgl_revisi,
+        alasan_desc,
+        Process_Date
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY no_revisi DESC
+    `;
+
+    const revisions = await sequelizeMSQL.query(query, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (revisions.length === 0) {
+      return res.status(404).json({ message: 'No revisions found for the given item group.' });
+    }
+
+    return res.status(200).json({ message: 'Revisions fetched successfully.', data: revisions });
+  } catch (error) {
+    console.error('Error fetching revisions:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const createRevision = async (req, res) => {
+  try {
+    const { item_group, tgl_revisi, alasan_desc } = req.body;
+
+    if (!item_group || !tgl_revisi || !alasan_desc) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    const queryLatestRevision = `
+      SELECT TOP 1 no_revisi
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY no_revisi DESC
+    `;
+
+    const [latestRevision] = await sequelizeMSQL.query(queryLatestRevision, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const new_no_revisi = latestRevision ? parseInt(latestRevision.no_revisi, 10) + 1 : 1;
+
+    const query = `
+      INSERT INTO m_item_manufacturing_revisions (
+        Item_Group,
+        no_revisi,
+        tgl_revisi,
+        alasan_desc,
+        Process_Date
+      )
+      VALUES (
+        :item_group,
+        :new_no_revisi,
+        :tgl_revisi,
+        :alasan_desc,
+        GETDATE()
+      )
+    `;
+
+    await sequelizeMSQL.query(query, {
+      replacements: { item_group, new_no_revisi, tgl_revisi, alasan_desc },
+      type: Sequelize.QueryTypes.INSERT,
+    });
+
+    return res.status(201).json({ message: 'Revision created successfully.' });
+  } catch (error) {
+    console.error('Error creating revision:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const createRevisionWithSameNumber = async (req, res) => {
+  try {
+    const { item_group, tgl_revisi, alasan_desc } = req.body;
+
+    if (!item_group || !tgl_revisi || !alasan_desc) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    // Fetch the latest revision for the given item_group
+    const queryLatestRevision = `
+      SELECT TOP 1 no_revisi
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY tgl_revisi DESC
+    `;
+
+    const [latestRevision] = await sequelizeMSQL.query(queryLatestRevision, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (!latestRevision) {
+      return res.status(404).json({ message: 'No revisions found for the given item group.' });
+    }
+
+    const same_no_revisi = parseInt(latestRevision.no_revisi, 10);
+
+    // Insert a new revision with the same no_revisi but newer tgl_revisi and alasan_desc
+    const query = `
+      INSERT INTO m_item_manufacturing_revisions (
+        Item_Group,
+        no_revisi,
+        tgl_revisi,
+        alasan_desc,
+        Process_Date
+      )
+      VALUES (
+        :item_group,
+        :same_no_revisi,
+        :tgl_revisi,
+        :alasan_desc,
+        GETDATE()
+      )
+    `;
+
+    await sequelizeMSQL.query(query, {
+      replacements: { item_group, same_no_revisi, tgl_revisi, alasan_desc },
+      type: Sequelize.QueryTypes.INSERT,
+    });
+
+    return res.status(201).json({ message: 'Revision created successfully with the same revision number.' });
+  } catch (error) {
+    console.error('Error creating revision with the same number:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const getLatestRevisionNumber = async (req, res) => {
+  try {
+    const { item_group } = req.query;
+
+    if (!item_group) {
+      return res.status(400).json({ message: 'Item group is required.' });
+    }
+
+    const query = `
+      SELECT TOP 1 no_revisi
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY no_revisi DESC
+    `;
+
+    const [result] = await sequelizeMSQL.query(query, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: 'No revisions found for the given item group.' });
+    }
+
+    return res.status(200).json({ no_revisi: parseInt(result.no_revisi, 10) });
+  } catch (error) {
+    console.error('Error fetching latest revision number:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const approveRevisionByItemGroup = async (item_group, user_id, delegated_to) => {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    if (!item_group || !user_id || !delegated_to) {
+      throw new Error('item_group, user_id, and delegated_to are required.');
+    }
+
+    const sqlDtTime = moment().format('YYYY-MM-DD HH:mm:ss');
+    const sqlPeriode = moment().format('YYYYMMDDHHmmss');
+
+    // Check if the user is an approver
+    const approver = await sequelizeMSQL.query(
+      `SELECT TOP 1 Appr_Identity FROM m_Approver_Lines WHERE isactive = 1 AND Appr_ApplicationCode LIKE 'ITEM' AND Appr_ID LIKE :user_id`,
+      { replacements: { user_id }, type: QueryTypes.SELECT }
+    );
+
+    if (!approver || approver.length === 0) {
+      throw new Error('User is not authorized to approve.');
+    }
+
+    const sqlAppr_Identity = approver[0]?.Appr_Identity || '0000';
+
+    if (!sqlAppr_Identity || sqlAppr_Identity === '0000') return 0; // Approval failed
+    console.log({Approval: sqlAppr_Identity, status: "failed"});
+
+    const updateQuery = `
+      UPDATE m_item_manufacturing_revisions
+      SET appr_userid = :user_id,
+          appr_delegated = :delegated_to,
+          appr_date = :sqlDtTime
+      WHERE Item_Group = :item_group
+        AND appr_date IS NULL;
+    `;
+
+    const [updateResult] = await sequelizeMSQL.query(updateQuery, {
+      replacements: { user_id, delegated_to, sqlDtTime, item_group },
+      transaction,
+    });
+
+    // Commit the transaction if the update was successful
+    if (updateResult > 0) {
+      await transaction.commit();
+      return 1; // Approval successful
+    } else {
+      throw new Error('No revisions found to approve.');
+    }
+  } catch (error) {
+    console.error('Error approving revision:', error);
+    await transaction.rollback();
+    return 0; // Approval failed
   }
 };
 
@@ -1377,11 +1596,11 @@ async function getViewDPBATemplate(req, res, next) {
 
     const { limit, offset } = getPagination(parseInt(page), parseInt(size));
 
-    if (!item_group || item_group === "") return res.status(500).json({message: 'item_group is required'})
+    if (!item_group || item_group === '') return res.status(500).json({ message: 'item_group is required' });
 
-    let queryString = ""
-    let countString = ""
-    if (item_group === "ä" || item_group === "RH") {
+    let queryString = '';
+    let countString = '';
+    if (item_group === 'ä' || item_group === 'RH') {
       queryString = `
         SELECT * FROM (
           SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
@@ -1389,11 +1608,11 @@ async function getViewDPBATemplate(req, res, next) {
           WHERE Item_group in ('ä', 'RH')
         ) AS Result
         WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
-      `
+      `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
         WHERE Item_group in ('ä', 'RH')
-      `
+      `;
     } else {
       queryString = `
         SELECT * FROM (
@@ -1402,11 +1621,11 @@ async function getViewDPBATemplate(req, res, next) {
           WHERE Item_group = :item_group
         ) AS Result
         WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
-      `
+      `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
         WHERE Item_group = :item_group
-      `
+      `;
     }
 
     const result = await sequelizeMSQL.query(queryString, {
@@ -1419,84 +1638,112 @@ async function getViewDPBATemplate(req, res, next) {
 
     const data = {
       rows: result[0],
-      count: total[0]?.count
-    }
-
+      count: total[0]?.count,
+    };
+    let no_revisi = 0;
+    let alasan_desc = '';
     const response = getPagingData(data, page, limit);
-    let file = "";
+    let file = '';
     switch (item_group) {
-      case "C":
-        file = "DA.RD.000010";
+      case 'C':
+        file = 'DA.RD.000010';
         break;
-      case "A":
-        file = "DA.RD.000011";
+      case 'A':
+        file = 'DA.RD.000011';
+        no_revisi = '49';
+        alasan_desc = `CA/0357/RD3/09/22 NCP Penambahan kode A 186.000.`;
         break;
-      case "AB":
-        file = "DA.RD.000012";
+      case 'AB':
+        file = 'DA.RD.000012';
         break;
-      case "BA":
-        file = "DA.RD.000013";
+      case 'BA':
+        file = 'DA.RD.000013';
+        no_revisi = '41';
         break;
-      case "BB":
-        file = "DA.RD.000014";
+      case 'BB':
+        file = 'DA.RD.000014';
         break;
-      case "B":
-        file = "DA.RD.000015";
+      case 'B':
+        file = 'DA.RD.000015';
         break;
-      case "BR":
-        file = "DA.RD.000016";
+      case 'BR':
+        file = 'DA.RD.000016';
         break;
-      case "L":
-        file = "DA.RD.000017";
+      case 'L':
+        file = 'DA.RD.000017';
+        no_revisi = '30';
         break;
-      case "E":
-        file = "DA.RD.000018";
+      case 'E':
+        file = 'DA.RD.000018';
         break;
-      case "D":
-        file = "DA.RD.000019";
+      case 'D':
+        file = 'DA.RD.000019';
         break;
-      case "K":
-        file = "DA.RD.000020";
+      case 'K':
+        file = 'DA.RD.000020';
+        no_revisi = '61';
         break;
-      case "IN":
-        file = "DA.RD.000005";
+      case 'IN':
+        file = 'DA.RD.000005';
         break;
-      case "PR":
-        file = "DA.RD.000008";
+      case 'PR':
+        file = 'DA.RD.000008';
+        no_revisi = '17';
+        alasan_desc = `-	Update keterangan halal sesuai CG/0062/TH/10/24, CA/0069/PC/10/24, dan CG/0020/TH/11/24.`;
         break;
-      case "CO":
-        file = "DA.RD.000007";
+      case 'CO':
+        file = 'DA.RD.000007';
         break;
-      case "FL":
-        file = "DA.RD.000006";
+      case 'FL':
+        file = 'DA.RD.000006';
+        no_revisi = '32';
+        alasan_desc = `No CC : CA/0026/PG/02/25 FHG
+        -	Perubahan pemasok pada kode FL 016A, FL 031, dan FL 032 ex. Givaudan dari PT Menjangan Sakti menjadi PT Unria Pratama Kencana.`;
         break;
-      case "AC":
-        file = "DA.RD.000004";
+      case 'AC':
+        file = 'DA.RD.000004';
         break;
-      case "02A":
-      case "02B":
+      case '02A':
+      case '02B':
         // file = "DA.RD.000021"; // Uncomment when ready
         break;
       default:
-        file = "DA.RD.000009";
+        file = 'DA.RD.000009';
     }
+
+    const detailRevisi = `
+        SELECT
+            no_revisi,
+            tgl_revisi AS tgl_berlaku,
+            alasan_desc AS alasan_perubahan
+        FROM
+            m_item_manufacturing_revisions
+        WHERE
+            item_group = :item_group
+        ORDER BY
+            no_revisi DESC
+    `;
+
+    const [revisi] = await sequelizeMSQL.query(detailRevisi, {
+      replacements: { item_group },
+    });
 
     response['nomorDocument'] = file;
-    return res.status(200).json(response)
+    response['revisi'] = revisi;
 
+    return res.status(200).json(response);
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     const resp = {
-      message: "ERROR",
-    }
-    console.log({error, name: error?.name});
+      message: 'ERROR',
+    };
+    console.log({ error, name: error?.name });
     return res.status(500).json(resp);
   }
 }
 
 async function countJumlahPPI(item_ID) {
   try {
-
     const queryString = `
     SELECT
     COUNT(*) AS jum
@@ -1511,29 +1758,28 @@ async function countJumlahPPI(item_ID) {
         AND A.PPI_ProductInit = B.PPI_ProductInit
     WHERE
     A.PPI_ItemID = :item_ID;
-    `
+    `;
     const [data] = await sequelizeMSQL.query(queryString, {
       replacements: {
-        item_ID: `${item_ID}`
+        item_ID: `${item_ID}`,
       },
       type: Sequelize.QueryTypes.SELECT,
       logging: (query, queryObject) => {
         // console.log('Executing query:', queryObject);
       },
-    })
+    });
 
-    console.log({PPICount: data?.jum});
+    console.log({ PPICount: data?.jum });
 
-    return data?.jum
+    return data?.jum;
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     return null;
   }
 }
 
 async function checkItemBeforeDelete(item_ID) {
   try {
-
     const queryString = `
     SELECT TOP 1
       MR_ItemID AS item_id
@@ -1559,29 +1805,28 @@ async function checkItemBeforeDelete(item_ID) {
       t_TTBA_Manufacturing_Detail
     WHERE
       TTBA_ItemID = :item_ID
-    `
+    `;
     const data = await sequelizeMSQL.query(queryString, {
       replacements: {
-        item_ID: `${item_ID}`
+        item_ID: `${item_ID}`,
       },
       type: Sequelize.QueryTypes.SELECT,
       logging: (query, queryObject) => {
         // console.log('Executing query:', queryObject);
       },
-    })
+    });
 
     console.log(data);
 
-    return data
+    return data;
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     return null;
   }
 }
 
-async function getItemIdByGroupId (item_group) {
+async function getItemIdByGroupId(item_group) {
   try {
-
     const queryString = `
     SELECT
     '${item_group} ' +
@@ -1600,56 +1845,55 @@ async function getItemIdByGroupId (item_group) {
     FROM
         m_Item_Manufacturing_template
     WHERE Item_ID LIKE ':item_group_like'
-    `
+    `;
     const [data] = await sequelizeMSQL.query(queryString, {
       replacement: {
-        item_group_like: `${item_group}%`
+        item_group_like: `${item_group}%`,
       },
       type: Sequelize.QueryTypes.SELECT,
       logging: (query, queryObject) => {
         console.log('Executing query:', query);
       },
-    })
+    });
 
-    console.log({data: data['']});
+    console.log({ data: data[''] });
 
-    return data['']
-
+    return data[''];
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     return null;
   }
 }
 
 async function getPKID() {
   try {
-    const queryString = `SELECT MAX(PK_ID) + 1 as PKID from m_item_Manufacturing_template where ISNULL(item_Periode,'') = '' `
+    const queryString = `SELECT MAX(PK_ID) + 1 as PKID from m_item_Manufacturing_template where ISNULL(item_Periode,'') = '' `;
 
     const [data] = await sequelizeMSQL.query(queryString, {
-      type: Sequelize .QueryTypes.SELECT,
+      type: Sequelize.QueryTypes.SELECT,
       logging: (query, queryObject) => {
         // console.log('Executing query:', query);
       },
-    })
+    });
     // console.log({data});
     if (data) return data?.PKID;
 
     return null;
   } catch (error) {
-    console.log({error});
+    console.log({ error });
     return null;
   }
 }
 
 const generateItemID = async (item_groupID) => {
   if (!item_groupID) {
-    throw new Error("Item group ID is required");
+    throw new Error('Item group ID is required');
   }
 
-  let lblItem_ID = "";
+  let lblItem_ID = '';
 
   if (!isNaN(item_groupID.charAt(0))) {
-    console.log("QUERY1");
+    console.log('QUERY1');
     const query1 = `
       SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID, ' ', '')), 3) AS INT), 0) + 1 AS VARCHAR), 3) AS newItemID
       FROM m_Item_Manufacturing_template
@@ -1658,8 +1902,8 @@ const generateItemID = async (item_groupID) => {
     `;
 
     const result = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
-    console.log({result});
-    lblItem_ID = `${item_groupID} ${result.length > 0 ? result[0].newItemID : "001"}`;
+    console.log({ result });
+    lblItem_ID = `${item_groupID} ${result.length > 0 ? result[0].newItemID : '001'}`;
   } else {
     console.log('QUERY2');
     const query2 = `
@@ -1669,9 +1913,9 @@ const generateItemID = async (item_groupID) => {
     `;
 
     const result = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
-      lblItem_ID = result.length > 0 ? result[0].newItemID : `${item_groupID} 001`
-    if (item_groupID !== "RH") {
-      lblItem_ID = lblItem_ID + '.000'
+    lblItem_ID = result.length > 0 ? result[0].newItemID : `${item_groupID} 001`;
+    if (item_groupID !== 'RH') {
+      lblItem_ID = lblItem_ID + '.000';
     }
   }
 
@@ -1684,7 +1928,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old' } = req.query;
 
   let browser;
   try {
@@ -1707,61 +1951,116 @@ async function printTest(req, res) {
         }
       `,
     });
+    let headerTemplateNew = `
+      <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 120px; text-align: center;" rowspan="2">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
 
+          <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 24px; padding-left: 10px">
+            DAFTAR
+          </td>
+
+          <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
+            <div style="width: 100%; font-size: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Nomor</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${kode}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal Berlaku</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${berlaku}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal Review</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${review}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Revisi</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${revisi}</div>
+              </div>
+              <div style="display: flex; flex: 1;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Halaman</span>
+                </div>
+                <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid gray; height: 96px; text-align: center; font-weight: bold;">
+            ${judul}
+          </td>
+        </tr>
+      </table>
+      `;
+
+      let headerTemplateOld = `
+      <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
+
+          <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
+            DAFTAR
+          </td>
+
+          <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
+            <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Nomor</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${kode}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${tanggal}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Revisi</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${revisi}</div>
+              </div>
+              <div style="display: flex; flex: 1;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Halaman</span>
+                </div>
+                <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
+            ${judul}
+          </td>
+        </tr>
+      </table>
+      `;
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
       footerTemplate: ` `,
-      headerTemplate: `
-        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
-          <tr>
-            <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
-              <img src="${logoBase64}" alt="lapilogo" width="100">
-            </td>
-
-            <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
-              DAFTAR
-            </td>
-
-            <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
-              <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Nomor</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${kode}</div>
-                </div>
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Tanggal</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${tanggal}</div>
-                </div>
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Revisi</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${revisi}</div>
-                </div>
-                <div style="display: flex; flex: 1;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Halaman</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
-              ${judul}
-            </td>
-          </tr>
-        </table>
-        `,
+      headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
       margin: { bottom: '60px', top: '130px', left: '40px', right: '40px' },
     });
     await browser.close();
@@ -1778,8 +2077,8 @@ async function cmdApprove(req, res, next) {
   const { user_id, delegated_to } = req.user;
   const { item_groupID } = req.body;
 
-  if (!item_groupID || item_groupID === "") {
-    return res.status(400).json({ message: "Group KODE tidak boleh dikosongkan !!!" });
+  if (!item_groupID || item_groupID === '') {
+    return res.status(400).json({ message: 'Group KODE tidak boleh dikosongkan !!!' });
   }
 
   try {
@@ -1795,10 +2094,10 @@ async function cmdApprove(req, res, next) {
     );
 
     if (!approver || approver.length === 0) {
-      return res.status(500).json({ message: "Can not approve data" });
+      return res.status(500).json({ message: 'Can not approve data, not authorized user' });
     }
 
-    const sqlAppr_Identity = approver[0]?.Appr_Identity || "0000";
+    const sqlAppr_Identity = approver[0]?.Appr_Identity || '0000';
 
     const xSQL1 = `
       UPDATE m_Item_Manufacturing_Supplier_template
@@ -1898,7 +2197,39 @@ async function cmdApprove(req, res, next) {
       WHERE ISNULL(item_Periode, '') = :sqlPeriode;
     `;
 
-    const rSQL = `${xSQL1} ${xSQL2} ${zSQL1} ${zSQL2} ${zSQL3} ${vSQL1} ${vSQL2} ${vSQL3}`;
+    const approveRevisionSQL = `
+      UPDATE m_item_manufacturing_revisions
+      SET appr_userid = :user_id,
+        appr_delegated = :delegated_to,
+        appr_date = :sqlDtTime
+      WHERE Item_Group = :item_groupID
+      AND appr_date IS NULL
+      AND no_revisi = (
+        SELECT TOP 1 no_revisi
+        FROM m_item_manufacturing_revisions
+        WHERE Item_Group = :item_groupID
+        ORDER BY tgl_revisi DESC
+      );`
+    const checkApprovalSQL = `
+      SELECT TOP 1 appr_date
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_groupID
+      ORDER BY tgl_revisi DESC
+    `;
+
+    let rSQL = `${xSQL1} ${xSQL2} ${zSQL1} ${zSQL2} ${zSQL3} ${vSQL1} ${vSQL2} ${vSQL3}`;
+
+    const [latestRevision] = await sequelizeMSQL.query(checkApprovalSQL, {
+      replacements: { item_groupID },
+      type: QueryTypes.SELECT,
+    });
+
+    console.log({latestRevision, approveddate: latestRevision?.appr_date});
+    if (latestRevision && latestRevision.appr_date) {
+      rSQL = `${xSQL1} ${xSQL2} ${zSQL1} ${zSQL2} ${zSQL3} ${vSQL1} ${vSQL2} ${vSQL3}`;
+    } else {
+      rSQL = `${xSQL1} ${xSQL2} ${zSQL1} ${zSQL2} ${zSQL3} ${vSQL1} ${vSQL2} ${vSQL3} ${approveRevisionSQL}`;
+    }
 
     await sequelizeMSQL.query(rSQL, {
       replacements: {
@@ -1913,7 +2244,7 @@ async function cmdApprove(req, res, next) {
     });
 
     await transaction.commit();
-    return res.status(200).json({ message: "Data has been approved for this period!" });
+    return res.status(200).json({ message: 'Data has been approved for this period!' });
   } catch (error) {
     await transaction.rollback();
     console.error('Error approving data:', error);
@@ -1921,5 +2252,23 @@ async function cmdApprove(req, res, next) {
   }
 }
 
-
- module.exports = { cmdApprove, printTest, checkPeriodController, getHistorySupplier_template, getItemSupplier_template, masterItemPrinciple_DELETE, masterItemPrinciple_UPDATE, masterItemPrinciple_CREATE, masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate }
+module.exports = {
+  cmdApprove,
+  printTest,
+  checkPeriodController,
+  getHistorySupplier_template,
+  getItemSupplier_template,
+  masterItemPrinciple_DELETE,
+  masterItemPrinciple_UPDATE,
+  masterItemPrinciple_CREATE,
+  masterBahanAwalTemplate_CREATE,
+  masterBahanAwalTemplate_UPDATE,
+  masterBahanAwalTemplate_DELETE,
+  masterBahanAwalTemplate_APPROVE,
+  getViewDPBATemplate,
+  getRevisionsDA,
+  createRevision,
+  getLatestRevisionNumber,
+  createRevisionWithSameNumber,
+  approveRevisionByItemGroup
+};
