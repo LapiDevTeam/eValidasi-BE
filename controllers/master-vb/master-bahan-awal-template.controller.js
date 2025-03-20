@@ -2059,8 +2059,12 @@ async function printTest(req, res) {
     await page.addStyleTag({
       content: `
         * {
-          font-size: 12px !important;
+          font-size: 14px !important;
           font-family: Arial, sans-serif;
+        }
+    
+        table {
+          margin-top: 12px !important; /* Ensures margin applies to all tables */
         }
       `,
     });
@@ -2174,8 +2178,9 @@ async function printTest(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
-      margin: { bottom: '60px', top: '130px', left: '40px', right: '40px' },
+      margin: { bottom: '60px', top: '180px', left: '40px', right: '40px' }, // Increased top margin
     });
+    
     await browser.close();
     res.end(pdfBuffer);
   } catch (error) {
