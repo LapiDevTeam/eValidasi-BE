@@ -1928,7 +1928,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old' } = req.query;
 
   let browser;
   try {
@@ -1951,61 +1951,116 @@ async function printTest(req, res) {
         }
       `,
     });
+    let headerTemplateNew = `
+      <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 120px; text-align: center;" rowspan="2">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
 
+          <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 24px; padding-left: 10px">
+            DAFTAR
+          </td>
+
+          <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
+            <div style="width: 100%; font-size: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Nomor</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${kode}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal Berlaku</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${berlaku}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal Review</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${review}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Revisi</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${revisi}</div>
+              </div>
+              <div style="display: flex; flex: 1;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Halaman</span>
+                </div>
+                <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid gray; height: 96px; text-align: center; font-weight: bold;">
+            ${judul}
+          </td>
+        </tr>
+      </table>
+      `;
+
+      let headerTemplateOld = `
+      <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
+
+          <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
+            DAFTAR
+          </td>
+
+          <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
+            <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Nomor</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${kode}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${tanggal}</div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Revisi</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${revisi}</div>
+              </div>
+              <div style="display: flex; flex: 1;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                  <span>Halaman</span>
+                </div>
+                <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
+            ${judul}
+          </td>
+        </tr>
+      </table>
+      `;
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
       footerTemplate: ` `,
-      headerTemplate: `
-        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
-          <tr>
-            <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
-              <img src="${logoBase64}" alt="lapilogo" width="100">
-            </td>
-
-            <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
-              DAFTAR
-            </td>
-
-            <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
-              <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Nomor</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${kode}</div>
-                </div>
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Tanggal</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${tanggal}</div>
-                </div>
-                <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Revisi</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;">${revisi}</div>
-                </div>
-                <div style="display: flex; flex: 1;">
-                  <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
-                    <span>Halaman</span>
-                  </div>
-                  <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="border: 1px solid gray; height: 70px; text-align: center; font-weight: bold;">
-              ${judul}
-            </td>
-          </tr>
-        </table>
-        `,
+      headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
       margin: { bottom: '60px', top: '130px', left: '40px', right: '40px' },
     });
     await browser.close();
