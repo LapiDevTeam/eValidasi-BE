@@ -2071,38 +2071,38 @@ async function printTest(req, res) {
             <img src="${logoBase64}" alt="lapilogo" width="100">
           </td>
 
-          <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 24px; padding-left: 10px">
+          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 24px; padding-left: 10px">
             DAFTAR
           </td>
 
-          <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
+          <td style="width: 220px; height: 120px; border: 1px solid gray; vertical-align: top;" rowspan="2">
             <div style="width: 100%; font-size: 12px; display: flex; flex-direction: column;">
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Nomor</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${kode}</div>
               </div>
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Tanggal Berlaku</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${berlaku}</div>
               </div>
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Tanggal Review</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${review}</div>
               </div>
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Revisi</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${revisi}</div>
               </div>
               <div style="display: flex; flex: 1;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Halaman</span>
                 </div>
                 <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
@@ -2126,32 +2126,32 @@ async function printTest(req, res) {
             <img src="${logoBase64}" alt="lapilogo" width="100">
           </td>
 
-          <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
+          <td style="border: 1px solid gray;  text-align: start; font-weight: bold;  height:24px; padding-left: 10px">
             DAFTAR
           </td>
 
-          <td style="width: 220px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
+          <td style="width: 220px; height: 100px; border: 1px solid gray; vertical-align: top;" rowspan="2">
             <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Nomor</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${kode}</div>
               </div>
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Tanggal</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${tanggal}</div>
               </div>
-              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Revisi</span>
                 </div>
                 <div style="width: 50%; padding: 5px;">${revisi}</div>
               </div>
               <div style="display: flex; flex: 1;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid black;">
+                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Halaman</span>
                 </div>
                 <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
