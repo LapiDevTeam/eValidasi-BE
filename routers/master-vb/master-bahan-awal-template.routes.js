@@ -1,5 +1,5 @@
 const express = require("express");
-const { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate, masterItemPrinciple_CREATE, masterItemPrinciple_UPDATE, masterItemPrinciple_DELETE, getItemDetailsController, getItemSupplier_template, getHistorySupplier_template, checkPeriodController, printTest, cmdApprove, getRevisionsDA, createRevision } = require("../../controllers/master-vb/master-bahan-awal-template.controller");
+const { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate, masterItemPrinciple_CREATE, masterItemPrinciple_UPDATE, masterItemPrinciple_DELETE, getItemDetailsController, getItemSupplier_template, getHistorySupplier_template, checkPeriodController, printTest, cmdApprove, getRevisionsDA, createRevision, getLatestRevisionNumber, createRevisionWithSameNumber } = require("../../controllers/master-vb/master-bahan-awal-template.controller");
 const { authentication } = require("../../middlewares/authentication");
 const router = express.Router();
 
@@ -28,6 +28,8 @@ router.get('/principle/history',authentication, getHistorySupplier_template);
 
 router.get("/revisions", authentication, getRevisionsDA);
 router.post("/revisions", authentication, createRevision);
+router.get("/revisions-latest", authentication, getLatestRevisionNumber);
+router.post("/revisions-template", authentication, createRevisionWithSameNumber);
 
 
 module.exports = router;
