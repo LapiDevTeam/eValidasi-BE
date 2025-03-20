@@ -2178,7 +2178,7 @@ async function printTest(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
-      margin: { bottom: '60px', top: '180px', left: '40px', right: '40px' }, // Increased top margin
+      margin: { bottom: '60px', top: '165px', left: '40px', right: '40px' }, // Increased top margin
     });
     
     await browser.close();
