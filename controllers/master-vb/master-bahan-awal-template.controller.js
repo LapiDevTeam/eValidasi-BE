@@ -1516,7 +1516,7 @@ const getLatestRevisionNumber = async (req, res) => {
 
     // Query to fetch the latest revision number where `appr_date` is null
     const query = `
-      SELECT TOP 1 no_revisi
+      SELECT TOP 1 *
       FROM m_item_manufacturing_revisions
       WHERE Item_Group = :item_group AND appr_date IS NULL
       ORDER BY no_revisi DESC
@@ -1530,7 +1530,7 @@ const getLatestRevisionNumber = async (req, res) => {
     // If no result is found, fallback to fetch the latest revision number
     if (!result) {
       const fallbackQuery = `
-        SELECT TOP 1 no_revisi
+        SELECT TOP 1 *
         FROM m_item_manufacturing_revisions
         WHERE Item_Group = :item_group
         ORDER BY no_revisi DESC
@@ -1547,11 +1547,13 @@ const getLatestRevisionNumber = async (req, res) => {
       }
 
       // Increment the fallback result by 1
-      return res.status(200).json({ no_revisi: parseInt(fallbackResult.no_revisi, 10) + 1 });
+      const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1
+      return res.status(200).json({no_revisi: newRevision});
+      // return res.status(200).json({ no_revisi: parseInt(fallbackResult.no_revisi, 10) + 1 });
     }
 
     // Return the latest revision number from the first query
-    return res.status(200).json({ no_revisi: parseInt(result.no_revisi, 10) });
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching latest revision number:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
@@ -2039,7 +2041,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old' } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old', berlaku, review } = req.query;
 
   let browser;
   try {
