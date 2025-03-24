@@ -499,7 +499,7 @@ async function cmdSave(req, res, next) {
       type: QueryTypes.INSERT
     });
 
-    return res.status(200).json({ message: "Data has been saved" });
+    return res.status(200).json({ message: "Data has been saved", noDoc });
   } catch (error) {
     console.error('Error saving data:', error);
     return res.status(500).json({ message: 'Error saving data!' });
