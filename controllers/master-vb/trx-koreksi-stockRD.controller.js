@@ -409,7 +409,7 @@ async function cmdSave(req, res, next) {
     stockFisik,
     stockKoreksi,
     keterangan,
-    jumlahKedatangan,
+    jumlahKedatangan = "0",
     jumlahVat,
     persenKoreksi
   } = req.body;
