@@ -410,8 +410,8 @@ async function cmdSave(req, res, next) {
     stockKoreksi,
     keterangan,
     jumlahKedatangan = "0",
-    jumlahVat,
-    persenKoreksi
+    jumlahVat = "0",
+    persenKoreksi = "0"
   } = req.body;
 
   const { user_id, delegated_to } = req.user;
