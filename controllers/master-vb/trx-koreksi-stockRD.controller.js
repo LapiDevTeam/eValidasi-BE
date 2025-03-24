@@ -438,7 +438,7 @@ async function cmdSave(req, res, next) {
     let sql = "";
 
     if (!seqID || seqID === "") { // NEW Save
-      if (!noDoc | noDoc === "") {
+      if (!noDoc || noDoc === "") {
         noDoc = await fnGetNewNoDoc();
       } else {
         if (await fnCekExist(noDoc, pkIDItem)) {
