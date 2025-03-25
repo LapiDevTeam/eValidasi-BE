@@ -355,6 +355,111 @@ async function getDetailGrid(req, res, next) {
   }
 }
 
+async function getPrintData(req, res) {
+  const { noDoc } = req.query;
+
+  if (!noDoc) {
+    return res.status(400).json({ message: "No Doc is required" });
+  }
+
+  try {
+    // Query to get approval information
+    const approvalQuery = `
+      SELECT
+        E.emp_Name AS SPV,
+        CASE WHEN B.Delegated_To = B.User_ID THEN '' ELSE 'an. ' + F.emp_Name END AS SPVOri,
+        B.Process_Date AS SPVDate,
+        C.emp_Name AS MGR,
+        CASE WHEN A.Delegated_To = A.User_ID THEN '' ELSE 'an. ' + D.emp_Name END AS MGROri,
+        A.Process_Date AS MGRDate
+      FROM t_koreksi_RD_Status A
+      LEFT JOIN T_Koreksi_RD B ON A.No_Doc = B.No_Doc AND B.SeqID = (
+        SELECT MAX(SeqID) FROM T_Koreksi_RD WHERE No_Doc = :noDoc
+      )
+      LEFT JOIN m_employee C ON C.emp_NIK = A.Delegated_To
+      LEFT JOIN m_employee D ON D.emp_NIK = A.User_ID
+      LEFT JOIN m_employee E ON E.emp_NIK = B.Delegated_To
+      LEFT JOIN m_employee F ON F.emp_NIK = B.User_ID
+      WHERE A.Approver_No = 1 AND A.No_Doc = :noDoc
+    `;
+
+    const [approvalInfo] = await sequelizeMSQL.query(approvalQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    if (!approvalInfo) {
+      return res.status(404).json({ message: "Approval information not found" });
+    }
+
+    // Format dates
+    const formattedApprovalInfo = {
+      ...approvalInfo,
+      SPVDate: approvalInfo.SPVDate ? moment(approvalInfo.SPVDate).format('DD-MMM-YYYY HH:mm:ss') : null,
+      MGRDate: approvalInfo.MGRDate ? moment(approvalInfo.MGRDate).format('DD-MMM-YYYY HH:mm:ss') : null
+    };
+
+    // Query to get item details
+    const itemsQuery = `
+      SELECT
+        A.SeqID,
+        B.ItemID AS Kode,
+        B.ItemName AS Nama,
+        B.satuan,
+        B.batchno AS No_Ref,
+        A.Stock_eSystem,
+        A.Stock_Fisik,
+        A.Stock_Koreksi,
+        A.Keterangan,
+        A.Jumlah_kedatangan,
+        A.Jumlah_Vat,
+        A.persen_Koreksi
+      FROM T_Koreksi_RD A
+      LEFT JOIN t_NP_Sample_Stock B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE A.No_Doc = :noDoc
+      ORDER BY A.SeqID
+    `;
+
+    const items = await sequelizeMSQL.query(itemsQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    if (items.length === 0) {
+      return res.status(404).json({ message: "No items found for this document" });
+    }
+
+    // Get document date
+    const docDateQuery = `
+      SELECT TOP 1 Tgl_Doc
+      FROM T_Koreksi_RD
+      WHERE No_Doc = :noDoc
+    `;
+
+    const [docInfo] = await sequelizeMSQL.query(docDateQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    const formattedDate = docInfo?.Tgl_Doc ? moment(docInfo.Tgl_Doc).format('DD MMM YYYY') : null;
+
+    // Prepare the response
+    const response = {
+      document: {
+        noDoc: noDoc,
+        date: formattedDate
+      },
+      approvalInfo: formattedApprovalInfo,
+      items: items
+    };
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error fetching print data:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 async function fnGetLastNoMasuk() {
   try {
     const query = `
@@ -513,5 +618,6 @@ module.exports = {
   cmdDelete,
   cmdApprove,
   getDetailGrid,
-  cmdSave
+  cmdSave,
+  getPrintData
 };

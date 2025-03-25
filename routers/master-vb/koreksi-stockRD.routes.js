@@ -2,13 +2,14 @@ const express = require('express');
 const trxKoreksiStockRDRouter = express.Router();
 
 const { authentication } = require('../../middlewares/authentication');
-const { sbCekButton, cmdFindData1, cmdFindData2, cmdDelete, cmdApprove, getDetailGrid, cmdSave } = require('../../controllers/master-vb/trx-koreksi-stockRD.controller');
+const { sbCekButton, cmdFindData1, cmdFindData2, cmdDelete, cmdApprove, getDetailGrid, cmdSave, getPrintData } = require('../../controllers/master-vb/trx-koreksi-stockRD.controller');
 
 
 trxKoreksiStockRDRouter.get('/cekbuttons', authentication, sbCekButton);
 trxKoreksiStockRDRouter.get('/getdocuments', authentication, cmdFindData1);
 trxKoreksiStockRDRouter.get('/getdetailgrid', authentication, getDetailGrid);
 trxKoreksiStockRDRouter.get('/getkodebahan', authentication, cmdFindData2);
+trxKoreksiStockRDRouter.get('/printdata', authentication, getPrintData);
 
 trxKoreksiStockRDRouter.delete('/deletekoreksi', authentication, cmdDelete);
 trxKoreksiStockRDRouter.post('/approve', authentication, cmdApprove);
