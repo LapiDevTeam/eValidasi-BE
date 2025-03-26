@@ -226,11 +226,9 @@ async function cmdApprove(req, res, next) {
       return res.status(403).json({ message: "Anda tidak memiliki akses!" });
     }
 
-    if (vApp.currStatusDoc === 0) {
+    if (vApp.currStatusDoc == 0) {
       await sequelizeMSQL.transaction(async (transaction) => {
-        let strSQL = "";
-
-        // Save approve
+        // Step 1: Get approver information
         const approverQuery = `
           SELECT Appr_No, Appr_Identity
           FROM m_Approver_Lines
@@ -250,34 +248,41 @@ async function cmdApprove(req, res, next) {
         }
 
         const approverIdentity = approverResults[0].Appr_Identity;
+        let strSQL = "";
 
+        // Step 2: Insert approval record
         strSQL += `
           INSERT INTO t_koreksi_RD_Status(No_Doc, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, Flag_Update, alasan_reject)
           VALUES('${noDoc}', '1', 0, '${approverIdentity}', GETDATE(), '${user_id}', '${delegated_to}', NULL, NULL);
         `;
 
-        // Process stock adjustments
-        const stockQuery = `
-          SELECT PK_ID_Item, Saldo, Qty, Note
-          FROM t_NP_Sample_Stock
-          WHERE No_Doc = :noDoc
+        // Step 3: Get correction items from T_Koreksi_RD (matching the Grid view in VB)
+        const itemsQuery = `
+          SELECT A.PK_ID_Item, B.SaldoAkhir AS Saldo, A.Stock_Koreksi AS Qty, A.Keterangan AS Note
+          FROM T_Koreksi_RD A
+          LEFT JOIN (
+            SELECT PK_ID_Item, saldoawal + masuk - keluar AS SaldoAkhir
+            FROM t_NP_Sample_Stock
+          ) B ON A.PK_ID_Item = B.PK_ID_Item
+          WHERE A.No_Doc = :noDoc
         `;
 
-        const stockResults = await sequelizeMSQL.query(stockQuery, {
+        const itemResults = await sequelizeMSQL.query(itemsQuery, {
           replacements: { noDoc },
           type: QueryTypes.SELECT,
           transaction
         });
 
+        // Step 4: Process stock adjustments
         let sNoMasuk = await fnGetLastNoMasuk();
         let sNoKeluar = await fnGetLastNoKeluar() + 1;
         let sFlag = 1;
 
-        for (const item of stockResults) {
+        for (const item of itemResults) {
           const { PK_ID_Item, Saldo, Qty, Note } = item;
 
-          if (Qty > 0) {
-            // Addition to stock
+          if (parseFloat(Qty) > 0) {
+            // Addition to stock (PENAMBAHAN STOCK in VB)
             sNoMasuk += 1;
             strSQL += `
               UPDATE t_NP_Sample_Stock
@@ -288,13 +293,14 @@ async function cmdApprove(req, res, next) {
               VALUES('${sNoMasuk}', GETDATE(), '${PK_ID_Item}', ABS(${Qty}), 'Koreksi Masuk-${Note}', '${user_id}', GETDATE(), '${user_id}', '${delegated_to}', GETDATE(), NULL);
             `;
           } else {
-            // Subtraction from stock
+            // Subtraction from stock (PENGURANGAN STOCK in VB)
             strSQL += `
               UPDATE t_NP_Sample_Stock
               SET keluar = keluar + ABS(${Qty})
               WHERE PK_ID_Item = '${PK_ID_Item}';
             `;
 
+            // Generate header record only once
             if (sFlag === 1) {
               strSQL += `
                 INSERT INTO t_NP_Sample_keluar_m(PKID, TypeInput, Tgl, KodeProd, NamaProd, NoPermintaan, TglTrial, TrialKe, PICPelaksana, formula, Note, UserID, Delegated_To, Process_date, batchsize, batchSatuan, batchKet, expiredDate, formula_sediaan, fasilitas_trial, RH, Suhu, apprID, apprDate, flag_update)
@@ -303,14 +309,22 @@ async function cmdApprove(req, res, next) {
               sFlag += 1;
             }
 
+            // Add detail record for each item
             strSQL += `
               INSERT INTO t_NP_Sample_keluar_d(PKID, PK_ID_item, Saldo, Qty, Note, UserID, Delegated_To, Process_date, flag_update)
-              VALUES('${sNoKeluar}', '${PK_ID_Item}', '${Saldo}', ABS(${Qty}), 'Koreksi Keluar-${Note}', '${user_id}', '${delegated_to}', GETDATE(), NULL);
+              VALUES('${sNoKeluar}', '${PK_ID_Item}', '${Saldo || 0}', ABS(${Qty}), 'Koreksi Keluar-${Note}', '${user_id}', '${delegated_to}', GETDATE(), NULL);
             `;
           }
         }
 
-        await sequelizeMSQL.query(strSQL, { type: QueryTypes.INSERT, transaction });
+        // Execute all SQL statements
+        if (strSQL) {
+          await sequelizeMSQL.query(strSQL, {
+            type: QueryTypes.RAW,
+            transaction,
+            multipleStatements: true
+          });
+        }
       });
 
       return res.status(200).json({ message: "Data has been approved" });
@@ -319,6 +333,12 @@ async function cmdApprove(req, res, next) {
     }
   } catch (error) {
     console.error('Error approving data:', error);
+
+    // If the error is a MyError, pass along its message
+    if (error instanceof MyError) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
+
     return res.status(500).json({ message: 'Error approving data!' });
   }
 }

@@ -210,6 +210,11 @@ async function isApproverStatus(vDocumentNo, vDocumentDeptID, vDocumentApplicati
       }
     }
 
+    console.log({
+      str_flagApprMgrBagian,
+      str_currStatusDoc,
+      str_userLevel
+    });
     return {
       flagApprMgrBagian: str_flagApprMgrBagian,
       currStatusDoc: str_currStatusDoc,
