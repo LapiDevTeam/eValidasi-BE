@@ -18,6 +18,11 @@ router.get(
   authentication,
   ControllerKodeTrialObatJadi.getKodeTrialObatJadiTemplate
 );
+router.get(
+  "/get-all-revisi-detail",
+  authentication,
+  ControllerKodeTrialObatJadi.getAllRevisiDetail
+);
 router.put(
   "/approve-kode-trial-obat-jadi",
   authentication,

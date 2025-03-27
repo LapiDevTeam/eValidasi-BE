@@ -99,6 +99,33 @@ class ControllerKodeTrialObatJadi {
       res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
     }
   }
+  static async getAllRevisiDetail(req, res) {
+    try {
+      const revisiDetails = await m_kodeTrialObatJadi_template.findAll({
+        attributes: [
+          "rencana_berlaku",
+          "rencana_revisi",
+          "rencana_alasan_desc",
+        ],
+        where: {
+          [Op.and]: [
+            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
+            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
+            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+          ],
+        },
+        group: ["rencana_revisi", "rencana_berlaku", "rencana_alasan_desc"], // Semua kolom yang di-select harus ada di GROUP BY
+        order: [["rencana_revisi", "DESC"]], // Urutkan berdasarkan rencana_revisi
+      });
+  
+      res.status(200).json({ revisiDetails });
+    } catch (err) {
+      console.error(err); // Log error for debugging
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+  
+  
   static async revisiKodeTrialObatJadi(req, res) {
     const { revisi } = req.query; // Get revisi from the query parameters
 
@@ -231,6 +258,7 @@ class ControllerKodeTrialObatJadi {
     try {
       const { user_id, delegated_to } = req.user;
       const { rencana_berlaku, rencana_revisi, rencana_alasan_desc } = req.body;
+      console.log(req.body,"< bodd")
 
       // Validate the input
       if (!rencana_berlaku || !rencana_alasan_desc) {
