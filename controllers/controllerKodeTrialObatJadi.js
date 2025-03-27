@@ -101,6 +101,8 @@ class ControllerKodeTrialObatJadi {
   }
   static async getAllRevisiDetail(req, res) {
     try {
+      const { revisi } = req.query; // Ambil query revisi dari request
+  
       const revisiDetails = await m_kodeTrialObatJadi_template.findAll({
         attributes: [
           "rencana_berlaku",
@@ -112,6 +114,11 @@ class ControllerKodeTrialObatJadi {
             { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
             { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
             { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+            {
+              rencana_revisi: {
+                [Op.lte]: revisi, // Mencari yang sama dengan revisi atau kurang dari revisi
+              },
+            },
           ],
         },
         group: ["rencana_revisi", "rencana_berlaku", "rencana_alasan_desc"], // Semua kolom yang di-select harus ada di GROUP BY
@@ -124,6 +131,7 @@ class ControllerKodeTrialObatJadi {
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
+  
   
   
   static async revisiKodeTrialObatJadi(req, res) {
