@@ -175,6 +175,23 @@ async function cmdDelete(req, res, next) {
   }
 
   try {
+
+        // Check if document has been approved
+    const approvalCheckQuery = `
+    SELECT TOP 1 No_Doc
+    FROM t_koreksi_RD_Status
+    WHERE No_Doc = :noDoc
+    `;
+
+    const approvalCheck = await sequelizeMSQL.query(approvalCheckQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    if (approvalCheck.length > 0) {
+      return res.status(400).json({ message: "Dokumen ini telah disetujui dan tidak dapat dihapus!" });
+    }
+
     const sqlUpdate = `
       UPDATE T_Koreksi_RD
       SET process_date = GETDATE(),
@@ -221,6 +238,22 @@ async function cmdApprove(req, res, next) {
   try {
     const deptID = await Get_DeptID(user_id);
     const vApp = await isApproverStatus(noDoc.trim(), deptID, "KoreksiRD", user_id);
+
+    const deleteCheckQuery = `
+    SELECT *
+    FROM T_Koreksi_RD
+    WHERE No_Doc = :noDoc
+    `;
+
+    const deleteCheck = await sequelizeMSQL.query(deleteCheckQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    if (!deleteCheck || deleteCheck.length === 0) {
+      return res.status(404).json({ message: "Data Not Found!" });
+    }
+
 
     if (vApp.UserLevel === 0) {
       return res.status(403).json({ message: "Anda tidak memiliki akses!" });
