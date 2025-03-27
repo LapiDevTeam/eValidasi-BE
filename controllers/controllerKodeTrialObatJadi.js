@@ -111,9 +111,9 @@ class ControllerKodeTrialObatJadi {
         ],
         where: {
           [Op.and]: [
-            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
-            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
-            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+            // { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
+            // { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
+            // { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
             {
               rencana_revisi: {
                 [Op.lte]: revisi, // Mencari yang sama dengan revisi atau kurang dari revisi
