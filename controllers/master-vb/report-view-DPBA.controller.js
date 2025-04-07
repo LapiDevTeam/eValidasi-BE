@@ -1,6 +1,6 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { getPagination, getPagingData } = require('../../helpers/pagination');
-const ExcelJS = require("exceljs");
+const ExcelJS = require('exceljs');
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
 const MyError = require('../../helpers/errors');
@@ -23,7 +23,7 @@ async function generateDPBA(req, res) {
 
     const records = await sequelizeMSQL.query(queryStr, {
       replacements: { itemGroup },
-      type: QueryTypes.SELECT
+      type: QueryTypes.SELECT,
     });
 
     if (records.length === 0) {
@@ -36,7 +36,7 @@ async function generateDPBA(req, res) {
     let headers = [];
 
     // Define report configurations based on item group
-    switch(itemGroup) {
+    switch (itemGroup) {
       case 'C':
         docTitle = 'DAFTAR PEMASOK BAHAN AWAL CONTAINER';
         templateFile = 'DA.RD.000010';
@@ -124,12 +124,12 @@ async function generateDPBA(req, res) {
     }
 
     // Process records for display
-    const processedData = records.map(record => {
+    const processedData = records.map((record) => {
       // Format common fields
-      const makerSupplier = (record.PEMBUAT && record.PEMASOK &&
-                            record.PEMBUAT.toUpperCase() === record.PEMASOK.toUpperCase())
-        ? record.PEMBUAT
-        : `${record.PEMBUAT || ''}; ${record.PEMASOK || ''}`;
+      const makerSupplier =
+        record.PEMBUAT && record.PEMASOK && record.PEMBUAT.toUpperCase() === record.PEMASOK.toUpperCase()
+          ? record.PEMBUAT
+          : `${record.PEMBUAT || ''}; ${record.PEMASOK || ''}`;
 
       // Format halal status
       let halalStr = '-';
@@ -140,14 +140,14 @@ async function generateDPBA(req, res) {
       // Create row object based on item group
       let rowData = {};
 
-      switch(itemGroup) {
+      switch (itemGroup) {
         case 'C':
           rowData = {
             kode: record.KODE || '',
             nama: record.NAMA || '',
             pembuatPemasok: makerSupplier,
             keterangan: record.KETERANGAN || '',
-            statusHalal: halalStr
+            statusHalal: halalStr,
           };
           break;
         case 'A':
@@ -156,7 +156,7 @@ async function generateDPBA(req, res) {
             nama: record.NAMA || '',
             ukuran: record.UKURAN || '',
             row: record.Roww || '',
-            pembuatPemasok: makerSupplier
+            pembuatPemasok: makerSupplier,
           };
           break;
         case 'AB':
@@ -165,7 +165,7 @@ async function generateDPBA(req, res) {
             nama: record.NAMA || '',
             ukuran: record.UKURAN || '',
             pembuatPemasok: makerSupplier,
-            keterangan: record.KETERANGAN || ''
+            keterangan: record.KETERANGAN || '',
           };
           break;
         case 'BA':
@@ -173,7 +173,7 @@ async function generateDPBA(req, res) {
             kode: record.KODE || '',
             nama: record.NAMA || '',
             ukuran: record.UKURAN || '',
-            pembuatPemasok: makerSupplier
+            pembuatPemasok: makerSupplier,
           };
           break;
         case 'BB':
@@ -183,7 +183,7 @@ async function generateDPBA(req, res) {
             ukuran: record.UKURAN || '',
             pembuat: record.PEMBUAT || '',
             pemasok: record.PEMASOK || '',
-            keterangan: record.KETERANGAN || ''
+            keterangan: record.KETERANGAN || '',
           };
           break;
         case 'B':
@@ -192,14 +192,14 @@ async function generateDPBA(req, res) {
             nama: record.NAMA || '',
             pembuat: record.PEMBUAT || '',
             pemasok: record.PEMASOK || '',
-            keterangan: record.KETERANGAN || ''
+            keterangan: record.KETERANGAN || '',
           };
           break;
         case 'BR':
           rowData = {
             kode: record.KODE || '',
             nama: record.NAMA || '',
-            pembuatPemasok: makerSupplier
+            pembuatPemasok: makerSupplier,
           };
           break;
         case 'L':
@@ -207,7 +207,7 @@ async function generateDPBA(req, res) {
             kode: record.KODE || '',
             nama: record.NAMA || '',
             pembuat: record.PEMBUAT || '',
-            pemasok: record.PEMASOK || ''
+            pemasok: record.PEMASOK || '',
           };
           break;
         case 'E':
@@ -215,14 +215,14 @@ async function generateDPBA(req, res) {
             kode: record.KODE || '',
             nama: record.NAMA || '',
             pembuatPemasok: makerSupplier,
-            keterangan: record.KETERANGAN || ''
+            keterangan: record.KETERANGAN || '',
           };
           break;
         case 'D':
           rowData = {
             kode: record.KODE || '',
             nama: record.NAMA || '',
-            pembuatPemasok: makerSupplier
+            pembuatPemasok: makerSupplier,
           };
           break;
         case 'K':
@@ -230,7 +230,7 @@ async function generateDPBA(req, res) {
             kode: record.KODE || '',
             ukuran: record.UKURAN || '',
             pembuatPemasok: makerSupplier,
-            keterangan: record.KETERANGAN || ''
+            keterangan: record.KETERANGAN || '',
           };
           break;
         case 'IN':
@@ -243,7 +243,7 @@ async function generateDPBA(req, res) {
             pembuat: record.PEMBUAT || '',
             negaraAsal: record.NEGARAASAL || '',
             pemasok: record.PEMASOK || '',
-            statusHalal: halalStr
+            statusHalal: halalStr,
           };
           break;
         case 'AC':
@@ -254,14 +254,14 @@ async function generateDPBA(req, res) {
             pembuat: record.PEMBUAT || '',
             negaraAsal: record.NEGARAASAL || '',
             pemasok: record.PEMASOK || '',
-            statusHalal: halalStr
+            statusHalal: halalStr,
           };
           break;
         default:
           rowData = {
             kode: record.KODE || '',
             nama: record.NAMA || '',
-            pembuat: record.PEMBUAT || ''
+            pembuat: record.PEMBUAT || '',
           };
       }
 
@@ -274,22 +274,323 @@ async function generateDPBA(req, res) {
         title: docTitle,
         templateRef: templateFile,
         headers: headers,
-        generatedOn: moment().format('DD-MMM-YYYY HH:mm:ss')
+        generatedOn: moment().format('DD-MMM-YYYY HH:mm:ss'),
       },
-      data: processedData
+      data: processedData,
     };
 
     return res.status(200).json(responseData);
-
   } catch (error) {
     console.error('Error generating DPBA data:', error);
     return res.status(500).json({
       message: 'Error generating DPBA data',
-      error: error.message
+      error: error.message,
+    });
+  }
+}
+
+async function exportPrinciples(req, res) {
+  try {
+    // SQL query to get principles data (same as in VBA)
+    const sqlQuery = `
+      select distinct B.Item_PrcID, C.Prc_Name
+      from m_item_manufacturing a
+      left join m_item_manufacturing_supplier b on isnull(a.Item_ID,'') = isnull(b.Item_ID,'') and b.isActive = 1
+      left join m_principle c on isnull(c.prc_ID,'') = isnull(b.Item_PrcID,'') and c.isActive = 1
+      left join m_supplier D on D.Supp_ID = B.Item_SuppID
+      where a.isActive = 1 and b.isActive = 1
+      order by 1 asc
+    `;
+
+    // Execute query
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT,
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'eFormulation System';
+    workbook.created = new Date();
+
+    // Add a worksheet
+    const worksheet = workbook.addWorksheet('LineA1');
+
+    // Set column widths
+    worksheet.getColumn('A').width = 15;
+    worksheet.getColumn('B').width = 60;
+
+    // Add title
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = 'Export data DPBA Principle';
+    titleCell.font = { bold: true, size: 13 };
+
+    // Add headers
+    const headerRowA = worksheet.getCell('A3');
+    headerRowA.value = 'Kode Principle';
+    headerRowA.font = { bold: true, size: 13 };
+    headerRowA.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const headerRowB = worksheet.getCell('B3');
+    headerRowB.value = 'Nama Principle';
+    headerRowB.font = { bold: true, size: 13 };
+    headerRowB.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Set row height
+    worksheet.getRow(3).height = 25;
+
+    // Add borders to headers
+    const headerRow = worksheet.getRow(3);
+    headerRow.eachCell({ includeEmpty: true }, function (cell, colNumber) {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    // Add data rows
+    records.forEach((record, index) => {
+      const rowIndex = index + 4;
+
+      // Add data
+      worksheet.getCell(`A${rowIndex}`).value = `${record.Item_PrcID}`;
+      worksheet.getCell(`B${rowIndex}`).value = record.Prc_Name || '';
+
+      // Add borders
+      const dataRow = worksheet.getRow(rowIndex);
+      dataRow.eachCell({ includeEmpty: true }, function (cell, colNumber) {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+    });
+
+    // Generate Excel buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=DPBA_Principles_${moment().format('YYYYMMDD')}.xlsx`);
+
+    // Send the Excel buffer
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting principles:', error);
+    return res.status(500).json({
+      message: 'Error exporting principles',
+      error: error.message,
+    });
+  }
+}
+
+async function getPrinciples(req, res) {
+  try {
+    // SQL query to get principles data (same as in VBA)
+    const sqlQuery = `
+      select distinct B.Item_PrcID, C.Prc_Name
+      from m_item_manufacturing a
+      left join m_item_manufacturing_supplier b on isnull(a.Item_ID,'') = isnull(b.Item_ID,'') and b.isActive = 1
+      left join m_principle c on isnull(c.prc_ID,'') = isnull(b.Item_PrcID,'') and c.isActive = 1
+      left join m_supplier D on D.Supp_ID = B.Item_SuppID
+      where a.isActive = 1 and b.isActive = 1
+      order by 1 asc
+    `;
+
+    // Execute query
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT,
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Format data for response
+    const formattedData = records.map((record) => ({
+      kodePrinciple: record.Item_PrcID,
+      namaPrinciple: record.Prc_Name || '',
+    }));
+
+    // Prepare response
+    const responseData = {
+      metadata: {
+        title: 'DAFTAR PEMASOK PRINCIPLES',
+        generatedOn: moment().format('DD-MMM-YYYY HH:mm:ss'),
+      },
+      data: formattedData,
+    };
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Error getting principles:', error);
+    return res.status(500).json({
+      message: 'Error getting principles',
+      error: error.message,
+    });
+  }
+}
+
+async function exportSuppliers(req, res) {
+  try {
+    // SQL query to get supplier data (same as in VBA)
+    const sqlQuery = `
+      select distinct B.Item_SuppID, D.Supp_Name
+      from m_item_manufacturing a
+      left join m_item_manufacturing_supplier b on isnull(a.Item_ID,'') = isnull(b.Item_ID,'') and b.isActive = 1
+      left join m_principle c on isnull(c.prc_ID,'') = isnull(b.Item_PrcID,'') and c.isActive = 1
+      left join m_supplier D on D.Supp_ID = B.Item_SuppID
+      where a.isActive = 1 and b.isActive = 1
+      order by 1 asc
+    `;
+
+    // Execute query
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT,
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'eFormulation System';
+    workbook.created = new Date();
+
+    // Add a worksheet
+    const worksheet = workbook.addWorksheet('LineA1');
+
+    // Set column widths
+    worksheet.getColumn('A').width = 15;
+    worksheet.getColumn('B').width = 85;
+
+    // Add title
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = 'Export data DPBA Supplier';
+    titleCell.font = { bold: true, size: 13 };
+
+    // Add headers
+    const headerRowA = worksheet.getCell('A3');
+    headerRowA.value = 'Kode Supplier';
+    headerRowA.font = { bold: true, size: 13 };
+    headerRowA.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    const headerRowB = worksheet.getCell('B3');
+    headerRowB.value = 'Nama Supplier';
+    headerRowB.font = { bold: true, size: 13 };
+    headerRowB.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Set row height
+    worksheet.getRow(3).height = 25;
+
+    // Add borders to headers
+    const headerRow = worksheet.getRow(3);
+    headerRow.eachCell({ includeEmpty: true }, function (cell, colNumber) {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    // Add data rows
+    records.forEach((record, index) => {
+      const rowIndex = index + 4;
+
+      // Add data (note: adding single quote prefix to match VBA code)
+      worksheet.getCell(`A${rowIndex}`).value = `${record.Item_SuppID}`;
+      worksheet.getCell(`B${rowIndex}`).value = record.Supp_Name || '';
+
+      // Add borders
+      const dataRow = worksheet.getRow(rowIndex);
+      dataRow.eachCell({ includeEmpty: true }, function (cell, colNumber) {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+      });
+    });
+
+    // Generate Excel buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=DPBA_Suppliers_${moment().format('YYYYMMDD')}.xlsx`);
+
+    // Send the Excel buffer
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting suppliers:', error);
+    return res.status(500).json({
+      message: 'Error exporting suppliers',
+      error: error.message,
+    });
+  }
+}
+
+async function getSuppliers(req, res) {
+  try {
+    // SQL query to get supplier data (same as in VBA)
+    const sqlQuery = `
+      select distinct B.Item_SuppID, D.Supp_Name
+      from m_item_manufacturing a
+      left join m_item_manufacturing_supplier b on isnull(a.Item_ID,'') = isnull(b.Item_ID,'') and b.isActive = 1
+      left join m_principle c on isnull(c.prc_ID,'') = isnull(b.Item_PrcID,'') and c.isActive = 1
+      left join m_supplier D on D.Supp_ID = B.Item_SuppID
+      where a.isActive = 1 and b.isActive = 1
+      order by 1 asc
+    `;
+
+    // Execute query
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT,
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Format data for response
+    const formattedData = records.map((record) => ({
+      kodeSupplier: record.Item_SuppID,
+      namaSupplier: record.Supp_Name || '',
+    }));
+
+    // Prepare response
+    const responseData = {
+      metadata: {
+        title: 'DAFTAR PEMASOK SUPPLIERS',
+        generatedOn: moment().format('DD-MMM-YYYY HH:mm:ss'),
+      },
+      data: formattedData,
+    };
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Error getting suppliers:', error);
+    return res.status(500).json({
+      message: 'Error getting suppliers',
+      error: error.message,
     });
   }
 }
 
 module.exports = {
-  generateDPBA
+  generateDPBA,
+  exportPrinciples,
+  getPrinciples,
+  exportSuppliers,
+  getSuppliers,
 };
