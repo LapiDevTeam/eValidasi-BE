@@ -172,7 +172,100 @@ async function getFormulaByItem(req, res) {
   }
 }
 
+async function exportProductionHistory(req, res) {
+  try {
+    // Execute the stored procedure as in the VBA code
+    const sqlQuery = `exec spt_OKS_Prod_Hist_All`;
+
+    // Execute the stored procedure
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      type: QueryTypes.SELECT
+    });
+
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No data found' });
+    }
+
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'eFormulation System';
+    workbook.created = new Date();
+
+    // Add a worksheet
+    const worksheet = workbook.addWorksheet('Production History');
+
+    // Get column names from the first record
+    const columns = Object.keys(records[0]);
+
+    // Add headers
+    const headerRow = worksheet.addRow(columns);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFD3D3D3' } // Light gray background
+    };
+
+    // Set column widths based on data
+    columns.forEach((column, i) => {
+      let maxLength = column.length;
+
+      // Find the maximum length of content in each column
+      records.forEach(record => {
+        const value = record[column] ? String(record[column]).length : 0;
+        maxLength = Math.max(maxLength, value);
+      });
+
+      // Set column width with some padding
+      worksheet.getColumn(i + 1).width = Math.min(maxLength + 2, 50); // Cap at 50 chars
+    });
+
+    // Add data rows
+    records.forEach(record => {
+      const values = columns.map(column => record[column]);
+      worksheet.addRow(values);
+    });
+
+    // Apply borders to all cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Add footer with generation timestamp
+    worksheet.addRow([]);
+    const footerRow = worksheet.addRow([`Generated on: ${moment().format('DD-MMM-YYYY HH:mm:ss')}`]);
+    footerRow.font = { italic: true };
+
+    // Generate Excel buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Production_History_${moment().format('YYYYMMDD')}.xlsx`);
+
+    // Send the Excel buffer
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Error exporting production history:', error);
+    return res.status(500).json({
+      message: 'Error exporting production history',
+      error: error.message
+    });
+  }
+}
+
+
+
 module.exports = {
   getFormulaByItem,
-  getPPIItems
+  getPPIItems,
+  exportProductionHistory
 };

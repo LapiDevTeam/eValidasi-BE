@@ -3,7 +3,7 @@ const reportRouter = express.Router();
 
 const { authentication } = require('../../middlewares/authentication');
 const { generateDPBA, exportPrinciples, getPrinciples, exportSuppliers, getSuppliers } = require('../../controllers/master-vb/report-view-DPBA.controller');
-const { getFormulaByItem, getPPIItems } = require('../../controllers/master-vb/report-simulasiPPI.controller');
+const { getFormulaByItem, getPPIItems, exportProductionHistory } = require('../../controllers/master-vb/report-simulasiPPI.controller');
 
 
 reportRouter.get('/view-dpba-ori', generateDPBA)
@@ -16,6 +16,8 @@ reportRouter.get('/get-supplier', getSuppliers)
 
 reportRouter.get('/get-itemppi', getPPIItems)
 reportRouter.get('/get-simulasippi', getFormulaByItem)
+
+reportRouter.get('/export-prodhist', exportProductionHistory)
 
 
 
