@@ -5,65 +5,65 @@ const { QueryTypes } = require('sequelize');
 const moment = require('moment');
 const MyError = require('../../helpers/errors');
 
-// async function getPPIItems(req, res) {
-//   try {
-//     const { itemType = 'BB' } = req.query;
+async function getPPIItems(req, res) {
+  try {
+    const { itemType = 'BB' } = req.query;
 
-//     // Validate item type
-//     if (itemType !== 'BB' && itemType !== 'BK') {
-//       return res.status(400).json({
-//         message: 'Invalid item type. Must be either BB or BK'
-//       });
-//     }
+    // Validate item type
+    if (itemType !== 'BB' && itemType !== 'BK') {
+      return res.status(400).json({
+        message: 'Invalid item type. Must be either BB or BK'
+      });
+    }
 
-//     // Construct query based on VBA logic
-//     const sqlQuery = `
-//       SELECT
-//         ITEM_ID as kodeItem,
-//         RTRIM(ITEM_NAME) as namaItem,
-//         ITEM_UNIT as satuan
-//       FROM
-//         M_ITEM_MANUFACTURING
-//       WHERE
-//         ITEM_ISPPI = 1
-//         AND IsActive = 1
-//         AND ITEM_STATUS = 1
-//         AND item_type = :itemType
-//       ORDER BY
-//         item_id
-//     `;
+    // Construct query based on VBA logic
+    const sqlQuery = `
+      SELECT
+        ITEM_ID as kodeItem,
+        RTRIM(ITEM_NAME) as namaItem,
+        ITEM_UNIT as satuan
+      FROM
+        M_ITEM_MANUFACTURING
+      WHERE
+        ITEM_ISPPI = 1
+        AND IsActive = 1
+        AND ITEM_STATUS = 1
+        AND item_type = :itemType
+      ORDER BY
+        item_id
+    `;
 
-//     // Execute query
-//     const records = await sequelizeMSQL.query(sqlQuery, {
-//       replacements: { itemType },
-//       type: QueryTypes.SELECT
-//     });
+    // Execute query
+    const records = await sequelizeMSQL.query(sqlQuery, {
+      replacements: { itemType },
+      type: QueryTypes.SELECT
+    });
 
-//     if (records.length === 0) {
-//       return res.status(404).json({ message: 'No items found' });
-//     }
+    if (records.length === 0) {
+      return res.status(404).json({ message: 'No items found' });
+    }
 
-//     // Prepare response
-//     const responseData = {
-//       metadata: {
-//         title: 'Daftar Bahan Awal PPI',
-//         columns: ['Kode', 'Bahan Awal', 'Satuan'],
-//         type: itemType === 'BB' ? 'Bahan Baku' : 'Bahan Kemas',
-//         generatedOn: new Date().toISOString()
-//       },
-//       data: records
-//     };
+    // Prepare response
+    const responseData = {
+      metadata: {
+        title: 'Daftar Bahan Awal PPI',
+        columns: ['Kode', 'Bahan Awal', 'Satuan'],
+        type: itemType === 'BB' ? 'Bahan Baku' : 'Bahan Kemas',
+        generatedOn: new Date().toISOString()
+      },
+      data: records
+    };
 
-//     return res.status(200).json(responseData);
+    return res.status(200).json(responseData);
 
-//   } catch (error) {
-//     console.error('Error getting PPI items:', error);
-//     return res.status(500).json({
-//       message: 'Error getting PPI items',
-//       error: error.message
-//     });
-//   }
-// }
+  } catch (error) {
+    console.error('Error getting PPI items:', error);
+    return res.status(500).json({
+      message: 'Error getting PPI items',
+      error: error.message
+    });
+  }
+}
 
 async function getFormulaByItem(req, res) {
   try {
@@ -174,5 +174,5 @@ async function getFormulaByItem(req, res) {
 
 module.exports = {
   getFormulaByItem,
-  // getPPIItems
+  getPPIItems
 };
