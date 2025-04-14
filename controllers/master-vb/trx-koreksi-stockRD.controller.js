@@ -449,10 +449,10 @@ async function getPrintData(req, res) {
     const formattedApprovalInfo = {
       ...approvalInfo,
       SPVDate: approvalInfo.SPVDate
-        ? moment.utc(approvalInfo.SPVDate).format('MMMM D, YYYY, [at] HH:mm:ss.SSS')
+        ? moment.utc(approvalInfo.SPVDate).format(' D MMM YYYY, [at] HH:mm:ss.SSS')
         : null,
       MGRDate: approvalInfo.MGRDate
-        ? moment.utc(approvalInfo.MGRDate).format('MMMM D, YYYY, [at] HH:mm:ss.SSS')
+        ? moment.utc(approvalInfo.MGRDate).format(' D MMM YYYY, [at] HH:mm:ss.SSS')
         : null
     };
 
