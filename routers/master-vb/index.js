@@ -11,6 +11,7 @@ const masterFormulaRouter = require("./master-formula.routes.");
 const trxSampleRDRouter = require("./penerimaan-pengeluaran-sampleRD.routes");
 const trxKoreksiStockRDRouter = require("./koreksi-stockRD.routes.js");
 const reportRouter = require("./report.routes.js");
+const auditTrailRouter = require("./audit-trail.routes.js");
 
 // masterRouter.use(authentication);
 
@@ -27,5 +28,6 @@ masterRouter.use("/formula", masterFormulaRouter );
 masterRouter.use("/rdsample", trxSampleRDRouter );
 masterRouter.use("/koreksi-stockrd", trxKoreksiStockRDRouter );
 masterRouter.use("/report", reportRouter );
+masterRouter.use("/audit-trail", auditTrailRouter );
 
 module.exports = masterRouter;
