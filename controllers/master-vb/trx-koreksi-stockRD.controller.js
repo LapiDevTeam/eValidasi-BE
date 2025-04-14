@@ -448,9 +448,15 @@ async function getPrintData(req, res) {
     // Format dates
     const formattedApprovalInfo = {
       ...approvalInfo,
-      SPVDate: approvalInfo.SPVDate ? moment(approvalInfo.SPVDate).format('DD-MMM-YYYY HH:mm:ss') : null,
-      MGRDate: approvalInfo.MGRDate ? moment(approvalInfo.MGRDate).format('DD-MMM-YYYY HH:mm:ss') : null
+      SPVDate: approvalInfo.SPVDate
+        ? moment.utc(approvalInfo.SPVDate).format('MMMM D, YYYY, [at] HH:mm:ss.SSS')
+        : null,
+      MGRDate: approvalInfo.MGRDate
+        ? moment.utc(approvalInfo.MGRDate).format('MMMM D, YYYY, [at] HH:mm:ss.SSS')
+        : null
     };
+
+    console.log({SPVDate: formattedApprovalInfo.SPVDate, MGRDate: formattedApprovalInfo.MGRDate, BiasaSPV: approvalInfo.SPVDate, BiasaMGR: approvalInfo.MGRDate });
 
     // Query to get item details
     const itemsQuery = `
