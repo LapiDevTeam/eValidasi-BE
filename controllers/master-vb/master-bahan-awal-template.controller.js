@@ -1855,6 +1855,158 @@ async function getViewDPBATemplate(req, res, next) {
   }
 }
 
+async function getViewDPBA(req, res, next) {
+  try {
+    let { item_group, page = 0, size = 10 } = req.query;
+
+    const { limit, offset } = getPagination(parseInt(page), parseInt(size));
+
+    if (!item_group || item_group === '') return res.status(500).json({ message: 'item_group is required' });
+
+    let queryString = '';
+    let countString = '';
+    if (item_group === 'ä' || item_group === 'RH') {
+      queryString = `
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          FROM v_DPBA
+          WHERE Item_group in ('ä', 'RH')
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+      `;
+      countString = `
+        SELECT COUNT(*) AS count from v_DPBA
+        WHERE Item_group in ('ä', 'RH')
+      `;
+    } else {
+      queryString = `
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          FROM v_DPBA
+          WHERE Item_group = :item_group
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+      `;
+      countString = `
+        SELECT COUNT(*) AS count from v_DPBA
+        WHERE Item_group = :item_group
+      `;
+    }
+
+    const result = await sequelizeMSQL.query(queryString, {
+      replacements: { item_group, offset, limit },
+    });
+
+    const [total] = await sequelizeMSQL.query(countString, {
+      replacements: { item_group, offset, limit },
+    });
+
+    const data = {
+      rows: result[0],
+      count: total[0]?.count,
+    };
+    let no_revisi = 0;
+    let alasan_desc = '';
+    const response = getPagingData(data, page, limit);
+    let file = '';
+    switch (item_group) {
+      case 'C':
+        file = 'DA.RD.000010';
+        break;
+      case 'A':
+        file = 'DA.RD.000011';
+        no_revisi = '49';
+        alasan_desc = `CA/0357/RD3/09/22 NCP Penambahan kode A 186.000.`;
+        break;
+      case 'AB':
+        file = 'DA.RD.000012';
+        break;
+      case 'BA':
+        file = 'DA.RD.000013';
+        no_revisi = '41';
+        break;
+      case 'BB':
+        file = 'DA.RD.000014';
+        break;
+      case 'B':
+        file = 'DA.RD.000015';
+        break;
+      case 'BR':
+        file = 'DA.RD.000016';
+        break;
+      case 'L':
+        file = 'DA.RD.000017';
+        no_revisi = '30';
+        break;
+      case 'E':
+        file = 'DA.RD.000018';
+        break;
+      case 'D':
+        file = 'DA.RD.000019';
+        break;
+      case 'K':
+        file = 'DA.RD.000020';
+        no_revisi = '61';
+        break;
+      case 'IN':
+        file = 'DA.RD.000005';
+        break;
+      case 'PR':
+        file = 'DA.RD.000008';
+        no_revisi = '17';
+        alasan_desc = `-	Update keterangan halal sesuai CG/0062/TH/10/24, CA/0069/PC/10/24, dan CG/0020/TH/11/24.`;
+        break;
+      case 'CO':
+        file = 'DA.RD.000007';
+        break;
+      case 'FL':
+        file = 'DA.RD.000006';
+        no_revisi = '32';
+        alasan_desc = `No CC : CA/0026/PG/02/25 FHG
+        -	Perubahan pemasok pada kode FL 016A, FL 031, dan FL 032 ex. Givaudan dari PT Menjangan Sakti menjadi PT Unria Pratama Kencana.`;
+        break;
+      case 'AC':
+        file = 'DA.RD.000004';
+        break;
+      case '02A':
+      case '02B':
+        // file = "DA.RD.000021"; // Uncomment when ready
+        break;
+      default:
+        file = 'DA.RD.000009';
+    }
+
+    const detailRevisi = `
+        SELECT
+            no_revisi,
+            tgl_revisi AS tgl_berlaku,
+            alasan_desc AS alasan_perubahan
+        FROM
+            m_item_manufacturing_revisions
+        WHERE
+            item_group = :item_group and appr_date is not null
+        ORDER BY
+            no_revisi DESC
+    `;
+
+    const [revisi] = await sequelizeMSQL.query(detailRevisi, {
+      replacements: { item_group },
+    });
+
+    response['nomorDocument'] = file;
+    response['revisi'] = revisi;
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.log({ error });
+    const resp = {
+      message: 'ERROR',
+    };
+    console.log({ error, name: error?.name });
+    return res.status(500).json(resp);
+  }
+}
+
 async function countJumlahPPI(item_ID) {
   try {
     const queryString = `
@@ -2062,7 +2214,7 @@ async function printTest(req, res) {
           font-size: 14px !important;
           font-family: Arial, sans-serif;
         }
-    
+
         table {
           margin-top: 12px !important; /* Ensures margin applies to all tables */
         }
@@ -2180,7 +2332,7 @@ async function printTest(req, res) {
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
       margin: { bottom: '60px', top: '165px', left: '40px', right: '40px' }, // Increased top margin
     });
-    
+
     await browser.close();
     res.end(pdfBuffer);
   } catch (error) {
@@ -2389,5 +2541,6 @@ module.exports = {
   getLatestRevisionNumber,
   createRevisionWithSameNumber,
   approveRevisionByItemGroup,
-  updateOrCreateRevision
+  updateOrCreateRevision,
+  getViewDPBA
 };
