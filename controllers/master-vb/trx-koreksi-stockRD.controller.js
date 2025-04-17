@@ -227,6 +227,79 @@ async function cmdDelete(req, res, next) {
   }
 }
 
+async function cmdDeleteRow(req, res, next) {
+  const { noDoc, seqID } = req.body;
+  const { user_id, delegated_to } = req.user;
+  // const transaction = new sequelizeMSQL.transaction()
+  if (!noDoc || !seqID) {
+    return res.status(400).json({ message: "Document number and sequence ID are required!" });
+  }
+
+  try {
+    // Check if document has been approved
+    const approvalCheckQuery = `
+      SELECT TOP 1 No_Doc
+      FROM t_koreksi_RD_Status
+      WHERE No_Doc = :noDoc
+    `;
+
+    const approvalCheck = await sequelizeMSQL.query(approvalCheckQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    if (approvalCheck.length > 0) {
+      return res.status(400).json({ message: "Dokumen ini telah disetujui dan tidak dapat diubah!" });
+    }
+
+    // Count total records for this document
+    const countQuery = `
+      SELECT COUNT(*) AS jum
+      FROM T_Koreksi_RD
+      WHERE No_Doc = :noDoc
+    `;
+
+    const countResult = await sequelizeMSQL.query(countQuery, {
+      replacements: { noDoc },
+      type: QueryTypes.SELECT
+    });
+
+    const isLastRecord = countResult[0].jum === 1;
+
+    // Ensure seqID is properly formatted (in case it's a string)
+    const numericSeqID = parseInt(seqID, 10);
+    if (isNaN(numericSeqID)) {
+      return res.status(400).json({ message: "Invalid sequence ID format" });
+    }
+
+    // Try direct deletion without the update step
+    const sqlDelete = `
+      DELETE FROM T_Koreksi_RD
+      WHERE No_Doc = :noDoc AND SeqID = :seqID
+    `;
+
+    const result = await sequelizeMSQL.query(sqlDelete, {
+      replacements: { noDoc, seqID: numericSeqID },
+      type: QueryTypes.DELETE
+    });
+
+    // Check if any rows were affected by the delete operation
+    if (result[1] === 0) {
+      return res.status(404).json({ message: "Record not found or could not be deleted" });
+    }
+
+    return res.status(200).json({
+      message: "Data has been deleted",
+      isLastRecord,
+      rowsAffected: result[1]
+    });
+
+  } catch (error) {
+    console.error('Error deleting row:', error);
+    return res.status(500).json({ message: 'Error deleting data: ' + error.message });
+  }
+}
+
 async function cmdApprove(req, res, next) {
   const { noDoc } = req.body;
   const { user_id, delegated_to } = req.user;
@@ -678,5 +751,6 @@ module.exports = {
   cmdApprove,
   getDetailGrid,
   cmdSave,
-  getPrintData
+  getPrintData,
+  cmdDeleteRow
 };
