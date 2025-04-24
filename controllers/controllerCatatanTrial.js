@@ -45,7 +45,7 @@ const logoBase64 = `data:image/png;base64,${fs
 
 class ControllerCatatanTrial {
   static async printCatatanTrial(req, res) {
-    const { link, type, kode } = req.query;
+    const { link, type, kode,createdAt } = req.query;
 
     let browser;
     try {
@@ -62,6 +62,11 @@ class ControllerCatatanTrial {
           }
         `,
       });
+      const createdDate = new Date(createdAt);
+      const batasTanggal = new Date("2025-04-10T00:00:00.000Z");
+
+      const revisi = createdDate >= batasTanggal ? "01" : "00";
+      const tglBerlaku = createdDate >= batasTanggal ? "10/04/2025" : "08/11/2019";
 
       // Membuat PDF dalam bentuk buffer
       const pdfBuffer = await page.pdf({
@@ -69,18 +74,18 @@ class ControllerCatatanTrial {
         displayHeaderFooter: true,
         printBackground: true,
         footerTemplate: `
-          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
-            <tr>
-              <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-              <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
-              <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-              <td style="border: 1px solid gray; width: 15%; text-align: center;">08/11/2019</td>
-              <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
-              <td style="border: 1px solid gray; width: 5%; text-align: center;">00</td>
-              <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
-              <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
-            </tr>
-          </table>
+           <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+      <tr>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">${tglBerlaku}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+        <td style="border: 1px solid gray; width: 5%; text-align: center;">${revisi}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+        <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+      </tr>
+    </table>
         `,
         headerTemplate: `
         <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">

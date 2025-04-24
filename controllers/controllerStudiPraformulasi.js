@@ -99,7 +99,7 @@ class ControllerStudiPraformulasi {
     //   "http://localhost:5174/ePengembanganFormula-dev/catatan-trial/print/398/padat";
 
     // console.log(link2, "< link2");
-
+console.log(tanggalPenyusunan,"< tgl")
     let browser;
     try {
       const browser = await puppeteer.launch();
@@ -115,25 +115,41 @@ class ControllerStudiPraformulasi {
             }
           `,
       });
+      const batasTanggal = new Date("2025-04-10");
 
+      // Convert tanggalPenyusunan string "DD/MM/YYYY" ke Date
+      const [day, month, year] = tanggalPenyusunan.split("/");
+      const inputTanggal = new Date(`${year}-${month}-${day}`);
+      
+      // Tentukan isi footer
+      let revisiFooter, tanggalFooter;
+      
+      if (inputTanggal >= batasTanggal) {
+        revisiFooter = "02";
+        tanggalFooter = "10/04/2025";
+      } else {
+        revisiFooter = "01";
+        tanggalFooter = "18/03/2020";
+      }
+      
       // Membuat PDF dalam bentuk buffer
       const pdfBuffer = await page.pdf({
         format: "A4",
         displayHeaderFooter: true,
         printBackground: true,
         footerTemplate: `
-            <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
-              <tr>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD.000009</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-                <td style="border: 1px solid gray; width: 15%; text-align: center;">18/03/2020</td>
-                <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
-                <td style="border: 1px solid gray; width: 5%; text-align: center;">01</td>
-                <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
-                <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
-              </tr>
-            </table>
+        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+    <tr>
+      <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+      <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD.000009</td>
+      <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+      <td style="border: 1px solid gray; width: 15%; text-align: center;">${tanggalFooter}</td>
+      <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+      <td style="border: 1px solid gray; width: 5%; text-align: center;">${revisiFooter}</td>
+      <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+      <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+    </tr>
+  </table>
           `,
         headerTemplate: `
          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
