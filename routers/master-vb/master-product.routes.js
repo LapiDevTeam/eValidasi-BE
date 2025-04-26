@@ -23,7 +23,8 @@ masterProductRouter.post("/bahanaktif", authentication, MasterProductController.
 masterProductRouter.patch("/bahanaktif", authentication, MasterProductController.updateBahanAktifByProductID);
 masterProductRouter.delete("/bahanaktif", authentication, MasterProductController.deleteBahanAktifByProductID);
 masterProductRouter.get("/lastapprovedate", MasterProductController.getLastApproveDate);
-masterProductRouter.get("/print", MasterProductController.generateDAProduk);
+masterProductRouter.get("/print-template", MasterProductController.getDAProdukContent);
+masterProductRouter.get("/print-ori", MasterProductController.getDAProdukContentORI);
 masterProductRouter.get("/print-getlink",authentication, MasterProductController.getGeneratedLink);
 
 masterProductRouter.post("/approve",authentication, MasterProductController.approveProduct);

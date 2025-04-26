@@ -872,6 +872,7 @@ class MasterProductController {
   }
 
   static async generateDAProduk(req, res, next) {
+    console.log('MASUK SINI --------------------------->');
     try {
       const { productCategory, page = 0, size = 10, isTemplate = 'true' } = req.query;
 
@@ -956,6 +957,187 @@ class MasterProductController {
     } catch (error) {
       console.error('Error:', error, '@generateDAProduk');
       res.status(500).json({ message: 'Failed to export file', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async getDAProdukContent(req, res, next) {
+    try {
+      const { productCategory } = req.query;
+      if (!productCategory) {
+        return res.status(400).json({ message: 'Product category is required!' });
+      }
+
+      let file;
+      let noRevisi = ''
+      let queryString;
+      let tableName = 'vwProduct_template';
+      if (productCategory === '01') {
+        file = 'DA.RD.000001';
+        noRevisi = '40';
+        queryString = `
+          SELECT
+            ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+            A.Product_ID,
+            A.Product_Name,
+            ISNULL(A.Product_Kemasan, '-') AS kemasan,
+            ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+            ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+            CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+            ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+            ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+            CASE WHEN A.product_notppi = 1 THEN '-' ELSE 'Ada' END AS customer,
+            ISNULL(A.product_status, '-') AS product_status,
+            A.Kategori_prod
+          FROM ${tableName} A
+          WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY A.PK_ID
+        `;
+      } else {
+        file = 'DA.RD.000026';
+        noRevisi = '20'
+        queryString = `
+          SELECT
+            ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+            A.Product_ID,
+            A.Product_Name,
+            ISNULL(A.Product_Kemasan, '-') AS kemasan,
+            ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+            ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+            CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+            ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+            ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+            ISNULL(C.Cust_Name, '-') AS customer
+          FROM ${tableName} A
+          LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+          LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+          WHERE A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY A.PK_ID
+        `;
+      }
+
+      // Fetch main product data
+      const products = await sequelizeMSQL.query(queryString, {
+        replacements: { productCategory },
+        type: QueryTypes.SELECT,
+      });
+
+      // For each product, fetch its bahan aktif & dosis
+      for (let i = 0; i < products.length; i++) {
+        const productID = products[i].Product_ID;
+        const bahanAktifQuery = `
+          SELECT Product_BahanAktif, Product_Dosis
+          FROM m_product_bahanaktif_template
+          WHERE ISNULL(Product_Periode, '') = '' AND Product_ID = :productID
+          ORDER BY PK_ID ASC
+        `;
+        const bahanAktifRows = await sequelizeMSQL.query(bahanAktifQuery, {
+          replacements: { productID },
+          type: QueryTypes.SELECT,
+        });
+
+        products[i].bahan_aktif_detail = bahanAktifRows.map(
+          row => `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''})`
+        );
+      }
+
+      return res.status(200).json({
+        message: 'OK',
+        fileTemplate: file,
+        noRevisi,
+        data: products,
+      });
+    } catch (error) {
+      console.error('Error:', error, '@getDAProdukContent');
+      res.status(500).json({ message: 'Failed to get DA Produk content', extraData: error.message || 'internal server error' });
+    }
+  }
+
+  static async getDAProdukContentORI(req, res, next) {
+    try {
+      const { productCategory } = req.query;
+      if (!productCategory) {
+        return res.status(400).json({ message: 'Product category is required!' });
+      }
+
+      let file;
+      let queryString;
+      let tableName = 'vwProduct';
+      if (productCategory === '01') {
+        file = 'DA.RD.000001_Rev11.doc';
+        queryString = `
+          SELECT
+            ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+            A.Product_ID,
+            A.Product_Name,
+            ISNULL(A.Product_Kemasan, '-') AS kemasan,
+            ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+            ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+            CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+            ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+            ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+            CASE WHEN A.product_notppi = 1 THEN '-' ELSE 'ada' END AS customer,
+            ISNULL(A.product_status, '-') AS product_status,
+            A.Kategori_prod
+          FROM ${tableName} A
+          WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY A.PK_ID
+        `;
+      } else {
+        file = 'DA.RD.000026.doc';
+        queryString = `
+          SELECT
+            ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+            A.Product_ID,
+            A.Product_Name,
+            ISNULL(A.Product_Kemasan, '-') AS kemasan,
+            ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+            ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+            CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+            ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+            ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+            ISNULL(C.Cust_Name, '-') AS customer
+          FROM ${tableName} A
+          LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+          LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+          WHERE A.isActive = 1 AND A.product_category = :productCategory
+          ORDER BY A.PK_ID
+        `;
+      }
+
+      // Fetch main product data
+      const products = await sequelizeMSQL.query(queryString, {
+        replacements: { productCategory },
+        type: QueryTypes.SELECT,
+      });
+
+      // For each product, fetch its bahan aktif & dosis from m_product_bahanaktif (not _template)
+      for (let i = 0; i < products.length; i++) {
+        const productID = products[i].Product_ID;
+        const bahanAktifQuery = `
+          SELECT Product_BahanAktif, Product_Dosis
+          FROM m_product_bahanaktif
+          WHERE Product_ID = :productID
+          ORDER BY PK_ID ASC
+        `;
+        const bahanAktifRows = await sequelizeMSQL.query(bahanAktifQuery, {
+          replacements: { productID },
+          type: QueryTypes.SELECT,
+        });
+
+        // Format as array of string: "-BahanAktif (Dosis)", sanitize whitespace
+        products[i].bahan_aktif_detail = bahanAktifRows.map(
+          row => `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''})`
+        );
+      }
+
+      return res.status(200).json({
+        message: 'OK',
+        fileTemplate: file,
+        data: products,
+      });
+    } catch (error) {
+      console.error('Error:', error, '@getDAProdukExportContent');
+      res.status(500).json({ message: 'Failed to get DA Produk export content', extraData: error.message || 'internal server error' });
     }
   }
 
