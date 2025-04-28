@@ -2193,7 +2193,7 @@ function getBase64Image(filePath) {
 }
 
 async function printTest(req, res) {
-  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old', berlaku, review } = req.query;
+  const { link, type, kode = '-', revisi = '-', judul = '-', tanggal = '', token, template = 'old', berlaku, review, landscape = 0 } = req.query;
 
   let browser;
   try {
@@ -2211,17 +2211,17 @@ async function printTest(req, res) {
     await page.addStyleTag({
       content: `
         * {
-          font-size: 14px !important;
+          font-size: ${landscape === 0 ? `12px` : `11px`} !important;
           font-family: Arial, sans-serif;
         }
 
         table {
-          margin-top: 12px !important; /* Ensures margin applies to all tables */
+          margin-top: ${landscape === 0 ? `12px` : `11px`} !important; /* Ensures margin applies to all tables */
         }
       `,
     });
     let headerTemplateNew = `
-      <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+      <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
         <tr>
           <td style="border: 1px solid gray; width: 140px; height: 120px; text-align: center;" rowspan="2">
             <img src="${logoBase64}" alt="lapilogo" width="100">
@@ -2330,7 +2330,8 @@ async function printTest(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
-      margin: { bottom: '60px', top: '165px', left: '40px', right: '40px' }, // Increased top margin
+      margin: { bottom: '60px', top: '165px', left: '40px', right: '40px' },
+      landscape: landscape === 0 ? false : true,
     });
 
     await browser.close();
