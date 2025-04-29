@@ -1,0 +1,2 @@
+EXEC sp_AddColumnInMiddle 'testData', 'BirthDate', 'varchar(25)', 'MR_BatchNo';
+EXEC sp_AddColumnInMiddle [tabel name], [column name], [tipe data], [setelah nama kolom];

@@ -439,7 +439,7 @@ class MasterProductController {
     const transaction = await sequelizeMSQL.transaction();
     try {
       const { user_id, delegated_to, nama_user } = req.user;
-      const { productCategory, productID } = req.body;
+      const { productCategory, productID, moduleName } = req.body;
 
       if (!productCategory) {
         return res.status(400).json({ message: 'productCategory dan productID harus di isi!' });
@@ -605,6 +605,43 @@ class MasterProductController {
       await sequelizeMSQL.query(sSQL4, { transaction });
       await sequelizeMSQL.query(sSQL5, { transaction });
       await sequelizeMSQL.query(sSQL6, { transaction });
+
+      // --- APPROVE MODULE REVISION LOGIC ---
+      // Approve the latest module revision for the given moduleName (if provided)
+      if (moduleName) {
+        // Get the latest revision number for this module
+        const [latestRevision] = await sequelizeMSQL.query(
+          `SELECT TOP 1 no_revisi FROM m_module_revisions WHERE modulename = :moduleName ORDER BY no_revisi DESC`,
+          {
+            replacements: { moduleName },
+            type: QueryTypes.SELECT,
+            transaction,
+          }
+        );
+
+        if (latestRevision && latestRevision.no_revisi) {
+          // Approve the latest revision
+          await sequelizeMSQL.query(
+            `UPDATE m_module_revisions
+             SET appr_userid = :user_id,
+                 appr_delegated = :delegated_to,
+                 appr_date = GETDATE()
+             WHERE modulename = :moduleName
+               AND no_revisi = :no_revisi
+               AND (appr_date IS NULL OR appr_userid IS NULL OR appr_userid = '')`,
+            {
+              replacements: {
+                user_id,
+                delegated_to,
+                moduleName,
+                no_revisi: latestRevision.no_revisi,
+              },
+              transaction,
+            }
+          );
+        }
+      }
+      // --- END APPROVE MODULE REVISION LOGIC ---
 
       const lastApproveDate = null;
 

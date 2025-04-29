@@ -3,16 +3,17 @@ const { Sequelize } = require('../../models');
 const path = require('path');
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
+const { type } = require('os');
 
 const getModuleRevisionsDA = async (req, res) => {
   try {
-    const { modulename } = req.query;
-
+    const { modulename, isApprove } = req.query;
+    console.log({isApprove, type: typeof req.query.isApprove});
     if (!modulename) {
       return res.status(400).json({ message: 'Module name is required.' });
     }
 
-    const query = `
+    let query = `
       SELECT
         PK_ID,
         modulename,
@@ -26,6 +27,17 @@ const getModuleRevisionsDA = async (req, res) => {
         extraData
       FROM m_module_revisions
       WHERE modulename = :modulename
+    `;
+
+    if (isApprove === 'true' || isApprove === '1') {
+      query += `
+        AND appr_date IS NOT NULL
+        AND appr_userid IS NOT NULL
+        AND appr_userid <> ''
+      `;
+    }
+
+    query += `
       ORDER BY no_revisi DESC
     `;
 
@@ -134,6 +146,9 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
       replacements: { modulename },
       type: Sequelize.QueryTypes.SELECT,
     });
+
+
+    console.log({latestRevision});
 
     if (!latestRevision) {
       return res.status(404).json({ message: 'No revisions found for the given modulename.' });
