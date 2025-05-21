@@ -30,7 +30,7 @@ const sequelizeMSQL = new Sequelize(dbmsConfig.DB, dbmsConfig.USER, dbmsConfig.P
     options: {
       encrypt: false,
       trustServerCertificate: true,
-      requestTimeout: 600000
+      requestTimeout: 6000000
     },
   },
   // logging: console.log,
