@@ -180,7 +180,8 @@ async function exportAuditTrail(req, res) {
       module = '',
       filterColumn = '',
       filterValue = '',
-      system = 'ePengembangan Formula'
+      system = 'ePengembangan Formula',
+      limit = 1000
     } = req.query;
 
     // Parameter validation
@@ -200,12 +201,13 @@ async function exportAuditTrail(req, res) {
 
     // Execute the stored procedure
     const sqlQuery = `
-      exec sp_showAuditTrail
+      exec sp_showAuditTrailMch
         :programId,
         :submenuId,
         :module,
         :filterCondition,
-        :system
+        :system,
+        :limit
     `;
 
     const records = await sequelizeMSQL.query(sqlQuery, {
@@ -214,7 +216,8 @@ async function exportAuditTrail(req, res) {
         submenuId,
         module: module === '-' ? '' : module,
         filterCondition,
-        system
+        system,
+        limit
       },
       type: QueryTypes.SELECT
     });
