@@ -2856,8 +2856,8 @@ ORDER BY
 
       const [updatedRowsCount] = await t_distribusiUkuranPartikel.update(
         {
-          headers: headers || "",
-          content: content || "",
+          headers: headers || [],
+          content: content || [],
         },
         {
           where: { id: +id },
@@ -2941,8 +2941,8 @@ ORDER BY
 
       const [updatedRowsCount] = await t_pengamatanLanjutan.update(
         {
-          kodeTrialHeaders: kodeTrialHeaders || "",
-          content: content || "",
+          kodeTrialHeaders: kodeTrialHeaders || [],
+          content: content || [],
         },
         {
           where: { id: +id },
