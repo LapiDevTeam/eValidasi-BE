@@ -1,14 +1,122 @@
 const {
   m_kodeTrialObatJadi_template,
   m_kodeTrialObatJadi,
+  sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
 const MyError = require("../helpers/errors");
 const m_kodetrialobatjadi = require("../models/m_kodetrialobatjadi");
 const { Sequelize, Op } = require("sequelize");
 const { isApproveValidation } = require("../helpers/approver");
+const { mssqlSequeliez } = require("../config/configMssql");
+const { PDFDocument, rgb } = require("pdf-lib");
+const path = require("path");
+const fs = require("fs");
+const puppeteer = require("puppeteer");
+const logoPath = path.resolve(__dirname, "../publicuploads/logos.png");
+const logoBase64 = `data:image/png;base64,${fs
+  .readFileSync(logoPath)
+  .toString("base64")}`;
 
 class ControllerKodeTrialObatJadi {
+static async printKodeTrialObatJadi(req, res) {
+  const { token, link, revisi, rencana_berlaku } = req.query;
+
+  function formatTanggalBerikut(rencana_berlaku) {
+    const d = new Date(rencana_berlaku);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+  const formattedTanggal = formatTanggalBerikut(rencana_berlaku);
+
+  let browser;
+  try {
+    browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    await page.setExtraHTTPHeaders({
+      authentication: token,
+    });
+
+    await page.goto(link, { waitUntil: "networkidle0" });
+
+    await page.addStyleTag({
+      content: `
+            * {
+              font-size: 12px !important;
+              font-family: Arial, sans-serif;
+            }
+          `,
+    });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: `   `,
+      headerTemplate: `
+ <table style="width: 90%; font-size: 12px; border-collapse: collapse; font-family: Verdana, sans-serif; border: 1px solid black; margin: 0 auto 0 auto;">
+  <tr>
+    <td style="border: 1px solid black; width: 140px; height: 100px; text-align: center;" rowspan="2">
+      <img src="${logoBase64}" alt="LAPI Logo" width="100" style="vertical-align: middle;">
+    </td>
+
+    <td style="border: 1px solid black; font-weight: bold; text-align: left; padding-left: 10px; height: 24px;">
+      DAFTAR
+    </td>
+
+    <td style="width: 200px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
+      <div style="height: 100%; display: flex; flex-direction: column; font-size: 10px;">
+        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Nomor</div>
+          <div style="flex: 1; padding: 4px;">DA.RD.000003</div>
+        </div>
+        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Tanggal Berlaku</div>
+          <div style="flex: 1; padding: 4px;">${formattedTanggal}</div>
+        </div>
+        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Revisi</div>
+          <div style="flex: 1; padding: 4px;">${revisi}</div>
+        </div>
+        <div style="display: flex; flex: 1;">
+          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Halaman</div>
+          <div style="flex: 1; padding: 4px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+        </div>
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="border: 1px solid black; text-align: center; font-weight: bold;">
+      KODE TRIAL OBAT JADI
+    </td>
+  </tr>
+</table>
+
+
+
+
+      `,
+      margin: { bottom: "60px", top: "140px", left: "40px", right: "40px" },
+    });
+
+    await browser.close();
+
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error("Error during printCatatanTrial:", error);
+
+    if (browser) await browser.close();
+
+    res.status(500).send({ error: "An error occurred during PDF generation." });
+  }
+}
+
   static async createKodeTrialObatJadiTemplate(req, res, next) {
     try {
       const {
@@ -78,62 +186,97 @@ class ControllerKodeTrialObatJadi {
       res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
     }
   }
+
   static async getKodeTrialObatJadiTemplate(req, res) {
     try {
       const kodeTrialObatJadi = await m_kodeTrialObatJadi_template.findAll({
         where: {
           [Op.and]: [
-            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
-            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
-            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+            { user_approve: { [Op.or]: [null, ""] } },
+            { user_delegated: { [Op.or]: [null, ""] } },
+            { user_approve_date: { [Op.is]: null } },
           ],
         },
         order: [["id", "ASC"]],
       });
 
+      const indexTerakhir = kodeTrialObatJadi?.length - 1;
+      const lastUserId = kodeTrialObatJadi?.[indexTerakhir]?.user_id;
+
+
+      if (lastUserId && indexTerakhir >= 0) {
+        const [results] = await mssqlSequeliez.query(
+          `
+    SELECT Nama, Jabatan 
+    FROM m_karyawan 
+    WHERE inisialName = :lastUserId AND isActive = 1
+  `,
+          {
+            replacements: { lastUserId },
+            type: mssqlSequeliez.QueryTypes.SELECT,
+          }
+        );
+
+        const karyawanName = results?.Nama || null;
+        const karyawanJabatan = results?.Jabatan || null;
+
+        // Masukkan Nama dan Jabatan ke dalam item terakhir
+        kodeTrialObatJadi[indexTerakhir].dataValues.karyawanName = karyawanName;
+        kodeTrialObatJadi[indexTerakhir].dataValues.karyawanJabatan =
+          karyawanJabatan;
+      }
+
       res.status(200).json({
         kodeTrialObatJadi,
       });
     } catch (err) {
-      console.error(err); // Use console.error for better error logging
-      res.status(500).json({ error: "Internal Server Error" }); // Provide a proper error response
-    }
-  }
-  static async getAllRevisiDetail(req, res) {
-    try {
-      const { revisi } = req.query; // Ambil query revisi dari request
-  
-      const revisiDetails = await m_kodeTrialObatJadi_template.findAll({
-        attributes: [
-          "rencana_berlaku",
-          "rencana_revisi",
-          "rencana_alasan_desc",
-        ],
-        where: {
-          [Op.and]: [
-            // { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
-            // { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
-            // { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
-            {
-              rencana_revisi: {
-                [Op.lte]: revisi, // Mencari yang sama dengan revisi atau kurang dari revisi
-              },
-            },
-          ],
-        },
-        group: ["rencana_revisi", "rencana_berlaku", "rencana_alasan_desc"], // Semua kolom yang di-select harus ada di GROUP BY
-        order: [["rencana_revisi", "DESC"]], // Urutkan berdasarkan rencana_revisi
-      });
-  
-      res.status(200).json({ revisiDetails });
-    } catch (err) {
-      console.error(err); // Log error for debugging
+      console.error(err);
       res.status(500).json({ error: "Internal Server Error" });
     }
   }
-  
-  
-  
+
+  static async getAllRevisiDetail(req, res) {
+    try {
+      const { revisi } = req.query;
+
+      // Step 1: Ambil MAX(id) per kombinasi grup
+      const maxIdRows = await m_kodeTrialObatJadi_template.findAll({
+        attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
+        where: {
+          rencana_revisi: {
+            [Op.lte]: revisi,
+          },
+        },
+        group: ["rencana_revisi", "rencana_berlaku", "rencana_alasan_desc"],
+        raw: true,
+      });
+
+      // Ambil array id-nya saja
+      const maxIds = maxIdRows.map((row) => row.maxId);
+
+      // Step 2: Ambil semua baris berdasarkan id tersebut
+      const revisiDetails = await m_kodeTrialObatJadi_template.findAll({
+        attributes: [
+          "rencana_revisi",
+          "rencana_berlaku",
+          "rencana_alasan_desc",
+          "user_id",
+        ],
+        where: {
+          id: {
+            [Op.in]: maxIds,
+          },
+        },
+        order: [["rencana_revisi", "DESC"]],
+      });
+
+      res.status(200).json({ revisiDetails });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+
   static async revisiKodeTrialObatJadi(req, res) {
     const { revisi } = req.query; // Get revisi from the query parameters
 
@@ -144,6 +287,33 @@ class ControllerKodeTrialObatJadi {
         },
         order: [["id", "ASC"]],
       });
+
+      const indexTerakhir = kodeTrialObatJadi?.length - 1;
+
+      const lastUserId = kodeTrialObatJadi?.[indexTerakhir]?.user_id;
+
+
+      if (lastUserId && indexTerakhir >= 0) {
+        const [results] = await mssqlSequeliez.query(
+          `
+    SELECT Nama, Jabatan 
+    FROM m_karyawan 
+    WHERE inisialName = :lastUserId AND isActive = 1
+  `,
+          {
+            replacements: { lastUserId },
+            type: mssqlSequeliez.QueryTypes.SELECT,
+          }
+        );
+
+        const karyawanName = results?.Nama || null;
+        const karyawanJabatan = results?.Jabatan || null;
+
+        // Masukkan Nama dan Jabatan ke dalam item terakhir
+        kodeTrialObatJadi[indexTerakhir].dataValues.karyawanName = karyawanName;
+        kodeTrialObatJadi[indexTerakhir].dataValues.karyawanJabatan =
+          karyawanJabatan;
+      }
 
       res.status(200).json({
         kodeTrialObatJadi,
@@ -161,30 +331,33 @@ class ControllerKodeTrialObatJadi {
       const apprDeptId = bagian_user;
       const apprNo = 1;
 
+      const existingRecords = await m_kodeTrialObatJadi_template.findAll({
+        where: {
+          [Op.and]: [
+            { user_approve: { [Op.or]: [null, ""] } },
+            { user_delegated: { [Op.or]: [null, ""] } },
+            { user_approve_date: { [Op.is]: null } },
+          ],
+        },
+        order: [["id", "ASC"]],
+      });
+
+      if (existingRecords.length === 0) {
+        throw new MyError(400, "Not Found!");
+      }
+
+      const applicationCode = existingRecords[0].applicationCode;
+
       const isApprove = await isApproveValidation(
-        "kodeTrialObatJadi",
+        applicationCode,
         apprDeptId,
         apprNo,
         user_id
       );
 
-      console.log(isApprove, "< isapprove");
+
+
       if (isApprove === true) {
-        const existingRecords = await m_kodeTrialObatJadi_template.findAll({
-          where: {
-            [Op.and]: [
-              { user_approve: { [Op.or]: [null, ""] } },
-              { user_delegated: { [Op.or]: [null, ""] } },
-              { user_approve_date: { [Op.is]: null } },
-            ],
-          },
-          order: [["id", "ASC"]],
-        });
-
-        if (existingRecords.length === 0) {
-          throw new MyError(400, "Not Found!");
-        }
-
         const incompleteRecords = existingRecords.filter(
           (record) => !record.rencana_berlaku || !record.rencana_revisi
         );
@@ -211,32 +384,35 @@ class ControllerKodeTrialObatJadi {
           })
         );
 
-        const newTemplate = existingRecords.map((el, index) => {
-          return {
-            kodeProduk: el.kodeProduk,
-            namaObatJadi: el.namaObatJadi,
-            kemasan: el.kemasan,
-            komposisi: el.komposisi,
-            keterangan: el.keterangan,
-            user_id: "Sys",
-            delegated_to: "Sys",
-          };
-        });
+        const newTemplate = existingRecords.map((el) => ({
+          kodeProduk: el.kodeProduk,
+          namaObatJadi: el.namaObatJadi,
+          kemasan: el.kemasan,
+          komposisi: el.komposisi,
+          keterangan: el.keterangan,
+          user_id: "Sys",
+          delegated_to: "Sys",
+        }));
 
-        const newRecords = updatedRecords.map((el, index) => {
-          return {
-            kodeProduk: el.kodeProduk,
-            namaObatJadi: el.namaObatJadi,
-            kemasan: el.kemasan,
-            komposisi: el.komposisi,
-            keterangan: el.keterangan,
-            rencana_berlaku: el.rencana_berlaku,
-            rencana_revisi: el.rencana_revisi,
-            rencana_alasan_desc: el.rencana_alasan_desc,
-            user_id: "Sys",
-            delegated_to: "Sys",
-          };
-        });
+        const highestIdItem = updatedRecords.reduce(
+          (max, el) => (el.id > max.id ? el : max),
+          updatedRecords[0]
+        );
+
+        const newRecords = updatedRecords.map((el) => ({
+          kodeProduk: el.kodeProduk,
+          namaObatJadi: el.namaObatJadi,
+          kemasan: el.kemasan,
+          komposisi: el.komposisi,
+          keterangan: el.keterangan,
+          rencana_berlaku: el.rencana_berlaku,
+          rencana_revisi: el.rencana_revisi,
+          rencana_alasan_desc: el.rencana_alasan_desc,
+          selected_manager: el.selected_manager,
+          applicationCode: el.applicationCode,
+          user_id: highestIdItem.user_id,
+          delegated_to: highestIdItem.delegated_to,
+        }));
 
         await m_kodeTrialObatJadi_template.bulkCreate(newTemplate);
 
@@ -262,11 +438,18 @@ class ControllerKodeTrialObatJadi {
       next(err);
     }
   }
+
   static async updateRencanaBerlaku(req, res, next) {
     try {
       const { user_id, delegated_to } = req.user;
-      const { rencana_berlaku, rencana_revisi, rencana_alasan_desc } = req.body;
-      console.log(req.body,"< bodd")
+      const {
+        rencana_berlaku,
+        rencana_revisi,
+        rencana_alasan_desc,
+        selected_manager,
+        applicationCode,
+      } = req.body;
+
 
       // Validate the input
       if (!rencana_berlaku || !rencana_alasan_desc) {
@@ -300,6 +483,8 @@ class ControllerKodeTrialObatJadi {
             rencana_berlaku,
             rencana_revisi,
             rencana_alasan_desc,
+            selected_manager,
+            applicationCode,
           })
         )
       );
@@ -317,23 +502,13 @@ class ControllerKodeTrialObatJadi {
     try {
       const { user_id, bagian_user, delegated_to } = req.user;
 
-      const apprDeptId = bagian_user;
-      const apprNo = 1;
-
-      const isApprove = await isApproveValidation(
-        "kodeTrialObatJadi",
-        apprDeptId,
-        apprNo,
-        user_id
-      );
-
       // Find the existing records
       const existingRecords = await m_kodeTrialObatJadi_template.findAll({
         where: {
           [Op.and]: [
-            { user_approve: { [Op.or]: [null, ""] } }, // Check if user_approve is null or empty
-            { user_delegated: { [Op.or]: [null, ""] } }, // Check if user_delegated is null or empty
-            { user_approve_date: { [Op.is]: null } }, // Check if user_approve_date is null
+            { user_approve: { [Op.or]: [null, ""] } },
+            { user_delegated: { [Op.or]: [null, ""] } },
+            { user_approve_date: { [Op.is]: null } },
           ],
         },
         order: [["id", "ASC"]],
@@ -345,16 +520,32 @@ class ControllerKodeTrialObatJadi {
         });
       }
 
+      // Ambil applicationCode dari record pertama
+      const applicationCode = existingRecords[0].applicationCode;
+
+
+
+      const apprDeptId = bagian_user;
+      const apprNo = 1;
+
+      const isApprove = await isApproveValidation(
+        applicationCode,
+        apprDeptId,
+        apprNo,
+        user_id
+      );
+
       res.status(200).json({
         message: "Data has been updated",
         data: existingRecords,
         isApprove,
       });
     } catch (err) {
-      console.error("Error in approveKodeTrialObatJadi:", err);
+      console.error("Error in latestKodeTrialObatJadi:", err);
       next(err);
     }
   }
+
   static async editKodeTrialObatJadiTemplate(req, res, next) {
     try {
       const { id, kodeProduk, namaObatJadi, kemasan, komposisi, keterangan } =

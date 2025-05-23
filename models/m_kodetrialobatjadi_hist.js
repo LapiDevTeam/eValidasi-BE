@@ -24,6 +24,9 @@ module.exports = (sequelize, DataTypes) => {
       rencana_berlaku: DataTypes.DATE,
       rencana_revisi: DataTypes.STRING,
       rencana_alasan_desc: DataTypes.TEXT,
+      selected_manager: DataTypes.STRING,
+      applicationCode: DataTypes.STRING,
+      
     },
     {
       sequelize,

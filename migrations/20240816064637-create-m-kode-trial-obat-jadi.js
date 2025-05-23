@@ -42,6 +42,12 @@ module.exports = {
       rencana_alasan_desc: {
         type: Sequelize.TEXT,
       },
+      selected_manager: {
+        type: Sequelize.STRING,
+      },
+      applicationCode: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
