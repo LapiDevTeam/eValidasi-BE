@@ -883,9 +883,9 @@ async function masterItemPrinciple_CREATE(req, res, next) {
 }
 
 async function masterItemPrinciple_UPDATE(req, res) {
-  const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   const transaction = await sequelizeMSQL.transaction();
   try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request');
     const {
       item_ID,
@@ -903,8 +903,6 @@ async function masterItemPrinciple_UPDATE(req, res) {
       old_prc_ID,
       old_supp_ID,
     } = req.body;
-
-    const { user_id } = req.user;
 
     if (!item_ID) {
       await transaction.rollback();
