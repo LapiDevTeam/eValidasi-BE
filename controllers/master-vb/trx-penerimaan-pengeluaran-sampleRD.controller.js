@@ -1843,6 +1843,7 @@ async function getBelowMinStockItemsByItemIdAndPrinciple(req, res, next) {
         A.principle,
         MIN(A.supplier) AS supplier,
         MIN(A.Analisa) AS Analisa,
+        MIN(A.Expdate) AS Expdate,
         MIN(A.batchno) AS batchlot,
         MIN(A.minstock) AS minstock,
         SUM(A.saldoawal + A.masuk - A.keluar) AS stockAkhir
