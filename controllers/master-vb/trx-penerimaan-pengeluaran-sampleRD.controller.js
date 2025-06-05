@@ -1679,6 +1679,7 @@ async function cmdRefreshData_pindahLokasi(req, res, next) {
           A.Principle,
           A.Supplier,
           A.batchNo AS BatchLot,
+          A.ExpDate,
           A.Analisa,
           A.rak,
           A.saldoawal + A.masuk - A.keluar AS saldo,
