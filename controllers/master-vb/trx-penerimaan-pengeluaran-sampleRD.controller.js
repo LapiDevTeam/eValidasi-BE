@@ -1829,6 +1829,46 @@ async function getExpiringSoonItems(req, res, next) {
   }
 }
 
+
+// SUM DULU AKUMULASI SALDO AKHIR DARI PRINCIPLE DAN ITEMID YANG SAMA
+async function getBelowMinStockItemsByItemIdAndPrinciple(req, res, next) {
+  const { searchText = '', page = 0, size = 50, rawdata = '0' } = req.query;
+  const { limit, offset } = getPagination(page, size);
+
+  try {
+    const strTemp2 = `
+      SELECT
+        A.itemid,
+        MIN(A.itemName) AS itemName,
+        A.principle,
+        MIN(A.supplier) AS supplier,
+        MIN(A.minstock) AS minstock,
+        SUM(A.saldoawal + A.masuk - A.keluar) AS sumStockAkhir
+      FROM t_NP_Sample_Stock A
+      WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+      AND A.itemid IS NOT NULL AND A.itemid <> '' AND A.itemid <> 'NA' AND A.itemid <> '-'
+      GROUP BY A.itemid, A.principle
+      HAVING SUM(A.saldoawal + A.masuk - A.keluar) < MIN(A.minstock)
+    `;
+
+    const recTemp2 = await sequelizeMSQL.query(strTemp2, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItems = recTemp2.length;
+    const pagedRows = recTemp2.slice(offset, offset + limit);
+    const response = getPagingData({ rows: pagedRows, count: totalItems }, page, limit);
+
+    if (rawdata === '1') return recTemp2;
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error executing search:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 async function getBelowMinStockItems(req, res, next) {
   const { searchText = '', page = 0, size = 50, rawdata = '0' } = req.query;
   const { limit, offset } = getPagination(page, size);
@@ -2208,5 +2248,6 @@ module.exports = {
   searchByKodeBahan,
   handleItemPrint,
   searchNoPermintaan,
-  sbCekTombolPrint
+  sbCekTombolPrint,
+  getBelowMinStockItemsByItemIdAndPrinciple
 };

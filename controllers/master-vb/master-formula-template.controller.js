@@ -49,6 +49,25 @@ const createNewMasterFormulaTemplate = async (req, res) => {
       return res.status(400).json({ message: "Besar Bets dalam satuan jual, harus lebih besar dari nol !" });
     }
 
+    // Validate field lengths
+    if (PPI_ID.length > 30) return res.status(400).json({ message: "PPI_ID too long" });
+    if (PPI_SubID.length > 3) return res.status(400).json({ message: "PPI_SubID too long" });
+    if (PPI_ProductID.length > 30) return res.status(400).json({ message: "PPI_ProductID too long" });
+    if (PPI_BatchSizeUnitID.length > 20) return res.status(400).json({ message: "PPI_BatchSizeUnitID too long" });
+    if (PPI_Kemasan.length > 100) return res.status(400).json({ message: "PPI_Kemasan too long" });
+    if (JumlahLOT && JumlahLOT.length > 2) return res.status(400).json({ message: "JumlahLOT too long" });
+    if (kemas01 && kemas01.length > 200) return res.status(400).json({ message: "kemas01 too long" });
+    if (gstrUserName && gstrUserName.length > 10) return res.status(400).json({ message: "User_ID too long" });
+    if (gstrDelegatedTo && gstrDelegatedTo.length > 10) return res.status(400).json({ message: "Delegated_To too long" });
+
+    // Ensure numbers are numbers
+    const batchSize = Number(PPI_BatchSize);
+    const batchSizeKemasan = Number(PPI_batchsizekemasan);
+    const rendemen = Number(rendemen_min);
+    if (isNaN(batchSize) || isNaN(batchSizeKemasan) || isNaN(rendemen)) {
+      return res.status(400).json({ message: "Batch size, batch size kemasan, and rendemen_min must be numbers" });
+    }
+
     const currentDateTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
     const headerSQL = `
@@ -94,25 +113,41 @@ const createNewMasterFormulaTemplate = async (req, res) => {
 
     // const combinedSQL = `${deleteSQL} ${headerSQL} ${detailSQL}`;
     const combinedSQL = `${headerSQL} ${detailSQL}`;
-
+    console.log({
+      PPI_ID,
+      PPI_SubID,
+      PPI_ProductID,
+      PPI_ProductInit,
+      PPI_BatchSize: parseFloat(PPI_BatchSize).toFixed(3),
+      PPI_BatchSizeUnitID,
+      PPI_Kemasan,
+      currentDateTime,
+      gstrUserName: gstrUserName || user_id,
+      gstrDelegatedTo: gstrDelegatedTo || delegated_to,
+      JumlahLOT,
+      PPI_batchsizekemasan,
+      rendemen_min,
+      kemas01,
+      tag
+    });
     // Execute SQL
     await sequelizeMSQL.query(combinedSQL, {
       replacements: {
-        PPI_ID,
-        PPI_SubID,
-        PPI_ProductID,
-        PPI_ProductInit,
-        PPI_BatchSize: parseFloat(PPI_BatchSize).toFixed(3),
-        PPI_BatchSizeUnitID,
-        PPI_Kemasan,
-        currentDateTime,
-        gstrUserName: gstrUserName || user_id,
-        gstrDelegatedTo: gstrDelegatedTo || delegated_to,
-        JumlahLOT,
-        PPI_batchsizekemasan,
-        rendemen_min,
-        kemas01,
-        tag
+      PPI_ID,
+      PPI_SubID,
+      PPI_ProductID,
+      PPI_ProductInit: PPI_ProductInit ? parseInt(PPI_ProductInit, 10) : 0,
+      PPI_BatchSize: parseFloat(PPI_BatchSize).toFixed(3),
+      PPI_BatchSizeUnitID,
+      PPI_Kemasan,
+      currentDateTime,
+      gstrUserName: gstrUserName || user_id,
+      gstrDelegatedTo: gstrDelegatedTo || delegated_to,
+      JumlahLOT: JumlahLOT ? JumlahLOT : 0,
+      PPI_batchsizekemasan,
+      rendemen_min,
+      kemas01,
+      tag
       },
       type: QueryTypes.INSERT
     });
@@ -274,6 +309,24 @@ const updateMasterFormulaTemplate = async (req, res) => {
 
   if (isNaN(rendemen_min) || rendemen_min > 100) {
     return res.status(400).send({ message: "Rendemen nilai Maximum 100 %." });
+  }
+
+  // Validate field lengths
+  if (PPI_ID.length > 30) return res.status(400).json({ message: "PPI_ID too long" });
+  if (PPI_SubID.length > 3) return res.status(400).json({ message: "PPI_SubID too long" });
+  if (PPI_ProductID.length > 30) return res.status(400).json({ message: "PPI_ProductID too long" });
+  if (PPI_BatchSizeUnitID.length > 20) return res.status(400).json({ message: "PPI_BatchSizeUnitID too long" });
+  if (PPI_Kemasan.length > 100) return res.status(400).json({ message: "PPI_Kemasan too long" });
+  if (kemas01 && kemas01.length > 200) return res.status(400).json({ message: "kemas01 too long" });
+  if (gstrUserName && gstrUserName.length > 10) return res.status(400).json({ message: "User_ID too long" });
+  if (gstrDelegatedTo && gstrDelegatedTo.length > 10) return res.status(400).json({ message: "Delegated_To too long" });
+
+  // Ensure numbers are numbers
+  const batchSize = Number(PPI_BatchSize);
+  const batchSizeKemasan = Number(PPI_batchsizekemasan);
+  const rendemen = Number(rendemen_min);
+  if (isNaN(batchSize) || isNaN(batchSizeKemasan) || isNaN(rendemen)) {
+    return res.status(400).json({ message: "Batch size, batch size kemasan, and rendemen_min must be numbers" });
   }
 
   try {
@@ -1045,7 +1098,6 @@ const fnApprove = async (
       message: 'Master formula template approved successfully',
     };
   } catch (error) {
-    console.error({ error, 'ASASASASASASAS': 'ASASASASSASASASAS' });
     await transaction.rollback();
     const resp = {
       error: true,

@@ -34,6 +34,7 @@ const {
   searchProducts,
   getDetailByPKID,
   exportProductDetailsToExcel,
+  getBelowMinStockItemsByItemIdAndPrinciple,
 } = require('../../controllers/master-vb/trx-penerimaan-pengeluaran-sampleRD.controller');
 
 trxSampleRDRouter.get('/rak', getStockDataByRak);
@@ -70,7 +71,8 @@ trxSampleRDRouter.post('/pindah-rak', cmdReport_pindahLokasi);
 
 // ALERT
 trxSampleRDRouter.get('/alert-expired', getExpiringSoonItems);
-trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItems);
+trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItemsByItemIdAndPrinciple);
+// trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItems);
 trxSampleRDRouter.get('/alert-print', generateExcelReport);
 
 // FORMULA
