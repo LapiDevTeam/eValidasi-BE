@@ -121,6 +121,7 @@ class MasterProductController {
         productDosis,
         productRuangLingkup,
         productStatus,
+        jenis_kemasan = 'NONBFS',
         cdob01,
         cdob02,
         cdob03,
@@ -220,8 +221,8 @@ class MasterProductController {
       const productInit = await GlobalController.getProductInit(productID);
 
       const insertProductSQL = `
-        insert into m_Product_template (jenis_prod, Kategori_prod, PK_ID, Product_ID, Product_Init, Product_Name, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date, Product_BatchSize, Product_owner, Product_bahanAktif, product_bentuksediaan, product_kemasan, product_dosis, product_ruanglingkup, product_status, CDOB_01, CDOB_02, CDOB_03, product_import)
-        values (:jenisProd, :catProd, :newProductPKID, :productID, :productInit, :productName, :productCategory, :productCurrency, :productHPP, :productHNA, :productHTollIN, :productHTollINFee, :productVolumeInBox, :productVolumeInBigBox, :productUnit, :productType, :productIntermediateID, 1, :userName, :delegatedTo, GETDATE(), :productBatchSize, :productOwner, :productBahanAktif, :productBentukSediaan, :productKemasan, :productDosis, :productRuangLingkup, :productStatus, :cdob01, :cdob02, :cdob03, :productImport)
+        insert into m_Product_template (jenis_prod, Kategori_prod, PK_ID, Product_ID, Product_Init, Product_Name, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, jenis_kemasan, isActive, User_ID, Delegated_To, Process_Date, Product_BatchSize, Product_owner, Product_bahanAktif, product_bentuksediaan, product_kemasan, product_dosis, product_ruanglingkup, product_status, CDOB_01, CDOB_02, CDOB_03, product_import)
+        values (:jenisProd, :catProd, :newProductPKID, :productID, :productInit, :productName, :productCategory, :productCurrency, :productHPP, :productHNA, :productHTollIN, :productHTollINFee, :productVolumeInBox, :productVolumeInBigBox, :productUnit, :productType, :productIntermediateID, :jenis_kemasan, 1, :userName, :delegatedTo, GETDATE(), :productBatchSize, :productOwner, :productBahanAktif, :productBentukSediaan, :productKemasan, :productDosis, :productRuangLingkup, :productStatus, :cdob01, :cdob02, :cdob03, :productImport)
       `;
 
       await sequelizeMSQL.query(insertProductSQL, {
@@ -243,6 +244,7 @@ class MasterProductController {
           productUnit: productUnit,
           productType: productType,
           productIntermediateID: productIntermediateID,
+          jenis_kemasan,
           userName,
           delegatedTo,
           productBatchSize: productBatchSize,
