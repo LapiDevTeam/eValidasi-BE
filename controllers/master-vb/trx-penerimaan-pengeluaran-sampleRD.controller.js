@@ -1842,8 +1842,10 @@ async function getBelowMinStockItemsByItemIdAndPrinciple(req, res, next) {
         MIN(A.itemName) AS itemName,
         A.principle,
         MIN(A.supplier) AS supplier,
+        MIN(A.Analisa) AS Analisa,
+        MIN(A.batchno) AS batchlot,
         MIN(A.minstock) AS minstock,
-        SUM(A.saldoawal + A.masuk - A.keluar) AS sumStockAkhir
+        SUM(A.saldoawal + A.masuk - A.keluar) AS stockAkhir
       FROM t_NP_Sample_Stock A
       WHERE (A.saldoawal + A.masuk - A.keluar) > 0
         ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
