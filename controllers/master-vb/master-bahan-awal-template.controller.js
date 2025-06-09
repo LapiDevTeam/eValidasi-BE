@@ -1374,6 +1374,9 @@ const getRevisionsDA = async (req, res) => {
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        dokumen_terkait,
+        refrensi,
         Process_Date
       FROM m_item_manufacturing_revisions
       WHERE Item_Group = :item_group
@@ -1389,7 +1392,26 @@ const getRevisionsDA = async (req, res) => {
       return res.status(404).json({ message: 'No revisions found for the given item group.' });
     }
 
-    return res.status(200).json({ message: 'Revisions fetched successfully.', data: revisions });
+    // Parse daftar_distribusi and dokumen_terkait if they are JSON strings
+    const parsedRevisions = revisions.map(rev => ({
+      ...rev,
+      daftar_distribusi: (() => {
+        try {
+          return rev.daftar_distribusi ? JSON.parse(rev.daftar_distribusi) : null;
+        } catch {
+          return rev.daftar_distribusi;
+        }
+      })(),
+      dokumen_terkait: (() => {
+        try {
+          return rev.dokumen_terkait ? JSON.parse(rev.dokumen_terkait) : rev.dokumen_terkait;
+        } catch {
+          return rev.dokumen_terkait;
+        }
+      })(),
+    }));
+
+    return res.status(200).json({ message: 'Revisions fetched successfully.', data: parsedRevisions });
   } catch (error) {
     console.error('Error fetching revisions:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
@@ -1398,10 +1420,33 @@ const getRevisionsDA = async (req, res) => {
 
 const createRevision = async (req, res) => {
   try {
-    const { item_group, tgl_revisi, alasan_desc } = req.body;
+    const { item_group, tgl_revisi, alasan_desc, daftar_distribusi = null, dokumen_terkait = null, refrensi = null } = req.body;
 
     if (!item_group || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    const [pkidResult] = await sequelizeMSQL.query(
+      `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_item_manufacturing_revisions`,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
+    const PK_ID = pkidResult.PK_ID;
+
+    const exampleDaftarDistribusi = [
+      { bagian: 'Formulation Development New Product', jumlah: '1' },
+      { bagian: 'Quality Assurance', jumlah: '1' },
+      { bagian: 'Quality Control', jumlah: '2' },
+      { bagian: 'Analytical Development 1', jumlah: '1' },
+      { bagian: 'Quality System', jumlah: '1' },
+    ];
+
+    // Stringify daftar_distribusi if it's an object/array
+    const stringDaftarDistribusi = JSON.stringify(daftar_distribusi || exampleDaftarDistribusi);
+
+    // Stringify dokumen_terkait if it's an array
+    let stringDokumenTerkait = dokumen_terkait;
+    if (Array.isArray(dokumen_terkait)) {
+      stringDokumenTerkait = JSON.stringify(dokumen_terkait);
     }
 
     const queryLatestRevision = `
@@ -1420,23 +1465,40 @@ const createRevision = async (req, res) => {
 
     const query = `
       INSERT INTO m_item_manufacturing_revisions (
+        PK_ID,
         Item_Group,
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        dokumen_terkait,
+        refrensi,
         Process_Date
       )
       VALUES (
+        :PK_ID,
         :item_group,
         :new_no_revisi,
         :tgl_revisi,
         :alasan_desc,
+        :daftar_distribusi,
+        :dokumen_terkait,
+        :refrensi,
         GETDATE()
       )
     `;
 
     await sequelizeMSQL.query(query, {
-      replacements: { item_group, new_no_revisi, tgl_revisi, alasan_desc },
+      replacements: {
+        PK_ID,
+        item_group,
+        new_no_revisi,
+        tgl_revisi,
+        alasan_desc,
+        daftar_distribusi: stringDaftarDistribusi,
+        dokumen_terkait: stringDokumenTerkait,
+        refrensi,
+      },
       type: Sequelize.QueryTypes.INSERT,
     });
 
@@ -1449,13 +1511,26 @@ const createRevision = async (req, res) => {
 
 const createRevisionWithSameNumber = async (req, res) => {
   try {
-    const { item_group, tgl_revisi, alasan_desc } = req.body;
+    const { item_group, tgl_revisi, alasan_desc, daftar_distribusi = null, dokumen_terkait = null, refrensi = null } = req.body;
 
     if (!item_group || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
 
-    // Fetch the latest revision for the given item_group
+    const exampleDaftarDistribusi = [
+      { bagian: 'Formulation Development New Product', jumlah: '1' },
+      { bagian: 'Quality Assurance', jumlah: '1' },
+      { bagian: 'Quality Control', jumlah: '2' },
+      { bagian: 'Analytical Development 1', jumlah: '1' },
+      { bagian: 'Quality System', jumlah: '1' },
+    ];
+    const stringDaftarDistribusi = JSON.stringify(daftar_distribusi || exampleDaftarDistribusi);
+
+    let stringDokumenTerkait = dokumen_terkait;
+    if (Array.isArray(dokumen_terkait)) {
+      stringDokumenTerkait = JSON.stringify(dokumen_terkait);
+    }
+
     const queryLatestRevision = `
       SELECT TOP 1 no_revisi
       FROM m_item_manufacturing_revisions
@@ -1474,26 +1549,48 @@ const createRevisionWithSameNumber = async (req, res) => {
 
     const same_no_revisi = parseInt(latestRevision.no_revisi, 10);
 
-    // Insert a new revision with the same no_revisi but newer tgl_revisi and alasan_desc
+    const [pkidResult] = await sequelizeMSQL.query(
+      `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_item_manufacturing_revisions`,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
+    const PK_ID = pkidResult.PK_ID;
+
     const query = `
       INSERT INTO m_item_manufacturing_revisions (
+        PK_ID,
         Item_Group,
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        dokumen_terkait,
+        refrensi,
         Process_Date
       )
       VALUES (
+        :PK_ID,
         :item_group,
         :same_no_revisi,
         :tgl_revisi,
         :alasan_desc,
+        :daftar_distribusi,
+        :dokumen_terkait,
+        :refrensi,
         GETDATE()
       )
     `;
 
     await sequelizeMSQL.query(query, {
-      replacements: { item_group, same_no_revisi, tgl_revisi, alasan_desc },
+      replacements: {
+        PK_ID,
+        item_group,
+        same_no_revisi,
+        tgl_revisi,
+        alasan_desc,
+        daftar_distribusi: stringDaftarDistribusi,
+        dokumen_terkait: stringDokumenTerkait,
+        refrensi,
+      },
       type: Sequelize.QueryTypes.INSERT,
     });
 
@@ -1612,7 +1709,7 @@ const approveRevisionByItemGroup = async (item_group, user_id, delegated_to) => 
 };
 
 const updateOrCreateRevision = async (req, res) => {
-  const { item_group, no_revisi, tgl_revisi, alasan_desc } = req.body;
+  const { item_group, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, dokumen_terkait = null, refrensi = null } = req.body;
   const { user_id, delegated_to } = req.user; // Assuming user info is available in req.user
 
   if (!item_group || !no_revisi || !tgl_revisi || !alasan_desc) {
@@ -1645,7 +1742,10 @@ const updateOrCreateRevision = async (req, res) => {
       const queryUpdate = `
         UPDATE m_item_manufacturing_revisions
         SET alasan_desc = :alasan_desc,
-            tgl_revisi = :tgl_revisi
+            tgl_revisi = :tgl_revisi,
+            daftar_distribusi = :daftar_distribusi,
+            dokumen_terkait = :dokumen_terkait,
+            refrensi = :refrensi
         WHERE no_revisi = :no_revisi AND Item_Group = :item_group
       `;
 
@@ -1656,6 +1756,9 @@ const updateOrCreateRevision = async (req, res) => {
           alasan_desc,
           item_group,
           pk_id: existingRecord.PK_ID,
+          daftar_distribusi,
+          dokumen_terkait,
+          refrensi
         },
         transaction,
       });
@@ -1670,6 +1773,9 @@ const updateOrCreateRevision = async (req, res) => {
           no_revisi,
           tgl_revisi,
           alasan_desc,
+          daftar_distribusi,
+          dokumen_terkait,
+          refrensi,
           Process_Date
         )
         VALUES (
@@ -1677,6 +1783,9 @@ const updateOrCreateRevision = async (req, res) => {
           :no_revisi,
           :tgl_revisi,
           :alasan_desc,
+          :daftar_distribusi,
+          :dokumen_terkait,
+          :refrensi,
           GETDATE()
         )
       `;
@@ -1686,7 +1795,10 @@ const updateOrCreateRevision = async (req, res) => {
           item_group,
           no_revisi,
           tgl_revisi,
-          alasan_desc
+          alasan_desc,
+          daftar_distribusi,
+          dokumen_terkait,
+          refrensi
         },
         transaction,
       });
