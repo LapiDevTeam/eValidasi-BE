@@ -44,88 +44,75 @@ const logoBase64 = `data:image/png;base64,${fs
   .toString("base64")}`;
 
 class ControllerCatatanTrial {
-static async printCatatanTrial(req, res) {
-  const { link, type, kode, createdAt } = req.query;
+  static async printCatatanTrial(req, res) {
+    const { link, type, kode,createdAt } = req.query;
 
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      userDataDir: "./tmp/puppeteer", // pastikan folder ini ada, atau sesuaikan sesuai server kamu
-    });
+    let browser;
+    try {
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
 
-    const page = await browser.newPage();
+      await page.goto(link, { waitUntil: "networkidle0" });
 
-    await page.goto(link, {
-      waitUntil: "networkidle0",
-      timeout: 60000, // timeout tambahan agar tidak hang terlalu lama
-    });
+      await page.addStyleTag({
+        content: `
+          * {
+            font-size: 12px !important;
+            font-family: Arial, sans-serif;
+          }
+        `,
+      });
+      const createdDate = new Date(createdAt);
+      const batasTanggal = new Date("2025-04-10T00:00:00.000Z");
 
-    await page.addStyleTag({
-      content: `
-        * {
-          font-size: 12px !important;
-          font-family: Arial, sans-serif;
-        }
-      `,
-    });
+      const revisi = createdDate >= batasTanggal ? "01" : "00";
+      const tglBerlaku = createdDate >= batasTanggal ? "10/04/2025" : "08/11/2019";
 
-    const createdDate = new Date(createdAt);
-    const batasTanggal = new Date("2025-04-10T00:00:00.000Z");
-
-    const revisi = createdDate >= batasTanggal ? "01" : "00";
-    const tglBerlaku = createdDate >= batasTanggal ? "10/04/2025" : "08/11/2019";
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      displayHeaderFooter: true,
-      printBackground: true,
-      footerTemplate: `
-        <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
-          <tr>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
-            <td style="border: 1px solid gray; width: 15%; text-align: center;">${tglBerlaku}</td>
-            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
-            <td style="border: 1px solid gray; width: 5%; text-align: center;">${revisi}</td>
-            <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
-            <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
-          </tr>
-        </table>
-      `,
-      headerTemplate: `
+      // Membuat PDF dalam bentuk buffer
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        displayHeaderFooter: true,
+        printBackground: true,
+        footerTemplate: `
+           <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+      <tr>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">${kode}</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">${tglBerlaku}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+        <td style="border: 1px solid gray; width: 5%; text-align: center;">${revisi}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+        <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+      </tr>
+    </table>
+        `,
+        headerTemplate: `
         <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
-          <tr>
-            <td style="border: 1px solid gray; width: 140px; height: 60px; text-align: center;">
-              <img src="${logoBase64}" alt="lapilogo" width="100">
-            </td>
-            <td style="border: 1px solid gray; height: 60px; text-align: center;">
-              <h1 style="font-weight: bold; font-size: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: Verdana, sans-serif;">
-                <span>${type}</span>
-              </h1>
-            </td>
-          </tr>
-        </table>
-      `,
-      margin: {
-        bottom: "60px",
-        top: "130px",
-        left: "70px",
-        right: "80px",
-      },
-    });
-
-    await browser.close();
-    res.end(pdfBuffer);
-  } catch (error) {
-    console.error("Error during printCatatanTrial:", error);
-    if (browser) await browser.close();
-    res.status(500).send({ error: "An error occurred during PDF generation." });
+        <tr>
+          <td style="border: 1px solid gray; width: 140px; height: 60px; text-align: center;">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
+          <td style="border: 1px solid gray; height: 60px; text-align: center;">
+            <h1 style="font-weight: bold; font-size: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: Verdana, sans-serif;">
+              <span>${type}</span>
+            </h1>
+          </td>
+        </tr>
+      </table>
+        `,
+        margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
+      });
+      await browser.close();
+      res.end(pdfBuffer);
+    } catch (error) {
+      console.error("Error during printCatatanTrial:", error);
+      if (browser) await browser.close();
+      res
+        .status(500)
+        .send({ error: "An error occurred during PDF generation." });
+    }
   }
-}
-
 
   static async addPageNumbersToHalaman(req, res) {
     const { inputPath, outputPath } = req.body;
