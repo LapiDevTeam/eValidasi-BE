@@ -1710,7 +1710,11 @@ const approveRevisionByItemGroup = async (item_group, user_id, delegated_to) => 
 
 const updateOrCreateRevision = async (req, res) => {
   const { item_group, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, dokumen_terkait = null, refrensi = null } = req.body;
-  const { user_id, delegated_to } = req.user; // Assuming user info is available in req.user
+  const { user_id, delegated_to } = req.user;
+
+  if ( !user_id || user_id === '' || !delegated_to || delegated_to === '') {
+    return res.status(401).send('Unauthorized request');
+  }
 
   if (!item_group || !no_revisi || !tgl_revisi || !alasan_desc) {
     return res.status(400).json({ message: "All fields are required." });
@@ -1725,7 +1729,23 @@ const updateOrCreateRevision = async (req, res) => {
   }
   const transaction = await sequelizeMSQL.transaction();
   try {
-    // Check if a record with the given no_revisi exists
+
+    const exampleDaftarDistribusi = [
+      { bagian: 'Formulation Development New Product', jumlah: '1' },
+      { bagian: 'Quality Assurance', jumlah: '1' },
+      { bagian: 'Quality Control', jumlah: '2' },
+      { bagian: 'Analytical Development 1', jumlah: '1' },
+      { bagian: 'Quality System', jumlah: '1' },
+    ];
+    const stringDaftarDistribusi = JSON.stringify(daftar_distribusi || exampleDaftarDistribusi);
+
+    // Stringify dokumen_terkait if it's an array
+    let stringDokumenTerkait = dokumen_terkait;
+    if (Array.isArray(dokumen_terkait)) {
+      stringDokumenTerkait = JSON.stringify(dokumen_terkait);
+    }
+
+
     const queryCheck = `
       SELECT TOP 1 PK_ID
       FROM m_item_manufacturing_revisions
@@ -1755,9 +1775,8 @@ const updateOrCreateRevision = async (req, res) => {
           tgl_revisi,
           alasan_desc,
           item_group,
-          pk_id: existingRecord.PK_ID,
-          daftar_distribusi,
-          dokumen_terkait,
+          daftar_distribusi: stringDaftarDistribusi,
+          dokumen_terkait: stringDokumenTerkait,
           refrensi
         },
         transaction,
@@ -1766,9 +1785,17 @@ const updateOrCreateRevision = async (req, res) => {
       await transaction.commit();
       return res.status(200).json({ message: "Revision updated successfully." });
     } else {
+      // Get next PK_ID
+      const [pkidResult] = await sequelizeMSQL.query(
+        `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_item_manufacturing_revisions`,
+        { type: Sequelize.QueryTypes.SELECT }
+      );
+      const PK_ID = pkidResult.PK_ID;
+
       // Create a new record
       const queryInsert = `
         INSERT INTO m_item_manufacturing_revisions (
+          PK_ID,
           Item_Group,
           no_revisi,
           tgl_revisi,
@@ -1779,6 +1806,7 @@ const updateOrCreateRevision = async (req, res) => {
           Process_Date
         )
         VALUES (
+          :PK_ID,
           :item_group,
           :no_revisi,
           :tgl_revisi,
@@ -1792,12 +1820,13 @@ const updateOrCreateRevision = async (req, res) => {
 
       await sequelizeMSQL.query(queryInsert, {
         replacements: {
+          PK_ID,
           item_group,
           no_revisi,
           tgl_revisi,
           alasan_desc,
-          daftar_distribusi,
-          dokumen_terkait,
+          daftar_distribusi: stringDaftarDistribusi,
+          dokumen_terkait: stringDokumenTerkait,
           refrensi
         },
         transaction,
