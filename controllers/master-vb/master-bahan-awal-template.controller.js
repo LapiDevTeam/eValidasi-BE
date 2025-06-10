@@ -15,7 +15,7 @@ const getManager = async (req, res, next) => {
     if (!user_id || user_id === '') user_id = req.query?.user_id;
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
     const query = `
-    select top 1 nama, jabatan from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
+    select top 5 nama, jabatan from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
     `;
 
     const data = await sequelizeMSQL.query(query, {
@@ -29,7 +29,7 @@ const getManager = async (req, res, next) => {
       return res.status(404).json({ message: 'Manager not found for this user.' });
     }
 
-    return res.status(200).json({ manager: data[0] });
+    return res.status(200).json({ manager: data });
 
   } catch (error) {
     console.log(error, "<<");
