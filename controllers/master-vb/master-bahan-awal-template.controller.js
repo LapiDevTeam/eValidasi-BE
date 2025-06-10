@@ -8,6 +8,33 @@ const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
 
+const getManager = async (req, res, next) => {
+  try {
+    const { user_id, bagian_user } = req.user;
+    if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
+    const query = `
+    select top 1 nama, jabatan from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
+    `;
+
+    const data = await sequelizeMSQL.query(query, {
+      type: QueryTypes.SELECT,
+      logging: (query, queryObject) => {
+        // console.log('Executing query:', query);
+      },
+    });
+
+    if (!data || data.length <= 0) {
+      return res.status(404).json({ message: 'Manager not found for this user.' });
+    }
+
+    return res.status(200).json({ manager: data[0] });
+
+  } catch (error) {
+    console.log(error, "<<");
+    next(error);
+  }
+};
+
 const masterBahanAwalTemplate_CREATE = async (req, res) => {
   const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
@@ -2698,5 +2725,6 @@ module.exports = {
   createRevisionWithSameNumber,
   approveRevisionByItemGroup,
   updateOrCreateRevision,
-  getViewDPBA
+  getViewDPBA,
+  getManager
 };
