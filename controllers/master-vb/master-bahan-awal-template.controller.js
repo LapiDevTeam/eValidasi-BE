@@ -11,6 +11,8 @@ const moment = require('moment');
 const getManager = async (req, res, next) => {
   try {
     const { user_id, bagian_user } = req.user;
+
+    if (!user_id || user_id === '') user_id = req.query?.user_id;
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
     const query = `
     select top 1 nama, jabatan from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
