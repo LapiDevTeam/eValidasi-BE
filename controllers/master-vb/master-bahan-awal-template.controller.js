@@ -1409,6 +1409,13 @@ const getRevisionsDA = async (req, res) => {
           return rev.dokumen_terkait;
         }
       })(),
+      refrensi: (() => {
+        try {
+          return rev.refrensi ? JSON.parse(rev.refrensi) : rev.refrensi;
+        } catch {
+          return rev.refrensi;
+        }
+      })(),
     }));
 
     return res.status(200).json({ message: 'Revisions fetched successfully.', data: parsedRevisions });
@@ -1440,10 +1447,14 @@ const createRevision = async (req, res) => {
       { bagian: 'Quality System', jumlah: '1' },
     ];
 
-    // Stringify daftar_distribusi if it's an object/array
+
     const stringDaftarDistribusi = JSON.stringify(daftar_distribusi || exampleDaftarDistribusi);
 
-    // Stringify dokumen_terkait if it's an array
+    let stringRefrensi = refrensi;
+    if (Array.isArray(refrensi)) {
+      stringRefrensi = JSON.stringify(refrensi);
+    }
+
     let stringDokumenTerkait = dokumen_terkait;
     if (Array.isArray(dokumen_terkait)) {
       stringDokumenTerkait = JSON.stringify(dokumen_terkait);
@@ -1497,7 +1508,7 @@ const createRevision = async (req, res) => {
         alasan_desc,
         daftar_distribusi: stringDaftarDistribusi,
         dokumen_terkait: stringDokumenTerkait,
-        refrensi,
+        refrensi: stringRefrensi,
       },
       type: Sequelize.QueryTypes.INSERT,
     });
@@ -1739,7 +1750,11 @@ const updateOrCreateRevision = async (req, res) => {
     ];
     const stringDaftarDistribusi = JSON.stringify(daftar_distribusi || exampleDaftarDistribusi);
 
-    // Stringify dokumen_terkait if it's an array
+    let stringRefrensi = refrensi;
+    if (Array.isArray(refrensi)) {
+      stringRefrensi = JSON.stringify(refrensi);
+    }
+
     let stringDokumenTerkait = dokumen_terkait;
     if (Array.isArray(dokumen_terkait)) {
       stringDokumenTerkait = JSON.stringify(dokumen_terkait);
@@ -1777,7 +1792,7 @@ const updateOrCreateRevision = async (req, res) => {
           item_group,
           daftar_distribusi: stringDaftarDistribusi,
           dokumen_terkait: stringDokumenTerkait,
-          refrensi
+          refrensi: stringRefrensi
         },
         transaction,
       });
@@ -1827,7 +1842,7 @@ const updateOrCreateRevision = async (req, res) => {
           alasan_desc,
           daftar_distribusi: stringDaftarDistribusi,
           dokumen_terkait: stringDokumenTerkait,
-          refrensi
+          refrensi: stringRefrensi
         },
         transaction,
       });
@@ -1982,6 +1997,7 @@ async function getViewDPBATemplate(req, res, next) {
 
     response['nomorDocument'] = file;
     response['revisi'] = revisi;
+
 
     return res.status(200).json(response);
   } catch (error) {
