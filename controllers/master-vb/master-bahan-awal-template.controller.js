@@ -1682,13 +1682,38 @@ const getLatestRevisionNumber = async (req, res) => {
       }
 
       // Increment the fallback result by 1
-      const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1
-      return res.status(200).json({no_revisi: newRevision});
-      // return res.status(200).json({ no_revisi: parseInt(fallbackResult.no_revisi, 10) + 1 });
+      const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1;
+      return res.status(200).json({ no_revisi: newRevision });
     }
 
+    // Parse daftar_distribusi, dokumen_terkait, refrensi if they are JSON strings
+    const parsedResult = {
+      ...result,
+      daftar_distribusi: (() => {
+        try {
+          return result.daftar_distribusi ? JSON.parse(result.daftar_distribusi) : null;
+        } catch {
+          return result.daftar_distribusi;
+        }
+      })(),
+      dokumen_terkait: (() => {
+        try {
+          return result.dokumen_terkait ? JSON.parse(result.dokumen_terkait) : result.dokumen_terkait;
+        } catch {
+          return result.dokumen_terkait;
+        }
+      })(),
+      refrensi: (() => {
+        try {
+          return result.refrensi ? JSON.parse(result.refrensi) : result.refrensi;
+        } catch {
+          return result.refrensi;
+        }
+      })(),
+    };
+
     // Return the latest revision number from the first query
-    return res.status(200).json(result);
+    return res.status(200).json(parsedResult);
   } catch (error) {
     console.error('Error fetching latest revision number:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
