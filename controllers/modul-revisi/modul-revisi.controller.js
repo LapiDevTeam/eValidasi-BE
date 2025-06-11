@@ -8,7 +8,6 @@ const { type } = require('os');
 const getModuleRevisionsDA = async (req, res) => {
   try {
     const { modulename, isApprove } = req.query;
-    console.log({isApprove, type: typeof req.query.isApprove});
     if (!modulename) {
       return res.status(400).json({ message: 'Module name is required.' });
     }
@@ -20,6 +19,9 @@ const getModuleRevisionsDA = async (req, res) => {
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        refrensi,
+        dokumen_terkait,
         Process_Date,
         appr_userid,
         appr_delegated,
@@ -50,7 +52,21 @@ const getModuleRevisionsDA = async (req, res) => {
       return res.status(404).json({ message: 'No revisions found for the given module name.' });
     }
 
-    return res.status(200).json({ message: 'Module revisions fetched successfully.', data: revisions });
+    // Parse JSON columns
+    const parsedRevisions = revisions.map(rev => ({
+      ...rev,
+      daftar_distribusi: (() => {
+        try { return rev.daftar_distribusi ? JSON.parse(rev.daftar_distribusi) : null; } catch { return rev.daftar_distribusi; }
+      })(),
+      refrensi: (() => {
+        try { return rev.refrensi ? JSON.parse(rev.refrensi) : rev.refrensi; } catch { return rev.refrensi; }
+      })(),
+      dokumen_terkait: (() => {
+        try { return rev.dokumen_terkait ? JSON.parse(rev.dokumen_terkait) : rev.dokumen_terkait; } catch { return rev.dokumen_terkait; }
+      })(),
+    }));
+
+    return res.status(200).json({ message: 'Module revisions fetched successfully.', data: parsedRevisions });
   } catch (error) {
     console.error('Error fetching module revisions:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
@@ -59,7 +75,7 @@ const getModuleRevisionsDA = async (req, res) => {
 
 const createModuleRevision = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, appr_userid, appr_delegated, appr_date, extraData } = req.body;
+    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
@@ -80,12 +96,27 @@ const createModuleRevision = async (req, res) => {
 
     const new_no_revisi = latestRevision ? parseInt(latestRevision.no_revisi, 10) + 1 : 1;
 
+    // Get next PK_ID
+    const [pkidResult] = await sequelizeMSQL.query(
+      `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_module_revisions`,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
+    const PK_ID = pkidResult.PK_ID;
+
+    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
+    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+
     const query = `
       INSERT INTO m_module_revisions (
+        PK_ID,
         modulename,
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        refrensi,
+        dokumen_terkait,
         Process_Date,
         appr_userid,
         appr_delegated,
@@ -93,10 +124,14 @@ const createModuleRevision = async (req, res) => {
         extraData
       )
       VALUES (
+        :PK_ID,
         :modulename,
         :new_no_revisi,
         :tgl_revisi,
         :alasan_desc,
+        :daftar_distribusi,
+        :refrensi,
+        :dokumen_terkait,
         GETDATE(),
         :appr_userid,
         :appr_delegated,
@@ -107,10 +142,14 @@ const createModuleRevision = async (req, res) => {
 
     await sequelizeMSQL.query(query, {
       replacements: {
+        PK_ID,
         modulename,
         new_no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi: stringDaftarDistribusi,
+        refrensi: stringRefrensi,
+        dokumen_terkait: stringDokumenTerkait,
         appr_userid: appr_userid || '',
         appr_delegated: appr_delegated || '',
         appr_date: appr_date || null,
@@ -128,7 +167,7 @@ const createModuleRevision = async (req, res) => {
 
 const createModuleRevisionWithSameNumber = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, appr_userid, appr_delegated, appr_date, extraData } = req.body;
+    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
@@ -147,22 +186,33 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
-
-    console.log({latestRevision});
-
     if (!latestRevision) {
       return res.status(404).json({ message: 'No revisions found for the given modulename.' });
     }
 
     const same_no_revisi = parseInt(latestRevision.no_revisi, 10);
 
-    // Insert a new revision with the same no_revisi but newer tgl_revisi and alasan_desc
+    // Get next PK_ID
+    const [pkidResult] = await sequelizeMSQL.query(
+      `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_module_revisions`,
+      { type: Sequelize.QueryTypes.SELECT }
+    );
+    const PK_ID = pkidResult.PK_ID;
+
+    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
+    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+
     const query = `
       INSERT INTO m_module_revisions (
+        PK_ID,
         modulename,
         no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi,
+        refrensi,
+        dokumen_terkait,
         Process_Date,
         appr_userid,
         appr_delegated,
@@ -170,10 +220,14 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
         extraData
       )
       VALUES (
+        :PK_ID,
         :modulename,
         :same_no_revisi,
         :tgl_revisi,
         :alasan_desc,
+        :daftar_distribusi,
+        :refrensi,
+        :dokumen_terkait,
         GETDATE(),
         :appr_userid,
         :appr_delegated,
@@ -184,10 +238,14 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
 
     await sequelizeMSQL.query(query, {
       replacements: {
+        PK_ID,
         modulename,
         same_no_revisi,
         tgl_revisi,
         alasan_desc,
+        daftar_distribusi: stringDaftarDistribusi,
+        refrensi: stringRefrensi,
+        dokumen_terkait: stringDokumenTerkait,
         appr_userid: appr_userid || '',
         appr_delegated: appr_delegated || '',
         appr_date: appr_date || null,
@@ -248,8 +306,21 @@ const getLatestModuleRevisionNumber = async (req, res) => {
       return res.status(200).json({ no_revisi: newRevision });
     }
 
-    // Return the latest revision number from the first query
-    return res.status(200).json(result);
+    // Parse daftar_distribusi, refrensi, dokumen_terkait if they are JSON strings
+    const parsedResult = {
+      ...result,
+      daftar_distribusi: (() => {
+        try { return result.daftar_distribusi ? JSON.parse(result.daftar_distribusi) : null; } catch { return result.daftar_distribusi; }
+      })(),
+      refrensi: (() => {
+        try { return result.refrensi ? JSON.parse(result.refrensi) : result.refrensi; } catch { return result.refrensi; }
+      })(),
+      dokumen_terkait: (() => {
+        try { return result.dokumen_terkait ? JSON.parse(result.dokumen_terkait) : result.dokumen_terkait; } catch { return result.dokumen_terkait; }
+      })(),
+    };
+
+    return res.status(200).json(parsedResult);
   } catch (error) {
     console.error('Error fetching latest module revision number:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
@@ -309,8 +380,7 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
 };
 
 const updateOrCreateModuleRevision = async (req, res) => {
-  const { modulename, no_revisi, tgl_revisi, alasan_desc, appr_userid, appr_delegated, appr_date, extraData } = req.body;
-  // You may get user_id and delegated_to from req.user if needed
+  const { modulename, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
 
   if (!modulename || !no_revisi || !tgl_revisi || !alasan_desc) {
     return res.status(400).json({ message: "All fields are required." });
@@ -337,12 +407,19 @@ const updateOrCreateModuleRevision = async (req, res) => {
       type: QueryTypes.SELECT,
     });
 
+    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
+    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+
     if (existingRecord) {
       // Update the existing record
       const queryUpdate = `
         UPDATE m_module_revisions
         SET alasan_desc = :alasan_desc,
             tgl_revisi = :tgl_revisi,
+            daftar_distribusi = :daftar_distribusi,
+            refrensi = :refrensi,
+            dokumen_terkait = :dokumen_terkait,
             appr_userid = :appr_userid,
             appr_delegated = :appr_delegated,
             appr_date = :appr_date,
@@ -356,6 +433,9 @@ const updateOrCreateModuleRevision = async (req, res) => {
           tgl_revisi,
           alasan_desc,
           modulename,
+          daftar_distribusi: stringDaftarDistribusi,
+          refrensi: stringRefrensi,
+          dokumen_terkait: stringDokumenTerkait,
           appr_userid: appr_userid || '',
           appr_delegated: appr_delegated || '',
           appr_date: appr_date || null,
@@ -367,13 +447,24 @@ const updateOrCreateModuleRevision = async (req, res) => {
       await transaction.commit();
       return res.status(200).json({ message: "Module revision updated successfully." });
     } else {
+      // Get next PK_ID
+      const [pkidResult] = await sequelizeMSQL.query(
+        `SELECT ISNULL(MAX(PK_ID), 0) + 1 AS PK_ID FROM m_module_revisions`,
+        { type: Sequelize.QueryTypes.SELECT }
+      );
+      const PK_ID = pkidResult.PK_ID;
+
       // Create a new record
       const queryInsert = `
         INSERT INTO m_module_revisions (
+          PK_ID,
           modulename,
           no_revisi,
           tgl_revisi,
           alasan_desc,
+          daftar_distribusi,
+          refrensi,
+          dokumen_terkait,
           Process_Date,
           appr_userid,
           appr_delegated,
@@ -381,10 +472,14 @@ const updateOrCreateModuleRevision = async (req, res) => {
           extraData
         )
         VALUES (
+          :PK_ID,
           :modulename,
           :no_revisi,
           :tgl_revisi,
           :alasan_desc,
+          :daftar_distribusi,
+          :refrensi,
+          :dokumen_terkait,
           GETDATE(),
           :appr_userid,
           :appr_delegated,
@@ -395,10 +490,14 @@ const updateOrCreateModuleRevision = async (req, res) => {
 
       await sequelizeMSQL.query(queryInsert, {
         replacements: {
+          PK_ID,
           modulename,
           no_revisi,
           tgl_revisi,
           alasan_desc,
+          daftar_distribusi: stringDaftarDistribusi,
+          refrensi: stringRefrensi,
+          dokumen_terkait: stringDokumenTerkait,
           appr_userid: appr_userid || '',
           appr_delegated: appr_delegated || '',
           appr_date: appr_date || null,
