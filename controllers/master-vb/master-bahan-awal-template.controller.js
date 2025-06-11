@@ -15,7 +15,7 @@ const getManager = async (req, res, next) => {
     if (!user_id || user_id === '') user_id = req.query?.user_id;
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
     const query = `
-    select top 5 nama, jabatan from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
+    select top 5 nama, jabatan, user_id, inisialName from m_karyawan where isActive = 1 and Bagian = '${bagian_user}' and Job_LevelID = 3
     `;
 
     const data = await sequelizeMSQL.query(query, {
