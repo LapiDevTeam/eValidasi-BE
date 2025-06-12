@@ -97,7 +97,7 @@ static async printKodeTrialObatJadi(req, res) {
 
         <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
           <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Revisi</div>
-          <div style="width: 50%; padding: 5px 4px;">19</div>
+          <div style="width: 50%; padding: 5px 4px;">${revisi}</div>
         </div>
 
 
