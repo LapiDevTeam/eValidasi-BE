@@ -59,15 +59,16 @@ static async printKodeTrialObatJadi(req, res) {
       printBackground: true,
       footerTemplate: `   `,
       headerTemplate: `
-   <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+<table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
 
     <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
       <img src="${logoBase64}" alt="lapilogo" width="100">
+
     </td>
 
 
-    <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 24px; padding-left: 10px;">
+    <td style="border: 1px solid black; text-align: start; height: 19px; padding-left: 10px; font-weight: bold;">
       DAFTAR
     </td>
 
@@ -76,34 +77,34 @@ static async printKodeTrialObatJadi(req, res) {
       <div style="width: 100%; height: 100%; font-size: 11px; display: flex; flex-direction: column;">
 
 
-        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
-          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Nomor</div>
-          <div style="width: 50%; padding: 6px 3px;">DA.RD.000003</div>
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
+          <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Nomor</div>
+          <div style="width: 50%; padding: 5px 4px;">DA.RD.000003</div>
         </div>
 
 
-        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
-          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Tanggal Berlaku</div>
-          <div style="width: 50%; padding: 6px 3px;"></div>
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 40px;">
+          <div style="width: 50%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Berlaku</div>
+          <div style="width: 50%; padding: 8px 4px;"></div>
         </div>
 
 
-        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
-          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Tanggal Review</div>
-          <div style="width: 50%; padding: 6px 3px;"></div>
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 40px;">
+          <div style="width: 50%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Review</div>
+          <div style="width: 50%; padding: 8px 4px;"></div>
         </div>
 
 
-        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
-          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Revisi</div>
-          <div style="width: 50%; padding: 6px 3px;">${revisi}</div>
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
+          <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Revisi</div>
+          <div style="width: 50%; padding: 5px 4px;">19</div>
         </div>
 
 
-        <div style="display: flex; min-height: 30px;">
-          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Halaman</div>
-          <div style="width: 50%; padding: 6px 3px;">
-            <span class="pageNumber"></span> dari <span class="totalPages"></span>
+        <div style="display: flex; min-height: 28px;">
+          <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Halaman</div>
+          <div style="width: 50%; padding: 5px 4px;">
+            <span class="pageNumber">1</span> dari <span class="totalPages">13</span>
           </div>
         </div>
 
@@ -118,6 +119,8 @@ static async printKodeTrialObatJadi(req, res) {
     </td>
   </tr>
 </table>
+
+
       `,
       margin: { bottom: "60px", top: "200px", left: "40px", right: "40px" },
     });
