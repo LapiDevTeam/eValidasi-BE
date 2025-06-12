@@ -1304,7 +1304,7 @@ async function getHistoryData(req, res, next) {
   }
 
   try {
-    const strTemp = `EXEC spNPHistory '${PK_ID_Item}'`;
+    const strTemp = `EXEC spNPHistoryMich '${PK_ID_Item}'`;
     const recTemp = await sequelizeMSQL.query(strTemp, { type: QueryTypes.SELECT });
 
     if (recTemp.length > 0) {
@@ -1498,7 +1498,7 @@ async function sbPrint_BahanBakuAktif(req, res, next) {
     const reportData = recTemp[0];
 
     const historyQuery = `
-      EXEC spNPHistory_Print :itemID
+      EXEC spNPHistoryMich_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
@@ -1555,7 +1555,7 @@ async function sbPrint_BahanTambahan(req, res, next) {
     const reportData = recTemp[0];
 
     const historyQuery = `
-      EXEC spNPHistory_Print :itemID
+      EXEC spNPHistoryMich_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
@@ -1628,7 +1628,7 @@ async function sbPrint_BahanLain(req, res, next) {
     }
 
     const historyQuery = `
-      EXEC spNPHistory_Print :itemID
+      EXEC spNPHistoryMich_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
