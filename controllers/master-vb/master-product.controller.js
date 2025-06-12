@@ -147,9 +147,31 @@ class MasterProductController {
 
       if (!productID) {
         console.log({ objectasdasd: productID });
-        const queryGetProduct = `
+        let queryGetProduct = `
         SELECT TOP 1 isnull(product_id, '') as Product_ID FROM m_product_auto_number where pk_id > (select top 1 PK_ID From m_product_auto_number where product_id in (select top 1 product_id from m_Product_template where isnull(product_periode,'') = '' and len(product_id) = 2 order by pk_Id desc)) order by pk_id
         `;
+
+        // IF jenis_kemasan === 'BFS' THEN
+        if (jenis_kemasan === 'BFS' && productRuangLingkup !== '04') {
+          queryGetProduct = `
+            SELECT TOP 1 isnull(product_id, '') as Product_ID
+            FROM m_product_auto_number
+            WHERE pk_id > (
+              select top 1 PK_ID
+              From m_product_auto_number
+              where product_id in (
+                select top 1 product_id
+                from m_Product_template
+                where isnull(product_periode,'') = ''
+                  and len(product_id) = 2
+                  and jenis_kemasan = 'BFS'
+                order by pk_Id desc
+              )
+            )
+            AND Jenis_Kemasan = 'BFS'
+            order by pk_id
+          `;
+        }
         console.log({queryGetProduct});
         const [getProductID] = await sequelizeMSQL.query(queryGetProduct, {});
         if (getProductID.length === 0) {
