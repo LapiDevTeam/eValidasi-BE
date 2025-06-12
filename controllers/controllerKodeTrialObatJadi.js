@@ -59,50 +59,67 @@ static async printKodeTrialObatJadi(req, res) {
       printBackground: true,
       footerTemplate: `   `,
       headerTemplate: `
- <table style="width: 90%; font-size: 12px; border-collapse: collapse; font-family: Verdana, sans-serif; border: 1px solid black; margin: 0 auto 0 auto;">
+   <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
-    <td style="border: 1px solid black; width: 140px; height: 100px; text-align: center;" rowspan="2">
-      <img src="${logoBase64}" alt="LAPI Logo" width="100" style="vertical-align: middle;">
+
+    <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
+      <img src="${logoBase64}" alt="lapilogo" width="100">
     </td>
 
-    <td style="border: 1px solid black; font-weight: bold; text-align: left; padding-left: 10px; height: 24px;">
+
+    <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 24px; padding-left: 10px;">
       DAFTAR
     </td>
 
-    <td style="width: 200px; height: 100px; border: 1px solid black; vertical-align: top;" rowspan="2">
-      <div style="height: 100%; display: flex; flex-direction: column; font-size: 10px;">
-        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Nomor</div>
-          <div style="flex: 1; padding: 4px;">DA.RD.000003</div>
+
+    <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
+      <div style="width: 100%; height: 100%; font-size: 11px; display: flex; flex-direction: column;">
+
+
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
+          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Nomor</div>
+          <div style="width: 50%; padding: 6px 3px;">DA.RD.000003</div>
         </div>
-        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Tanggal Berlaku</div>
-          <div style="flex: 1; padding: 4px;">${formattedTanggal}</div>
+
+
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
+          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Tanggal Berlaku</div>
+          <div style="width: 50%; padding: 6px 3px;"></div>
         </div>
-        <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
-          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Revisi</div>
-          <div style="flex: 1; padding: 4px;">${revisi}</div>
+
+
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
+          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Tanggal Review</div>
+          <div style="width: 50%; padding: 6px 3px;"></div>
         </div>
-        <div style="display: flex; flex: 1;">
-          <div style="flex: 1; padding: 4px; border-right: 1px solid black;">Halaman</div>
-          <div style="flex: 1; padding: 4px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+
+
+        <div style="display: flex; border-bottom: 1px solid black; min-height: 30px;">
+          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Revisi</div>
+          <div style="width: 50%; padding: 6px 3px;">${revisi}</div>
         </div>
+
+
+        <div style="display: flex; min-height: 30px;">
+          <div style="width: 50%; padding: 6px 3px; border-right: 1px solid black;">Halaman</div>
+          <div style="width: 50%; padding: 6px 3px;">
+            <span class="pageNumber"></span> dari <span class="totalPages"></span>
+          </div>
+        </div>
+
       </div>
     </td>
   </tr>
 
+
   <tr>
-    <td style="border: 1px solid black; text-align: center; font-weight: bold;">
+    <td style="border: 1px solid gray; height: 98px; text-align: center; font-weight: bold;">
       KODE TRIAL OBAT JADI
     </td>
   </tr>
 </table>
-
-
-
-
       `,
-      margin: { bottom: "60px", top: "140px", left: "40px", right: "40px" },
+      margin: { bottom: "60px", top: "200px", left: "40px", right: "40px" },
     });
 
     await browser.close();
