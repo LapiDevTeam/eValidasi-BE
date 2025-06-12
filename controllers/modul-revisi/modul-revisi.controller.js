@@ -26,7 +26,8 @@ const getModuleRevisionsDA = async (req, res) => {
         appr_userid,
         appr_delegated,
         appr_date,
-        extraData
+        extraData,
+        mgr_userid
       FROM m_module_revisions
       WHERE modulename = :modulename
     `;
@@ -75,7 +76,7 @@ const getModuleRevisionsDA = async (req, res) => {
 
 const createModuleRevision = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
+    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
@@ -121,7 +122,8 @@ const createModuleRevision = async (req, res) => {
         appr_userid,
         appr_delegated,
         appr_date,
-        extraData
+        extraData,
+        mgr_userid
       )
       VALUES (
         :PK_ID,
@@ -136,7 +138,8 @@ const createModuleRevision = async (req, res) => {
         :appr_userid,
         :appr_delegated,
         :appr_date,
-        :extraData
+        :extraData,
+        :mgr_userid
       )
     `;
 
@@ -154,6 +157,7 @@ const createModuleRevision = async (req, res) => {
         appr_delegated: appr_delegated || '',
         appr_date: appr_date || null,
         extraData: extraData || null,
+        mgr_userid: mgr_userid || null,
       },
       type: Sequelize.QueryTypes.INSERT,
     });
@@ -167,7 +171,7 @@ const createModuleRevision = async (req, res) => {
 
 const createModuleRevisionWithSameNumber = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
+    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
       return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
@@ -217,7 +221,8 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
         appr_userid,
         appr_delegated,
         appr_date,
-        extraData
+        extraData,
+        mgr_userid
       )
       VALUES (
         :PK_ID,
@@ -232,7 +237,8 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
         :appr_userid,
         :appr_delegated,
         :appr_date,
-        :extraData
+        :extraData,
+        :mgr_userid
       )
     `;
 
@@ -250,6 +256,7 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
         appr_delegated: appr_delegated || '',
         appr_date: appr_date || null,
         extraData: extraData || null,
+        mgr_userid: mgr_userid || null,
       },
       type: Sequelize.QueryTypes.INSERT,
     });
@@ -355,13 +362,14 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
       UPDATE m_module_revisions
       SET appr_userid = :user_id,
           appr_delegated = :delegated_to,
-          appr_date = :sqlDtTime
+          appr_date = :sqlDtTime,
+          mgr_userid = :mgr_userid
       WHERE modulename = :modulename
         AND appr_date IS NULL;
     `;
 
     const [updateResult] = await sequelizeMSQL.query(updateQuery, {
-      replacements: { user_id, delegated_to, sqlDtTime, modulename },
+      replacements: { user_id, delegated_to, sqlDtTime, modulename, mgr_userid },
       transaction,
     });
 
@@ -380,7 +388,7 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
 };
 
 const updateOrCreateModuleRevision = async (req, res) => {
-  const { modulename, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData } = req.body;
+  const { modulename, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
 
   if (!modulename || !no_revisi || !tgl_revisi || !alasan_desc) {
     return res.status(400).json({ message: "All fields are required." });
@@ -423,7 +431,8 @@ const updateOrCreateModuleRevision = async (req, res) => {
             appr_userid = :appr_userid,
             appr_delegated = :appr_delegated,
             appr_date = :appr_date,
-            extraData = :extraData
+            extraData = :extraData,
+            mgr_userid = :mgr_userid
         WHERE no_revisi = :no_revisi AND modulename = :modulename
       `;
 
@@ -440,6 +449,7 @@ const updateOrCreateModuleRevision = async (req, res) => {
           appr_delegated: appr_delegated || '',
           appr_date: appr_date || null,
           extraData: extraData || null,
+          mgr_userid: mgr_userid || null,
         },
         transaction,
       });
@@ -469,7 +479,8 @@ const updateOrCreateModuleRevision = async (req, res) => {
           appr_userid,
           appr_delegated,
           appr_date,
-          extraData
+          extraData,
+          mgr_userid
         )
         VALUES (
           :PK_ID,
@@ -484,7 +495,8 @@ const updateOrCreateModuleRevision = async (req, res) => {
           :appr_userid,
           :appr_delegated,
           :appr_date,
-          :extraData
+          :extraData,
+          :mgr_userid
         )
       `;
 
@@ -502,6 +514,7 @@ const updateOrCreateModuleRevision = async (req, res) => {
           appr_delegated: appr_delegated || '',
           appr_date: appr_date || null,
           extraData: extraData || null,
+          mgr_userid: mgr_userid || null,
         },
         transaction,
       });
