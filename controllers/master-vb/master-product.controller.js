@@ -177,7 +177,6 @@ class MasterProductController {
                 from m_Product_template
                 where isnull(product_periode,'') = ''
                   and len(product_id) = 2
-                  and jenis_kemasan = 'BFS'
                 order by pk_Id desc
               )
             )
