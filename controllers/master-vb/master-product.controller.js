@@ -161,6 +161,7 @@ class MasterProductController {
               order by pk_Id desc
             )
           )
+          AND Jenis_Kemasan <> 'BFS'
           order by pk_id
         `;
 

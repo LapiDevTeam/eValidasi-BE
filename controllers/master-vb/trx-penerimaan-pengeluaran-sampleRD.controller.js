@@ -1498,7 +1498,7 @@ async function sbPrint_BahanBakuAktif(req, res, next) {
     const reportData = recTemp[0];
 
     const historyQuery = `
-      EXEC spNPHistoryMich_Print :itemID
+      EXEC spNPHistory_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
@@ -1555,7 +1555,7 @@ async function sbPrint_BahanTambahan(req, res, next) {
     const reportData = recTemp[0];
 
     const historyQuery = `
-      EXEC spNPHistoryMich_Print :itemID
+      EXEC spNPHistory_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
@@ -1628,7 +1628,7 @@ async function sbPrint_BahanLain(req, res, next) {
     }
 
     const historyQuery = `
-      EXEC spNPHistoryMich_Print :itemID
+      EXEC spNPHistory_Print :itemID
     `;
 
     const historyData = await sequelizeMSQL.query(historyQuery, {
