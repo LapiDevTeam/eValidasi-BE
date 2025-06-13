@@ -5,6 +5,7 @@ const { authentication } = require("../../middlewares/authentication");
 
 // fetch Product
 masterProductRouter.get("/", MasterProductController.fetchProduct);
+masterProductRouter.get("/detail", MasterProductController.fetchProductById);
 // fetch bentuk sediaan
 masterProductRouter.get("/bentuk-sediaan", MasterProductController.fetchBentukSediaan);
 // fetch Ruang Lingkup

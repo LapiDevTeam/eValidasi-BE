@@ -14,12 +14,52 @@ class MasterProductController {
       if (isTemplate == 0) {
         viewName = 'vwProduct';
       }
+
+      // Add jenis_kemasan from m_Product_template by PK_ID
       const sqlCode = `
-      select A.Product_ID, Product_Name, Product_Category, Category_Name, Product_Currency, Currency_Description, Product_HPP, Product_HNA, Product_HTollIN, Product_HTollINFee, Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Unit_Description, Product_Type, Type_Name, Product_IntermediateID, Item_Name,A.Product_Init, Product_ExpTime, Product_SalesID, Product_BatchSize, [Product_Owner], Product_bahanAktif, Product_BentukSediaan, Product_Dosis, Product_Kemasan, Product_RuangLingkup,Product_Status,isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer, A.product_notppi, A.Sediaan_kode, A._kode_Product_RuangLingkup   , A.Kategori_prod, A.jenis_prod
-      from ${viewName} as A
-      left join m_customer_product on A.product_id = m_customer_product.product_id
-      left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
-      where A.isActive = 1 and product_category = :productCategory order by A.Product_ID
+        select
+          A.Product_ID,
+          Product_Name,
+          Product_Category,
+          Category_Name,
+          Product_Currency,
+          Currency_Description,
+          Product_HPP,
+          Product_HNA,
+          Product_HTollIN,
+          Product_HTollINFee,
+          Product_VolumeInBox,
+          Product_VolumeInBigBox,
+          Product_Unit,
+          Unit_Description,
+          Product_Type,
+          Type_Name,
+          Product_IntermediateID,
+          Item_Name,
+          A.Product_Init,
+          Product_ExpTime,
+          Product_SalesID,
+          Product_BatchSize,
+          [Product_Owner],
+          Product_bahanAktif,
+          Product_BentukSediaan,
+          Product_Dosis,
+          Product_Kemasan,
+          Product_RuangLingkup,
+          Product_Status,
+          isnull(m_customer_product.cust_id,'')+'-'+isnull(cust_name,'') as customer,
+          A.product_notppi,
+          A.Sediaan_kode,
+          A._kode_Product_RuangLingkup,
+          A.Kategori_prod,
+          A.jenis_prod,
+          PT.jenis_kemasan -- add this line
+        from ${viewName} as A
+        left join m_customer_product on A.product_id = m_customer_product.product_id
+        left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
+        left join m_Product_template PT on PT.PK_ID = A.PK_ID -- join to get jenis_kemasan
+        where A.isActive = 1 and product_category = :productCategory
+        order by A.Product_ID
       `;
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
@@ -31,6 +71,121 @@ class MasterProductController {
       console.log(sqlCode, 8);
 
       res.status(200).json({ data: _data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async fetchProductById(req, res, next) {
+    try {
+      const { productID, isTemplate = 1 } = req.query;
+
+      if (!productID) {
+        return res.status(400).json({ message: 'productID is required!' });
+      }
+
+      // Choose table based on isTemplate
+      const tableName = isTemplate == 1 ? 'm_Product_template' : 'm_Product';
+
+      // Build query (select all columns for completeness)
+      const sqlCode = `
+      SELECT
+        Product_ID,
+        Product_Init,
+        Product_Name,
+        Product_Category,
+        Product_Currency,
+        Product_HPP,
+        Product_HNA,
+        Product_HTollin,
+        Product_HTollInFee,
+        Product_VolumeInBox,
+        Product_VolumeInBigBox,
+        Product_Unit,
+        Product_Type,
+        Product_IntermediateID,
+        isActive,
+        User_ID,
+        Delegated_To,
+        Process_Date,
+        Product_Sediaan,
+        Product_ExpTime,
+        Product_SalesID,
+        Product_isPPA,
+        Product_isPseudo,
+        Product_isBuy,
+        Product_Batchsize,
+        Product_Location,
+        Product_GroupSediaan,
+        Product_GroupTargetRealisasi,
+        Product_SalesName,
+        Product_Status,
+        Product_SalesHNA,
+        Product_ShortName,
+        Product_SalesUnit,
+        Product_isSuplemen,
+        Product_LabelQA,
+        Product_RetainBigSuperUnit,
+        Product_RetainKonversiBig,
+        Product_RetainBigUnit,
+        Product_RetainKonversi,
+        Product_RetainSmallUnit,
+        Product_SediaanPlanning,
+        Product_Owner,
+        product_import,
+        Product_KonversiProduksiToSales,
+        Product_bahanAktif,
+        Product_PN_HK_PProcessing,
+        Product_PN_HK_PKSekunder,
+        Product_PN_HK_Produksi,
+        Product_PN_HK_PPIProduksi,
+        Product_versiBPOM,
+        Product_NotPPI,
+        Product_BentukSediaan,
+        Product_Kemasan,
+        jenis_kemasan,
+        Product_Dosis,
+        Product_RuangLingkup,
+        PK_ID,
+        Kategori_prod,
+        ${
+          isTemplate == 1
+            ? `
+        Product_Periode,
+        Approve_date,
+        User_Approve,
+        User_Delegated,
+        from_update,
+        flag_update,
+        jenis_prod,
+        CDOB_01,
+        CDOB_02,
+        CDOB_03
+        `
+            : `
+        from_update,
+        flag_update,
+        jenis_prod,
+        CDOB_01,
+        CDOB_02,
+        CDOB_03
+        `
+        }
+      FROM ${tableName}
+      WHERE Product_ID = :productID
+      ${isTemplate == 1 ? "AND ISNULL(Product_Periode, '') = ''" : ''}
+    `;
+
+      const [result] = await sequelizeMSQL.query(sqlCode, {
+        type: QueryTypes.SELECT,
+        replacements: { productID },
+      });
+
+      if (!result) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      res.status(200).json({ data: result });
     } catch (error) {
       next(error);
     }
@@ -95,9 +250,10 @@ class MasterProductController {
     try {
       const { user_id, delegated_to, nama_user, bagian_user } = req.user;
 
-      if (!user_id || !bagian_user) return res.status(401).json({
-        message: 'Unauthorized request!'
-      });
+      if (!user_id || !bagian_user)
+        return res.status(401).json({
+          message: 'Unauthorized request!',
+        });
 
       let {
         productCategory,
@@ -187,7 +343,7 @@ class MasterProductController {
             order by pk_id
           `;
         }
-        console.log({queryGetProduct});
+        console.log({ queryGetProduct });
         const [getProductID] = await sequelizeMSQL.query(queryGetProduct, {});
         if (getProductID.length === 0) {
           return res.status(400).json({ message: 'Gagal mendapatkan Product ID' });
@@ -362,7 +518,7 @@ class MasterProductController {
         delegatedTo = delegated_to,
       } = req.body;
 
-      if (typeof(productNotPPI) === "undefined" || productNotPPI === null) {
+      if (typeof productNotPPI === 'undefined' || productNotPPI === null) {
         return res.status(400).json({ message: 'productNotPPI is required!' });
       }
 
@@ -710,14 +866,14 @@ class MasterProductController {
       }
 
       const result = await MasterProductController.getBahanAktifByProuductID(productID);
-      console.log({resulta: result});
+      console.log({ resulta: result });
       const resp = {
         message: 'OK',
         data: result,
       };
       res.status(200).json(resp);
     } catch (error) {
-      console.log({error});
+      console.log({ error });
       next(error);
     }
   }
@@ -938,9 +1094,9 @@ class MasterProductController {
       // await insertDataIntoWordDocument(path, result);
 
       res.status(200).json({
-         message: 'OK',
-         data: result,
-        });
+        message: 'OK',
+        data: result,
+      });
     } catch (error) {
       console.error('Error:', error);
       res.status(500).json({ message: 'Failed to export file', extraData: error.message || 'internal server error' });
@@ -963,7 +1119,7 @@ class MasterProductController {
       let countString;
       let tableName = 'vwProduct_template';
       if (isTemplate !== 'true') tableName = 'vwProduct';
-      console.log({tableName});
+      console.log({ tableName });
       if (productCategory === '01') {
         file = 'DA.RD.000001_Rev11.doc';
         queryString = `
@@ -1025,7 +1181,7 @@ class MasterProductController {
 
       const data = {
         rows: result,
-        count: total?.count || 0
+        count: total?.count || 0,
       };
 
       const response = getPagingData(data, page, limit);
@@ -1044,7 +1200,7 @@ class MasterProductController {
       }
 
       let file;
-      let noRevisi = ''
+      let noRevisi = '';
       let queryString;
       let tableName = 'vwProduct_template';
       if (productCategory === '01') {
@@ -1070,7 +1226,7 @@ class MasterProductController {
         `;
       } else {
         file = 'DA.RD.000026';
-        noRevisi = '20'
+        noRevisi = '20';
         queryString = `
           SELECT
             ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
@@ -1112,7 +1268,10 @@ class MasterProductController {
         });
 
         products[i].bahan_aktif_detail = bahanAktifRows.map(
-          row => `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''})`
+          (row) =>
+            `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${
+              row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''
+            })`
         );
       }
 
@@ -1202,7 +1361,10 @@ class MasterProductController {
 
         // Format as array of string: "-BahanAktif (Dosis)", sanitize whitespace
         products[i].bahan_aktif_detail = bahanAktifRows.map(
-          row => `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''})`
+          (row) =>
+            `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${
+              row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''
+            })`
         );
       }
 
@@ -1238,7 +1400,9 @@ class MasterProductController {
       });
 
       if (formulaResult.length > 0) {
-        return res.status(400).json({ message: 'Master product sudah ada di formula, tidak bisa di hapus, harap hapus formula jika ingin hapus produk' });
+        return res
+          .status(400)
+          .json({ message: 'Master product sudah ada di formula, tidak bisa di hapus, harap hapus formula jika ingin hapus produk' });
       }
 
       const checkRetainedQuery = `
@@ -1287,7 +1451,7 @@ class MasterProductController {
 
   static async getBahanAktifByProuductID(productID) {
     if (!productID) {
-        return null;
+      return null;
     }
 
     const query = `
@@ -1299,24 +1463,24 @@ class MasterProductController {
     `;
 
     try {
-        const result = await sequelizeMSQL.query(query, {
-            replacements: { productID },
-            type: sequelizeMSQL.QueryTypes.SELECT
-        });
+      const result = await sequelizeMSQL.query(query, {
+        replacements: { productID },
+        type: sequelizeMSQL.QueryTypes.SELECT,
+      });
 
-        console.log({result});
-        if (result.length === 0) {
-            return null;
-        }
-
-        return result.map(row => ({
-            PK_ID: row.PK_ID,
-            Product_ID: row.Product_ID,
-            Product_BahanAktif: row.Product_BahanAktif,
-            Product_Dosis: row.Product_Dosis
-        }));
-    } catch (error) {
+      console.log({ result });
+      if (result.length === 0) {
         return null;
+      }
+
+      return result.map((row) => ({
+        PK_ID: row.PK_ID,
+        Product_ID: row.Product_ID,
+        Product_BahanAktif: row.Product_BahanAktif,
+        Product_Dosis: row.Product_Dosis,
+      }));
+    } catch (error) {
+      return null;
     }
   }
 
@@ -1398,9 +1562,9 @@ class MasterProductController {
       const { user_id, delegated_to } = req.user;
       let { psn, id, tgl, fileN, uid = user_id, did = delegated_to, token } = req.query;
 
-      if(!user_id) throw new MyError(401, 'not authorized');
+      if (!user_id) throw new MyError(401, 'not authorized');
 
-      if (!psn || !id || !tgl || !fileN ) {
+      if (!psn || !id || !tgl || !fileN) {
         throw new MyError(400, 'All query parameters are required');
       }
 
@@ -1422,13 +1586,13 @@ class MasterProductController {
   }
 
   static generateLink(psn, id, tgl, fileN, uid, did, token) {
-    const urlEprintHub = process.env.EPRINTHUB_ENDPOINT || 'http://192.168.1.39:8080/eprinthub/PrintOffice.aspx'
+    const urlEprintHub = process.env.EPRINTHUB_ENDPOINT || 'http://192.168.1.39:8080/eprinthub/PrintOffice.aspx';
     return `${urlEprintHub}?psn=${psn}&id=${id}&tgl=${tgl}&FileN=${fileN}&UID=${uid}&DID=${did}&Token=${token}`;
   }
 
   static async getCDOBstatus(req, res, next) {
     try {
-      const {productID, isTemplate} = req.query;
+      const { productID, isTemplate } = req.query;
       let tableName = 'm_product';
 
       if (isTemplate) tableName = 'm_product_template';
@@ -1442,28 +1606,27 @@ class MasterProductController {
 
       const result = await sequelizeMSQL.query(strSQL, {
         replacements: {
-          productID
-        }
-      })
+          productID,
+        },
+      });
 
       const resp = {
-        message: 'OK'
-      }
-      if (!result || result.length <= 0 ) {
+        message: 'OK',
+      };
+      if (!result || result.length <= 0) {
         resp['data'] = null;
       }
 
-      resp['data'] = result[0]
+      resp['data'] = result[0];
 
       return res.status(200).json(resp);
-
     } catch (error) {
-      console.log({error});
+      console.log({ error });
       const resp = {
         message: 'Internal server error',
-        details: error?.message
-      }
-      return res.status(500).json(resp)
+        details: error?.message,
+      };
+      return res.status(500).json(resp);
     }
   }
 }
