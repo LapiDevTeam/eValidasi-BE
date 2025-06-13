@@ -52,12 +52,10 @@ class MasterProductController {
           A.Sediaan_kode,
           A._kode_Product_RuangLingkup,
           A.Kategori_prod,
-          A.jenis_prod,
-          PT.jenis_kemasan -- add this line
+          A.jenis_prod
         from ${viewName} as A
         left join m_customer_product on A.product_id = m_customer_product.product_id
         left join m_customer on m_customer.cust_id = m_Customer_Product.cust_id
-        left join m_Product_template PT on PT.PK_ID = A.PK_ID -- join to get jenis_kemasan
         where A.isActive = 1 and product_category = :productCategory
         order by A.Product_ID
       `;
