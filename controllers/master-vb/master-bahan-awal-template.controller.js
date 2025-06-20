@@ -2763,6 +2763,318 @@ async function cmdApprove(req, res, next) {
   }
 }
 
+const queryItemOther = async (itemType, groupId) => {
+  try {
+    // Validate inputs
+    if (!itemType || !groupId) {
+      throw new Error('Item type and group ID are required');
+    }
+
+    // Build the main query
+    let sql = `
+      SELECT
+        Item_ID,
+        Group_name,
+        Item_Name,
+        Item_Size,
+        Item_Description,
+        item_unit,
+        item_group,
+        item_type,
+        item_Currency,
+        Item_Price,
+        Item_MinOrder,
+        Item_LeadTime,
+        item_PackingSize,
+        Item_Localindent,
+        Item_LastPriceCurrency,
+        item_LastPrice,
+        item_lastPriceDate,
+        item_status,
+        IsActive,
+        '1' as SubCode
+      FROM vwM_ItemWithGroup
+      WHERE item_type LIKE :itemType
+        AND item_isPPI = 1
+        AND Item_Group = :groupId
+    `;
+
+    // Add union to include group ID with empty values
+    sql += `
+      UNION ALL
+      SELECT
+        :groupId + Group_ID,
+        '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+        '0'
+      FROM m_Item_Group
+      WHERE Group_ID <> 'NN'
+        AND ISNUMERIC(LEFT(Group_ID,1)) = 0
+      ORDER BY 1
+    `;
+
+    // Execute query
+    const results = await sequelizeMSQL.query(sql, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        itemType: itemType,
+        groupId: groupId
+      }
+    });
+
+    return {
+      success: true,
+      data: results,
+      columns: [
+        "KODE", "MASTER", "NAMA BARANG", "UKURAN", "KETERANGAN", "SATUAN",
+        "", "", "", "", "", "", "", "", "", "", "", "", "Is Active", "Sub Code"
+      ]
+    };
+  } catch (error) {
+    console.error('Error in queryItemOther:', error);
+    return {
+      success: false,
+      message: error.message || 'Internal Server Error'
+    };
+  }
+};
+
+const queryGroupBahan = async (itemType) => {
+  try {
+    // Validate input
+    if (!itemType) {
+      throw new Error('Item type is required');
+    }
+
+    // Build the query
+    const sql = `
+      SELECT
+        Group_ID,
+        Group_Name
+      FROM m_Item_Group
+      WHERE Group_ID <> 'NN'
+        AND ISNUMERIC(LEFT(Group_ID,1)) = 0
+        AND group_type LIKE :itemType
+      ORDER BY 1
+    `;
+
+    // Execute query
+    const results = await sequelizeMSQL.query(sql, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        itemType: itemType
+      }
+    });
+
+    return {
+      success: true,
+      data: results,
+      columns: ["KODE GROUP", "NAMA GROUP BAHAN"]
+    };
+  } catch (error) {
+    console.error('Error in queryGroupBahan:', error);
+    return {
+      success: false,
+      message: error.message || 'Internal Server Error'
+    };
+  }
+};
+
+const viewItemIsHalal = async (itemType, groupId) => {
+  try {
+    // Validate inputs
+    if (!groupId) {
+      throw new Error('Group ID is required');
+    }
+
+    // Default strMsgBox value is 0 in the original code
+    const strMsgBox = 0;
+    let sql, columns;
+
+    if (strMsgBox === 1) {
+      // Path 1: Get halal items (specific filter)
+      columns = [
+        "KODE", "MASTER", "NAMA BARANG", "UKURAN", "KETERANGAN", "SATUAN",
+        "", "", "", "", "", "", "", "", "", "", "", "", "Is Active", "Owner"
+      ];
+
+      sql = `
+        SELECT
+          Item_ID,
+          Group_name,
+          Item_Name,
+          Item_Size,
+          Item_Description,
+          item_unit,
+          item_group,
+          item_type,
+          item_Currency,
+          Item_Price,
+          Item_MinOrder,
+          Item_LeadTime,
+          item_PackingSize,
+          Item_Localindent,
+          Item_LastPriceCurrency,
+          item_LastPrice,
+          item_lastPriceDate,
+          item_status,
+          IsActive,
+          Owner
+        FROM vwM_ItemIsHalal
+        WHERE isactive = 1
+          AND Item_Group LIKE :groupId
+          AND ISNULL(ishalal,'0') = '0'
+        ORDER BY Item_ID
+      `;
+    } else {
+      // Path 2: Get max item templates (default path)
+      columns = ["Item Group", "Kode Item"];
+
+      sql = `
+        SELECT
+          item_group,
+          MAX(item_sub) as item_sub
+        FROM vw_ItemMax_template
+        WHERE item_group = :groupId
+        GROUP BY item_group, item_main
+        ORDER BY 2
+      `;
+    }
+
+    // Execute query
+    const results = await sequelizeMSQL.query(sql, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        groupId: groupId
+      }
+    });
+
+    if (results.length === 0) {
+      return {
+        success: false,
+        message: "Data Not Found!"
+      };
+    }
+
+    // For the second path (default), process results to get the last batch character
+    if (strMsgBox !== 1) {
+      const processedResults = await Promise.all(results.map(async (result) => {
+        // Determine which function to use based on item type and group
+        const fnName = (itemType === "BK" && groupId !== "RH")
+          ? "fnGetItemLastChar_BK"
+          : "fnGetItemLastChar";
+
+        // Get the last batch character using the appropriate SQL function
+        const query = `SELECT dbo.[${fnName}](:itemSub) as strLastBatch`;
+        const [lastBatchResult] = await sequelizeMSQL.query(query, {
+          type: QueryTypes.SELECT,
+          replacements: {
+            itemSub: result.item_sub
+          }
+        });
+
+        // Calculate the extracted item ID (following the VB string manipulation logic)
+        const strLastBatch = lastBatchResult?.strLastBatch || '';
+        const intSTART = (result.item_group || '').length + 2;
+        const intEND = (strLastBatch || '').length - (result.item_group || '').length - 1;
+
+        return {
+          ...result,
+          strLastBatch,
+          lblItem_ID: strLastBatch,
+          txtItem_ID: strLastBatch.substring(intSTART, intEND)
+        };
+      }));
+
+      return {
+        success: true,
+        data: processedResults,
+        columns
+      };
+    }
+
+    // For path 1, format the results differently
+    const processedResults = results.map(item => {
+      const intSTART = (item.item_group || '').length + 2;
+      const intEND = (item.Item_ID || '').length - (item.item_group || '').length - 1;
+
+      return {
+        ...item,
+        lblItem_ID: (item.Item_ID || '').substring(0, (item.Item_ID || '').length - 2),
+        txtItem_ID: (item.Item_ID || '').substring(intSTART, intEND).substring(0, intEND - 2),
+        txtItem_Name: item.Item_Name
+      };
+    });
+
+    return {
+      success: true,
+      data: processedResults,
+      columns
+    };
+  } catch (error) {
+    console.error('Error in viewItemIsHalal:', error);
+    return {
+      success: false,
+      message: error.message || 'Internal Server Error'
+    };
+  }
+};
+
+const getQueryController = async (req, res, next) => {
+  try {
+    const { groupId, itemType } = req.query;
+
+    // Validate required parameters
+    if (!groupId) {
+      return res.status(400).json({
+        success: false,
+        message: "Harap Pilih Group Code"
+      });
+    }
+
+    if (!itemType) {
+      return res.status(400).json({
+        success: false,
+        message: "Item Type is required"
+      });
+    }
+
+    // Determine which query to execute based on groupId format
+    let result;
+
+    if (!isNaN(parseInt(groupId.charAt(0)))) {
+      // If first character is numeric, call queryItemOther
+      result = await queryItemOther(itemType, groupId);
+    } else {
+      // If first character is not numeric, call viewItemIsHalal
+      result = await viewItemIsHalal(itemType, groupId);
+    }
+
+    // Check if the query was successful
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        message: result.message || "Data Not Found!"
+      });
+    }
+
+    // Return successful response with data
+    return res.status(200).json({
+      success: true,
+      data: result.data
+    });
+
+  } catch (error) {
+    console.error('Error in getQueryController:', error);
+
+    // Pass to Express error handler or handle directly
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   cmdApprove,
   printTest,
@@ -2784,5 +3096,6 @@ module.exports = {
   approveRevisionByItemGroup,
   updateOrCreateRevision,
   getViewDPBA,
-  getManager
+  getManager,
+  getQueryController
 };
