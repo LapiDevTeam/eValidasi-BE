@@ -1955,11 +1955,11 @@ async function getViewDPBATemplate(req, res, next) {
     if (item_group === 'ä' || item_group === 'RH') {
       queryString = `
         SELECT * FROM (
-          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
           FROM v_DPBA_template
           WHERE Item_group in ('ä', 'RH')
         ) AS Result
-        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
@@ -1968,11 +1968,11 @@ async function getViewDPBATemplate(req, res, next) {
     } else {
       queryString = `
         SELECT * FROM (
-          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
           FROM v_DPBA_template
           WHERE Item_group = :item_group
         ) AS Result
-        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
@@ -2108,11 +2108,11 @@ async function getViewDPBA(req, res, next) {
     if (item_group === 'ä' || item_group === 'RH') {
       queryString = `
         SELECT * FROM (
-          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
           FROM v_DPBA
           WHERE Item_group in ('ä', 'RH')
         ) AS Result
-        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA
@@ -2121,11 +2121,11 @@ async function getViewDPBA(req, res, next) {
     } else {
       queryString = `
         SELECT * FROM (
-          SELECT *, ROW_NUMBER() OVER (ORDER BY NAMA) AS RowNum
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
           FROM v_DPBA
           WHERE Item_group = :item_group
         ) AS Result
-        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY NAMA ASC
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA
