@@ -2583,6 +2583,90 @@ async function printTest(req, res) {
   }
 }
 
+async function printHeader(req, res) {
+  const { link, noDoc, tanggal, revisi,  landscape = 1} = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    // await page.setExtraHTTPHeaders({
+    //   'authentication': token
+    // });
+
+    await page.goto(link, { waitUntil: 'networkidle0' });
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: ${landscape === 0 ? `12px` : `9px`} !important;
+ font-family: Verdana, sans-serif;        }
+
+        table {
+          margin-top: ${landscape === 0 ? `12px` : `9px`} !important; /* Ensures margin applies to all tables */
+        }
+      `,
+    });
+    let headerLandscape = `
+<table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 11px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tbody>
+    <tr>
+      <td style="border: 1px solid gray; width: 90px; height: 50px; text-align: center;" rowspan="2">
+        <img src="${logoBase64}" alt="lapilogo" width="50">
+      </td>
+      <td style="border: 1px solid #6b7280;">
+        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 11px;">
+            <span>FORMULA PRODUK</span>
+          </h3>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+      `;
+
+      let footerLandscape = 
+      `
+        <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tr>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Nomor</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${noDoc}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Tanggal</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${tanggal}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Revisi</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${revisi}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Halaman</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">
+      <span class="pageNumber"></span> dari <span class="totalPages"></span>
+    </td>
+  </tr>
+</table>
+`
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: footerLandscape,
+      headerTemplate:headerLandscape,
+      margin: { bottom: '60px', top: '80px', left: '40px', right: '40px' },
+      landscape: landscape === 0 ? false : true,
+    });
+
+    await browser.close();
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printCatatanTrial:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+
 async function cmdApprove(req, res, next) {
   const transaction = await sequelizeMSQL.transaction();
   const { user_id, delegated_to } = req.user;
@@ -3097,5 +3181,6 @@ module.exports = {
   updateOrCreateRevision,
   getViewDPBA,
   getManager,
-  getQueryController
+  getQueryController,
+  printHeader
 };
