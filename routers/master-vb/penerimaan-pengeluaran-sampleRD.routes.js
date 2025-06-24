@@ -72,6 +72,7 @@ trxSampleRDRouter.post('/pindah-rak', cmdReport_pindahLokasi);
 // ALERT
 trxSampleRDRouter.get('/alert-expired', getExpiringSoonItems);
 trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItemsByItemIdAndPrinciple);
+trxSampleRDRouter.get('/alert-test', getBelowMinStockItems);
 // trxSampleRDRouter.get('/alert-minstock', getBelowMinStockItems);
 trxSampleRDRouter.get('/alert-print', generateExcelReport);
 
