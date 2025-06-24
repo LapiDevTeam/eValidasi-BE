@@ -1883,6 +1883,7 @@ async function getBelowMinStockItems(req, res, next) {
   try {
     const strTemp2 = `
       SELECT DISTINCT
+        A.rak,
         A.itemid,
         A.itemName,
         A.principle,
@@ -1897,6 +1898,7 @@ async function getBelowMinStockItems(req, res, next) {
       LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
       WHERE (A.saldoawal + A.masuk - A.keluar) > 0
         AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
+
         ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
     `;
 
@@ -1911,6 +1913,7 @@ async function getBelowMinStockItems(req, res, next) {
       LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
       WHERE (A.saldoawal + A.masuk - A.keluar) > 0
         AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
+        AND A.rak <> 'L4-F'
         ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
     `;
 
