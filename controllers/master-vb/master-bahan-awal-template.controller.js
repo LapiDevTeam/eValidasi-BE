@@ -2462,12 +2462,12 @@ async function printTest(req, res) {
     });
        let headerTemplateNew = `
       <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
-        <tr>
+ <tr>
           <td style="border: 1px solid gray; width: 140px; height: 120px; text-align: center;" rowspan="2">
             <img src="${logoBase64}" alt="lapilogo" width="100">
           </td>
 
-          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 19px; padding-left: 10px">
+          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 19px; padding-left: 10px; width : 60%">
             DAFTAR
           </td>
 
@@ -2519,8 +2519,7 @@ async function printTest(req, res) {
           <td style="border: 1px solid gray; height: 96px; text-align: center; font-weight: bold;">
             ${judul}
           </td>
-        </tr>
-      </table>
+        </tr>      </table>
       `;
 
       let headerTemplateOld = `
