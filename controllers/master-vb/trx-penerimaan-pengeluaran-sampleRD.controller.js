@@ -1837,21 +1837,24 @@ async function getBelowMinStockItemsByItemIdAndPrinciple(req, res, next) {
   const { limit, offset } = getPagination(page, size);
 
   try {
+    // Exlude rak, 'L4-F' and filter by searchText if provided ( requested by sri 04/06/2025)
     const strTemp2 = `
       SELECT
         A.itemid,
         MIN(A.itemName) AS itemName,
         A.principle,
         MIN(A.supplier) AS supplier,
-        MIN(A.Analisa) AS Analisa,
-        MIN(A.Expdate) AS Expdate,
-        MIN(A.batchno) AS batchlot,
         MIN(A.minstock) AS minstock,
         SUM(A.saldoawal + A.masuk - A.keluar) AS stockAkhir
       FROM t_NP_Sample_Stock A
       WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+        AND A.itemid NOT IN (
+          SELECT DISTINCT itemid
+          FROM t_NP_Sample_Stock
+          WHERE rak = 'L4-F'
+        )
         ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
-      AND A.itemid IS NOT NULL AND A.itemid <> '' AND A.itemid <> 'NA' AND A.itemid <> '-'
+        AND A.itemid IS NOT NULL AND A.itemid <> '' AND A.itemid <> 'NA' AND A.itemid <> '-'
       GROUP BY A.itemid, A.principle
       HAVING SUM(A.saldoawal + A.masuk - A.keluar) < MIN(A.minstock)
     `;
