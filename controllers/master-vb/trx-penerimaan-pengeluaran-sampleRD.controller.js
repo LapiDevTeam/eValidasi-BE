@@ -1996,22 +1996,25 @@ async function generateExcelReport(req, res, next) {
     stockMinSheet.addRow(['Laporan Bahan Stock Minimum']);
     stockMinSheet.addRow([`Tanggal Print : ${currentDate}`]);
     stockMinSheet.addRow([]);
+
+    // Modified header - removed Batch No, No Analisa, Expired Date
     stockMinSheet.addRow([
-      'Kode Bahan', 'Nama Bahan', 'Principle', 'Supplier', 'Batch No', 'No Analisa', 'Expired Date', 'Stock Akhir', 'Minimum Stock'
+      'Kode Bahan', 'Nama Bahan', 'Principle', 'Supplier', 'Stock Akhir', 'Minimum Stock'
     ]);
 
-    // Set column widths
+    // Set column widths (modified to match new columns)
     stockMinSheet.columns = [
-      { width: 15 }, { width: 28 }, { width: 20 }, { width: 21 }, { width: 21 },
-      { width: 16 }, { width: 17 }, { width: 18 }, { width: 14 }
+      { width: 15 }, { width: 28 }, { width: 20 }, { width: 21 },
+      { width: 18 }, { width: 14 }
     ];
 
     // Add data rows (replace with actual data)
     const stockMinData = await getBelowMinStockItems(mockReq, mockRes, next) || [];
     stockMinData.forEach((item, index) => {
+      // Modified row data - removed batchlot, Analisa, Expdate
       stockMinSheet.addRow([
-        item.itemid, item.itemName, item.principle, item.supplier, item.batchlot,
-        item.Analisa, item.Expdate, item.stockAkhir, item.minstock
+        item.itemid, item.itemName, item.principle, item.supplier,
+        item.stockAkhir, item.minstock
       ]);
     });
 
