@@ -1511,8 +1511,8 @@ async function sbPrint_BahanBakuAktif(req, res, next) {
     console.log("Printing Bahan Baku Aktif...");
     const footer = {
       NoDoc: "FO.RD.000040",
-      Tanggal: "28/11/2019",
-      Revisi: "01",
+      Tanggal: "10/04/2025",
+      Revisi: "02",
     }
     return res.status(200).json({ message: "Printing Bahan Baku Aktif...", header: reportData, data: filteredData, footer });
   } catch (error) {
@@ -1567,9 +1567,9 @@ async function sbPrint_BahanTambahan(req, res, next) {
 
     console.log("Printing Bahan Tambahan...");
     const footer = {
-      NoDoc: "FO.000041",
-      Tanggal: "28/11/2019",
-      Revisi: "01",
+      NoDoc: "FO.RD.000041",
+      Tanggal: "10/04/2025",
+      Revisi: "02",
     }
     return res.status(200).json({ message: "Printing Bahan Tambahan...", header: reportData, data: filteredData, footer });
   } catch (error) {
@@ -1640,9 +1640,9 @@ async function sbPrint_BahanLain(req, res, next) {
 
     console.log("Printing Bahan Lain...");
     const footer = {
-      NoDoc: "FO.000042",
-      Tanggal: "28/11/2019",
-      Revisi: "01",
+      NoDoc: "FO.RD.000042",
+      Tanggal: "10/04/2025",
+      Revisi: "02",
     }
     return res.status(200).json({
       message: "Printing Bahan Lain...",
