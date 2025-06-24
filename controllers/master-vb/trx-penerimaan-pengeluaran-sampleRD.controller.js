@@ -1881,26 +1881,23 @@ async function getBelowMinStockItems(req, res, next) {
   const { limit, offset } = getPagination(page, size);
 
   try {
-    // Updated to match getBelowMinStockItemsByItemIdAndPrinciple logic
     const strTemp2 = `
-      SELECT
+      SELECT DISTINCT
         A.itemid,
-        MIN(A.itemName) AS itemName,
+        A.itemName,
         A.principle,
-        MIN(A.supplier) AS supplier,
-        MIN(A.minstock) AS minstock,
-        SUM(A.saldoawal + A.masuk - A.keluar) AS stockAkhir
+        A.supplier,
+        A.batchno AS batchlot,
+        A.Analisa,
+        A.Expdate,
+        (A.saldoawal + A.masuk - A.keluar) AS stockAkhir,
+        A.minstock,
+        ROW_NUMBER() OVER (ORDER BY A.itemName) AS row_num
       FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
       WHERE (A.saldoawal + A.masuk - A.keluar) > 0
-        AND A.itemid NOT IN (
-          SELECT DISTINCT itemid
-          FROM t_NP_Sample_Stock
-          WHERE rak = 'L4-F'
-        )
+        AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
         ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
-        AND A.itemid IS NOT NULL AND A.itemid <> '' AND A.itemid <> 'NA' AND A.itemid <> '-'
-      GROUP BY A.itemid, A.principle
-      HAVING SUM(A.saldoawal + A.masuk - A.keluar) < MIN(A.minstock)
     `;
 
     const recTemp2 = await sequelizeMSQL.query(strTemp2, {
@@ -1908,9 +1905,22 @@ async function getBelowMinStockItems(req, res, next) {
       type: QueryTypes.SELECT
     });
 
-    const totalItems = recTemp2.length;
-    const pagedRows = recTemp2.slice(offset, offset + limit);
-    const response = getPagingData({ rows: pagedRows, count: totalItems }, page, limit);
+    const totalItemsQuery = `
+      SELECT COUNT(*) AS count
+      FROM t_NP_Sample_Stock A
+      LEFT JOIN t_NP_Sample_masuk B ON A.PK_ID_Item = B.PK_ID_Item
+      WHERE (A.saldoawal + A.masuk - A.keluar) > 0
+        AND (A.saldoawal + A.masuk - A.keluar) < A.minstock
+        ${searchText === '' ? '' : `AND A.itemName LIKE :searchText`}
+    `;
+
+    const totalItemsResult = await sequelizeMSQL.query(totalItemsQuery, {
+      replacements: { searchText: `%${searchText}%` },
+      type: QueryTypes.SELECT
+    });
+
+    const totalItems = totalItemsResult[0].count;
+    const response = getPagingData({ rows: recTemp2, count: totalItems }, page, limit);
 
     if (rawdata === '1') return recTemp2;
     return res.status(200).json(response);
