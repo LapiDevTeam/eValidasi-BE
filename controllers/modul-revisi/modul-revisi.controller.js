@@ -529,6 +529,44 @@ const updateOrCreateModuleRevision = async (req, res) => {
   }
 };
 
+const getAspLink = async (req, res) => {
+  try {
+    const { user_id, delegated_to } = req.user;
+    const { pageName, menuName  } = req.query;
+
+    if (!user_id || user_id === '') {
+      return res.status(401).json({ message: 'Unauthorized.' });
+    }
+
+    if (!pageName || !menuName) {
+      return res.status(400).json({ message: 'pageName and menuName are required.' });
+    }
+
+    if (!delegated_to || delegated_to === '') {
+      delegated_to = user_id; // Use user_id if delegated_to is not provided
+    }
+
+    const queryToken = `select dbo.fngettoken(:user_id) as Token`;
+    const [result] = await sequelizeMSQL.query(queryToken, {
+      replacements: { user_id },
+      type: QueryTypes.SELECT,
+    });
+
+    const token = result ? result.Token : null;
+    if (!token) {
+      return res.status(400).json({ message: 'Failed to generate token.' });
+    }
+
+    // Construct the ASP link
+    const aspLink = `http://192.168.1.40:8080/${menuName}/AutoLogin.aspx?UID=${user_id}&DID=${delegated_to}&Token=${token}&page=${pageName}`;
+
+    return res.status(200).json({ message: 'Success.', data: aspLink });
+  } catch (error) {
+    console.error('Error fetching ASP link:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   getModuleRevisionsDA,
   createModuleRevision,
@@ -536,4 +574,5 @@ module.exports = {
   getLatestModuleRevisionNumber,
   approveModuleRevisionByModuleName,
   updateOrCreateModuleRevision,
+  getAspLink
 };

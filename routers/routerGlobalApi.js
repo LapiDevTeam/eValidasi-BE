@@ -26,4 +26,6 @@ router.post('/module-revisions/approve', async (req, res) => {
   }
 });
 
+router.get('/asp-link', authentication, modulRevisiController.getAspLink);
+
 module.exports = router;
