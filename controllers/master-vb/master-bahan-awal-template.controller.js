@@ -2460,14 +2460,14 @@ async function printTest(req, res) {
         }
       `,
     });
-    let headerTemplateNew = `
+       let headerTemplateNew = `
       <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
         <tr>
           <td style="border: 1px solid gray; width: 140px; height: 120px; text-align: center;" rowspan="2">
             <img src="${logoBase64}" alt="lapilogo" width="100">
           </td>
 
-          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 24px; padding-left: 10px">
+          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 19px; padding-left: 10px">
             DAFTAR
           </td>
 
@@ -2476,20 +2476,28 @@ async function printTest(req, res) {
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
                 <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Nomor</span>
+                  
                 </div>
-                <div style="width: 50%; padding: 5px;">${kode}</div>
+                <div style="width: 50%; padding: 5px;">${kode}
+                </div>
               </div>
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
                 <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Tanggal Berlaku</span>
                 </div>
-                <div style="width: 50%; padding: 5px;">${berlaku}</div>
+                <div style="width: 50%; padding: 5px;">
+      <div style="height: 12px;"></div>
+      <div style="height: 12px;"></div>
+      </div>
               </div>
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
                 <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Tanggal Review</span>
                 </div>
-                <div style="width: 50%; padding: 5px;">${review}</div>
+              <div style="width: 50%; padding: 5px;">
+      <div style="height: 12px;"></div>
+      <div style="height: 12px;"></div>
+    </div>
               </div>
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
                 <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
@@ -2570,7 +2578,7 @@ async function printTest(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
-      margin: { bottom: '60px', top: '165px', left: '40px', right: '40px' },
+      margin: { bottom: '60px', top: '185px', left: '40px', right: '40px' },
       landscape: landscape === 0 ? false : true,
     });
 
