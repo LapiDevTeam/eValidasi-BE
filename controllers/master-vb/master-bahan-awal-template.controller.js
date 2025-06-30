@@ -40,7 +40,7 @@ const getManager = async (req, res, next) => {
 const masterBahanAwalTemplate_CREATE = async (req, res) => {
   const { user_id, delegated_to, nama_user, bagian_user } = req.user;
   try {
-    const {
+    let {
       item_ID,
       item_name,
       item_kodeGenerik,
@@ -74,6 +74,10 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     }
 
     lblItem_ID = await generateItemID(item_groupID);
+
+    if (item_ID && item_ID !== '') {
+      lblItem_ID = item_ID;
+    }
     // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
 
     console.log({ lblItem_ID });
@@ -97,7 +101,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
         `;
 
     const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
-    const PK_ID = pkidResult ? pkidResult.PKID : 1;
+    let PK_ID = pkidResult ? pkidResult.PKID : 1;
 
     const insertQuery = `
             INSERT INTO m_Item_Manufacturing_template (
@@ -2476,7 +2480,7 @@ async function printTest(req, res) {
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
                 <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
                   <span>Nomor</span>
-                  
+
                 </div>
                 <div style="width: 50%; padding: 5px;">${kode}
                 </div>
@@ -2636,7 +2640,7 @@ async function printHeader(req, res) {
 </table>
       `;
 
-      let footerLandscape = 
+      let footerLandscape =
       `
         <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
