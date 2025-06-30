@@ -317,7 +317,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
   if (PPI_ProductID.length > 30) return res.status(400).json({ message: "PPI_ProductID too long" });
   if (PPI_BatchSizeUnitID.length > 20) return res.status(400).json({ message: "PPI_BatchSizeUnitID too long" });
   if (PPI_Kemasan.length > 100) return res.status(400).json({ message: "PPI_Kemasan too long" });
-  if (kemas01 && kemas01.length > 200) return res.status(400).json({ message: "kemas01 too long" });
+  // if (kemas01 && kemas01.length > 200) return res.status(400).json({ message: "kemas01 too long" });
   if (gstrUserName && gstrUserName.length > 10) return res.status(400).json({ message: "User_ID too long" });
   if (gstrDelegatedTo && gstrDelegatedTo.length > 10) return res.status(400).json({ message: "Delegated_To too long" });
 
