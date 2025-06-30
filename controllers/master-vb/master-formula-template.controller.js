@@ -296,7 +296,7 @@ const exportStatusPembuat = async (req, res) => {
 };
 
 const updateMasterFormulaTemplate = async (req, res) => {
-  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_lot, pPI_batchsizekemasan, rendemen_min, PPI_Kemasan01, DataGrid = [] } = req.body;
+  const { PPI_ID, kemas01, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_lot, pPI_batchsizekemasan, rendemen_min, PPI_Kemasan01, DataGrid = [] } = req.body;
   const { user_id, delegated_to, nama_user, bagian_user } = req.user
 
   if (!PPI_ID && !PPI_SubID && !PPI_ProductID && !PPI_ProductInit) {
