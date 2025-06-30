@@ -317,13 +317,10 @@ const updateMasterFormulaTemplate = async (req, res) => {
   if (PPI_ProductID.length > 30) return res.status(400).json({ message: "PPI_ProductID too long" });
   if (PPI_BatchSizeUnitID.length > 20) return res.status(400).json({ message: "PPI_BatchSizeUnitID too long" });
   if (PPI_Kemasan.length > 100) return res.status(400).json({ message: "PPI_Kemasan too long" });
-  // if (kemas01 && kemas01.length > 200) return res.status(400).json({ message: "kemas01 too long" });
-  if (gstrUserName && gstrUserName.length > 10) return res.status(400).json({ message: "User_ID too long" });
-  if (gstrDelegatedTo && gstrDelegatedTo.length > 10) return res.status(400).json({ message: "Delegated_To too long" });
 
   // Ensure numbers are numbers
   const batchSize = Number(PPI_BatchSize);
-  const batchSizeKemasan = Number(PPI_batchsizekemasan);
+  const batchSizeKemasan = Number(pPI_batchsizekemasan);
   const rendemen = Number(rendemen_min);
   if (isNaN(batchSize) || isNaN(batchSizeKemasan) || isNaN(rendemen)) {
     return res.status(400).json({ message: "Batch size, batch size kemasan, and rendemen_min must be numbers" });
@@ -354,7 +351,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
            PPI_ItemID, PPI_QTY, PPI_UnitID, Process_Date, USER_ID, Delegated_To)
           VALUES
           (:PPI_ID, :PPI_SubID, :PPI_ProductID, :PPI_ProductInit,
-           ${index + 1}, '${PPI_ItemID}', '${PPI_QTY}', '${PPI_UnitID}', :currentDateTime, :gstrUserName, :gstrDelegatedTo);
+           ${index + 1}, '${PPI_ItemID}', '${PPI_QTY}', '${PPI_UnitID}', :currentDateTime, :user_id, :delegated_to);
         `;
       }).filter(Boolean).join(' ');
     }
@@ -362,7 +359,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
     console.log({detailSQL});
 
     // Update header
-      const updateHeaderSQL = `
+    const updateHeaderSQL = `
       UPDATE m_PPI_Header_template
       SET PPI_BatchSize = :PPI_BatchSize,
           PPI_Kemasan = :PPI_Kemasan,
@@ -393,7 +390,7 @@ const updateMasterFormulaTemplate = async (req, res) => {
     const combinedSQL = `${deleteSQL} ${detailSQL} ${updateHeaderSQL} ${updateProductOwnerSQL}`;
 
     // Execute SQL
-    const tag =  `${PPI_ID}${PPI_SubID}${PPI_ProductID}${PPI_ProductInit}`;
+    const tag = `${PPI_ID}${PPI_SubID}${PPI_ProductID}${PPI_ProductInit}`;
     console.log({tag});
     await sequelizeMSQL.query(combinedSQL, {
       replacements: {
@@ -405,8 +402,8 @@ const updateMasterFormulaTemplate = async (req, res) => {
         PPI_BatchSizeUnitID,
         PPI_Kemasan,
         currentDateTime,
-        gstrUserName: user_id,
-        gstrDelegatedTo: delegated_to,
+        user_id: user_id,          // Fixed: was gstrUserName
+        delegated_to: delegated_to, // Fixed: was gstrDelegatedTo
         PPI_lot,
         pPI_batchsizekemasan,
         rendemen_min,
