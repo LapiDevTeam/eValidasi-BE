@@ -1813,7 +1813,7 @@ const deleteKeteranganApprovePPI = async (req, res) => {
   }
 }
 
-const getLvwApprove = async (req, res) => {
+const getLvwApproveBAK = async (req, res) => {
   try {
     const { tag, blnEditBatchLock } = req.query;
 
@@ -1890,6 +1890,98 @@ const getLvwApprove = async (req, res) => {
   } catch (error) {
     console.log({ error });
     return res.status(500).send({ message: 'Internal server error', details: error.message });
+  }
+};
+
+const getLvwApprove = async (req, res) => {
+  try {
+    const { tag, blnEditBatchLock } = req.query;
+
+    if (!tag || tag === '') {
+      return res.status(400).send({ message: "Tag parameter is required" });
+    }
+
+    // Initialize response object with empty values
+    const response = {
+      items: [],
+      txtBatchLock: "",
+      txtKeteranganLock: "",
+      txtPKID: "",
+      chkAllBatch: 0,
+      txtBatchLockEnabled: true
+    };
+
+    // Query to get batch lock data based on blnEditBatchLock
+    let strSQL = '';
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT ppi_batchno, ppi_keterangan, PK_ID
+        FROM m_ppi_header_lock
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    } else {
+      strSQL = `
+        SELECT ppi_batchno, ppi_keterangan, PK_ID
+        FROM m_ppi_header_lock_template
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    }
+
+    // Execute batch lock query
+    const batchResult = await sequelizeMSQL.query(strSQL, {
+      replacements: { tag },
+      type: QueryTypes.SELECT
+    });
+
+    // Map batch lock results to items array
+    if (batchResult.length > 0) {
+      response.items = batchResult.map(row => ({
+        ppi_batchno: row.ppi_batchno,
+        ppi_keterangan: row.ppi_keterangan,
+        PK_ID: row.PK_ID
+      }));
+    }
+
+    // Query to check PPI status based on blnEditBatchLock
+    if (blnEditBatchLock === 'true') {
+      strSQL = `
+        SELECT ppi_status
+        FROM m_ppi_header
+        WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    } else {
+      strSQL = `
+        SELECT ppi_status
+        FROM m_ppi_header_template
+        WHERE tgl_berlaku IS NULL
+          AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag
+      `;
+    }
+
+    // Execute status check query
+    const statusResult = await sequelizeMSQL.query(strSQL, {
+      replacements: { tag },
+      type: QueryTypes.SELECT
+    });
+
+    // Set checkbox value and field enabled state based on status
+    if (statusResult.length > 0) {
+      if (statusResult[0].ppi_status === 'A') {
+        response.chkAllBatch = 0;
+        response.txtBatchLockEnabled = true;
+      } else {
+        response.chkAllBatch = 1;
+        response.txtBatchLockEnabled = false;
+      }
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error in getLvwApprove:', error);
+    return res.status(500).send({
+      message: 'Internal server error',
+      details: error.message
+    });
   }
 };
 
