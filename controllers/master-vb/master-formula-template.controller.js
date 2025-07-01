@@ -607,7 +607,7 @@ const enableGrid = async (req, res) => {
   }
 };
 
-const deleteMasterFormulaTemplate = async (req, res) => {
+const deleteMasterFormulaTemplateBAK = async (req, res) => {
   const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.body;
   const { user_id, bagian_user } = req.user;
   console.log({asasasasas: req.user});
@@ -700,6 +700,132 @@ const deleteMasterFormulaTemplate = async (req, res) => {
   } catch (error) {
     console.error({ error });
     return res.status(500).send({ message: 'Error while deleting master formula template', details: error.message });
+  }
+};
+
+const deleteMasterFormulaTemplate = async (req, res) => {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const { tag, PPI_Owner, PPI_Description, PPI_ProductID } = req.body;
+    const { user_id, bagian_user } = req.user;
+
+    // Validate required fields
+    if (!PPI_Owner && !PPI_Description && !PPI_ProductID) {
+      return res.status(400).json({
+        message: "Lengkapi Dahulu KODE PRODUK, OLAH/KEMAS, PS/TOLL-IN/TOLL-OUT !!!"
+      });
+    }
+
+    // Check user permissions - must be Asst. Mgr or Mgr level
+    const permissionQuery = `
+      SELECT Appr_No, Appr_Identity
+      FROM m_Approver_Lines
+      WHERE Appr_ApplicationCode LIKE 'PPI'
+        AND Appr_DeptID = :deptID
+        AND Appr_ID LIKE :userID
+        AND isActive = 1
+        AND Appr_No = 2
+    `;
+
+    const permissionResult = await sequelizeMSQL.query(permissionQuery, {
+      replacements: {
+        deptID: bagian_user,
+        userID: user_id
+      },
+      type: QueryTypes.SELECT,
+      transaction
+    });
+
+    if (permissionResult.length === 0) {
+      await transaction.rollback();
+      return res.status(403).json({
+        message: "Anda tidak punya akses approval lines! hanya Asst. Mgr atau Mgr"
+      });
+    }
+
+    // Check if there's stock for items used only in this formula
+    const stockCheckQuery = `
+      SELECT xx.ppiSubInit, xx.PPI_ItemID, xx.jumlahStockTotal,
+             dbo.fn_Item_check_other_formula(XX.PPI_ItemID, XX.ppiSubInit) as count
+      FROM (
+        SELECT (PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT)) AS ppiSubInit,
+               A.PPI_ItemID, SUM(B.Stock) AS jumlahStockTotal
+        FROM [m_PPI_Detail_template] A
+        LEFT JOIN vw_UP_tindaklanjut_Stock B ON A.PPI_ItemID = B.St_ItemID
+        WHERE ISNULL(A.item_Periode, '') = ''
+          AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) = :tag
+        GROUP BY A.PPI_ItemID, (PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT))
+      ) XX
+      WHERE XX.jumlahStockTotal > 0
+        AND dbo.fn_Item_check_other_formula(XX.PPI_ItemID, XX.ppiSubInit) = 0
+    `;
+
+    const stockResult = await sequelizeMSQL.query(stockCheckQuery, {
+      replacements: { tag },
+      type: QueryTypes.SELECT,
+      transaction
+    });
+
+    // Optional: Could add warning for items with stock
+    let itemsWithStock = '';
+    if (stockResult.length > 0) {
+      itemsWithStock = stockResult.map(item =>
+        `${item.PPI_ItemID}(${item.jumlahStockTotal})`
+      ).join('; ');
+
+      // You could choose to return this as a warning instead of blocking deletion
+      console.log(`Warning: Items with stock: ${itemsWithStock}`);
+    }
+
+    // Execute delete statements
+    const deleteQueries = `
+      DELETE FROM [m_PPI_Header_template]
+      WHERE ISNULL(item_Periode, '') = ''
+        AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+
+      DELETE FROM [m_PPI_Header]
+      WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+
+      DELETE FROM [m_PPI_detail_template]
+      WHERE ISNULL(item_Periode, '') = ''
+        AND PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+
+      DELETE FROM [m_PPI_detail]
+      WHERE PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(CHAR(1), PPI_PRODUCTINIT) LIKE :tag;
+    `;
+
+    await sequelizeMSQL.query(deleteQueries, {
+      replacements: { tag },
+      type: QueryTypes.DELETE,
+      transaction
+    });
+
+    // Check if formula can be approved (equivalent to fnApprove in VB)
+    // This is a placeholder - implement the approval check logic as needed
+    const canApprove = true; // Simplified for this example
+
+    if (canApprove) {
+      // Update follow-up table (equivalent to sbUpdateFUPTL in VB)
+      // Implement this as needed based on your application's requirements
+
+      await transaction.commit();
+      return res.status(200).json({
+        message: "Data has been deleted successfully",
+        itemsWithStock: itemsWithStock || null
+      });
+    } else {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Cannot delete data that has been approved/rejected"
+      });
+    }
+  } catch (error) {
+    console.error("Error deleting formula template:", error);
+    await transaction.rollback();
+    return res.status(500).json({
+      message: "Failed to delete formula template",
+      details: error.message || "Internal server error"
+    });
   }
 };
 

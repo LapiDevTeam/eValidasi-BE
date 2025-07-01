@@ -1377,7 +1377,7 @@ class MasterProductController {
     }
   }
 
-  static async deleteProduct(req, res, next) {
+  static async deleteProductBAK(req, res, next) {
     const transaction = await sequelizeMSQL.transaction();
     try {
       const { productID } = req.body;
@@ -1446,6 +1446,89 @@ class MasterProductController {
       res.status(500).json({ message: 'Failed to delete data', extraData: error.message || 'internal server error' });
     }
   }
+
+  static async deleteProduct(req, res, next) {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const { productID } = req.body;
+
+    if (!productID) {
+      return res.status(400).json({ message: 'PRODUCT ID harus diisi !!' });
+    }
+
+    // Check if product exists in formula (m_PPI_Header)
+    const checkFormulaQuery = `
+      SELECT * FROM m_PPI_Header
+      WHERE PPI_ProductID = :productID
+        AND isActive = 1
+    `;
+
+    const formulaResult = await sequelizeMSQL.query(checkFormulaQuery, {
+      replacements: { productID: productID.trim() },
+      type: QueryTypes.SELECT,
+      transaction
+    });
+
+    if (formulaResult.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: 'Master product sudah ada di formula, tidak bisa di hapus, harap hapus formula jika ingin hapus produk'
+      });
+    }
+
+    // Check if product exists in any retained tables
+    const checkRetainedQuery = `
+      SELECT distinct prodid FROM t_Retained
+      UNION
+      SELECT distinct prodid FROM t_Retained_2
+      UNION
+      SELECT distinct prodid FROM t_Retained_sup
+    `;
+
+    const retainedResult = await sequelizeMSQL.query(checkRetainedQuery, {
+      type: QueryTypes.SELECT,
+      transaction
+    });
+
+    let deleteQuery;
+
+    // If product is in retained tables, just set isActive = 0
+    if (retainedResult.length > 0) {
+      deleteQuery = `
+        UPDATE m_product_template
+        SET isActive = 0
+        WHERE product_id = :productID
+      `;
+    }
+    // Otherwise delete from both product and bahan aktif tables
+    else {
+      deleteQuery = `
+        DELETE FROM m_Product_template
+        WHERE ISNULL(Product_Periode, '') = ''
+          AND product_id LIKE :productID;
+
+        DELETE FROM m_product_bahanaktif_template
+        WHERE ISNULL(Product_Periode, '') = ''
+          AND product_id LIKE :productID
+      `;
+    }
+
+    await sequelizeMSQL.query(deleteQuery, {
+      replacements: { productID: productID.trim() },
+      transaction
+    });
+
+    await transaction.commit();
+    res.status(200).json({ message: 'Data has been deleted successfully' });
+  } catch (error) {
+    console.error('Error:', error);
+    await transaction.rollback();
+    res.status(500).json({
+      message: 'Failed to delete data',
+      extraData: error.message || 'internal server error'
+    });
+  }
+}
 
   static async getBahanAktifByProuductID(productID) {
     if (!productID) {
