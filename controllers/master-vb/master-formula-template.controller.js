@@ -1792,7 +1792,7 @@ const getListMergerPPI = async (req, res) => {
   try {
     const { blnEditBatchLock, PPI_ID, PPI_ProductID, PPI_SubID, strTempAlternatif } = req.query;
 
-    if (!PPI_ID || !PPI_ProductID || !PPI_SubID) {
+    if (!PPI_ID || !PPI_ProductID) {
       return res.status(400).send({ message: "Required parameters are missing" });
     }
 
@@ -2215,6 +2215,8 @@ const fnCurr = async (tag) => {
     throw new Error('Internal server error');
   }
 };
+
+
 
 
 module.exports = {
