@@ -422,10 +422,10 @@ const updateMasterFormulaTemplate = async (req, res) => {
 };
 
 const preApprove = async (req, res, next) => {
-  const { PPI_ID, PPI_ProductID, PPI_SubID, PPI_ProductInit } = req.body;
+  const { PPI_ID, PPI_ProductID, PPI_SubID = '', PPI_ProductInit } = req.body;
   const { user_id, bagian_user, nama_user, joblevel_id_user } = req.user;
   // console.log({user: req.user});
-  if (!PPI_ID || !PPI_SubID || !PPI_ProductInit) {
+  if (!PPI_ID || !PPI_ProductInit) {
     return res.status(400).send({ message: "Formula produk belum dipilih, cek parameter" });
   }
 
@@ -501,7 +501,6 @@ const preApprove = async (req, res, next) => {
 
     const approvedByMGR = checkApproveMGR?.length > 0 ? checkApproveMGR[0]?.Process_Date : null;
 
-    // Enable buttons and fields
     const response = {
       blnEditBatchLock: false,
       Fra1Enabled: false,
