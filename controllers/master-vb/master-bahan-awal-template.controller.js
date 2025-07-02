@@ -2471,14 +2471,14 @@ async function printTest(req, res) {
             <img src="${logoBase64}" alt="lapilogo" width="100">
           </td>
 
-          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 19px; padding-left: 10px; width : 60%">
+          <td style="border: 1px solid gray; text-align: start; font-weight: bold; height: 12px; padding-left: 10px; width : 60%">
             DAFTAR
           </td>
 
           <td style="width: 220px; height: 120px; border: 1px solid gray; vertical-align: top;" rowspan="2">
             <div style="width: 100%; font-size: 12px; display: flex; flex-direction: column;">
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
-                <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">
+                <div style="width: 50%; padding: 5px; padding-bottom: 8px; border-right: 1px solid gray;">
                   <span>Nomor</span>
 
                 </div>
@@ -2492,6 +2492,8 @@ async function printTest(req, res) {
                 <div style="width: 50%; padding: 5px;">
       <div style="height: 12px;"></div>
       <div style="height: 12px;"></div>
+      <div style="height: 12px;"></div>
+      <div style="height: 12px;"></div>
       </div>
               </div>
               <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
@@ -2499,6 +2501,8 @@ async function printTest(req, res) {
                   <span>Tanggal Review</span>
                 </div>
               <div style="width: 50%; padding: 5px;">
+      <div style="height: 12px;"></div>
+      <div style="height: 12px;"></div>
       <div style="height: 12px;"></div>
       <div style="height: 12px;"></div>
     </div>
@@ -2581,7 +2585,7 @@ async function printTest(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: template === 'old' ? headerTemplateOld : headerTemplateNew,
-      margin: { bottom: '60px', top: '185px', left: '40px', right: '40px' },
+      margin: { bottom: '60px', top: '235px', left: '40px', right: '40px' },
       landscape: landscape === 0 ? false : true,
     });
 
