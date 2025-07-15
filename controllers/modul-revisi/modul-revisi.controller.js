@@ -280,7 +280,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
     const query = `
       SELECT TOP 1 *
       FROM m_module_revisions
-      WHERE modulename = :modulename AND appr_date IS NULL
+      WHERE modulename = :modulename AND appr_date IS NULL AND appr_userid IS NULL
       ORDER BY no_revisi DESC
     `;
 
@@ -288,7 +288,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
       replacements: { modulename },
       type: Sequelize.QueryTypes.SELECT,
     });
-
+    console.log({result});
     // If no result is found, fallback to fetch the latest revision number
     if (!result) {
       const fallbackQuery = `
@@ -309,6 +309,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
       }
 
       // Increment the fallback result by 1
+      console.log({result: result, status: ""});
       const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1;
       return res.status(200).json({ no_revisi: newRevision });
     }
