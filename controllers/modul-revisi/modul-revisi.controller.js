@@ -342,12 +342,32 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
       throw new Error('modulename, user_id, and delegated_to are required.');
     }
 
+    // Check if there are any revisions that can be approved (appr_date is null)
+    const checkRevisionQuery = `
+      SELECT TOP 1 PK_ID, no_revisi
+      FROM m_module_revisions
+      WHERE modulename = :modulename
+        AND (appr_date IS NULL OR appr_date = '')
+        AND (appr_userid IS NULL OR appr_userid = '')
+      ORDER BY no_revisi DESC
+    `;
+
+    const [revisionToApprove] = await sequelizeMSQL.query(checkRevisionQuery, {
+      replacements: { modulename },
+      type: QueryTypes.SELECT,
+      transaction
+    });
+
+    if (!revisionToApprove) {
+      throw new Error('No pending revisions found to approve or all revisions are already approved.');
+    }
+
     const sqlDtTime = moment().format('YYYY-MM-DD HH:mm:ss');
 
     // Check if the user is an approver (change 'MODULE' if your application code is different)
     const approver = await sequelizeMSQL.query(
       `SELECT TOP 1 Appr_Identity FROM m_Approver_Lines WHERE isactive = 1 AND Appr_ApplicationCode LIKE 'MODULE' AND Appr_ID LIKE :user_id`,
-      { replacements: { user_id }, type: QueryTypes.SELECT }
+      { replacements: { user_id }, type: QueryTypes.SELECT, transaction }
     );
 
     if (!approver || approver.length === 0) {
@@ -356,30 +376,35 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
 
     const sqlAppr_Identity = approver[0]?.Appr_Identity || '0000';
 
-    if (!sqlAppr_Identity || sqlAppr_Identity === '0000') return 0; // Approval failed
-    console.log({ Approval: sqlAppr_Identity, status: "failed" });
+    if (!sqlAppr_Identity || sqlAppr_Identity === '0000') {
+      throw new Error('Invalid approver identity.');
+    }
+
+    console.log({ Approval: sqlAppr_Identity, status: "approving", revision: revisionToApprove.no_revisi });
 
     const updateQuery = `
       UPDATE m_module_revisions
       SET appr_userid = :user_id,
           appr_delegated = :delegated_to,
           appr_date = :sqlDtTime,
-          mgr_userid = :mgr_userid
+          mgr_userid = :user_id
       WHERE modulename = :modulename
-        AND appr_date IS NULL;
+        AND (appr_date IS NULL OR appr_date = '')
+        AND (appr_userid IS NULL OR appr_userid = '')
     `;
 
     const [updateResult] = await sequelizeMSQL.query(updateQuery, {
-      replacements: { user_id, delegated_to, sqlDtTime, modulename, mgr_userid },
+      replacements: { user_id, delegated_to, sqlDtTime, modulename },
+      type: QueryTypes.UPDATE,
       transaction,
     });
 
     // Commit the transaction if the update was successful
-    if (updateResult > 0) {
+    if (updateResult && updateResult.length > 0) {
       await transaction.commit();
       return 1; // Approval successful
     } else {
-      throw new Error('No revisions found to approve.');
+      throw new Error('Failed to update revision approval status.');
     }
   } catch (error) {
     console.error('Error approving module revision:', error);
