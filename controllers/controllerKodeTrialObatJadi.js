@@ -61,58 +61,39 @@ static async printKodeTrialObatJadi(req, res) {
       headerTemplate: `
 <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
-
     <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
       <img src="${logoBase64}" alt="lapilogo" width="100">
-
     </td>
-
-
     <td style="border: 1px solid black; text-align: start; height: 19px; padding-left: 10px; font-weight: bold;">
       DAFTAR
     </td>
-
-
     <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
       <div style="width: 100%; height: 100%; font-size: 11px; display: flex; flex-direction: column;">
-
-
         <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
           <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Nomor</div>
           <div style="width: 50%; padding: 5px 4px;">DA.RD.000003</div>
         </div>
-
-
         <div style="display: flex; border-bottom: 1px solid black; min-height: 40px;">
           <div style="width: 50%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Berlaku</div>
           <div style="width: 50%; padding: 8px 4px;"></div>
         </div>
-
-
         <div style="display: flex; border-bottom: 1px solid black; min-height: 40px;">
           <div style="width: 50%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Review</div>
           <div style="width: 50%; padding: 8px 4px;"></div>
         </div>
-
-
         <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
           <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Revisi</div>
           <div style="width: 50%; padding: 5px 4px;">${revisi}</div>
         </div>
-
-
         <div style="display: flex; min-height: 28px;">
           <div style="width: 50%; padding: 5px 4px; border-right: 1px solid black;">Halaman</div>
           <div style="width: 50%; padding: 5px 4px;">
             <span class="pageNumber">1</span> dari <span class="totalPages">13</span>
           </div>
         </div>
-
       </div>
     </td>
   </tr>
-
-
   <tr>
     <td style="border: 1px solid gray; height: 98px; text-align: center; font-weight: bold;">
       KODE TRIAL OBAT JADI

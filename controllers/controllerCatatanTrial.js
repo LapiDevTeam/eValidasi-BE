@@ -3547,6 +3547,7 @@ ORDER BY
         page,
         namaProduk,
         trialKe,
+        kodeTrial,
         tipeCatatanTrial,
         pic,
         bagian,
@@ -3561,6 +3562,7 @@ ORDER BY
       if (namaProduk)
         searchParams.namaProduk = { [Op.iLike]: `%${namaProduk}%` };
       if (trialKe) searchParams.trialKe = { [Op.iLike]: `%${trialKe}%` };
+      if (kodeTrial) searchParams.kodeTrial = { [Op.iLike]: `%${kodeTrial}%` };
       if (tipeCatatanTrial)
         searchParams.tipeCatatanTrial = { [Op.iLike]: `%${tipeCatatanTrial}%` };
       if (namaProduk) if (pic) searchParams.pic = { [Op.iLike]: `%${pic}%` };
