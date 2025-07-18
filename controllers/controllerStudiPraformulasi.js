@@ -120,10 +120,10 @@ console.log(tanggalPenyusunan,"< tgl")
       // Convert tanggalPenyusunan string "DD/MM/YYYY" ke Date
       const [day, month, year] = tanggalPenyusunan.split("/");
       const inputTanggal = new Date(`${year}-${month}-${day}`);
-      
+
       // Tentukan isi footer
       let revisiFooter, tanggalFooter;
-      
+
       if (inputTanggal >= batasTanggal) {
         revisiFooter = "02";
         tanggalFooter = "10/04/2025";
@@ -131,7 +131,7 @@ console.log(tanggalPenyusunan,"< tgl")
         revisiFooter = "01";
         tanggalFooter = "18/03/2020";
       }
-      
+
       // Membuat PDF dalam bentuk buffer
       const pdfBuffer = await page.pdf({
         format: "A4",
@@ -154,7 +154,7 @@ console.log(tanggalPenyusunan,"< tgl")
         headerTemplate: `
          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
-  
+
     <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;">
       <img src="${logoBase64}" alt="lapilogo" width="100">
     </td>
@@ -179,12 +179,12 @@ console.log(tanggalPenyusunan,"< tgl")
     </div>
   </div>
 </td>
-    
+
   </tr>
 </table>
 
-        
-        
+
+
           `,
         margin: { bottom: "60px", top: "150px", left: "70px", right: "80px" },
       });
@@ -325,8 +325,8 @@ console.log(tanggalPenyusunan,"< tgl")
         if (findStudiPemohon?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -409,8 +409,8 @@ console.log(tanggalPenyusunan,"< tgl")
         } else {
           const info = await transporter.sendMail({
             from: `[Notifikasi][StudiPraformulasi] - ${findStudiPemohon?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -562,8 +562,8 @@ console.log(tanggalPenyusunan,"< tgl")
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -646,8 +646,8 @@ console.log(tanggalPenyusunan,"< tgl")
         } else {
           const info = await transporter.sendMail({
             from: `Approval [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-            to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd2Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -732,8 +732,8 @@ console.log(tanggalPenyusunan,"< tgl")
         if (findStudi?.rdSelection === "RD1") {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
-            to: rd1Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd1Emails, // list of receivers
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -823,8 +823,8 @@ console.log(tanggalPenyusunan,"< tgl")
         } else {
           const info = await transporter.sendMail({
             from: `Rejected [StudiPraformulasi] - ${findStudi?.namaProduk} <no_reply_it@lapilabs.co.id>`,
-            to: rd2Emails, // list of receivers
-            // to: ["gunardi.cahyadi@lapilabs.co.id"], //
+            // to: rd2Emails, // list of receivers
+            to: ["gunardi.cahyadi@lapilabs.co.id"], //
             subject: "Studi Praformulasi", // Subject line
             text: "Hello world?", // plain text body
             html: `
@@ -991,12 +991,12 @@ console.log(tanggalPenyusunan,"< tgl")
       };
 
       const getEmailsByDept = async (deptId) => {
-        const query = `SELECT emp_Email 
-  FROM m_Employee 
-  WHERE isActive = 1 
-  AND emp_DeptID  IN (${deptId}) 
-   AND emp_JobLevelID IN ('OFC','SPV','MGR','ASM','HO') 
-  AND emp_Email IS NOT NULL 
+        const query = `SELECT emp_Email
+  FROM m_Employee
+  WHERE isActive = 1
+  AND emp_DeptID  IN (${deptId})
+   AND emp_JobLevelID IN ('OFC','SPV','MGR','ASM','HO')
+  AND emp_Email IS NOT NULL
   AND emp_Email <> '';`;
 
         const pool = await sql.connect(config);
