@@ -137,6 +137,12 @@ router.put(
   authentication,
   ControllerLaporanTrialSkalaLab.handleSaveKriteriaPenerimaan
 );
+// save dan edit kriteria penerimaan
+router.put(
+  "/handle-tanggal-pengambilan-sampel/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveKriteriaPenerimaan
+);
 
 // save dan edit kriteria penerimaan
 router.put(

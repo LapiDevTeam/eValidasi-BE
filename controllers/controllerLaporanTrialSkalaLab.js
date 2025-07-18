@@ -832,6 +832,7 @@ class ControllerLaporanTrialSkalaLab {
       next(err);
     }
   }
+
   static async editUpdateAssessmentBahanAktif(req, res, next) {
     try {
       const { id } = req.params; // ID untuk menemukan record
