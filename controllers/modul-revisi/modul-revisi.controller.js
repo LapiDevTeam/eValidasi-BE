@@ -454,9 +454,6 @@ const updateOrCreateModuleRevision = async (req, res) => {
             daftar_distribusi = :daftar_distribusi,
             refrensi = :refrensi,
             dokumen_terkait = :dokumen_terkait,
-            appr_userid = :appr_userid,
-            appr_delegated = :appr_delegated,
-            appr_date = :appr_date,
             extraData = :extraData,
             mgr_userid = :mgr_userid
         WHERE no_revisi = :no_revisi AND modulename = :modulename
@@ -471,9 +468,6 @@ const updateOrCreateModuleRevision = async (req, res) => {
           daftar_distribusi: stringDaftarDistribusi,
           refrensi: stringRefrensi,
           dokumen_terkait: stringDokumenTerkait,
-          appr_userid: appr_userid || '',
-          appr_delegated: appr_delegated || '',
-          appr_date: appr_date || null,
           extraData: extraData || null,
           mgr_userid: mgr_userid || null,
         },
@@ -502,9 +496,6 @@ const updateOrCreateModuleRevision = async (req, res) => {
           refrensi,
           dokumen_terkait,
           Process_Date,
-          appr_userid,
-          appr_delegated,
-          appr_date,
           extraData,
           mgr_userid
         )
@@ -518,9 +509,6 @@ const updateOrCreateModuleRevision = async (req, res) => {
           :refrensi,
           :dokumen_terkait,
           GETDATE(),
-          :appr_userid,
-          :appr_delegated,
-          :appr_date,
           :extraData,
           :mgr_userid
         )
@@ -536,9 +524,6 @@ const updateOrCreateModuleRevision = async (req, res) => {
           daftar_distribusi: stringDaftarDistribusi,
           refrensi: stringRefrensi,
           dokumen_terkait: stringDokumenTerkait,
-          appr_userid: appr_userid || '',
-          appr_delegated: appr_delegated || '',
-          appr_date: appr_date || null,
           extraData: extraData || null,
           mgr_userid: mgr_userid || null,
         },
