@@ -2698,6 +2698,18 @@ async function cmdApprove(req, res, next) {
     );
     const sqlPeriode = perio;
 
+    if (!user_id || user_id === '') {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!sqlPeriode || sqlPeriode === '') {
+      return res.status(400).json({ message: 'Periode is required' });
+    }
+
+    if (!delegated_to || delegated_to === '') {
+      delegated_to = user_id;
+    }
+
     const approver = await sequelizeMSQL.query(
       `SELECT TOP 1 Appr_Identity FROM m_Approver_Lines WHERE isactive = 1 AND Appr_ApplicationCode LIKE 'ITEM' AND Appr_ID LIKE :user_id`,
       { replacements: { user_id }, type: QueryTypes.SELECT }
