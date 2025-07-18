@@ -2830,13 +2830,13 @@ async function cmdApprove(req, res, next) {
         SELECT TOP 1 no_revisi
         FROM m_item_manufacturing_revisions
         WHERE Item_Group = :item_groupID
-        ORDER BY tgl_revisi DESC
+        ORDER BY PK_ID DESC
       );`
     const checkApprovalSQL = `
       SELECT TOP 1 appr_date
       FROM m_item_manufacturing_revisions
       WHERE Item_Group = :item_groupID
-      ORDER BY tgl_revisi DESC
+      ORDER BY PK_ID DESC
     `;
 
     let rSQL = `${xSQL1} ${xSQL2} ${zSQL1} ${zSQL2} ${zSQL3} ${vSQL1} ${vSQL2} ${vSQL3}`;
