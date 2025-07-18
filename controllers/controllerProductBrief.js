@@ -345,6 +345,8 @@ class ControllerProductBrief {
           user_id
         );
 
+        console.log(productBriefDetail,"< aa")
+
         if (isApprove.message) throw new MyError(400, isApprove.message);
         res.status(200).json({ productBriefDetail, isApprove });
       } else {
@@ -790,6 +792,56 @@ class ControllerProductBrief {
       console.log(err);
     }
   }
+
+  static async updateUploadProductBrief(req, res) {
+    try {
+      const { ProductBriefID } = req.params;
+      const cat = await t_productBrief.findByPk(+ProductBriefID);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_productBrief_status.destroy({
+      //     where: { ProtokolID: +ProtokolID },
+      //   });
+      //   await t_productBrief.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+      const upload = req.body;
+      console.log(upload, "< 123");
+
+      const find = await t_productBrief.findByPk(+ProductBriefID);
+
+      console.log(find.id, "< ID");
+
+      if (!find) throw { name: "NotFound" };
+      const updateUpload = await t_productBrief.update(
+        { upload }, // Directly using upload array
+        {
+          where: { id: find.id },
+          returning: true,
+        }
+      );
+      console.log(updateUpload, "<< update");
+
+      res.status(200).json(updateUpload);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  
 }
 
 module.exports = ControllerProductBrief;

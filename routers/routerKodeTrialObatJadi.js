@@ -3,6 +3,12 @@ const router = express.Router();
 const ControllerKodeTrialObatJadi = require("../controllers/controllerKodeTrialObatJadi");
 const { authentication } = require("../middlewares/authentication");
 // save dan edit karakteristik FisikaKimia
+
+router.get(
+  "/print-kodeTrialObatJadi",
+  ControllerKodeTrialObatJadi.printKodeTrialObatJadi
+);
+
 router.post(
   "/create-kode-trial-obat-jadi-template",
   authentication,
@@ -17,6 +23,11 @@ router.get(
   "/get-kode-trial-obat-jadi-template",
   authentication,
   ControllerKodeTrialObatJadi.getKodeTrialObatJadiTemplate
+);
+router.get(
+  "/get-all-revisi-detail",
+  authentication,
+  ControllerKodeTrialObatJadi.getAllRevisiDetail
 );
 router.put(
   "/approve-kode-trial-obat-jadi",

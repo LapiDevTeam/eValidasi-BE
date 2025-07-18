@@ -10,6 +10,10 @@ router.post(
   authentication,
   ControllerProductBrief.createProductBrief
 );
+router.put(
+  "/update-upload-product-brief/:ProductBriefID",
+  ControllerProductBrief.updateUploadProductBrief
+);
 router.get("/all-sediaans", ControllerProductBrief.findAllSediaan);
 router.get("/all-ruang-lingkup", ControllerProductBrief.findAllRuangLingkup);
 router.get("/all-product-brief", ControllerProductBrief.findAllProductBrief);

@@ -27,6 +27,8 @@ module.exports = (sequelize, DataTypes) => {
       user_approve: DataTypes.STRING,
       user_delegated: DataTypes.STRING,
       user_approve_date: DataTypes.DATE,
+      selected_manager: DataTypes.STRING,
+      applicationCode: DataTypes.STRING,
     },
     {
       sequelize,
