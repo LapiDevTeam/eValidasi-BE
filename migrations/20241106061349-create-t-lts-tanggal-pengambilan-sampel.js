@@ -34,7 +34,7 @@ module.exports = {
         type: Sequelize.TEXT,
       },
       tableIndex: {
-        type: Sequelize.INT,
+        type: Sequelize.INTEGER,
       },
       LaporanTrialSkalaLabID: {
         type: Sequelize.INTEGER,

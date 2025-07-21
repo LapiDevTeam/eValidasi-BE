@@ -18,6 +18,7 @@ const {
   t_LTS_bahanTambahanCma,
   t_LTS_hasilDanPembahasanOrientasi,
   t_LTS_hasilPengamatan,
+  t_LTS_tanggalPengambilanSampel,
   sequelize,
 } = require("../models/index");
 const getPagination = require("../helpers/getPagination");
@@ -39,6 +40,7 @@ const {
   getStatusLaporanTrialSkalaLab,
 } = require("../helpers/statusLaporanTrialSkalaLab");
 const { fetchApproverInisial } = require("../services/mssqlService");
+
 
 class ControllerLaporanTrialSkalaLab {
   static async findAllLaporanTrialSkalaLab(req, res) {
@@ -1111,6 +1113,13 @@ class ControllerLaporanTrialSkalaLab {
       // Convert grouped data into an array of arrays
       const kriteriaPenerimaan = Object.values(kriteriaPenerimaanGrouped);
 
+      const tanggalPengambilanSampel = await t_LTS_tanggalPengambilanSampel.findAll({
+        where: { LaporanTrialSkalaLabID: id },
+        order: [["id", "ASC"]],
+      });
+
+ 
+
       const usulanPenelitianProduk = await t_usulanPenelitianProduk.findAll({
         where: {
           LaporanTrialSkalaLabID: id,
@@ -1172,6 +1181,7 @@ class ControllerLaporanTrialSkalaLab {
       res.status(200).json({
         laporanTrialSkalaLabDetails,
         kriteriaPenerimaan,
+        tanggalPengambilanSampel,
         kesimpulanFormulaTerpilih,
         ringkasanHasilStudiCpp,
         ringkasanHasilStudiCma,
@@ -1644,6 +1654,152 @@ class ControllerLaporanTrialSkalaLab {
       await transaction.commit();
 
       const newData = await t_LTS_kriteriaPenerimaan.findAll({
+        where: {
+          LaporanTrialSkalaLabID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      res.status(200).json({
+        statusCode: 200,
+        message: "SUCCESS",
+        data: newData,
+      });
+    } catch (err) {
+      console.log(err);
+
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
+  static async handleSaveTanggalPengambilanSampel(req, res) {
+    const transaction = await sequelize.transaction();
+    try {
+      const { data } = req.body;
+      console.log(data,"< dat")
+
+      const flag_update = "UPDATE FOR DELETE";
+      const { id } = req.params;
+
+      const {
+        user_id,
+        delegated_to,
+        nama_user,
+        joblevel_id_user,
+        inisial_user,
+        bagian_user,
+      } = req.user;
+
+      // const cat = await t_catatanTrial.findByPk(+id);
+      // if (cat?.statusDokumen === "Reject") {
+      //   await t_catatanTrial_status.destroy({
+      //     where: { LaporanTrialSkalaLabID: +id },
+      //   });
+      //   await t_catatanTrial.update(
+      //     {
+      //       is_approve_1: "",
+      //       approver_name_1: "",
+      //       approver_user_id_1: "",
+      //       approver_delegated_to_1: "",
+      //       approver_tanggal_1: null,
+      //       keterangan_reject_1: "",
+      //       statusDokumen: "Draft",
+      //     },
+      //     {
+      //       where: {
+      //         id,
+      //       },
+      //     }
+      //   );
+      // }
+
+      const prevKriteria = await t_LTS_tanggalPengambilanSampel.findAll({
+        where: {
+          LaporanTrialSkalaLabID: +id,
+        },
+        order: [["id", "ASC"]],
+      });
+
+      const existing = prevKriteria.map((item) => item?.id);
+      const newItemId = data
+        .flat()
+        .map((item) => item.id)
+        .filter((id) => id !== undefined);
+
+      // update
+      const dataArray = data.flat();
+      await Promise.all(
+        dataArray?.map(async (newItem) => {
+          //cek kalo gada id , create baru
+          console.log(newItem, "< idnem");
+
+          if (!newItem?.id) {
+            const created = await t_LTS_tanggalPengambilanSampel.create(
+              {
+                no: newItem?.no || "",
+                namaBahanBaku: newItem?.namaBahanBaku || "",
+                bn: newItem?.bn || "",
+                md: newItem?.md || "",
+                ed: newItem?.ed || "",
+                tanggalMulaiStudi: newItem?.tanggalMulaiStudi || "",
+                waktuSampling: newItem?.waktuSampling || "",
+                kondisi: newItem?.kondisi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { transaction }
+            );
+            return created?.id;
+          }
+          // update
+          else if (newItem?.id && existing?.includes(+newItem?.id)) {
+            await t_LTS_tanggalPengambilanSampel.update(
+              {
+                no: newItem?.no || "",
+                namaBahanBaku: newItem?.namaBahanBaku || "",
+                bn: newItem?.bn || "",
+                md: newItem?.md || "",
+                ed: newItem?.ed || "",
+                tanggalMulaiStudi: newItem?.tanggalMulaiStudi || "",
+                waktuSampling: newItem?.waktuSampling || "",
+                kondisi: newItem?.kondisi || "",
+                tableIndex: newItem?.tableIndex ?? null,
+                LaporanTrialSkalaLabID: +id || null,
+                user_id,
+                delegated_to,
+              },
+              { where: { id: +newItem?.id }, transaction }
+            );
+            return +newItem?.id;
+          } else {
+            return null;
+          }
+        })
+      );
+      const itemDelete = existing.filter(
+        (itemId) => !newItemId?.includes(itemId)
+      );
+      if (itemDelete.length > 0) {
+        await t_LTS_tanggalPengambilanSampel.update(
+          {
+            user_id,
+            delegated_to,
+            flag_update,
+          },
+          { where: { id: { [Op.in]: itemDelete } }, transaction }
+        );
+        await t_LTS_tanggalPengambilanSampel.destroy({
+          where: { id: { [Op.in]: itemDelete } },
+          transaction,
+        });
+      }
+
+      await transaction.commit();
+
+      const newData = await t_LTS_tanggalPengambilanSampel.findAll({
         where: {
           LaporanTrialSkalaLabID: +id,
         },
