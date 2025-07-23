@@ -3,6 +3,11 @@ const router = express.Router();
 const ControllerLaporanTrialSkalaLab = require("../controllers/controllerLaporanTrialSkalaLab");
 const { authentication } = require("../middlewares/authentication");
 
+router.get(
+  "/print-laporanTrialSkalaLab",
+  ControllerLaporanTrialSkalaLab.printLaporanTrialSkalaLab
+);
+
 router.post(
   "/laporan-trial-skala-lab",
   authentication,

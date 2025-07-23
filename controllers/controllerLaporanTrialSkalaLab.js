@@ -43,6 +43,115 @@ const { fetchApproverInisial } = require("../services/mssqlService");
 
 
 class ControllerLaporanTrialSkalaLab {
+
+   static async printLaporanTrialSkalaLab(req, res) {
+      const { link, kode, tanggalPenyusunan, revisi } = req.query;
+  
+     
+
+      let browser;
+      try {
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+  
+        await page.goto(link, { waitUntil: "networkidle0" });
+  
+        await page.addStyleTag({
+          content: `
+              * {
+                font-size: 12px !important;
+                font-family: Arial, sans-serif;
+              }
+            `,
+        });
+        const batasTanggal = new Date("2025-04-10");
+  
+        // Convert tanggalPenyusunan string "DD/MM/YYYY" ke Date
+        const [day, month, year] = tanggalPenyusunan.split("/");
+        const inputTanggal = new Date(`${year}-${month}-${day}`);
+        
+        // Tentukan isi footer
+        let revisiFooter, tanggalFooter;
+        
+        if (inputTanggal >= batasTanggal) {
+          revisiFooter = "02";
+          tanggalFooter = "10/04/2025";
+        } else {
+          revisiFooter = "01";
+          tanggalFooter = "18/03/2020";
+        }
+        
+        // Membuat PDF dalam bentuk buffer
+        const pdfBuffer = await page.pdf({
+          format: "A4",
+          displayHeaderFooter: true,
+          printBackground: true,
+          footerTemplate: `
+          <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse;">
+      <tr>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Nomor</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">FO.RD.000009</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">Tanggal</td>
+        <td style="border: 1px solid gray; width: 15%; text-align: center;">${tanggalFooter}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Revisi</td>
+        <td style="border: 1px solid gray; width: 5%; text-align: center;">${revisiFooter}</td>
+        <td style="border: 1px solid gray; width: 12.5%; text-align: center;">Halaman</td>
+        <td style="border: 1px solid gray; width: 10%; text-align: center;"><span class="pageNumber"></span> dari <span class="totalPages"></span></td>
+      </tr>
+    </table>
+            `,
+          headerTemplate: `
+           <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+    <tr>
+    
+      <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;">
+        <img src="${logoBase64}" alt="lapilogo" width="100">
+      </td>
+  
+      <td style="border: 1px solid gray; height: 100px; text-align: center; font-weight: bold;">
+        Studi Praformulasi
+      </td>
+  
+      <td style="width: 220px; height: 100px; border: 1px solid gray; vertical-align: center;">
+    <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
+      <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+        <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Nomor</div>
+        <div style="width: 50%; padding: 5px;">${kode}</div>
+      </div>
+      <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
+        <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Tanggal Penyusunan</div>
+        <div style="width: 50%; padding: 5px;">${tanggalPenyusunan}</div>
+      </div>
+      <div style="display: flex; flex: 1;">
+        <div style="width: 50%; padding: 5px; border-right: 1px solid gray;">Revisi</div>
+        <div style="width: 50%; padding: 5px;">${revisi}</div>
+      </div>
+    </div>
+  </td>
+      
+    </tr>
+  </table>
+  
+          
+          
+            `,
+          margin: { bottom: "60px", top: "150px", left: "70px", right: "80px" },
+        });
+  
+        await browser.close();
+  
+        res.end(pdfBuffer);
+      } catch (error) {
+        console.error("Error during printLaporanTrialSkalaLab:", error);
+  
+        if (browser) await browser.close();
+  
+        res
+          .status(500)
+          .send({ error: "An error occurred during PDF generation." });
+      }
+    }
+
   static async findAllLaporanTrialSkalaLab(req, res) {
     try {
       const { page, nomor, tanggal, namaProduk, komposisi, alasan, tujuan } =
