@@ -312,11 +312,11 @@ class MasterProductController {
               from m_Product_template
               where isnull(product_periode,'') = ''
                 and len(product_id) = 2
-                AND Jenis_Kemasan <> 'BFS'
+                AND (Jenis_Kemasan <> 'BFS' OR Jenis_Kemasan IS NULL)
               order by pk_Id desc
             )
           )
-          AND Jenis_Kemasan <> 'BFS'
+          AND (Jenis_Kemasan <> 'BFS' OR Jenis_Kemasan IS NULL)
           order by pk_id
         `;
 
@@ -333,11 +333,11 @@ class MasterProductController {
                 from m_Product_template
                 where isnull(product_periode,'') = ''
                   and len(product_id) = 2
-                  AND Jenis_Kemasan = 'BFS'
+                  AND (Jenis_Kemasan = 'BFS' OR Jenis_Kemasan IS NULL)
                 order by pk_Id desc
               )
             )
-            AND Jenis_Kemasan = 'BFS'
+            AND (Jenis_Kemasan = 'BFS' OR Jenis_Kemasan IS NULL)
             order by pk_id
           `;
         }
