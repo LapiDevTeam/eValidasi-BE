@@ -343,6 +343,9 @@ class ControllerLaporanTrialSkalaLab {
       await t_LTS_hasilPengamatan.destroy({
         where: { LaporanTrialSkalaLabID: +id },
       });
+      await t_LTS_tanggalPengambilanSampel.destroy({
+        where: { LaporanTrialSkalaLabID: +id },
+      });
 
       // Finally, update and delete the main record
       await t_laporanTrialSkalaLab.update(
