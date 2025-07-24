@@ -3,6 +3,11 @@ const router = express.Router();
 const ControllerLaporanTrialSkalaLab = require("../controllers/controllerLaporanTrialSkalaLab");
 const { authentication } = require("../middlewares/authentication");
 
+router.get(
+  "/print-laporanTrialSkalaLab",
+  ControllerLaporanTrialSkalaLab.printLaporanTrialSkalaLab
+);
+
 router.post(
   "/laporan-trial-skala-lab",
   authentication,
@@ -136,6 +141,12 @@ router.put(
   "/handle-kriteria-penerimaan/:id",
   authentication,
   ControllerLaporanTrialSkalaLab.handleSaveKriteriaPenerimaan
+);
+// save dan edit kriteria penerimaan
+router.put(
+  "/handle-tanggal-pengambilan-sampel/:id",
+  authentication,
+  ControllerLaporanTrialSkalaLab.handleSaveTanggalPengambilanSampel
 );
 
 // save dan edit kriteria penerimaan
