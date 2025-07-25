@@ -314,6 +314,10 @@ router.get(
 );
 
 router.get(
+  "/download-ExcelLaporanTrialSkalaLabHist",
+  ControllerAuditTrail.downloadExcelLaporanTrialSkalaLabHist
+);
+router.get(
   "/download-ExcelLaporanTrialSkalaLabStatusHist",
   ControllerAuditTrail.downloadExcelLaporanTrialSkalaLabStatusHist
 );
