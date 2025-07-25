@@ -5579,6 +5579,116 @@ class ControllerAuditTrail {
       next(error);
     }
   }
+  static async downloadExcelLaporanTrialSkalaLabHist(req, res, next) {
+    try {
+      const tableName = "t_laporanTrialSkalaLab_hist"; // Dynamic table name
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sheet 1");
+
+      // Query the database for data from the table
+      const data = await sequelize.query(
+        `
+        SELECT
+          id,
+          nomor,
+          tanggal,
+          revisi,
+          komposisi,
+          kemasan,
+          alasan,
+          tujuan,
+          productBriefNo,
+          hasilStudiPraformulasiNo,
+          protokolPenelitianNo,
+          statusDokumen,
+          rdSelection,
+          lainlain,
+          permasalahan,
+          skalaStudi,
+          penyimpanganSampel,
+          tahapanStudi,
+          pembahasan,
+          kesimpulan,
+          tindakLanjut,
+          spesifikasiProdukJadi,
+          alasan_reject,
+          pic,
+          bagian,
+          aktivitasDanWaktuPencapaian,
+          "LaporanTrialSkalaLabID",
+          user_id,
+          delegated_to,
+          flag_update,
+          "createdAt",
+          "updatedAt",
+          status,
+          "changeDate"
+        FROM public."${tableName}";
+        `,
+        { type: sequelize.QueryTypes.SELECT }
+      );
+
+      // Format date fields to a readable format
+      data?.forEach((el) => {
+        el.changeDate = el?.changeDate
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.createdAt = el?.createdAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+        el.updatedAt = el?.updatedAt
+          ?.toISOString()
+          .replace(/T/, " ")
+          .replace(/\..+/, "");
+      });
+
+      // Define headers based on the data keys
+      const headers = Object?.keys(data[0] || {});
+      const currentDate = new Date().toLocaleDateString("en-GB");
+
+      // Add a title and metadata rows
+      worksheet.addRow(["Excel Report"]);
+      worksheet.addRow([`Printed on ${currentDate}`]);
+      worksheet.addRow([]);
+
+      // Add headers to the worksheet
+      headers.forEach((header, index) => {
+        const cell = worksheet.getRow(4).getCell(index + 1);
+        cell.value = header;
+        cell.font = { bold: true };
+        worksheet.getColumn(index + 1).width = 20; // Set column width for better readability
+      });
+
+      // Add data rows
+      data.forEach((row, rowIndex) => {
+        const rowNumber = rowIndex + 5; // Data starts after the header row
+        headers.forEach((header, colIndex) => {
+          worksheet.getRow(rowNumber).getCell(colIndex + 1).value = row[header];
+        });
+      });
+
+      // Generate Excel buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set response headers and send file
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="LaporanTrialSkalaLab-(${currentDate}).xlsx"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  }
   static async downloadExcelLaporanTrialSkalaLabStatusHist(req, res, next) {
     try {
       const tableName = "t_laporanTrialSkalaLab_status_hist"; // Dynamic table name
