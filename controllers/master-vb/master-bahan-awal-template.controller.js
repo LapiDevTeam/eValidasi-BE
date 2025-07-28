@@ -2646,7 +2646,7 @@ async function printHeader(req, res) {
 
       let footerLandscape =
       `
-        <table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+<table style="width: ${landscape === 0 ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
     <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Nomor</td>
     <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${noDoc}</td>

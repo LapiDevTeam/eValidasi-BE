@@ -994,7 +994,7 @@ async function btnPrint(req, res, next) {
       if (!page1) return res.status(404).json({ message: "Data tidak ada" });
 
       const sSQL = `
-        SELECT B.emp_Name AS user1, CASE WHEN A.Delegated_To = A.UserID THEN '' ELSE 'an. ' + C.emp_Name END AS user2,
+        SELECT C.emp_DeptID  + ' ' + SPVJabatan.jbl_Name as user1_jabatan, E.emp_DeptID  + ' ' + MGRJabatan.jbl_Name as user2_jabatan, B.emp_Name AS user1, CASE WHEN A.Delegated_To = A.UserID THEN '' ELSE 'an. ' + C.emp_Name END AS user2,
                A.Process_date AS userDt, D.emp_Name AS apprMgr1,
                CASE WHEN A.apprID_delegated = A.apprID THEN '' ELSE 'an. ' + E.emp_Name END AS apprMgr2, A.apprDate
         FROM t_NP_Sample_keluar_m A
@@ -1002,6 +1002,8 @@ async function btnPrint(req, res, next) {
         LEFT JOIN m_employee C ON A.UserID = C.emp_NIK
         LEFT JOIN m_employee D ON A.apprID_delegated = D.emp_NIK
         LEFT JOIN m_employee E ON A.apprID = E.emp_NIK
+        LEFT JOIN m_jobLevel SPVJABATAN ON SPVJABATAN.jbl_Id = C.emp_JobLevelID
+        LEFT JOIN m_jobLevel MGRJABATAN ON MGRJABATAN.jbl_Id = E.emp_JobLevelID
         WHERE A.PKID = '${txtIDTrans}'
       `;
       const rs2 = await sequelizeMSQL.query(sSQL, { type: QueryTypes.SELECT });
@@ -1009,9 +1011,11 @@ async function btnPrint(req, res, next) {
       const page2 = {
         ttdSPV1: rs2[0].user1,
         ttdSPV2: rs2[0].user2,
+        ttdSPVJabatan: rs2[0].user1_jabatan,
         ttdSPVDt: new Date(rs2[0].userDt).toLocaleString(),
         ttdMGR1: rs2[0].apprMgr1,
         ttdMGR2: rs2[0].apprMgr2,
+        ttdMGRJabatan: rs2[0].user2_jabatan,
         ttdMGRDt: new Date(rs2[0].apprDate).toLocaleString(),
         lbl_JumTrial: `(${txtBatchSize} ${txtBatchKet})**`
       };
@@ -1022,8 +1026,8 @@ async function btnPrint(req, res, next) {
         Revisi: "02",
       }
 
-      // console.log("Page 1:", page1);
-      // console.log("Page 2:", page2);
+      console.log("Page 1:", page1);
+      console.log("Page 2:", page2);
 
       return res.status(200).json({ message: "Print successful", page1, page2, footer });
     } else {
