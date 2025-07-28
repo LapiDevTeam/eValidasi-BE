@@ -417,8 +417,87 @@ async function cmdSimpanMasuk(req, res, next) {
     } = req.body;
     let stEdit = false;
 
-    if (txtNoBatch.toUpperCase() !== txtNoBatch.Tag?.toUpperCase() || txtNoAnalisa.toUpperCase() !== txtNoAnalisa.Tag.toUpperCase()) {
+    if (txtNoBatch.toUpperCase() !== txtNoBatch.Tag?.toUpperCase() || txtNoAnalisa.toUpperCase() !== txtNoAnalisa.Tag?.toUpperCase()) {
       stEdit = true;
+    }
+
+    // Handle Edit case
+    if (txtTypeInput === "Edit") {
+      // Check if key fields have changed
+      if (txtKode_bhn !== txtKode_bhn.Tag ||
+          txtNama_bhn !== txtNama_bhn.Tag ||
+          txtNoBatch !== txtNoBatch.Tag ||
+          txtNoAnalisa !== txtNoAnalisa.Tag ||
+          txtPrincl !== txtPrincl.Tag ||
+          txtSupp !== txtSupp.Tag) {
+
+        // Check if item with new values already exists
+        const itemExists = await fnIsItemID(
+          txtKode_bhn,
+          txtNama_bhn,
+          txtNoAnalisa,
+          txtNoBatch,
+          txtPrincl,
+          txtSupp,
+          lblLokasi.Caption
+        );
+
+        if (itemExists) {
+          return res.status(400).json({
+            message: "Data sudah ada dalam database! Cek kembali data yang akan di-update"
+          });
+        }
+      }
+
+      // Update the stock record
+      const sSQL1 = `
+        UPDATE t_NP_Sample_Stock
+        SET ItemID = :txtKode_bhn,
+            ItemName = :txtNama_bhn,
+            Analisa = :txtNoAnalisa,
+            batchno = :txtNoBatch,
+            UserID = :user_id,
+            Delegated_To = :delegated_to,
+            Process_date = GETDATE(),
+            BatchDate = '-',
+            Principle = :txtPrincl,
+            Supplier = :txtSupp,
+            KelBahan = :txtKelompokBahan,
+            ExpDate = :txtExpDate,
+            MinStock = :txtMin,
+            satuan = :txtSatuan,
+            Alert = :txtAlert,
+            RemainDay = :txtRemainDay,
+            Ukuran = :txtUkuran,
+            Komposisi = :txtKomposisi
+        WHERE PK_ID_Item = :txtPKID_item
+      `;
+
+      const updateResult = await sequelizeMSQL.query(sSQL1, {
+        replacements: {
+          txtKode_bhn,
+          txtNama_bhn,
+          txtNoAnalisa,
+          txtNoBatch,
+          user_id,
+          delegated_to,
+          txtPrincl,
+          txtSupp,
+          txtKelompokBahan,
+          txtExpDate: new Date(txtExpDate).toISOString().split('T')[0],
+          txtMin,
+          txtSatuan,
+          txtAlert,
+          txtRemainDay,
+          txtUkuran,
+          txtKomposisi,
+          txtPKID_item
+        },
+        transaction
+      });
+
+      await transaction.commit();
+      return res.status(200).json({ message: 'Data has been saved' });
     }
 
     if (!txtKelompokBahan && !txtKode_bhn && !txtNoBatch && !txtNoAnalisa) {
