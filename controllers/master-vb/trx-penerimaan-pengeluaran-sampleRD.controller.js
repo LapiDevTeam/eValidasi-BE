@@ -1012,11 +1012,13 @@ async function btnPrint(req, res, next) {
         ttdSPV1: rs2[0].user1,
         ttdSPV2: rs2[0].user2,
         ttdSPVJabatan: rs2[0].user1_jabatan,
-        ttdSPVDt: new Date(rs2[0].userDt).toLocaleString(),
+        ttdSPVDt1: rs2[0].userDt ? moment(new Date(rs2[0].userDt)).format('M/D/YYYY, HH:mm:ss') : '',
+        ttdSPVDt2: rs2[0].userDt,
         ttdMGR1: rs2[0].apprMgr1,
         ttdMGR2: rs2[0].apprMgr2,
         ttdMGRJabatan: rs2[0].user2_jabatan,
-        ttdMGRDt: new Date(rs2[0].apprDate).toLocaleString(),
+        ttdMGRDt1: rs2[0].apprDate ? moment(new Date(rs2[0].apprDate)).format('M/D/YYYY, HH:mm:ss') : '',
+        ttdMGRDt2: rs2[0].apprDate,
         lbl_JumTrial: `(${txtBatchSize} ${txtBatchKet})**`
       };
 
