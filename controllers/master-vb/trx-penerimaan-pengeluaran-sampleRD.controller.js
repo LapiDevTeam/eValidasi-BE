@@ -1251,15 +1251,15 @@ async function searchByKodeBahan(req, res, next) {
   `;
 
   if (strKode) {
-    strSQL += ` AND A.itemid LIKE '${strKode}%'`;
+    strSQL += ` AND A.itemid LIKE '%${strKode}%'`;
   }
 
   if (strName) {
-    strSQL += ` AND A.itemName LIKE '${strName}%'`;
+    strSQL += ` AND A.itemName LIKE '%${strName}%'`;
   }
 
   if (strBatchNo) {
-    strSQL += ` AND A.batchno LIKE '${strBatchNo}%'`;
+    strSQL += ` AND A.batchno LIKE '%${strBatchNo}%'`;
   }
 
   try {
