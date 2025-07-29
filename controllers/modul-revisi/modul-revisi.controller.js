@@ -569,7 +569,7 @@ const getAspLink = async (req, res) => {
     }
 
     // Construct the ASP link
-    const aspLink = `http://192.168.1.40:8080/${menuName}/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
+    const aspLink = `http://192.168.1.39:8080/${menuName}/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
 
     return res.status(200).json({ message: 'Success.', data: aspLink });
   } catch (error) {
