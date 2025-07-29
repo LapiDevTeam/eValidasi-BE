@@ -1156,14 +1156,21 @@ const fnApprove = async (
 
     const checkRowSQL = `
       SELECT COUNT(*) AS cekRow
-      FROM m_ppi_detail_template AS A
-      LEFT JOIN m_item_manufacturing AS B ON A.PPI_ItemID = B.item_id
-      WHERE A.ppi_productId = '${productID}'
-        AND ISNULL(A.user_approve, '') = ''
-        AND B.Item_Type = 'BB'
+      FROM m_ppi_detail_template AS A WITH (NOLOCK)
+      WHERE A.ppi_productId = :productID
+        AND (A.user_approve IS NULL OR A.user_approve = '')
+        AND EXISTS (
+          SELECT 1
+          FROM m_item_manufacturing AS B WITH (NOLOCK)
+          WHERE A.PPI_ItemID = B.item_id
+            AND B.Item_Type = 'BB'
+        )
     `;
+
     const rowResult = await sequelizeMSQL.query(checkRowSQL, {
+      replacements: { productID },
       type: QueryTypes.SELECT,
+      transaction
     });
 
     if (rowResult.length > 0 && rowResult[0].cekRow > 0) {
