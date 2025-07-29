@@ -585,7 +585,7 @@ const enableGrid = async (req, res) => {
 
       adodc2 = await sequelizeMSQL.query(query, { type: QueryTypes.SELECT });
 
-      return res.status(200).json({ message: "Grid enabled and data inserted", dataGridEnabled, dataGridFocus, fieldsDisabled, buttonsDisabled });
+      return res.status(200).json({ message: "Grid enabled and data inserted", dataGridEnabled  });
     } else {
       // If records found, refresh the grid
       const adodc11Query = `
