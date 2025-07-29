@@ -253,7 +253,7 @@ const getPPI = async (req, res) => {
     }
 
     let strSQL = `
-      SELECT
+      SELECT TOP 1000
         PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) as tag,
         PPI_ID,
         PPI_ProductID,
@@ -281,7 +281,7 @@ const getPPI = async (req, res) => {
         pPI_batchsizekemasan,
         ISNULL(rendemen_min, 0) AS rendemen_min,
         PPI_Kemasan01
-      FROM ${tableName}
+      FROM ${tableName} WITH (NOLOCK)
       WHERE isActive = 1
     `;
 
