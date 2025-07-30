@@ -442,7 +442,7 @@ async function cmdSimpanMasuk(req, res, next) {
           lblLokasi.Caption
         );
 
-        if (itemExists) {
+        if (itemExists && txtTypeInput !== "Edit") {
           return res.status(400).json({
             message: "Data sudah ada dalam database! Cek kembali data yang akan di-update"
           });
