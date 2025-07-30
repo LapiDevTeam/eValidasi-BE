@@ -472,7 +472,7 @@ async function cmdSimpanMasuk(req, res, next) {
             Komposisi = :txtKomposisi
         WHERE PK_ID_Item = :txtPKID_item
       `;
-
+      console.log({dateraw:txtExpDate, date: moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')});
       const updateResult = await sequelizeMSQL.query(sSQL1, {
         replacements: {
           txtKode_bhn,
@@ -484,7 +484,7 @@ async function cmdSimpanMasuk(req, res, next) {
           txtPrincl,
           txtSupp,
           txtKelompokBahan,
-          txtExpDate: new Date(txtExpDate).toISOString().split('T')[0],
+          txtExpDate: moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD'),
           txtMin,
           txtSatuan,
           txtAlert,
@@ -542,11 +542,11 @@ async function cmdSimpanMasuk(req, res, next) {
       let SQL_tStock;
       if (!txtPKID_item) {
           SQL_tStock = `INSERT INTO t_NP_Sample_Stock (Periode, PK_ID_Item, ItemID, ItemName, Analisa, batchno, rak, saldoawal, masuk, keluar, UserID, Delegated_To, Process_date, BatchDate, Principle, Supplier, TypeInput, KelBahan, ExpDate, MinStock, satuan, Alert, RemainDay, Ukuran, Komposisi)
-                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${new Date(txtExpDate).toISOString().split('T')[0]}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
+                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
           await sequelizeMSQL.query(SQL_tStock, { transaction });
           console.log('EXECUTED SQL_tStock INSERT');
       } else {
-          SQL_tStock = `UPDATE t_NP_Sample_Stock SET masuk = masuk + ${parseFloat(txtJum)}, UserID = '${user_id}', Delegated_To = '${delegated_to}', Process_date = GETDATE(), ExpDate = '${new Date(txtExpDate).toISOString().split('T')[0]}', MinStock = '${parseFloat(txtMin)}', satuan = '${txtSatuan}', Alert = '${txtAlert}', RemainDay = '${txtRemainDay}', Ukuran = '${txtUkuran}', Komposisi = '${txtKomposisi}' WHERE PK_ID_Item = '${sPK_IDITEM}'`;
+          SQL_tStock = `UPDATE t_NP_Sample_Stock SET masuk = masuk + ${parseFloat(txtJum)}, UserID = '${user_id}', Delegated_To = '${delegated_to}', Process_date = GETDATE(), ExpDate = '${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', MinStock = '${parseFloat(txtMin)}', satuan = '${txtSatuan}', Alert = '${txtAlert}', RemainDay = '${txtRemainDay}', Ukuran = '${txtUkuran}', Komposisi = '${txtKomposisi}' WHERE PK_ID_Item = '${sPK_IDITEM}'`;
           await sequelizeMSQL.query(SQL_tStock, { transaction });
           console.log('EXECUTED SQL_tStock UPDATE');
       }
@@ -588,9 +588,9 @@ async function cmdSimpanMasuk(req, res, next) {
         return res.status(400).json({ message: 'Sudah ada transaksi keluar', detail: 'Tidak bisa keluar barang' });
       }
 
-      const sSQL1Update = `UPDATE t_NP_Sample_masuk SET ItemName='${txtNama_bhn}', ItemID='${txtKode_bhn}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', Principle='${txtPrincl}', Supplier='${txtSupp}', ExpDate='${new Date(txtExpDate).toISOString().split('T')[0]}', Alert='${txtAlert}', RemainDay='${txtRemainDay}', MinStock='${txtMin}', Note='${txtnotes}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE itemid='${txtKode_bhn.Tag}' AND analisa='${txtNoAnalisa.Tag}' AND batchlot='${txtNoBatch.Tag}' AND koderak='${lblLokasi.Caption}'`;
+      const sSQL1Update = `UPDATE t_NP_Sample_masuk SET ItemName='${txtNama_bhn}', ItemID='${txtKode_bhn}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', Principle='${txtPrincl}', Supplier='${txtSupp}', ExpDate='${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', Alert='${txtAlert}', RemainDay='${txtRemainDay}', MinStock='${txtMin}', Note='${txtnotes}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE itemid='${txtKode_bhn.Tag}' AND analisa='${txtNoAnalisa.Tag}' AND batchlot='${txtNoBatch.Tag}' AND koderak='${lblLokasi.Caption}'`;
       await sequelizeMSQL.query(sSQL1Update, { transaction });
-      const sSQL3 = `UPDATE m_NP_Sample SET ItemID='${txtKode_bhn}', ItemName='${txtNama_bhn}', Principle='${txtPrincl}', Supplier='${txtSupp}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', ExpDate='${new Date(txtExpDate).toISOString().split('T')[0]}', MinStock='${txtMin}', satuan='${txtSatuan}', alert='${txtAlert}', remainday='${txtRemainDay}', ukuran='${txtUkuran}', komposisi='${txtKomposisi}', UserID='${user_id}', Delegated_To='${delegated_to}' WHERE ItemID='${txtKode_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}'`;
+      const sSQL3 = `UPDATE m_NP_Sample SET ItemID='${txtKode_bhn}', ItemName='${txtNama_bhn}', Principle='${txtPrincl}', Supplier='${txtSupp}', BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}', ExpDate='${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', MinStock='${txtMin}', satuan='${txtSatuan}', alert='${txtAlert}', remainday='${txtRemainDay}', ukuran='${txtUkuran}', komposisi='${txtKomposisi}', UserID='${user_id}', Delegated_To='${delegated_to}' WHERE ItemID='${txtKode_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}'`;
       await sequelizeMSQL.query(sSQL3, { transaction });
       const sSQL5 = `
         UPDATE m_NP_Sample SET BatchLot='${txtNoBatch}', Analisa='${txtNoAnalisa}' WHERE ItemID='${txtKode_bhn.Tag}' AND ItemName='${txtNama_bhn.Tag}' AND BatchLot='${txtNoBatch.Tag}' AND Analisa='${txtNoAnalisa.Tag}';
