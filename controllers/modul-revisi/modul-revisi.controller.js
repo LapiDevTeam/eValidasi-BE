@@ -613,9 +613,9 @@ async function printHeaderDa(req, res) {
     let newTanggal = parts.join("/");
     const logoBase64 = getBase64Image(logoPath);
 
-    await page.setExtraHTTPHeaders({
-      authentication: token,
-    });
+    // await page.setExtraHTTPHeaders({
+    //   authentication: token,
+    // });
     await page.goto(
       link1 + `?revisi=${revisi}&rencana_berlaku=${rencana_berlaku}`,
       { waitUntil: "networkidle0" }
