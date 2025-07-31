@@ -2166,9 +2166,20 @@ async function getViewDPBATemplate(req, res, next) {
       replacements: { item_group },
     });
 
+    const alasanQuery = `
+      SELECT no_revisi, alasan_desc, tgl_revisi
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY no_revisi ASC
+    `;
+    const alasanList = await sequelizeMSQL.query(alasanQuery, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
     response['nomorDocument'] = file;
     response['revisi'] = revisi;
-
+    response['alasan_desc_list'] = alasanList;
 
     return res.status(200).json(response);
   } catch (error) {
