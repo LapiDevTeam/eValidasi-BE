@@ -9,7 +9,7 @@ const authentication = async (req, res, next) => {
     if (!authentication) throw new MyError(401, "Not Authentication");
     if (authentication) {
       const response = await fetch(
-        "http://192.168.1.38/api/lms-dev/v1/decode",
+        "http://192.168.1.38/api/lms/v1/decode",
         {
           method: "GET",
           headers: {
