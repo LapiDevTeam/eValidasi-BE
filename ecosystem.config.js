@@ -3,7 +3,7 @@ require("dotenv").config();
 module.exports = {
   apps: [
     {
-      name: "eFormulation-dev",
+      name: "ePengembanganFormula",
       script: "./index.js",
       env: {
         NODE_ENV: "development",
