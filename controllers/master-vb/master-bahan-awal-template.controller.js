@@ -1754,6 +1754,18 @@ const getLatestRevisionNumber = async (req, res) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
+    // Fetch all alasan_desc for this Item_Group
+    const alasanQuery = `
+      SELECT no_revisi, alasan_desc
+      FROM m_item_manufacturing_revisions
+      WHERE Item_Group = :item_group
+      ORDER BY no_revisi ASC
+    `;
+    const alasanList = await sequelizeMSQL.query(alasanQuery, {
+      replacements: { item_group },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
     // If no result is found, fallback to fetch the latest revision number
     if (!result) {
       const fallbackQuery = `
@@ -1770,12 +1782,12 @@ const getLatestRevisionNumber = async (req, res) => {
 
       // If no fallback result is found, return 1 as the first revision number
       if (!fallbackResult) {
-        return res.status(200).json({ no_revisi: 1 });
+        return res.status(200).json({ no_revisi: 1, alasan_desc_list: alasanList });
       }
 
       // Increment the fallback result by 1
       const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1;
-      return res.status(200).json({ no_revisi: newRevision });
+      return res.status(200).json({ no_revisi: newRevision, alasan_desc_list: alasanList });
     }
 
     // Parse daftar_distribusi, dokumen_terkait, refrensi if they are JSON strings
@@ -1802,6 +1814,7 @@ const getLatestRevisionNumber = async (req, res) => {
           return result.refrensi;
         }
       })(),
+      alasan_desc_list: alasanList
     };
 
     // Return the latest revision number from the first query
