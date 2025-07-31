@@ -3278,5 +3278,6 @@ module.exports = {
   getViewDPBA,
   getManager,
   getQueryController,
-  printHeader
+  printHeader,
+  updateItemManufacturingRevision
 };
