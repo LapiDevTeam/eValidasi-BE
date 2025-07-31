@@ -4,6 +4,17 @@ const path = require('path');
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
 const { type } = require('os');
+const puppeteer = require('puppeteer'); // Untuk generate PDF dari halaman web
+const { PDFDocument, rgb } = require('pdf-lib'); // Untuk menggabungkan dan memodifikasi PDF
+const fs = require('fs'); // Untuk membaca file logo
+// Pastikan logoPath didefinisikan, misal:
+// const logoPath = path.join(__dirname, '../../assets/logo.png'); // Ganti dengan path yang sesuai ke logo Anda
+const logoPath = path.join(__dirname, '../../assets/LapiLogo.jpg');
+// Fungsi untuk mengubah gambar ke base64
+function getBase64Image(filePath) {
+  const bitmap = fs.readFileSync(filePath);
+  return `data:image/jpeg;base64,${Buffer.from(bitmap).toString('base64')}`;
+}
 
 const getModuleRevisionsDA = async (req, res) => {
   try {
@@ -578,6 +589,243 @@ const getAspLink = async (req, res) => {
   }
 };
 
+async function printHeaderDa(req, res) {
+  let {
+    link1,
+    link2,
+    type,
+    kode = "",
+    token,
+    judul = "Vendor",
+    tanggal = "",
+    revisi = "",
+    rencana_berlaku = "",
+    landscape = "",
+  } = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    let parts = tanggal.split("/");
+    parts[2] = (parseInt(parts[2]) + 5).toString();
+    let newTanggal = parts.join("/");
+    const logoBase64 = getBase64Image(logoPath);
+
+    await page.setExtraHTTPHeaders({
+      authentication: token,
+    });
+    await page.goto(
+      link1 + `?revisi=${revisi}&rencana_berlaku=${rencana_berlaku}`,
+      { waitUntil: "networkidle0" }
+    );
+    //     await page.setContent(`
+    //   <html>
+    //     <body>
+    //       <h1>Ini adalah halaman 2</h1>
+    //     </body>
+    //   </html>
+    // `);
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: 12px !important;
+          font-family: Arial, sans-serif;
+        }
+      `,
+    });
+    const pdfBuffer1 = await page.pdf({
+      landscape: landscape ? true : false,
+      format: "A4",
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: ` `,
+      headerTemplate: `<table style="width: 92%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+            <tr>
+              <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
+                <img src="${logoBase64}" alt="lapilogo" width="100">
+              </td>
+
+              <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:22px; padding-left: 10px">
+                DAFTAR
+              </td>
+
+              <td style="width: 220px; height: 120px; border: 1px solid black; vertical-align: top;" rowspan="2">
+                <div style="width: 100%; height: 100%; font-size: 11px; display: flex; flex-direction: column;">
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Nomor</div>
+                    <div style="width: 60%; padding: 5px 4px;">${kode}</div>
+                  </div>
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 48px;">
+                    <div style="width: 40%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Berlaku</div>
+                    <div style="width: 60%; padding: 8px 4px;"></div>
+                  </div>
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 48px;">
+                    <div style="width: 40%; padding: 8px 4px; border-right: 1px solid black;">Tanggal Review</div>
+                    <div style="width: 60%; padding: 8px 4px;"></div>
+                  </div>
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 20px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Revisi</div>
+                    <div style="width: 60%; padding: 5px 4px;">${revisi}</div>
+                  </div>
+                  <div style="display: flex; min-height: 20px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Halaman</div>
+                    <div style="width: 60%; padding: 5px 4px;">
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="border: 1px solid gray; height: 120px; text-align: center; font-weight: bold;">
+                ${judul}
+              </td>
+            </tr>
+          </table>`,
+      margin: { bottom: "60px", top: "210px", left: "40px", right: "40px" },
+    });
+
+    await page.goto(
+      link2 + `&revisi=${revisi}&rencana_berlaku=${rencana_berlaku}`,
+      { waitUntil: "networkidle0" }
+    );
+    //     await page.setContent(`
+    //   <html>
+    //     <body>
+    //       <h1>Ini adalah halaman 2</h1>
+    //     </body>
+    //   </html>
+    // `);
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: 12px !important;
+          font-family: Arial, sans-serif;
+        }
+      `,
+    });
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer2 = await page.pdf({
+      landscape: landscape ? true : false,
+      format: "A4",
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: ` `,
+      headerTemplate: `
+        <table style="width: 92%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+            <tr>
+              <td style="border: 1px solid gray; width: 140px; height: 50px; text-align: center;" rowspan="2">
+                <img src="${logoBase64}" alt="lapilogo" width="100">
+              </td>
+
+              <td style="border: 1px solid black;  text-align: start; font-weight: bold;  height:17px; padding-left: 10px">
+                DAFTAR
+              </td>
+
+              <td style="width: 220px; height: 30px; border: 1px solid black; vertical-align: top;" rowspan="2">
+                <div style="width: 100%; height: 100%; font-size: 11px; display: flex; flex-direction: column;">
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 28px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Nomor</div>
+                    <div style="width: 60%; padding: 5px 4px;">${kode}</div>
+                  </div>
+                  <div style="display: flex; border-bottom: 1px solid black; min-height: 20px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Revisi</div>
+                    <div style="width: 60%; padding: 5px 4px;">${revisi}</div>
+                  </div>
+                  <div style="display: flex; min-height: 20px;">
+                    <div style="width: 40%; padding: 5px 4px; border-right: 1px solid black;">Halaman</div>
+                    <div style="width: 60%; padding: 5px 4px;">
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="border: 1px solid gray; height: 30px; text-align: center; font-weight: bold;">
+                ${judul}
+              </td>
+            </tr>
+          </table>
+        `,
+      margin: { bottom: "60px", top: "120px", left: "40px", right: "40px" },
+    });
+    await browser.close();
+
+    const mergedPdf = await PDFDocument.create();
+
+    const doc1 = await PDFDocument.load(pdfBuffer1);
+    const doc2 = await PDFDocument.load(pdfBuffer2);
+
+    const pages1 = await mergedPdf.copyPages(doc1, doc1.getPageIndices());
+    const pages2 = await mergedPdf.copyPages(doc2, doc2.getPageIndices());
+
+    pages1.forEach((page) => mergedPdf.addPage(page));
+    pages2.forEach((page) => mergedPdf.addPage(page));
+
+    const finalPdf = await mergedPdf.save();
+    const pdfDoc = await PDFDocument.load(finalPdf);
+    const pages = pdfDoc.getPages();
+    const totalPages = pages.length;
+
+    for (let i = 0; i < totalPages; i++) {
+      const page = pages[i];
+      let pages1Setting = landscape
+        ? {
+            x: 712,
+            y: 454, // sesuaikan posisi di halaman
+            size: 9,
+            color: rgb(0, 0, 0),
+          }
+        : {
+            x: 476,
+            y: 700, // sesuaikan posisi di halaman
+            size: 9,
+            color: rgb(0, 0, 0),
+          };
+
+      // Tambahkan teks "Halaman X dari Y"
+      page.drawText(
+        `${i + 1} dari ${totalPages}`,
+        i + 1 === 1
+          ? pages1Setting
+          : landscape
+          ? {
+              x: 712,
+              y: 528, // sesuaikan posisi di halaman
+              size: 9,
+              color: rgb(0, 0, 0),
+            }
+          : {
+              x: 476,
+              y: 774, // sesuaikan posisi di halaman
+              size: 9,
+              color: rgb(0, 0, 0),
+            }
+      );
+
+      // (Opsional) Tambahkan rectangle putih menutupi watermark lama
+      // page.drawRectangle({
+      //   x: 200,
+      //   y: 400,
+      //   width: 200,
+      //   height: 50,
+      //   color: rgb(1, 1, 1),
+      // });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    res.end(pdfBytes);
+  } catch (error) {
+    console.error("Error during printCatatanTrial:", error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: "An error occurred during PDF generation." });
+  }
+}
+
 module.exports = {
   getModuleRevisionsDA,
   createModuleRevision,
@@ -585,5 +833,6 @@ module.exports = {
   getLatestModuleRevisionNumber,
   approveModuleRevisionByModuleName,
   updateOrCreateModuleRevision,
-  getAspLink
+  getAspLink,
+  printHeaderDa
 };

@@ -1559,6 +1559,75 @@ const createRevision = async (req, res) => {
   }
 };
 
+const updateItemManufacturingRevision = async (req, res) => {
+  const transaction = await sequelizeMSQL.transaction();
+  try {
+    const {
+      PK_ID,
+      Item_Group,
+      no_revisi,
+      tgl_revisi,
+      alasan_desc,
+      daftar_distribusi,
+      dokumen_terkait,
+      refrensi,
+      Process_Date,
+      appr_userid,
+      appr_delegated,
+      appr_date,
+      mgr_userid
+    } = req.body;
+
+    if (!PK_ID) {
+      return res.status(400).json({ message: 'PK_ID is required.' });
+    }
+
+    // Build SET clause dynamically for all fields except PK_ID
+    const fieldsToUpdate = {
+      Item_Group,
+      no_revisi,
+      tgl_revisi,
+      alasan_desc,
+      daftar_distribusi,
+      dokumen_terkait,
+      refrensi,
+      Process_Date,
+      appr_userid,
+      appr_delegated,
+      appr_date,
+      mgr_userid
+    };
+
+    const setClause = Object.entries(fieldsToUpdate)
+      .filter(([_, value]) => typeof value !== 'undefined')
+      .map(([key, value]) => {
+        if (value === null) return `${key} = NULL`;
+        if (typeof value === 'string') return `${key} = '${value.replace(/'/g, "''")}'`;
+        if (value instanceof Date) return `${key} = '${value.toISOString().slice(0, 19).replace('T', ' ')}'`;
+        return `${key} = ${value}`;
+      })
+      .join(', ');
+
+    const query = `
+      UPDATE m_item_manufacturing_revisions
+      SET ${setClause}
+      WHERE PK_ID = :PK_ID
+    `;
+
+    await sequelizeMSQL.query(query, {
+      replacements: { PK_ID },
+      transaction,
+    });
+
+    await transaction.commit();
+    return res.status(200).json({ message: 'Revision updated successfully.' });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error updating revision:', error);
+    return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
 const createRevisionWithSameNumber = async (req, res) => {
   try {
     const {

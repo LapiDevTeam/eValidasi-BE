@@ -27,5 +27,6 @@ router.post('/module-revisions/approve', async (req, res) => {
 });
 
 router.get('/asp-link', authentication, modulRevisiController.getAspLink);
+router.get('/printDA', authentication, modulRevisiController.printHeaderDa);
 
 module.exports = router;
