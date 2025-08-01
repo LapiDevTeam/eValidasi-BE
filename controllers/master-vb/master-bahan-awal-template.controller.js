@@ -1444,9 +1444,11 @@ const getRevisionsDA = async (req, res) => {
       })(),
       refrensi: (() => {
         try {
-          return rev.refrensi ? JSON.parse(rev.refrensi) : rev.refrensi;
+          if (!rev.refrensi) return rev.refrensi;
+          const parsed = typeof rev.refrensi === 'string' ? JSON.parse(rev.refrensi) : rev.refrensi;
+          return Array.isArray(parsed) ? parsed : [parsed];
         } catch {
-          return rev.refrensi;
+          return Array.isArray(rev.refrensi) ? rev.refrensi : [rev.refrensi];
         }
       })(),
     }));
@@ -2109,7 +2111,6 @@ async function getViewDPBATemplate(req, res, next) {
         break;
       case 'L':
         file = 'DA.RD.000017';
-        no_revisi = '30';
         break;
       case 'E':
         file = 'DA.RD.000018';
@@ -2119,24 +2120,18 @@ async function getViewDPBATemplate(req, res, next) {
         break;
       case 'K':
         file = 'DA.RD.000020';
-        no_revisi = '61';
         break;
       case 'IN':
         file = 'DA.RD.000005';
         break;
       case 'PR':
         file = 'DA.RD.000008';
-        no_revisi = '17';
-        alasan_desc = `-	Update keterangan halal sesuai CG/0062/TH/10/24, CA/0069/PC/10/24, dan CG/0020/TH/11/24.`;
         break;
       case 'CO':
         file = 'DA.RD.000007';
         break;
       case 'FL':
         file = 'DA.RD.000006';
-        no_revisi = '32';
-        alasan_desc = `No CC : CA/0026/PG/02/25 FHG
-        -	Perubahan pemasok pada kode FL 016A, FL 031, dan FL 032 ex. Givaudan dari PT Menjangan Sakti menjadi PT Unria Pratama Kencana.`;
         break;
       case 'AC':
         file = 'DA.RD.000004';

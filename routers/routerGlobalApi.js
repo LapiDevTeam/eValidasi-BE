@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const modulRevisiController = require('../controllers/modul-revisi/modul-revisi.controller');
+const superAdminController = require('../controllers/modul-revisi/super-admin.controller');
 const ControllerGlobalApi = require("../controllers/controllerGlobalApi");
 const { authentication } = require("../middlewares/authentication");
 
@@ -28,5 +29,12 @@ router.post('/module-revisions/approve', async (req, res) => {
 
 router.get('/asp-link', authentication, modulRevisiController.getAspLink);
 router.get('/printDA', modulRevisiController.printHeaderDa);
+
+
+router.get('/admin/module-revisions', superAdminController.getAllModuleRevisions);
+router.get('/admin/module-revisions/:id', superAdminController.getModuleRevisionById);
+router.post('/admin/module-revisions', superAdminController.createModuleRevision);
+router.put('/admin/module-revisions/:id', superAdminController.updateModuleRevision);
+router.delete('/admin/module-revisions/:id', superAdminController.deleteModuleRevision);
 
 module.exports = router;
