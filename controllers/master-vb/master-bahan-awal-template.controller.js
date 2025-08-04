@@ -1088,8 +1088,8 @@ async function masterItemPrinciple_DELETE(req, res, next) {
         item_ID: item_ID,
         prc_ID: prc_ID,
         supp_ID: supp_ID,
-        user_id: req.user.gstrUserName,
-        delegated_to: req.user.gstrDelegatedTo,
+        user_id: user_id,
+        delegated_to: delegated_to,
       },
       transaction,
     });
