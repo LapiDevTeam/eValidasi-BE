@@ -2687,7 +2687,9 @@ async function printTest(req, res) {
 }
 
 async function printHeader(req, res) {
-  const { link, noDoc, tanggal, revisi,  landscape = 1} = req.query;
+  const { link, noDoc, tanggal, revisi, title} = req.query;
+  const landscape = Number(req.query.landscape || 1);
+
 
   let browser;
   try {
@@ -2723,7 +2725,7 @@ async function printHeader(req, res) {
       <td style="border: 1px solid #6b7280;">
         <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
           <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 11px;">
-            <span>FORMULA PRODUK</span>
+            <span>${title || 'FORMULA PRODUK' }</span>
           </h3>
         </div>
       </td>
