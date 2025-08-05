@@ -79,16 +79,37 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
 
-      // Get the latest item_ID from database for this group
-      const query = `
+      // Extract middle code from provided item_ID
+      const getMiddleCode = (item_ID) => {
+        if (!item_ID) return '';
+        const parts = item_ID.split(' ');
+        return parts.length >= 2 ? parts[1] : '';
+      };
+
+      const middleCode = getMiddleCode(item_ID);
+      console.log({ middleCode });
+
+      // Get the latest item_ID from database for this group with same middle code
+      let query = `
         SELECT TOP 1 item_ID
         FROM m_Item_Manufacturing_template
         WHERE item_group = :item_group
-        ORDER BY item_ID DESC
       `;
 
+      // Add middle code condition if it exists
+      if (middleCode && middleCode !== '') {
+        query += ` AND item_ID LIKE :item_pattern `;
+      }
+
+      query += ` ORDER BY item_ID DESC`;
+
+      const replacements = { item_group: item_groupID };
+      if (middleCode && middleCode !== '') {
+        replacements.item_pattern = `${item_groupID} ${middleCode} %`;
+      }
+
       const [latestItem] = await sequelizeMSQL.query(query, {
-        replacements: { item_group: item_groupID },
+        replacements,
         type: QueryTypes.SELECT,
       });
 
@@ -133,8 +154,12 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
           }
         }
       } else {
-        // If no items found, use the provided item_ID and append "001"
-        lblItem_ID = `${item_ID} 001`;
+        // If no items found with middle code, create new one with middle code + "001"
+        if (middleCode && middleCode !== '') {
+          lblItem_ID = `${item_groupID} ${middleCode} 001`;
+        } else {
+          lblItem_ID = `${item_ID} 001`;
+        }
       }
     }
 
