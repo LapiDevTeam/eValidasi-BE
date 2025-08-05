@@ -363,7 +363,8 @@ class MasterProductController {
         }
       );
 
-      if (existingProduct[0].jum >= 1) {
+      if (existingProduct[0].jum >= 1 && productCategory !== '02') {
+        console.log({ existing: existingProduct[0] });
         return res.status(400).json({ message: `Kode Product : ${productID} Sudah ada dalam database, mohon periksa kembali!` });
       }
 

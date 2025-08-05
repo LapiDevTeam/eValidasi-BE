@@ -343,7 +343,7 @@ const exportPPI = async (req, res, next) => {
         WHERE b.isActive = 1
           AND b.PPI_Status = 'A'
           AND a.PPI_ID LIKE :PPI_ID
-          AND a.PPI_SubID LIKE :PPI_SubID
+          ${PPI_SubID ? `AND a.PPI_SubID LIKE :PPI_SubID` : ''}
           AND a.PPI_ProductID LIKE :PPI_ProductID
           AND a.PPI_ProductInit = :PPI_ProductInit
         ORDER BY a.PPI_ProductID, a.PPI_SubID, a.PPI_ID, a.PPI_SeqID
