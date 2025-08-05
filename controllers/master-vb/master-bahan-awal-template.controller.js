@@ -78,30 +78,70 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
 
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
-      const parts = item_ID.split(' ');
-      if (parts.length >= 2) {
-        const lastPart = parts[parts.length - 1];
-        // Handle .000 suffix for non-RH items
-        if (lastPart.includes('.')) {
-          const [number, suffix] = lastPart.split('.');
-          const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
-          parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
-        } else {
-          const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
-          parts[parts.length - 1] = incrementedNumber;
+
+      // Get the latest item_ID from database for this group
+      const query = `
+        SELECT TOP 1 item_ID
+        FROM m_Item_Manufacturing_template
+        WHERE item_group = :item_group
+        ORDER BY item_ID DESC
+      `;
+
+      const [latestItem] = await sequelizeMSQL.query(query, {
+        replacements: { item_group: item_groupID },
+        type: QueryTypes.SELECT,
+      });
+
+      if (latestItem && latestItem.item_ID) {
+        const latestItemID = latestItem.item_ID;
+        const parts = latestItemID.split(' ');
+
+        if (parts.length >= 2) {
+          const lastPart = parts[parts.length - 1];
+
+          // Handle .000 suffix for non-RH items
+          if (lastPart.includes('.')) {
+            const [number, suffix] = lastPart.split('.');
+            if (!isNaN(number) && number !== '') {
+              const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
+              parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
+              lblItem_ID = parts.join(' ');
+            } else {
+              // If number part is invalid, default to 001.000
+              parts[parts.length - 1] = `001.${suffix}`;
+              lblItem_ID = parts.join(' ');
+            }
+          } else if (!isNaN(lastPart) && lastPart !== '') {
+            // Handle numeric-only last part
+            const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
+            parts[parts.length - 1] = incrementedNumber;
+            lblItem_ID = parts.join(' ');
+          } else {
+            // If lastPart contains non-numeric characters, extract numeric part
+            const numericMatch = lastPart.match(/(\d+)/);
+            if (numericMatch) {
+              const numericPart = numericMatch[1];
+              const incrementedNumber = (parseInt(numericPart) + 1).toString().padStart(numericPart.length, '0');
+              // Replace the numeric part while keeping non-numeric characters
+              const newLastPart = lastPart.replace(/\d+/, incrementedNumber);
+              parts[parts.length - 1] = newLastPart;
+              lblItem_ID = parts.join(' ');
+            } else {
+              // If no numeric part found, append "001"
+              lblItem_ID = `${latestItemID} 001`;
+            }
+          }
         }
-        lblItem_ID = parts.join(' ');
+      } else {
+        // If no items found, use the provided item_ID and append "001"
+        lblItem_ID = `${item_ID} 001`;
       }
     }
 
     if (item_ID && item_ID !== '' && (existingItem === false || !existingItem)) {
       lblItem_ID = item_ID;
     }
-    // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
-    // if (existingItem) {
-    //   console.log('MASUK SINI..........');
-    //   lblItem_ID = await generateItemID(item_groupID, true);
-    // }
+
     console.log({ lblItem_ID });
     if (item_type === 'BAHAN KEMAS') {
       const query3 = `
