@@ -630,8 +630,8 @@ async function printHeaderDa(req, res) {
     await page.addStyleTag({
       content: `
         * {
-          font-size: 12px !important;
-          font-family: Arial, sans-serif;
+          font-size: 8px !important;
+          font-family: Verdana, sans-serif;
         }
       `,
     });
@@ -701,8 +701,8 @@ async function printHeaderDa(req, res) {
     await page.addStyleTag({
       content: `
         * {
-          font-size: 12px !important;
-          font-family: Arial, sans-serif;
+          font-size: 8px !important;
+          font-family: Verdana, sans-serif;
         }
       `,
     });
