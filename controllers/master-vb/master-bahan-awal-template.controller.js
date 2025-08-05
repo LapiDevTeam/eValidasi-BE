@@ -60,6 +60,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
       isHalal,
       row,
       itemStatus = '1',
+      existingItem = false,
     } = req.body;
 
     if (!user_id || user_id === '') return res.status(401).send('Unauthorized request!');
@@ -75,11 +76,32 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
 
     lblItem_ID = await generateItemID(item_groupID);
 
-    if (item_ID && item_ID !== '') {
+    if (item_ID && item_ID !== '' && existingItem === true) {
+      console.log({existingItem, item_ID, item_groupID});
+      const parts = item_ID.split(' ');
+      if (parts.length >= 2) {
+        const lastPart = parts[parts.length - 1];
+        // Handle .000 suffix for non-RH items
+        if (lastPart.includes('.')) {
+          const [number, suffix] = lastPart.split('.');
+          const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
+          parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
+        } else {
+          const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
+          parts[parts.length - 1] = incrementedNumber;
+        }
+        lblItem_ID = parts.join(' ');
+      }
+    }
+
+    if (item_ID && item_ID !== '' && (existingItem === false || !existingItem)) {
       lblItem_ID = item_ID;
     }
     // if(item_type === "BK") lblItem_ID =  lblItem_ID + '.000';
-
+    // if (existingItem) {
+    //   console.log('MASUK SINI..........');
+    //   lblItem_ID = await generateItemID(item_groupID, true);
+    // }
     console.log({ lblItem_ID });
     if (item_type === 'BAHAN KEMAS') {
       const query3 = `
@@ -102,7 +124,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
 
     const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
     let PK_ID = pkidResult ? pkidResult.PKID : 1;
-
+    console.log({ pkidResult, PK_ID });
     const insertQuery = `
             INSERT INTO m_Item_Manufacturing_template (
                 PK_ID, isactive, Item_ID, Item_Name, Item_BPOMGenerik, Item_group, Item_type,
@@ -2482,13 +2504,14 @@ async function getPKID() {
   }
 }
 
-const generateItemID = async (item_groupID) => {
+const generateItemID = async (item_groupID, existing = false) => {
   if (!item_groupID) {
     throw new Error('Item group ID is required');
   }
 
   let lblItem_ID = '';
 
+  console.log({ charAt: item_groupID.charAt(0) });
   if (!isNaN(item_groupID.charAt(0))) {
     console.log('QUERY1');
     const query1 = `
@@ -2510,6 +2533,7 @@ const generateItemID = async (item_groupID) => {
     `;
 
     const result = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
+    console.log({ result2: result });
     lblItem_ID = result.length > 0 ? result[0].newItemID : `${item_groupID} 001`;
     if (item_groupID !== 'RH') {
       lblItem_ID = lblItem_ID + '.000';
