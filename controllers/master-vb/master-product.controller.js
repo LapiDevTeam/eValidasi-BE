@@ -287,6 +287,8 @@ class MasterProductController {
         delegatedTo = delegated_to,
       } = req.body;
 
+      const originalProductID = productID;
+
       if (!productUnit) {
         return res.status(400).json({ message: 'Satuan terkecil Unit harus di isi!' });
       }
@@ -459,11 +461,11 @@ class MasterProductController {
           insert into m_Customer_Product (Cust_ID, Product_ID, Product_Init, Process_Date, User_ID, isActive, Delegated_to)
           values (:customerID, :productID, :productInit, GETDATE(), :userName, 1, :delegatedTo)
         `;
-
+        console.log({customerID: customer.substring(0, 2), productID: originalProductID, productInit, userName, delegatedTo});
         await sequelizeMSQL.query(insertCustomerProductSQL, {
           replacements: {
             customerID: customer.substring(0, 2),
-            productID: productID,
+            productID: originalProductID,
             productInit,
             userName,
             delegatedTo,
