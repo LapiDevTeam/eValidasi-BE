@@ -276,6 +276,8 @@ const getPPI = async (req, res) => {
           ELSE product_owner
         END AS product_owner,
         PPI_LOT,
+        ${isTemplate == 1 ? 'spv_Approve_date, ' : ''}
+        ${isTemplate == 1 ? 'spv_user_approve, ' : ''}
         ${isTemplate == 0 ? 'PPI_ED,' : ''}
         ppi_revisi,
         pPI_batchsizekemasan,
