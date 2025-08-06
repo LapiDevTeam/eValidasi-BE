@@ -1206,7 +1206,7 @@ const fnApprove = async (
 
       const strInsertNotProd = `INSERT INTO m_ppi_detail_not_produksi (PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_ItemID, Status_PPI, Process_Date, User_ID, Delegated_To, flag_update, Item_prcID, Priority)
         SELECT PPI_ID, PPI_ProductID, PPI_ProductInit, PPI_ItemID, Status_PPI, GETDATE(), '${userName}', '${delegatedTo}', NULL, Item_prcID, Priority
-        FROM m_ppi_detail_not_produksi_temp;`;
+        FROM m_ppi_detail_not_produksi_temp WHERE PPI_ProductID = '${productID}';`;
 
         const resultstrDeleteNotProd = await sequelizeMSQL.query(strDeleteNotProd, {
           transaction
