@@ -851,6 +851,9 @@ const fnApprove = async (
     let ppi_ED = 0;
     let ppi_revisi = '00';
     let ppi_id = ''
+    const userLevel = await getApprovalLevel(deptID, userName);
+
+    console.log({userLevel});
     // Check ppi_ED
     const checkEDSQL = `
     SELECT ISNULL(ppi_ED, 0) AS ppi_ED, PPI_ID
@@ -877,7 +880,7 @@ const fnApprove = async (
       ppi_id = edResult[0].PPI_ID;
     }
     console.log({ userName, deptID, delegatedTo, ppi_ED, ppi_revisi });
-    const strAppr_Identity = userName;
+    const strAppr_Identity = userLevel;
 
     const deleteStrSQL1 = `
     DELETE FROM m_ppi_header_lock
@@ -1087,7 +1090,7 @@ const fnApprove = async (
     await sequelizeMSQL.query(strAdd8, { transaction });
 
 
-    const SQLInsertOri = `
+const SQLInsertOri = `
       INSERT INTO m_PPI_Header (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, PPI_revisi, PPI_ED, pPI_batchsizekemasan, rendemen_min, default_kebutuhanbahan, PPI_Kemasan01)
       SELECT PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, CAST(PPI_BatchSize AS FLOAT), PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, '${strTglBerlaku}', '${userName}', '${delegatedTo}', isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, '${revisiPPI}', ${ppi_ED}, ISNULL(pPI_batchsizekemasan, 0), ISNULL(rendemen_min, 0), default_kebutuhanbahan, PPI_Kemasan01
       FROM m_PPI_Header_Template
@@ -1105,19 +1108,23 @@ const fnApprove = async (
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
+    `;
 
+    const insertPPIBARU = `
       INSERT INTO m_PPI_Status (PPI_No, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)
-      SELECT PPI_ID + PPI_SubID + PPI_ProductID + CAST(PPI_ProductInit AS VARCHAR), '1', '0', '${strAppr_Identity}', '${strTglBerlaku}', '${userName}', '${delegatedTo}'
+      SELECT CAST(PPI_ID + PPI_SubID + PPI_ProductID + CAST(PPI_ProductInit AS VARCHAR) AS NVARCHAR),
+      '1', '0', '${strAppr_Identity}', '${strTglBerlaku}', '${userName}', '${delegatedTo}'
       FROM m_PPI_Header_Template
       WHERE ISNULL(item_Periode, '') = '${strPeriode}'
         AND PPI_ID = '${ppi_id}'
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
-    `;
+    `
 
-
-    const resultSQLInsertOri = await sequelizeMSQL.query(SQLInsertOri, { transaction });
+    const resultInsertPPIBARU = await sequelizeMSQL.query(insertPPIBARU, { transaction });
+    console.log({resultInsertPPIBARU});
+    await sequelizeMSQL.query(SQLInsertOri, { transaction });
 
     const SQLInsertTemp = `
       INSERT INTO m_PPI_Header_Template (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, PPI_BatchSize, PPI_BatchSizeUnitID, PPI_Kemasan, PPI_Status, Process_Date, User_ID, Delegated_To, isActive, PPI_StatusUserID, PPI_StatusDate, PPI_StatusDelegated_To, status_default, PPI_Lot, flag_update, update_from, item_Periode, tgl_berlaku, user_approve, user_Delegated, ppi_revisi, PPI_ED, pPI_batchsizekemasan, rendemen_min, default_kebutuhanbahan, PPI_Kemasan01)
@@ -1140,7 +1147,7 @@ const fnApprove = async (
     `;
 
     const resultSQLInsertTemp = await sequelizeMSQL.query(SQLInsertTemp, { transaction });
-    console.log({resultSQLInsertTemp, resultSQLInsertOri});
+    console.log({resultSQLInsertTemp});
 
     // Check if all batches should be updated
     if (checkAllBatch) {
@@ -1246,7 +1253,9 @@ const fnApprove = async (
           resultstrInsertNotProd
         });
       }
-      await transaction.commit();
+
+    await transaction.commit();
+
     return {
       error: false,
       message: 'Master formula template approved successfully',
@@ -1349,7 +1358,7 @@ const getApprovalLevel = async (department, userName) => {
       replacements: { department, userName },
       type: QueryTypes.SELECT,
     });
-
+    console.log({resultAPPROVERID: result});
     if (result.length === 0) {
       return 0; // Default level if no record is found
     }
