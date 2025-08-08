@@ -1105,7 +1105,17 @@ const fnApprove = async (
         AND PPI_SubID = '${subID}'
         AND PPI_ProductID = '${productID}'
         AND PPI_ProductInit = 0;
+
+      INSERT INTO m_PPI_Status (PPI_No, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)
+      SELECT PPI_ID + PPI_SubID + PPI_ProductID + CAST(PPI_ProductInit AS VARCHAR), '1', '0', '${strAppr_Identity}', '${strTglBerlaku}', '${userName}', '${delegatedTo}'
+      FROM m_PPI_Header_Template
+      WHERE ISNULL(item_Periode, '') = '${strPeriode}'
+        AND PPI_ID = '${ppi_id}'
+        AND PPI_SubID = '${subID}'
+        AND PPI_ProductID = '${productID}'
+        AND PPI_ProductInit = 0;
     `;
+
 
     const resultSQLInsertOri = await sequelizeMSQL.query(SQLInsertOri, { transaction });
 
@@ -2146,7 +2156,7 @@ const createListMergerPPI = async (req, res) => {
     const { user_id, bagian_user, delegated_to } = req.user;
     console.log({user: req.user});
 
-    if (!PPI_ProductID || !PPI_ProductInit || !PPI_ID || !PPI_SubID || !SubID_Alternatif) {
+    if (!PPI_ProductID || !PPI_ProductInit || !PPI_ID || !PPI_SubID ) {
       console.log({object: req.body});
       return res.status(400).send({ message: "Required parameters are missing" });
     }
@@ -2193,7 +2203,7 @@ const deleteMergerPPI = async (req, res) => {
     console.log({});
 
 
-    if (!PPI_ID || !PPI_SubID_Utama || !PPI_ProductID || !PPI_ProductInit || !PPI_SubID) {
+    if (!PPI_ID || !PPI_SubID_Utama || !PPI_ProductID || !PPI_ProductInit) {
       return res.status(400).send({ message: "Required parameters are missing" });
     }
 
