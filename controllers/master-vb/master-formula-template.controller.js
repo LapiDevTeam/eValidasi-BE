@@ -1044,12 +1044,27 @@ const fnApprove = async (
     const strAdd6 = `DELETE FROM m_PPI_status
     WHERE ppi_no = '${tag}';`
 
-    const strAdd7 = `UPDATE m_PPI_Header_template
-    SET item_Periode = '${strPeriode}', tgl_berlaku = '${strTglBerlaku}', user_approve = '${userName}', user_Delegated = '${delegatedTo}'
-    WHERE PPI_ID = '${ppi_id}'
-      AND PPI_SubID = '${subID}'
-      AND PPI_ProductID = '${productID}'
-      AND PPI_ProductInit = 0`
+    const strAdd7 = `
+        IF NOT EXISTS (
+            SELECT 1 FROM m_PPI_Header_template
+            WHERE PPI_ID = '${ppi_id}'
+              AND PPI_SubID = '${subID}'
+              AND PPI_ProductID = '${productID}'
+              AND PPI_ProductInit = 0
+              AND item_Periode = '${strPeriode}'
+        )
+        BEGIN
+            UPDATE m_PPI_Header_template
+            SET item_Periode = '${strPeriode}',
+                tgl_berlaku = '${strTglBerlaku}',
+                user_approve = '${userName}',
+                user_Delegated = '${delegatedTo}'
+            WHERE PPI_ID = '${ppi_id}'
+              AND PPI_SubID = '${subID}'
+              AND PPI_ProductID = '${productID}'
+              AND PPI_ProductInit = 0
+              AND ISNULL(item_Periode, '') = ''
+        END`
 
 
     const strAdd8 = `UPDATE m_PPI_detail_template
@@ -1227,6 +1242,7 @@ const fnApprove = async (
       message: 'Master formula template approved successfully',
     };
   } catch (error) {
+    console.log({error});
     await transaction.rollback();
     const resp = {
       error: true,
