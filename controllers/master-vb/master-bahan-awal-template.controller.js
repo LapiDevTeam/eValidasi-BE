@@ -7,6 +7,7 @@ const path = require('path');
 const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 const { QueryTypes } = require('sequelize');
 const moment = require('moment');
+const ExcelJS = require('exceljs');
 
 const getManager = async (req, res, next) => {
   try {
@@ -2274,6 +2275,98 @@ async function getViewDPBATemplate(req, res, next) {
   }
 }
 
+const exportDPBAToExcel = async (req, res, next) => {
+  try {
+    const { user_id, bagian_user } = req.user;
+    const { item_group } = req.query;
+
+    if (!user_id || user_id === '') {
+      return res.status(401).send('Unauthorized request!');
+    }
+
+    // SQL query from VB code - item_group is now optional
+    let strTemp = `SELECT * FROM v_DPBA_for_excel`;
+
+    // Add item_group filter only if provided
+    if (item_group && item_group.trim() !== '') {
+      strTemp += ` WHERE Item_group = :item_group`;
+    }
+
+    strTemp += ` ORDER BY Item_group, KODE`;
+
+    // Execute query with conditional replacements
+    const replacements = {};
+    if (item_group && item_group.trim() !== '') {
+      replacements.item_group = item_group;
+    }
+
+    const data = await sequelizeMSQL.query(strTemp, {
+      type: QueryTypes.SELECT,
+      replacements
+    });
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        message: 'No data found for the specified criteria'
+      });
+    }
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('DPBA Report');
+
+    // Get column headers from the first row
+    const headers = Object.keys(data[0]);
+
+    // Add headers to worksheet
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    data.forEach(row => {
+      const rowValues = headers.map(header => row[header]);
+      worksheet.addRow(rowValues);
+    });
+
+    // Auto-fit columns
+    worksheet.columns.forEach(column => {
+      let maxLength = 0;
+      column.eachCell({ includeEmpty: true }, cell => {
+        const columnLength = cell.value ? cell.value.toString().length : 10;
+        if (columnLength > maxLength) {
+          maxLength = columnLength;
+        }
+      });
+      column.width = maxLength < 10 ? 10 : maxLength + 2;
+    });
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const itemGroupPart = item_group && item_group.trim() !== '' ? `_${item_group}` : '_All';
+    const filename = `DPBA_Report${itemGroupPart}_${timestamp}.xlsx`;
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Send the Excel file
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('DPBA Excel export error:', error);
+    next(error);
+  }
+};
+
 async function getViewDPBA(req, res, next) {
   try {
     let { item_group, page = 0, size = 10 } = req.query;
@@ -3389,5 +3482,6 @@ module.exports = {
   getManager,
   getQueryController,
   printHeader,
-  updateItemManufacturingRevision
+  updateItemManufacturingRevision,
+  exportDPBAToExcel
 };

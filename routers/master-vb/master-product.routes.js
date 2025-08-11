@@ -2,6 +2,7 @@ const express = require("express");
 const masterProductRouter = express.Router();
 const MasterProductController = require("../../controllers/master-vb/master-product.controller");
 const { authentication } = require("../../middlewares/authentication");
+const exportControllerProduct = require("./../../controllers/master-vb/excel-export.controller.js");
 
 // fetch Product
 masterProductRouter.get("/", MasterProductController.fetchProduct);
@@ -15,6 +16,8 @@ masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 // fetch Customer
 // masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 
+masterProductRouter.get("/export-dua", authentication, exportControllerProduct.exportProductData);
+masterProductRouter.get("/export-satu", authentication, exportControllerProduct.exportPPIReport);
 masterProductRouter.post("/", authentication, MasterProductController.addNewProduct);
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
 masterProductRouter.delete("/", authentication, MasterProductController.deleteProduct);
