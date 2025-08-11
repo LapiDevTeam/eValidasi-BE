@@ -289,6 +289,163 @@ async function generateDPBA(req, res) {
   }
 }
 
+async function exportItemUsageReport(req, res, next) {
+  try {
+    const { user_id, bagian_user } = req.user;
+    const { itemID } = req.query;
+
+    // Check user authentication
+    if (!user_id || user_id === '') {
+      throw new MyError(401, 'Unauthorized request!');
+    }
+
+    // Check if itemID is provided (equivalent to txtItemID.Text = "" check)
+    if (!itemID || itemID.trim() === '') {
+      throw new MyError(400, 'Pilih bahan terlebih dahulu');
+    }
+
+    // Check user department access (similar to VB logic - only RD departments)
+    if (!bagian_user || !bagian_user.startsWith('RD')) {
+      throw new MyError(403, 'Access denied. Only RD departments can export this report.');
+    }
+
+    // SQL query from VB code - exact match to the original
+    let strTemp = `select d.pengelompokan, b.Product_Name, a.PPI_ProductID, e.PPI_ItemID, f.item_name, sum(convert(float,e.PPI_QTY)) as totalPPI, e.PPI_UnitID, a.PPI_BatchSize, a.PPI_BatchSizeUnitID`;
+    strTemp += ` From m_ppi_header a`;
+    strTemp += ` left join m_product b on a.PPI_ProductID = b.product_id`;
+    strTemp += ` left join m_product_pc_group_detail c on a.PPI_ProductID = c.Product_id`;
+    strTemp += ` left join m_product_pc_group_header d on d.ID_master = c.ID_master`;
+    strTemp += ` left join m_ppi_detail e on a.PPI_ProductID = e.PPI_ProductID and a.PPI_ID = e.PPI_ID and a.PPI_SubID = e.PPI_SubID`;
+    strTemp += ` left join m_item_manufacturing f on e.PPI_ItemID = f.item_id`;
+    strTemp += ` where a.PPI_ProductID in`;
+    strTemp += ` (select distinct ppi_productid From m_ppi_detail where PPI_ItemID in (:itemID)`;
+    strTemp += ` and PPI_ProductID+PPI_SubID+PPI_ID in (select PPI_ProductID+PPI_SubID+PPI_ID from m_ppi_header where isActive = 1))`;
+    strTemp += ` and e.PPI_ItemID in (:itemID)`;
+    strTemp += ` and b.isActive = 1`;
+    strTemp += ` and a.status_default = 1`;
+    strTemp += ` group by d.pengelompokan, b.Product_Name, a.PPI_ProductID, e.PPI_ItemID, f.item_name, e.PPI_UnitID, a.PPI_BatchSize, a.PPI_BatchSizeUnitID`;
+    strTemp += ` order by d.pengelompokan, b.product_name`;
+
+    // Execute query
+    const data = await sequelizeMSQL.query(strTemp, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        itemID: itemID
+      }
+    });
+
+    if (!data || data.length === 0) {
+      throw new MyError(404, 'No data found for the specified Item ID');
+    }
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'eFormulation System';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet('Item Usage Report');
+
+    // Define headers based on the query columns
+    const headers = [
+      'Pengelompokan',
+      'Product Name',
+      'Product ID',
+      'Item ID',
+      'Item Name',
+      'Total PPI',
+      'Unit ID',
+      'Batch Size',
+      'Batch Size Unit ID'
+    ];
+
+    // Add headers to worksheet
+    worksheet.addRow(headers);
+
+    // Style headers
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add borders to headers
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // Add data rows
+    data.forEach((row, index) => {
+      const dataRow = worksheet.addRow([
+        row.pengelompokan || '',
+        row.Product_Name || '',
+        row.PPI_ProductID || '',
+        row.PPI_ItemID || '',
+        row.item_name || '',
+        row.totalPPI || 0,
+        row.PPI_UnitID || '',
+        row.PPI_BatchSize || '',
+        row.PPI_BatchSizeUnitID || ''
+      ]);
+
+      // Add borders to data rows
+      dataRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+
+      // Format numeric column (Total PPI)
+      const totalPPICell = dataRow.getCell(6);
+      totalPPICell.numFmt = '#,##0.00';
+      totalPPICell.alignment = { horizontal: 'right' };
+    });
+
+    // Auto-fit columns
+    worksheet.columns.forEach((column, index) => {
+      let maxLength = headers[index].length;
+
+      data.forEach(row => {
+        const values = Object.values(row);
+        if (values[index]) {
+          const cellLength = values[index].toString().length;
+          if (cellLength > maxLength) {
+            maxLength = cellLength;
+          }
+        }
+      });
+
+      column.width = maxLength < 10 ? 10 : Math.min(maxLength + 2, 50);
+    });
+
+    // Generate filename with timestamp
+    const timestamp = moment().format('YYYYMMDD_HHmmss');
+    const filename = `Item_Usage_Report_${itemID}_${timestamp}.xlsx`;
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Generate Excel buffer and send
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Item Usage Excel export error:', error);
+    next(error);
+  }
+}
+
 async function exportPrinciples(req, res) {
   try {
     // SQL query to get principles data (same as in VBA)
@@ -593,4 +750,5 @@ module.exports = {
   getPrinciples,
   exportSuppliers,
   getSuppliers,
+  exportItemUsageReport
 };
