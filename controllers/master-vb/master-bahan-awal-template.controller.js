@@ -89,14 +89,31 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
           const decimalPart = parts[1]; // e.g., "181.002"
 
           if (decimalPart.includes('.')) {
-            const [basePart, decimalSuffix] = decimalPart.split('.');
+            // First check if the item exists in the database
+            const checkQuery = `
+              SELECT COUNT(*) as itemCount
+              FROM m_Item_Manufacturing_template
+              WHERE Item_ID = :itemId AND isActive = 1
+            `;
 
-            // Increment the decimal suffix
-            if (!isNaN(decimalSuffix)) {
-              const incrementedSuffix = (parseInt(decimalSuffix) + 1).toString().padStart(decimalSuffix.length, '0');
-              lblItem_ID = `${prefix} ${basePart}.${incrementedSuffix}`;
+            const [existResult] = await sequelizeMSQL.query(checkQuery, {
+              replacements: { itemId: item_ID },
+              type: QueryTypes.SELECT,
+            });
+
+            if (existResult && existResult.itemCount > 0) {
+              // Item exists, so increment the decimal suffix
+              const [basePart, decimalSuffix] = decimalPart.split('.');
+
+              if (!isNaN(decimalSuffix)) {
+                const incrementedSuffix = (parseInt(decimalSuffix) + 1).toString().padStart(decimalSuffix.length, '0');
+                lblItem_ID = `${prefix} ${basePart}.${incrementedSuffix}`;
+              } else {
+                // If suffix isn't numeric, fall back to the original ID
+                lblItem_ID = item_ID;
+              }
             } else {
-              // If suffix isn't numeric, fall back to the original ID
+              // Item doesn't exist, use the original ID
               lblItem_ID = item_ID;
             }
           } else {
