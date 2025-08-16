@@ -80,86 +80,114 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
 
-      // Extract middle code from provided item_ID
-      const getMiddleCode = (item_ID) => {
-        if (!item_ID) return '';
+      // Handle decimal notation like "BR 181.002"
+      if (item_ID.includes('.')) {
         const parts = item_ID.split(' ');
-        return parts.length >= 2 ? parts[1] : '';
-      };
-
-      const middleCode = getMiddleCode(item_ID);
-      console.log({ middleCode });
-
-      // Get the latest item_ID from database for this group with same middle code
-      let query = `
-        SELECT TOP 1 item_ID
-        FROM m_Item_Manufacturing_template
-        WHERE item_group = :item_group
-      `;
-
-      // Add middle code condition if it exists
-      if (middleCode && middleCode !== '') {
-        query += ` AND item_ID LIKE :item_pattern `;
-      }
-
-      query += ` ORDER BY item_ID DESC`;
-
-      const replacements = { item_group: item_groupID };
-      if (middleCode && middleCode !== '') {
-        replacements.item_pattern = `${item_groupID} ${middleCode} %`;
-      }
-
-      const [latestItem] = await sequelizeMSQL.query(query, {
-        replacements,
-        type: QueryTypes.SELECT,
-      });
-
-      if (latestItem && latestItem.item_ID) {
-        const latestItemID = latestItem.item_ID;
-        const parts = latestItemID.split(' ');
+        const prefix = parts[0]; // e.g., "BR"
 
         if (parts.length >= 2) {
-          const lastPart = parts[parts.length - 1];
+          const decimalPart = parts[1]; // e.g., "181.002"
 
-          // Handle .000 suffix for non-RH items
-          if (lastPart.includes('.')) {
-            const [number, suffix] = lastPart.split('.');
-            if (!isNaN(number) && number !== '') {
-              const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
-              parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
-              lblItem_ID = parts.join(' ');
+          if (decimalPart.includes('.')) {
+            const [basePart, decimalSuffix] = decimalPart.split('.');
+
+            // Increment the decimal suffix
+            if (!isNaN(decimalSuffix)) {
+              const incrementedSuffix = (parseInt(decimalSuffix) + 1).toString().padStart(decimalSuffix.length, '0');
+              lblItem_ID = `${prefix} ${basePart}.${incrementedSuffix}`;
             } else {
-              // If number part is invalid, default to 001.000
-              parts[parts.length - 1] = `001.${suffix}`;
-              lblItem_ID = parts.join(' ');
+              // If suffix isn't numeric, fall back to the original ID
+              lblItem_ID = item_ID;
             }
-          } else if (!isNaN(lastPart) && lastPart !== '') {
-            // Handle numeric-only last part
-            const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
-            parts[parts.length - 1] = incrementedNumber;
-            lblItem_ID = parts.join(' ');
           } else {
-            // If lastPart contains non-numeric characters, extract numeric part
-            const numericMatch = lastPart.match(/(\d+)/);
-            if (numericMatch) {
-              const numericPart = numericMatch[1];
-              const incrementedNumber = (parseInt(numericPart) + 1).toString().padStart(numericPart.length, '0');
-              // Replace the numeric part while keeping non-numeric characters
-              const newLastPart = lastPart.replace(/\d+/, incrementedNumber);
-              parts[parts.length - 1] = newLastPart;
-              lblItem_ID = parts.join(' ');
-            } else {
-              // If no numeric part found, append "001"
-              lblItem_ID = `${latestItemID} 001`;
-            }
+            // If no decimal but there's a space, add 001
+            lblItem_ID = `${item_ID} 001`;
           }
-        }
-      } else {
-        // If no items found with middle code, create new one with middle code + "001"
-        if (middleCode && middleCode !== '') {
-          lblItem_ID = `${item_groupID} ${middleCode} 001`;
         } else {
           lblItem_ID = `${item_ID} 001`;
+        }
+      } else {
+        // For non-decimal IDs, use original logic
+        const getMiddleCode = (item_ID) => {
+          if (!item_ID) return '';
+          const parts = item_ID.split(' ');
+          return parts.length >= 2 ? parts[1] : '';
+        };
+
+        const middleCode = getMiddleCode(item_ID);
+        console.log({ middleCode });
+
+        // Get the latest item_ID from database for this group with same middle code
+        let query = `
+          SELECT TOP 1 item_ID
+          FROM m_Item_Manufacturing_template
+          WHERE item_group = :item_group
+        `;
+
+        // Add middle code condition if it exists
+        if (middleCode && middleCode !== '') {
+          query += ` AND item_ID LIKE :item_pattern `;
+        }
+
+        query += ` ORDER BY item_ID DESC`;
+
+        const replacements = { item_group: item_groupID };
+        if (middleCode && middleCode !== '') {
+          replacements.item_pattern = `${item_groupID} ${middleCode} %`;
+        }
+
+        const [latestItem] = await sequelizeMSQL.query(query, {
+          replacements,
+          type: QueryTypes.SELECT,
+        });
+
+        if (latestItem && latestItem.item_ID) {
+          const latestItemID = latestItem.item_ID;
+          const parts = latestItemID.split(' ');
+
+          if (parts.length >= 2) {
+            const lastPart = parts[parts.length - 1];
+
+            // Handle .000 suffix for non-RH items
+            if (lastPart.includes('.')) {
+              const [number, suffix] = lastPart.split('.');
+              if (!isNaN(number) && number !== '') {
+                const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
+                parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
+                lblItem_ID = parts.join(' ');
+              } else {
+                // If number part is invalid, default to 001.000
+                parts[parts.length - 1] = `001.${suffix}`;
+                lblItem_ID = parts.join(' ');
+              }
+            } else if (!isNaN(lastPart) && lastPart !== '') {
+              // Handle numeric-only last part
+              const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
+              parts[parts.length - 1] = incrementedNumber;
+              lblItem_ID = parts.join(' ');
+            } else {
+              // If lastPart contains non-numeric characters, extract numeric part
+              const numericMatch = lastPart.match(/(\d+)/);
+              if (numericMatch) {
+                const numericPart = numericMatch[1];
+                const incrementedNumber = (parseInt(numericPart) + 1).toString().padStart(numericPart.length, '0');
+                // Replace the numeric part while keeping non-numeric characters
+                const newLastPart = lastPart.replace(/\d+/, incrementedNumber);
+                parts[parts.length - 1] = newLastPart;
+                lblItem_ID = parts.join(' ');
+              } else {
+                // If no numeric part found, append "001"
+                lblItem_ID = `${latestItemID} 001`;
+              }
+            }
+          }
+        } else {
+          // If no items found with middle code, create new one with middle code + "001"
+          if (middleCode && middleCode !== '') {
+            lblItem_ID = `${item_groupID} ${middleCode} 001`;
+          } else {
+            lblItem_ID = `${item_ID} 001`;
+          }
         }
       }
     }
