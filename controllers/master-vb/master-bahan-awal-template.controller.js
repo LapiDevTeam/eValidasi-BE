@@ -2914,7 +2914,7 @@ async function printTest(req, res) {
 }
 
 async function printHeader(req, res) {
-  const { link, noDoc, tanggal, revisi, title} = req.query;
+  const { link, noDoc, tanggal, revisi, title, sameNumber} = req.query;
   const landscape = Number(req.query.landscape || 1);
 
 
@@ -2973,7 +2973,7 @@ async function printHeader(req, res) {
     <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${revisi}</td>
     <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Halaman</td>
     <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">
-      <span class="pageNumber"></span> dari <span class="totalPages"></span>
+      ${sameNumber ? `<span>1</span> dari <span>1</span>` : `<span class="pageNumber"></span> dari <span class="totalPages"></span>`}
     </td>
   </tr>
 </table>
