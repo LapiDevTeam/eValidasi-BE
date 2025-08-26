@@ -2175,19 +2175,12 @@ async function getViewDPBATemplate(req, res, next) {
     let countString = '';
     if (item_group === 'ä' || item_group === 'RH') {
       queryString = `
-        SELECT
-          v.*,
-          s.Lembaga,
-          s.Nomor_sertifikat,
-          s.Masa_berlaku_date,
-          s.Dok_Pendukung,
-          c.nama_indo,
-          ROW_NUMBER() OVER (ORDER BY v.KODE) AS RowNum
-        FROM v_DPBA_template v
-        LEFT JOIN m_Item_Manufacturing_template t ON v.KODE = t.Item_ID AND ISNULL(t.item_Periode,'') = ''
-        LEFT JOIN m_Item_Manufacturing_Supplier_template s ON v.KODE = s.Item_ID AND s.isActive = 1 AND ISNULL(s.item_Periode,'') = ''
-        LEFT JOIN m_Convert_bulan c ON DATEPART(MM, s.Masa_berlaku_date) = c.bulan
-        WHERE v.Item_group IN ('ä', 'RH')
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
+          FROM v_DPBA_template
+          WHERE Item_group in ('ä', 'RH')
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
@@ -2195,19 +2188,12 @@ async function getViewDPBATemplate(req, res, next) {
       `;
     } else {
       queryString = `
-        SELECT
-          v.*,
-          s.Lembaga,
-          s.Nomor_sertifikat,
-          s.Masa_berlaku_date,
-          s.Dok_Pendukung,
-          c.nama_indo,
-          ROW_NUMBER() OVER (ORDER BY v.KODE) AS RowNum
-        FROM v_DPBA_template v
-        LEFT JOIN m_Item_Manufacturing_template t ON v.KODE = t.Item_ID AND ISNULL(t.item_Periode,'') = ''
-        LEFT JOIN m_Item_Manufacturing_Supplier_template s ON v.KODE = s.Item_ID AND s.isActive = 1 AND ISNULL(s.item_Periode,'') = ''
-        LEFT JOIN m_Convert_bulan c ON DATEPART(MM, s.Masa_berlaku_date) = c.bulan
-        WHERE v.Item_group = :item_group
+        SELECT * FROM (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY KODE) AS RowNum
+          FROM v_DPBA_template
+          WHERE Item_group = :item_group
+        ) AS Result
+        WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit ORDER BY KODE ASC
       `;
       countString = `
         SELECT COUNT(*) AS count from v_DPBA_template
@@ -2215,16 +2201,7 @@ async function getViewDPBATemplate(req, res, next) {
       `;
     }
 
-    // Add pagination to the main query
-    const paginatedQuery = `
-      SELECT * FROM (
-        ${queryString}
-      ) AS Result
-      WHERE RowNum BETWEEN :offset + 1 AND :offset + :limit
-      ORDER BY KODE ASC
-    `;
-
-    const result = await sequelizeMSQL.query(paginatedQuery, {
+    const result = await sequelizeMSQL.query(queryString, {
       replacements: { item_group, offset, limit },
     });
 
@@ -2232,53 +2209,23 @@ async function getViewDPBATemplate(req, res, next) {
       replacements: { item_group, offset, limit },
     });
 
-    // Process rows to fix NULL keterangan_halal with proper formatting
+    // Process rows to fix NULL keterangan_halal
     const processedRows = result[0].map(row => {
       let keterangan_halal = row.keterangan_halal;
 
-      // If keterangan_halal is null, construct it from available data
+      // If keterangan_halal is null, try to construct it from available data
       if (keterangan_halal === null || keterangan_halal === '') {
         if (row.item_ishalal === true || row.item_ishalal === 1) {
-          // Construct halal information following the original view logic
-          const lembaga = row.Lembaga || '';
-          const nomor_sertifikat = row.Nomor_sertifikat || '';
-          const masa_berlaku_date = row.Masa_berlaku_date;
-          const dok_pendukung = row.Dok_Pendukung || '';
-          const nama_indo = row.nama_indo || '';
-
-          if (lembaga === '' || lembaga === '-') {
-            // Use dok_pendukung format
-            keterangan_halal = dok_pendukung ? ` (${dok_pendukung})` : '';
-          } else {
-            // Use full format: lembaga, nomor_sertifikat, date
-            let parts = [];
-
-            if (lembaga) parts.push(lembaga);
-            if (nomor_sertifikat) parts.push(nomor_sertifikat);
-
-            // Format date if available
-            if (masa_berlaku_date && nomor_sertifikat && nomor_sertifikat !== '' && nomor_sertifikat !== '-') {
-              try {
-                const date = new Date(masa_berlaku_date);
-                if (!isNaN(date.getTime())) {
-                  const day = date.getDate().toString();
-                  const month = nama_indo || '';
-                  const year = date.getFullYear().toString();
-
-                  if (month) {
-                    parts.push(`${day} ${month} ${year}`);
-                  }
-                }
-              } catch (e) {
-                console.log('Date formatting error:', e);
-              }
-            }
-
-            keterangan_halal = parts.length > 0 ? `, ${parts.join(', ')}` : 'Halal';
+          // For halal items, construct from available halal data
+          const parts = [];
+          if (row.Lembaga && row.Lembaga.trim() !== '') {
+            parts.push(row.Lembaga);
+          }
+          if (row.Nomor_sertifikat && row.Nomor_sertifikat.trim() !== '') {
+            parts.push(row.Nomor_sertifikat);
           }
 
-          // Clean up empty parentheses
-          keterangan_halal = keterangan_halal.replace(/^\(\)$/, '');
+          keterangan_halal = parts.length > 0 ? parts.join(', ') : 'Halal';
         } else {
           keterangan_halal = ' ';
         }
@@ -2295,7 +2242,6 @@ async function getViewDPBATemplate(req, res, next) {
       count: total[0]?.count,
     };
 
-    // ... rest of your existing code for revisions, file mapping, etc.
     let no_revisi = 0;
     let alasan_desc = '';
     const response = getPagingData(data, page, limit);
