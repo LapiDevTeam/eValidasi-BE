@@ -2203,29 +2203,103 @@ async function getViewDPBATemplate(req, res, next) {
 
     const result = await sequelizeMSQL.query(queryString, {
       replacements: { item_group, offset, limit },
+      type: QueryTypes.SELECT,
     });
 
     const [total] = await sequelizeMSQL.query(countString, {
       replacements: { item_group, offset, limit },
+      type: QueryTypes.SELECT,
     });
 
+    // For items with NULL keterangan_halal, fetch additional halal data
+    const itemsWithNullKeterangan = result.filter(row =>
+      row.keterangan_halal === null || row.keterangan_halal === '' || row.keterangan_halal === '-'
+    );
+
+    let halalDataMap = new Map();
+
+    if (itemsWithNullKeterangan.length > 0) {
+      const itemIds = itemsWithNullKeterangan.map(item => `'${item.KODE}'`).join(',');
+
+      const halalQuery = `
+        SELECT
+          s.Item_ID,
+          s.Lembaga,
+          s.Nomor_sertifikat,
+          s.Masa_berlaku_date,
+          s.Dok_Pendukung,
+          c.nama_indo
+        FROM m_Item_Manufacturing_Supplier_template s
+        LEFT JOIN m_Convert_bulan c ON DATEPART(MM, s.Masa_berlaku_date) = c.bulan
+        WHERE s.Item_ID IN (${itemIds})
+          AND s.isActive = 1
+          AND ISNULL(s.item_Periode,'') = ''
+      `;
+
+      const halalResults = await sequelizeMSQL.query(halalQuery, {
+        type: QueryTypes.SELECT,
+      });
+
+      // Create a map for quick lookup
+      halalResults.forEach(row => {
+        halalDataMap.set(row.Item_ID, row);
+      });
+    }
+
     // Process rows to fix NULL keterangan_halal
-    const processedRows = result[0].map(row => {
+    const processedRows = result.map(row => {
       let keterangan_halal = row.keterangan_halal;
 
-      // If keterangan_halal is null, try to construct it from available data
-      if (keterangan_halal === null || keterangan_halal === '') {
+      // If keterangan_halal is null/empty, reconstruct it from fetched data
+      if (keterangan_halal === null || keterangan_halal === '' || keterangan_halal === '-') {
         if (row.item_ishalal === true || row.item_ishalal === 1) {
-          // For halal items, construct from available halal data
-          const parts = [];
-          if (row.Lembaga && row.Lembaga.trim() !== '') {
-            parts.push(row.Lembaga);
-          }
-          if (row.Nomor_sertifikat && row.Nomor_sertifikat.trim() !== '') {
-            parts.push(row.Nomor_sertifikat);
-          }
+          const halalData = halalDataMap.get(row.KODE);
 
-          keterangan_halal = parts.length > 0 ? parts.join(', ') : 'Halal';
+          if (halalData) {
+            const lembaga = halalData.Lembaga || '';
+            const nomor_sertifikat = halalData.Nomor_sertifikat || '';
+            const masa_berlaku_date = halalData.Masa_berlaku_date;
+            const dok_pendukung = halalData.Dok_Pendukung || '';
+            const nama_indo = halalData.nama_indo || '';
+
+            if (lembaga === '' || lembaga === '-') {
+              // Use dok_pendukung format: " (document)"
+              keterangan_halal = dok_pendukung ? ` (${dok_pendukung})` : '';
+            } else {
+              // Use full format: ", lembaga, nomor_sertifikat, date month year"
+              let parts = [];
+
+              if (lembaga) parts.push(lembaga);
+              if (nomor_sertifikat) parts.push(nomor_sertifikat);
+
+              // Format date if available and nomor_sertifikat exists
+              if (masa_berlaku_date && nomor_sertifikat && nomor_sertifikat !== '' && nomor_sertifikat !== '-') {
+                try {
+                  const date = new Date(masa_berlaku_date);
+                  if (!isNaN(date.getTime())) {
+                    const day = date.getDate().toString();
+                    const month = nama_indo || '';
+                    const year = date.getFullYear().toString();
+
+                    if (month) {
+                      parts.push(`${day} ${month} ${year}`);
+                    }
+                  }
+                } catch (e) {
+                  console.log('Date formatting error for item:', row.KODE, e);
+                }
+              }
+
+              keterangan_halal = parts.length > 0 ? `, ${parts.join(', ')}` : 'Halal';
+            }
+
+            // Clean up empty parentheses
+            if (keterangan_halal === '()') {
+              keterangan_halal = '';
+            }
+          } else {
+            keterangan_halal = 'Halal';
+          }
         } else {
           keterangan_halal = ' ';
         }
@@ -2321,6 +2395,7 @@ async function getViewDPBATemplate(req, res, next) {
 
     const [revisi] = await sequelizeMSQL.query(detailRevisi, {
       replacements: { item_group },
+      type: QueryTypes.SELECT,
     });
 
     const alasanQuery = `
