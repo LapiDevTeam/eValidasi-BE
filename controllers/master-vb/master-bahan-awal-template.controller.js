@@ -2209,10 +2209,39 @@ async function getViewDPBATemplate(req, res, next) {
       replacements: { item_group, offset, limit },
     });
 
+    // Process rows to fix NULL keterangan_halal
+    const processedRows = result[0].map(row => {
+      let keterangan_halal = row.keterangan_halal;
+
+      // If keterangan_halal is null, try to construct it from available data
+      if (keterangan_halal === null || keterangan_halal === '') {
+        if (row.item_ishalal === true || row.item_ishalal === 1) {
+          // For halal items, construct from available halal data
+          const parts = [];
+          if (row.Lembaga && row.Lembaga.trim() !== '') {
+            parts.push(row.Lembaga);
+          }
+          if (row.Nomor_sertifikat && row.Nomor_sertifikat.trim() !== '') {
+            parts.push(row.Nomor_sertifikat);
+          }
+
+          keterangan_halal = parts.length > 0 ? parts.join(', ') : 'Halal';
+        } else {
+          keterangan_halal = ' ';
+        }
+      }
+
+      return {
+        ...row,
+        keterangan_halal
+      };
+    });
+
     const data = {
-      rows: result[0],
+      rows: processedRows,
       count: total[0]?.count,
     };
+
     let no_revisi = 0;
     let alasan_desc = '';
     const response = getPagingData(data, page, limit);
