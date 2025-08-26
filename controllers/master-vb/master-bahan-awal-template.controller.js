@@ -2203,166 +2203,19 @@ async function getViewDPBATemplate(req, res, next) {
 
     const result = await sequelizeMSQL.query(queryString, {
       replacements: { item_group, offset, limit },
-      type: QueryTypes.SELECT,
     });
 
     const [total] = await sequelizeMSQL.query(countString, {
       replacements: { item_group, offset, limit },
-      type: QueryTypes.SELECT,
     });
-
-    // Group results by KODE to handle duplicates and fix keterangan_halal
-    const groupedResults = new Map();
-
-    result.forEach(row => {
-      const kode = row.KODE;
-
-      if (!groupedResults.has(kode)) {
-        // First occurrence of this KODE
-        groupedResults.set(kode, {
-          ...row,
-          PEMBUAT: [row.PEMBUAT].filter(p => p && p !== 'X'),
-          PEMASOK: [row.PEMASOK].filter(p => p && p !== 'X'),
-          NEGARAASAL: [row.NEGARAASAL].filter(n => n && n !== 'X')
-        });
-      } else {
-        // Duplicate KODE - merge PEMBUAT, PEMASOK, NEGARAASAL
-        const existing = groupedResults.get(kode);
-
-        if (row.PEMBUAT && row.PEMBUAT !== 'X' && !existing.PEMBUAT.includes(row.PEMBUAT)) {
-          existing.PEMBUAT.push(row.PEMBUAT);
-        }
-
-        if (row.PEMASOK && row.PEMASOK !== 'X' && !existing.PEMASOK.includes(row.PEMASOK)) {
-          existing.PEMASOK.push(row.PEMASOK);
-        }
-
-        if (row.NEGARAASAL && row.NEGARAASAL !== 'X' && !existing.NEGARAASAL.includes(row.NEGARAASAL)) {
-          existing.NEGARAASAL.push(row.NEGARAASAL);
-        }
-      }
-    });
-
-    // Convert grouped results back to array and fix keterangan_halal
-    const uniqueResults = [];
-    const itemsNeedingHalalFix = [];
-
-    for (const [kode, item] of groupedResults) {
-      // Convert arrays back to strings
-      item.PEMBUAT = item.PEMBUAT.length > 0 ? item.PEMBUAT.join('; ') : 'X';
-      item.PEMASOK = item.PEMASOK.length > 0 ? item.PEMASOK.join('; ') : 'X';
-      item.NEGARAASAL = item.NEGARAASAL.length > 0 ? item.NEGARAASAL.join('; ') : 'X';
-
-      // Check if keterangan_halal needs fixing
-      if (item.keterangan_halal === null || item.keterangan_halal === '' || item.keterangan_halal === '-') {
-        itemsNeedingHalalFix.push(item);
-      }
-
-      uniqueResults.push(item);
-    }
-
-    // Fix keterangan_halal for items that need it
-    if (itemsNeedingHalalFix.length > 0) {
-      const itemIds = itemsNeedingHalalFix.map(item => `'${item.KODE}'`).join(',');
-
-      const halalQuery = `
-        SELECT
-          s.Item_ID,
-          s.Lembaga,
-          s.Nomor_sertifikat,
-          s.Masa_berlaku_date,
-          s.Dok_Pendukung,
-          c.nama_indo,
-          ROW_NUMBER() OVER (PARTITION BY s.Item_ID ORDER BY s.input_date DESC) as rn
-        FROM m_Item_Manufacturing_Supplier_template s
-        LEFT JOIN m_Convert_bulan c ON DATEPART(MM, s.Masa_berlaku_date) = c.bulan
-        WHERE s.Item_ID IN (${itemIds})
-          AND s.isActive = 1
-          AND ISNULL(s.item_Periode,'') = ''
-          AND s.item_isHalal = 1
-      `;
-
-      const halalResults = await sequelizeMSQL.query(halalQuery, {
-        type: QueryTypes.SELECT,
-      });
-
-      // Create map with only the most recent halal data per item
-      const halalDataMap = new Map();
-      halalResults
-        .filter(row => row.rn === 1) // Only take the most recent record
-        .forEach(row => {
-          halalDataMap.set(row.Item_ID, row);
-        });
-
-      // Update keterangan_halal for items that need fixing
-      itemsNeedingHalalFix.forEach(item => {
-        let keterangan_halal = item.keterangan_halal;
-
-        if (keterangan_halal === null || keterangan_halal === '' || keterangan_halal === '-') {
-          if (item.item_ishalal === true || item.item_ishalal === 1) {
-            const halalData = halalDataMap.get(item.KODE);
-
-            if (halalData) {
-              const lembaga = halalData.Lembaga || '';
-              const nomor_sertifikat = halalData.Nomor_sertifikat || '';
-              const masa_berlaku_date = halalData.Masa_berlaku_date;
-              const dok_pendukung = halalData.Dok_Pendukung || '';
-              const nama_indo = halalData.nama_indo || '';
-
-              if (lembaga === '' || lembaga === '-') {
-                keterangan_halal = dok_pendukung ? ` (${dok_pendukung})` : '';
-              } else {
-                let parts = [];
-
-                if (lembaga) parts.push(lembaga);
-                if (nomor_sertifikat) parts.push(nomor_sertifikat);
-
-                if (masa_berlaku_date && nomor_sertifikat && nomor_sertifikat !== '' && nomor_sertifikat !== '-') {
-                  try {
-                    const date = new Date(masa_berlaku_date);
-                    if (!isNaN(date.getTime())) {
-                      const day = date.getDate().toString();
-                      const month = nama_indo || '';
-                      const year = date.getFullYear().toString();
-
-                      if (month) {
-                        parts.push(`${day} ${month} ${year}`);
-                      }
-                    }
-                  } catch (e) {
-                    console.log('Date formatting error for item:', item.KODE, e);
-                  }
-                }
-
-                keterangan_halal = parts.length > 0 ? `, ${parts.join(', ')}` : 'Halal';
-              }
-
-              if (keterangan_halal === '()') {
-                keterangan_halal = '';
-              }
-            } else {
-              keterangan_halal = 'Halal';
-            }
-          } else {
-            keterangan_halal = ' ';
-          }
-        }
-
-        item.keterangan_halal = keterangan_halal;
-      });
-    }
-
-    // Sort results by KODE to maintain consistent order
-    uniqueResults.sort((a, b) => a.KODE.localeCompare(b.KODE));
 
     const data = {
-      rows: uniqueResults,
-      count: uniqueResults.length, // Use actual unique count
+      rows: result[0],
+      count: total[0]?.count,
     };
-
+    let no_revisi = 0;
+    let alasan_desc = '';
     const response = getPagingData(data, page, limit);
-
-    // ...existing code for file mapping and revision details...
     let file = '';
     switch (item_group) {
       case 'C':
@@ -2370,12 +2223,15 @@ async function getViewDPBATemplate(req, res, next) {
         break;
       case 'A':
         file = 'DA.RD.000011';
+        no_revisi = '49';
+        alasan_desc = `CA/0357/RD3/09/22 NCP Penambahan kode A 186.000.`;
         break;
       case 'AB':
         file = 'DA.RD.000012';
         break;
       case 'BA':
         file = 'DA.RD.000013';
+        no_revisi = '41';
         break;
       case 'BB':
         file = 'DA.RD.000014';
@@ -2388,6 +2244,7 @@ async function getViewDPBATemplate(req, res, next) {
         break;
       case 'L':
         file = 'DA.RD.000017';
+        no_revisi = '30';
         break;
       case 'E':
         file = 'DA.RD.000018';
@@ -2397,24 +2254,31 @@ async function getViewDPBATemplate(req, res, next) {
         break;
       case 'K':
         file = 'DA.RD.000020';
+        no_revisi = '61';
         break;
       case 'IN':
         file = 'DA.RD.000005';
         break;
       case 'PR':
         file = 'DA.RD.000008';
+        no_revisi = '17';
+        alasan_desc = `-	Update keterangan halal sesuai CG/0062/TH/10/24, CA/0069/PC/10/24, dan CG/0020/TH/11/24.`;
         break;
       case 'CO':
         file = 'DA.RD.000007';
         break;
       case 'FL':
         file = 'DA.RD.000006';
+        no_revisi = '32';
+        alasan_desc = `No CC : CA/0026/PG/02/25 FHG
+        -	Perubahan pemasok pada kode FL 016A, FL 031, dan FL 032 ex. Givaudan dari PT Menjangan Sakti menjadi PT Unria Pratama Kencana.`;
         break;
       case 'AC':
         file = 'DA.RD.000004';
         break;
       case '02A':
       case '02B':
+        // file = "DA.RD.000021"; // Uncomment when ready
         break;
       default:
         file = 'DA.RD.000009';
@@ -2435,23 +2299,11 @@ async function getViewDPBATemplate(req, res, next) {
 
     const [revisi] = await sequelizeMSQL.query(detailRevisi, {
       replacements: { item_group },
-      type: QueryTypes.SELECT,
-    });
-
-    const alasanQuery = `
-      SELECT no_revisi, alasan_desc, tgl_revisi
-      FROM m_item_manufacturing_revisions
-      WHERE Item_Group = :item_group
-      ORDER BY no_revisi ASC
-    `;
-    const alasanList = await sequelizeMSQL.query(alasanQuery, {
-      replacements: { item_group },
-      type: Sequelize.QueryTypes.SELECT,
     });
 
     response['nomorDocument'] = file;
     response['revisi'] = revisi;
-    response['alasan_desc_list'] = alasanList;
+
 
     return res.status(200).json(response);
   } catch (error) {
