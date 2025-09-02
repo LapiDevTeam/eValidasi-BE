@@ -1,26 +1,26 @@
-const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
-const { Sequelize } = require('../../models');
-const path = require('path');
-const { QueryTypes } = require('sequelize');
-const moment = require('moment');
-const { type } = require('os');
-const puppeteer = require('puppeteer'); // Untuk generate PDF dari halaman web
-const { PDFDocument, rgb } = require('pdf-lib'); // Untuk menggabungkan dan memodifikasi PDF
-const fs = require('fs'); // Untuk membaca file logo
+const { sequelizeMSQL } = require("../../config/config.sequelize.dbmssql");
+const { Sequelize } = require("../../models");
+const path = require("path");
+const { QueryTypes } = require("sequelize");
+const moment = require("moment");
+const { type } = require("os");
+const puppeteer = require("puppeteer"); // Untuk generate PDF dari halaman web
+const { PDFDocument, rgb } = require("pdf-lib"); // Untuk menggabungkan dan memodifikasi PDF
+const fs = require("fs"); // Untuk membaca file logo
 // Pastikan logoPath didefinisikan, misal:
 // const logoPath = path.join(__dirname, '../../assets/logo.png'); // Ganti dengan path yang sesuai ke logo Anda
-const logoPath = path.join(__dirname, '../../assets/LapiLogo.jpg');
+const logoPath = path.join(__dirname, "../../assets/LapiLogo.jpg");
 // Fungsi untuk mengubah gambar ke base64
 function getBase64Image(filePath) {
   const bitmap = fs.readFileSync(filePath);
-  return `data:image/jpeg;base64,${Buffer.from(bitmap).toString('base64')}`;
+  return `data:image/jpeg;base64,${Buffer.from(bitmap).toString("base64")}`;
 }
 
 const getModuleRevisionsDA = async (req, res) => {
   try {
     const { modulename, isApprove } = req.query;
     if (!modulename) {
-      return res.status(400).json({ message: 'Module name is required.' });
+      return res.status(400).json({ message: "Module name is required." });
     }
 
     let query = `
@@ -43,7 +43,7 @@ const getModuleRevisionsDA = async (req, res) => {
       WHERE modulename = :modulename
     `;
 
-    if (isApprove === 'true' || isApprove === '1') {
+    if (isApprove === "true" || isApprove === "1") {
       query += `
         AND appr_date IS NOT NULL
         AND appr_userid IS NOT NULL
@@ -61,36 +61,71 @@ const getModuleRevisionsDA = async (req, res) => {
     });
 
     if (revisions.length === 0) {
-      return res.status(404).json({ message: 'No revisions found for the given module name.' });
+      return res
+        .status(404)
+        .json({ message: "No revisions found for the given module name." });
     }
 
     // Parse JSON columns
-    const parsedRevisions = revisions.map(rev => ({
+    const parsedRevisions = revisions.map((rev) => ({
       ...rev,
       daftar_distribusi: (() => {
-        try { return rev.daftar_distribusi ? JSON.parse(rev.daftar_distribusi) : null; } catch { return rev.daftar_distribusi; }
+        try {
+          return rev.daftar_distribusi
+            ? JSON.parse(rev.daftar_distribusi)
+            : null;
+        } catch {
+          return rev.daftar_distribusi;
+        }
       })(),
       refrensi: (() => {
-        try { return rev.refrensi ? JSON.parse(rev.refrensi) : rev.refrensi; } catch { return rev.refrensi; }
+        try {
+          return rev.refrensi ? JSON.parse(rev.refrensi) : rev.refrensi;
+        } catch {
+          return rev.refrensi;
+        }
       })(),
       dokumen_terkait: (() => {
-        try { return rev.dokumen_terkait ? JSON.parse(rev.dokumen_terkait) : rev.dokumen_terkait; } catch { return rev.dokumen_terkait; }
+        try {
+          return rev.dokumen_terkait
+            ? JSON.parse(rev.dokumen_terkait)
+            : rev.dokumen_terkait;
+        } catch {
+          return rev.dokumen_terkait;
+        }
       })(),
     }));
 
-    return res.status(200).json({ message: 'Module revisions fetched successfully.', data: parsedRevisions });
+    return res.status(200).json({
+      message: "Module revisions fetched successfully.",
+      data: parsedRevisions,
+    });
   } catch (error) {
-    console.error('Error fetching module revisions:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching module revisions:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 const createModuleRevision = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
+    const {
+      modulename,
+      tgl_revisi,
+      alasan_desc,
+      daftar_distribusi = null,
+      refrensi = null,
+      dokumen_terkait = null,
+      appr_userid,
+      appr_delegated,
+      appr_date,
+      extraData,
+      mgr_userid,
+    } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
-      return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
+      return res.status(400).json({
+        message: "modulename, tgl_revisi, and alasan_desc are required.",
+      });
     }
 
     // Get latest no_revisi for this modulename
@@ -106,7 +141,9 @@ const createModuleRevision = async (req, res) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
-    const new_no_revisi = latestRevision ? parseInt(latestRevision.no_revisi, 10) + 1 : 1;
+    const new_no_revisi = latestRevision
+      ? parseInt(latestRevision.no_revisi, 10) + 1
+      : 1;
 
     // Get next PK_ID
     const [pkidResult] = await sequelizeMSQL.query(
@@ -115,9 +152,13 @@ const createModuleRevision = async (req, res) => {
     );
     const PK_ID = pkidResult.PK_ID;
 
-    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringDaftarDistribusi = daftar_distribusi
+      ? JSON.stringify(daftar_distribusi)
+      : null;
     const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
-    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+    const stringDokumenTerkait = dokumen_terkait
+      ? JSON.stringify(dokumen_terkait)
+      : null;
 
     const query = `
       INSERT INTO m_module_revisions (
@@ -164,8 +205,8 @@ const createModuleRevision = async (req, res) => {
         daftar_distribusi: stringDaftarDistribusi,
         refrensi: stringRefrensi,
         dokumen_terkait: stringDokumenTerkait,
-        appr_userid: appr_userid || '',
-        appr_delegated: appr_delegated || '',
+        appr_userid: appr_userid || "",
+        appr_delegated: appr_delegated || "",
         appr_date: appr_date || null,
         extraData: extraData || null,
         mgr_userid: mgr_userid || null,
@@ -173,19 +214,35 @@ const createModuleRevision = async (req, res) => {
       type: Sequelize.QueryTypes.INSERT,
     });
 
-    return res.status(201).json({ message: 'Module revision created successfully.' });
+    return res
+      .status(201)
+      .json({ message: "Module revision created successfully." });
   } catch (error) {
-    console.error('Error creating module revision:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error creating module revision:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 const createModuleRevisionWithSameNumber = async (req, res) => {
   try {
-    const { modulename, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
+    const {
+      modulename,
+      tgl_revisi,
+      alasan_desc,
+      daftar_distribusi = null,
+      refrensi = null,
+      dokumen_terkait = null,
+      appr_userid,
+      appr_delegated,
+      appr_date,
+      extraData,
+      mgr_userid,
+    } = req.body;
 
     if (!modulename || !tgl_revisi || !alasan_desc) {
-      return res.status(400).json({ message: 'modulename, tgl_revisi, and alasan_desc are required.' });
+      return res.status(400).json({
+        message: "modulename, tgl_revisi, and alasan_desc are required.",
+      });
     }
 
     // Fetch the latest revision for the given modulename
@@ -202,7 +259,9 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
     });
 
     if (!latestRevision) {
-      return res.status(404).json({ message: 'No revisions found for the given modulename.' });
+      return res
+        .status(404)
+        .json({ message: "No revisions found for the given modulename." });
     }
 
     const same_no_revisi = parseInt(latestRevision.no_revisi, 10);
@@ -214,9 +273,13 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
     );
     const PK_ID = pkidResult.PK_ID;
 
-    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringDaftarDistribusi = daftar_distribusi
+      ? JSON.stringify(daftar_distribusi)
+      : null;
     const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
-    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+    const stringDokumenTerkait = dokumen_terkait
+      ? JSON.stringify(dokumen_terkait)
+      : null;
 
     const query = `
       INSERT INTO m_module_revisions (
@@ -263,8 +326,8 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
         daftar_distribusi: stringDaftarDistribusi,
         refrensi: stringRefrensi,
         dokumen_terkait: stringDokumenTerkait,
-        appr_userid: appr_userid || '',
-        appr_delegated: appr_delegated || '',
+        appr_userid: appr_userid || "",
+        appr_delegated: appr_delegated || "",
         appr_date: appr_date || null,
         extraData: extraData || null,
         mgr_userid: mgr_userid || null,
@@ -272,10 +335,16 @@ const createModuleRevisionWithSameNumber = async (req, res) => {
       type: Sequelize.QueryTypes.INSERT,
     });
 
-    return res.status(201).json({ message: 'Module revision created successfully with the same revision number.' });
+    return res.status(201).json({
+      message:
+        "Module revision created successfully with the same revision number.",
+    });
   } catch (error) {
-    console.error('Error creating module revision with the same number:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error(
+      "Error creating module revision with the same number:",
+      error
+    );
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -284,7 +353,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
     const { modulename } = req.query;
 
     if (!modulename) {
-      return res.status(400).json({ message: 'Module name is required.' });
+      return res.status(400).json({ message: "Module name is required." });
     }
 
     // Query to fetch the latest revision number where `appr_date` is null
@@ -299,7 +368,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
       replacements: { modulename },
       type: Sequelize.QueryTypes.SELECT,
     });
-    console.log({result});
+    console.log({ result });
     // If no result is found, fallback to fetch the latest revision number
     if (!result) {
       const fallbackQuery = `
@@ -320,7 +389,7 @@ const getLatestModuleRevisionNumber = async (req, res) => {
       }
 
       // Increment the fallback result by 1
-      console.log({result: result, status: ""});
+      console.log({ result: result, status: "" });
       const newRevision = parseInt(fallbackResult.no_revisi, 10) + 1;
       return res.status(200).json({ no_revisi: newRevision });
     }
@@ -329,28 +398,50 @@ const getLatestModuleRevisionNumber = async (req, res) => {
     const parsedResult = {
       ...result,
       daftar_distribusi: (() => {
-        try { return result.daftar_distribusi ? JSON.parse(result.daftar_distribusi) : null; } catch { return result.daftar_distribusi; }
+        try {
+          return result.daftar_distribusi
+            ? JSON.parse(result.daftar_distribusi)
+            : null;
+        } catch {
+          return result.daftar_distribusi;
+        }
       })(),
       refrensi: (() => {
-        try { return result.refrensi ? JSON.parse(result.refrensi) : result.refrensi; } catch { return result.refrensi; }
+        try {
+          return result.refrensi
+            ? JSON.parse(result.refrensi)
+            : result.refrensi;
+        } catch {
+          return result.refrensi;
+        }
       })(),
       dokumen_terkait: (() => {
-        try { return result.dokumen_terkait ? JSON.parse(result.dokumen_terkait) : result.dokumen_terkait; } catch { return result.dokumen_terkait; }
+        try {
+          return result.dokumen_terkait
+            ? JSON.parse(result.dokumen_terkait)
+            : result.dokumen_terkait;
+        } catch {
+          return result.dokumen_terkait;
+        }
       })(),
     };
 
     return res.status(200).json(parsedResult);
   } catch (error) {
-    console.error('Error fetching latest module revision number:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching latest module revision number:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_to) => {
+const approveModuleRevisionByModuleName = async (
+  modulename,
+  user_id,
+  delegated_to
+) => {
   const transaction = await sequelizeMSQL.transaction();
   try {
     if (!modulename || !user_id || !delegated_to) {
-      throw new Error('modulename, user_id, and delegated_to are required.');
+      throw new Error("modulename, user_id, and delegated_to are required.");
     }
 
     // Check if there are any revisions that can be approved (appr_date is null)
@@ -366,14 +457,16 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
     const [revisionToApprove] = await sequelizeMSQL.query(checkRevisionQuery, {
       replacements: { modulename },
       type: QueryTypes.SELECT,
-      transaction
+      transaction,
     });
 
     if (!revisionToApprove) {
-      throw new Error('No pending revisions found to approve or all revisions are already approved.');
+      throw new Error(
+        "No pending revisions found to approve or all revisions are already approved."
+      );
     }
 
-    const sqlDtTime = moment().format('YYYY-MM-DD HH:mm:ss');
+    const sqlDtTime = moment().format("YYYY-MM-DD HH:mm:ss");
 
     // Check if the user is an approver (change 'MODULE' if your application code is different)
     const approver = await sequelizeMSQL.query(
@@ -382,16 +475,20 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
     );
 
     if (!approver || approver.length === 0) {
-      throw new Error('User is not authorized to approve.');
+      throw new Error("User is not authorized to approve.");
     }
 
-    const sqlAppr_Identity = approver[0]?.Appr_Identity || '0000';
+    const sqlAppr_Identity = approver[0]?.Appr_Identity || "0000";
 
-    if (!sqlAppr_Identity || sqlAppr_Identity === '0000') {
-      throw new Error('Invalid approver identity.');
+    if (!sqlAppr_Identity || sqlAppr_Identity === "0000") {
+      throw new Error("Invalid approver identity.");
     }
 
-    console.log({ Approval: sqlAppr_Identity, status: "approving", revision: revisionToApprove.no_revisi });
+    console.log({
+      Approval: sqlAppr_Identity,
+      status: "approving",
+      revision: revisionToApprove.no_revisi,
+    });
 
     const updateQuery = `
       UPDATE m_module_revisions
@@ -415,28 +512,43 @@ const approveModuleRevisionByModuleName = async (modulename, user_id, delegated_
       await transaction.commit();
       return 1; // Approval successful
     } else {
-      throw new Error('Failed to update revision approval status.');
+      throw new Error("Failed to update revision approval status.");
     }
   } catch (error) {
-    console.error('Error approving module revision:', error);
+    console.error("Error approving module revision:", error);
     await transaction.rollback();
     return 0; // Approval failed
   }
 };
 
 const updateOrCreateModuleRevision = async (req, res) => {
-  const { modulename, no_revisi, tgl_revisi, alasan_desc, daftar_distribusi = null, refrensi = null, dokumen_terkait = null, appr_userid, appr_delegated, appr_date, extraData, mgr_userid } = req.body;
+  const {
+    modulename,
+    no_revisi,
+    tgl_revisi,
+    alasan_desc,
+    daftar_distribusi = null,
+    refrensi = null,
+    dokumen_terkait = null,
+    appr_userid,
+    appr_delegated,
+    appr_date,
+    extraData,
+    mgr_userid,
+  } = req.body;
 
   if (!modulename || !no_revisi || !tgl_revisi || !alasan_desc) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
   // Validate tgl_revisi
-  const cutoffDate = new Date('2025-02-25');
+  const cutoffDate = new Date("2025-02-25");
   const inputDate = new Date(tgl_revisi);
 
   if (inputDate < cutoffDate) {
-    return res.status(400).json({ message: "tgl_revisi cannot be earlier than 25th February 2025." });
+    return res.status(400).json({
+      message: "tgl_revisi cannot be earlier than 25th February 2025.",
+    });
   }
   const transaction = await sequelizeMSQL.transaction();
   try {
@@ -452,9 +564,13 @@ const updateOrCreateModuleRevision = async (req, res) => {
       type: QueryTypes.SELECT,
     });
 
-    const stringDaftarDistribusi = daftar_distribusi ? JSON.stringify(daftar_distribusi) : null;
+    const stringDaftarDistribusi = daftar_distribusi
+      ? JSON.stringify(daftar_distribusi)
+      : null;
     const stringRefrensi = refrensi ? JSON.stringify(refrensi) : null;
-    const stringDokumenTerkait = dokumen_terkait ? JSON.stringify(dokumen_terkait) : null;
+    const stringDokumenTerkait = dokumen_terkait
+      ? JSON.stringify(dokumen_terkait)
+      : null;
 
     if (existingRecord) {
       // Update the existing record
@@ -486,7 +602,9 @@ const updateOrCreateModuleRevision = async (req, res) => {
       });
 
       await transaction.commit();
-      return res.status(200).json({ message: "Module revision updated successfully." });
+      return res
+        .status(200)
+        .json({ message: "Module revision updated successfully." });
     } else {
       // Get next PK_ID
       const [pkidResult] = await sequelizeMSQL.query(
@@ -542,33 +660,39 @@ const updateOrCreateModuleRevision = async (req, res) => {
       });
 
       await transaction.commit();
-      return res.status(201).json({ message: "Module revision created successfully." });
+      return res
+        .status(201)
+        .json({ message: "Module revision created successfully." });
     }
   } catch (error) {
     await transaction.rollback();
     console.error("Error in updateOrCreateModuleRevision:", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
 const getAspLink = async (req, res) => {
   try {
     const { user_id, delegated_to } = req.user;
-    const { pageName, menuName, devMode  } = req.query;
+    const { pageName, menuName, devMode } = req.query;
 
-    if (!user_id || user_id === '') {
-      return res.status(401).json({ message: 'Unauthorized.' });
+    if (!user_id || user_id === "") {
+      return res.status(401).json({ message: "Unauthorized." });
     }
 
     if (!pageName || !menuName) {
-      return res.status(400).json({ message: 'pageName and menuName are required.' });
+      return res
+        .status(400)
+        .json({ message: "pageName and menuName are required." });
     }
 
-    if (!delegated_to || delegated_to === '') {
+    if (!delegated_to || delegated_to === "") {
       delegated_to = user_id; // Use user_id if delegated_to is not provided
     }
-    const baseUrl = 'http://192.168.1.39:8080';
-    const baseUrlDev = 'http://192.168.1.40:8080';
+    const baseUrl = "http://192.168.1.39:8080";
+    const baseUrlDev = "http://192.168.1.40:8080";
     const queryToken = `select dbo.fngettoken(:user_id) as Token`;
     const [result] = await sequelizeMSQL.query(queryToken, {
       replacements: { user_id },
@@ -577,17 +701,22 @@ const getAspLink = async (req, res) => {
 
     const token = result ? result.Token : null;
     if (!token) {
-      return res.status(400).json({ message: 'Failed to generate token.' });
+      return res.status(400).json({ message: "Failed to generate token." });
     }
 
     // Construct the ASP link
-    let aspLink = `${devMode ? baseUrlDev : baseUrl}/${menuName}/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
-    if (menuName === 'po-bb') aspLink = `${devMode ? baseUrlDev : baseUrl}/${menuName}/forms/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
+    let aspLink = `${
+      devMode ? baseUrlDev : baseUrl
+    }/${menuName}/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
+    if (menuName === "po-bb")
+      aspLink = `${
+        devMode ? baseUrlDev : baseUrl
+      }/${menuName}/forms/AutoLogin.aspx?UID=${user_id}&DID=${user_id}&Token=${token}&page=${pageName}`;
 
-    return res.status(200).json({ message: 'Success.', data: aspLink });
+    return res.status(200).json({ message: "Success.", data: aspLink });
   } catch (error) {
-    console.error('Error fetching ASP link:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error fetching ASP link:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -643,7 +772,7 @@ async function printHeaderDa(req, res) {
       displayHeaderFooter: true,
       printBackground: true,
       footerTemplate: ` `,
-      headerTemplate: `<table style="width: 92%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+      headerTemplate: `<table style="width: 93%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
             <tr>
               <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;" rowspan="2">
                 <img src="${logoBase64}" alt="lapilogo" width="100">
@@ -686,7 +815,7 @@ async function printHeaderDa(req, res) {
               </td>
             </tr>
           </table>`,
-      margin: { bottom: "60px", top: "210px", left: "40px", right: "40px" },
+      margin: { bottom: "60px", top: "200px", left: "40px", right: "40px" },
     });
 
     await page.goto(
@@ -717,7 +846,7 @@ async function printHeaderDa(req, res) {
       printBackground: true,
       footerTemplate: ` `,
       headerTemplate: `
-        <table style="width: 92%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <table style="width: 93%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
             <tr>
               <td style="border: 1px solid gray; width: 140px; height: 50px; text-align: center;" rowspan="2">
                 <img src="${logoBase64}" alt="lapilogo" width="100">
@@ -753,7 +882,7 @@ async function printHeaderDa(req, res) {
             </tr>
           </table>
         `,
-      margin: { bottom: "60px", top: "120px", left: "40px", right: "40px" },
+      margin: { bottom: "60px", top: "105px", left: "40px", right: "40px" },
     });
     await browser.close();
 
@@ -777,7 +906,7 @@ async function printHeaderDa(req, res) {
       const page = pages[i];
       let pages1Setting = landscape
         ? {
-            x: 712,
+            x: 717,
             y: 454, // sesuaikan posisi di halaman
             size: 9,
             color: rgb(0, 0, 0),
@@ -796,7 +925,7 @@ async function printHeaderDa(req, res) {
           ? pages1Setting
           : landscape
           ? {
-              x: 712,
+              x: 717,
               y: 528, // sesuaikan posisi di halaman
               size: 9,
               color: rgb(0, 0, 0),
@@ -836,5 +965,5 @@ module.exports = {
   approveModuleRevisionByModuleName,
   updateOrCreateModuleRevision,
   getAspLink,
-  printHeaderDa
+  printHeaderDa,
 };
