@@ -751,7 +751,7 @@ class MasterProductController {
     `;
       console.log({ sSQL4 });
       let sSQL5 = `
-      INSERT INTO m_Product (Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+      INSERT INTO m_Product (jenis_kemasan, Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
         Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive, User_ID, Delegated_To, Process_Date,
         Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
         Product_GroupSediaan, Product_GroupTargetRealisasi, Product_SalesName, Product_Status, Product_SalesHNA, Product_ShortName, Product_SalesUnit,
@@ -759,7 +759,7 @@ class MasterProductController {
         Product_RetainSmallUnit, Product_SediaanPlanning, Product_Owner, product_import, Product_KonversiProduksiToSales, Product_bahanAktif,
         Product_PN_HK_PProcessing, Product_PN_HK_PKSekunder, Product_PN_HK_Produksi, Product_PN_HK_PPIProduksi, Product_versiBPOM, Product_NotPPI,
         Product_BentukSediaan, Product_Kemasan, Product_Dosis, Product_RuangLingkup, PK_ID, CDOB_01, CDOB_02, CDOB_03)
-      SELECT Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
+      SELECT jenis_kemasan, Kategori_prod, Product_ID, Product_Init, Product_Name, jenis_prod, Product_Category, Product_Currency, Product_HPP, Product_HNA, Product_HTollin, Product_HTollInFee,
         Product_VolumeInBox, Product_VolumeInBigBox, Product_Unit, Product_Type, Product_IntermediateID, isActive,
         '${user_id}' AS User_ID, '${delegated_to}' AS Delegated_To, '${sGetDate}' AS Process_Date,
         Product_Sediaan, Product_ExpTime, Product_SalesID, Product_isPPA, Product_isPseudo, Product_isBuy, Product_Batchsize, Product_Location,
