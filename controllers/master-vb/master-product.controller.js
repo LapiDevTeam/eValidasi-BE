@@ -565,6 +565,7 @@ class MasterProductController {
           product_status = :productStatus,
           Kategori_prod = :catProd,
           product_notppi = :productNotPPI,
+          jenis_kemasan = :jenis_kemasan,
           CDOB_01 = :strCDOB_01,
           CDOB_02 = :strCDOB_02,
           CDOB_03 = :strCDOB_03
