@@ -366,7 +366,7 @@ class MasterProductController {
       );
 
       if (existingProduct[0].jum >= 1 && productCategory !== '02') {
-        console.log({ existing: existingProduct[0] });
+      console.log({ existing: existingProduct[0] });
         return res.status(400).json({ message: `Kode Product : ${productID} Sudah ada dalam database, mohon periksa kembali!` });
       }
 
@@ -514,6 +514,7 @@ class MasterProductController {
         cdob01,
         cdob02,
         cdob03,
+        jenis_kemasan,
         jenisProd,
         userName = user_id,
         delegatedTo = delegated_to,
@@ -603,9 +604,10 @@ class MasterProductController {
           strCDOB_02,
           strCDOB_03,
           productID: productID,
+          jenis_kemasan,
         },
       });
-
+      // console.log({strSQL});
       res.status(200).json({ message: 'Product has been updated successfully' });
     } catch (error) {
       console.error('Error:', error);
