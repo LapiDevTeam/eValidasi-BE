@@ -238,6 +238,7 @@ class ControllerCatatanTrial {
       });
       const komposisiCatatanTrial = await t_komposisiCatatanTrial.findAll({
         where: { CatatanTrialID: +id },
+        order: [["id", "ASC"]],
       });
       const perhitunganZatAktif = await t_perhitunganZatAktif.findAll({
         where: { CatatanTrialID: +id },
