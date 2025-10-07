@@ -43,7 +43,7 @@ class MasterItemBahanKemasTemplateController {
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
       const sqlCode = `
             select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
-        item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, 
+        item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
         item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
         item_status, IsActive,Owner, ishalal, item_bpomgenerik, namagenerik, item_row from vwM_ItemWithGroup_template where item_type = '${groupType}'
          ${
@@ -62,9 +62,9 @@ class MasterItemBahanKemasTemplateController {
     try {
       const { item_groupID, item_type } = req.query;
       const sqlCode = `
-        select Item_ID , Group_name, Item_Name, Item_Size, Item_Description, item_unit, item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate, item_status, IsActive, '1' as SubCode 
-      from vwM_ItemWithGroup 
-      where item_type like '${item_type}' and item_isPPI = 1  and Item_Group = '${item_groupID}' union all Select '${item_groupID} ' + Group_ID, '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '', '0'  
+        select Item_ID , Group_name, Item_Name, Item_Size, Item_Description, item_unit, item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate, item_status, IsActive, '1' as SubCode
+      from vwM_ItemWithGroup
+      where item_type like '${item_type}' and item_isPPI = 1  and Item_Group = '${item_groupID}' union all Select '${item_groupID} ' + Group_ID, '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '', '0'
       from m_Item_Group where Group_ID <> 'NN' and ISNUMERIC(left(Group_ID,1)) = 0 order by 1;
       `;
       const _data = await sequelizeMSQL.query(sqlCode, {
@@ -175,33 +175,33 @@ class MasterItemBahanKemasTemplateController {
 
       // Update Queries (Cleaned Syntax)
       const xSQL1 = `
-        UPDATE m_Item_Manufacturing_Supplier_template 
+        UPDATE m_Item_Manufacturing_Supplier_template
         SET item_Periode = :periode, tgl_berlaku = :dateTime, user_approve = :user_id, user_delegated = :delegated_to
-        WHERE ISNULL(item_Periode, N'') = '' 
+        WHERE ISNULL(item_Periode, N'') = ''
           AND Item_ID IN (
-            SELECT DISTINCT Item_ID 
-            FROM m_Item_Manufacturing_template 
-            WHERE ISNULL(item_Periode, '') = '' 
+            SELECT DISTINCT Item_ID
+            FROM m_Item_Manufacturing_template WITH (UPDLOCK, HOLDLOCK)
+            WHERE ISNULL(item_Periode, '') = ''
               AND Item_Group = :item_groupID
           );
-  
-        UPDATE m_Item_Manufacturing_template 
+
+        UPDATE m_Item_Manufacturing_template
         SET item_Periode = :periode, tgl_berlaku = :dateTime, user_approve = :user_id, user_delegated = :delegated_to
-        WHERE ISNULL(item_Periode, N'') = '' 
+        WHERE ISNULL(item_Periode, N'') = ''
           AND Item_Group = :item_groupID;
-  
-        UPDATE m_Item_Manufacturing_Status 
+
+        UPDATE m_Item_Manufacturing_Status
         SET USER_ID = :user_id, Delegated_To = :delegated_to, flag_update = 'Update For Delete'
         WHERE Item_ID IN (
-          SELECT Item_ID 
-          FROM m_Item_Manufacturing 
+          SELECT Item_ID
+          FROM m_Item_Manufacturing WITH (UPDLOCK, HOLDLOCK)
           WHERE Item_Group = :item_groupID
         );
-  
-        DELETE FROM m_Item_Manufacturing_Status 
+
+        DELETE FROM m_Item_Manufacturing_Status
         WHERE Item_ID IN (
-          SELECT Item_ID 
-          FROM m_Item_Manufacturing 
+          SELECT Item_ID
+          FROM m_Item_Manufacturing WITH (UPDLOCK, HOLDLOCK)
           WHERE Item_Group = :item_groupID
         );
       `;
@@ -218,10 +218,10 @@ class MasterItemBahanKemasTemplateController {
       });
 
       const xSQL2 = `
-        INSERT INTO m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)  
+        INSERT INTO m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)
         SELECT Item_ID, 1, 0, :approverId, :dateTime, :user_id, :delegated_to
-        FROM m_Item_Manufacturing_template 
-        WHERE ISNULL(item_Periode, '') = :periode 
+        FROM m_Item_Manufacturing_template
+        WHERE ISNULL(item_Periode, '') = :periode
           AND Item_Group = :item_groupID;
       `;
       await sequelizeMSQL.query(xSQL2, {
@@ -238,18 +238,18 @@ class MasterItemBahanKemasTemplateController {
       });
 
       const zSQL1 = `
-        UPDATE m_Item_Manufacturing_Supplier 
-        SET USER_ID = :user_id, Delegated_To = :delegated_to, flag_update = 'Update For Delete' 
+        UPDATE m_Item_Manufacturing_Supplier
+        SET USER_ID = :user_id, Delegated_To = :delegated_to, flag_update = 'Update For Delete'
         WHERE Item_ID IN (
-          SELECT DISTINCT Item_ID 
-          FROM m_Item_Manufacturing 
+          SELECT DISTINCT Item_ID
+          FROM m_Item_Manufacturing
           WHERE Item_Group = :item_groupID
         );
-  
-        DELETE FROM m_Item_Manufacturing_Supplier 
+
+        DELETE FROM m_Item_Manufacturing_Supplier
         WHERE Item_ID IN (
-          SELECT DISTINCT Item_ID 
-          FROM m_Item_Manufacturing 
+          SELECT DISTINCT Item_ID
+          FROM m_Item_Manufacturing
           WHERE Item_Group = :item_groupID
         );
       `;
@@ -260,9 +260,9 @@ class MasterItemBahanKemasTemplateController {
       });
 
       const zSQL2 = `
-        INSERT INTO m_Item_Manufacturing_Supplier (Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung)  
+        INSERT INTO m_Item_Manufacturing_Supplier (Item_ID, Item_PrcID, Item_SuppID, Process_Date, User_ID, Delegated_To, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung)
         SELECT Item_ID, Item_PrcID, Item_SuppID, :dateTime, :user_id, :delegated_to, isActive, Item_Revision, isDefault, Item_RevisionDate, Item_RevisionUserID, item_ket, input_date, Item_BPOMGenerik, Item_BPOMNegara, Item_isHalal, Lembaga, Nomor_sertifikat, Masa_berlaku_date, Dok_Pendukung
-        FROM m_Item_Manufacturing_Supplier_template   
+        FROM m_Item_Manufacturing_Supplier_template
         WHERE ISNULL(item_Periode, '') = :periode;
       `;
       await sequelizeMSQL.query(zSQL2, {
@@ -272,9 +272,9 @@ class MasterItemBahanKemasTemplateController {
       });
 
       const vSQL2 = `
-      insert into m_Item_Manufacturing ( PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row)  
-      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ, :user_id as User_ID, :delegated_to as  Delegated_To, :dateTime as Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR , Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row   
-      From m_Item_Manufacturing_template  
+      insert into m_Item_Manufacturing ( PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row)
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ, :user_id as User_ID, :delegated_to as  Delegated_To, :dateTime as Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR , Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row
+      From m_Item_Manufacturing_template
       WHERE (ISNULL(item_Periode, N'') =  :periode)
       `;
       await sequelizeMSQL.query(vSQL2, {
@@ -289,9 +289,9 @@ class MasterItemBahanKemasTemplateController {
       });
 
       const vSQL3 = `
-      insert into m_Item_Manufacturing_template (PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode, tgl_berlaku, user_approve,user_delegated)  
-      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ,   User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row,   null as item_Periode, null as tgl_berlaku, null as user_approve, null as user_delegated  
-      From m_Item_Manufacturing_template   
+      insert into m_Item_Manufacturing_template (PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, Item_Status, Item_BJ, User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd, Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row, item_Periode, tgl_berlaku, user_approve,user_delegated)
+      SELECT PK_ID, Item_ID, Item_Name, Item_Group, Item_Type, Item_Size, Item_Description, Item_Currency, Item_Price, Item_Unit, Item_PurchaseUnit, Item_MinOrder,   Item_LeadTime, Item_PackingSize, Item_LocalIndent, Item_LastPurchaseUnit, Item_LastPriceCurrency, Item_LastPrice, Item_LastPriceDate, 1 as Item_Status, Item_BJ,   User_ID, Delegated_To, Process_Date, isActive, Item_MonthUjiUlang, Item_isPPI, Item_Lokasi, Item_MonthLifeTime, Item_PersenAdd,   Item_LastPriceCurrencyNonIDR, Item_LastPriceNonIDR, Item_LastPriceRate, Owner, Item_PackingSizePC, isHalal, Item_BPOMGenerik, item_row,   null as item_Periode, null as tgl_berlaku, null as user_approve, null as user_delegated
+      From m_Item_Manufacturing_template
       WHERE (ISNULL(item_Periode, N'') =  :periode)
       `;
       await sequelizeMSQL.query(vSQL3, {
