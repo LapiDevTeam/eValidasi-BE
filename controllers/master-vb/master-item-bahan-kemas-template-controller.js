@@ -222,7 +222,10 @@ class MasterItemBahanKemasTemplateController {
         SELECT Item_ID, 1, 0, :approverId, :dateTime, :user_id, :delegated_to
         FROM m_Item_Manufacturing_template
         WHERE ISNULL(item_Periode, '') = :periode
-          AND Item_Group = :item_groupID;
+          AND Item_Group = :item_groupID
+          AND NOT EXISTS (
+            SELECT 1 FROM m_Item_Manufacturing_Status s WHERE s.Item_ID = m_Item_Manufacturing_template.Item_ID
+          );
       `;
       await sequelizeMSQL.query(xSQL2, {
         replacements: {
