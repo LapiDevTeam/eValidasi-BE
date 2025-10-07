@@ -52,12 +52,18 @@ async function cmdApproveSeparate(req, res, next) {
     );
 
     // 3. Manufacturing Status
+    // Special handling for item groups with special characters (ä, ë)
+    const specialCharGroups = ['ä', 'ë'];
+    const useTemplateTable = specialCharGroups.includes(item_groupID);
+
+    const sourceTable = useTemplateTable ? 'm_Item_Manufacturing_template' : 'm_Item_Manufacturing';
+
     await sequelizeMSQL.query(
-      `UPDATE m_Item_Manufacturing_Status SET USER_ID = :user_id, Delegated_To = :delegated_to, flag_update = 'Update For Delete' WHERE Item_ID IN (SELECT Item_ID FROM m_Item_Manufacturing WHERE Item_Group = :item_groupID);`,
+      `UPDATE m_Item_Manufacturing_Status SET USER_ID = :user_id, Delegated_To = :delegated_to, flag_update = 'Update For Delete' WHERE Item_ID IN (SELECT ${useTemplateTable ? 'DISTINCT' : ''} Item_ID FROM ${sourceTable} WHERE Item_Group = :item_groupID);`,
       { replacements: { user_id, delegated_to, item_groupID }, type: QueryTypes.UPDATE, transaction }
     );
     await sequelizeMSQL.query(
-      `DELETE FROM m_Item_Manufacturing_Status WHERE Item_ID IN (SELECT Item_ID FROM m_Item_Manufacturing WHERE Item_Group = :item_groupID);`,
+      `DELETE FROM m_Item_Manufacturing_Status WHERE Item_ID IN (SELECT ${useTemplateTable ? 'DISTINCT' : ''} Item_ID FROM ${sourceTable} WHERE Item_Group = :item_groupID);`,
       { replacements: { item_groupID }, type: QueryTypes.DELETE, transaction }
     );
 
