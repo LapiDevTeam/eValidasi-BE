@@ -69,11 +69,19 @@ async function cmdApproveSeparate(req, res, next) {
       transaction,
     });
     if (candidates.length > 0) {
-      const itemIds = candidates.map(c => c.Item_ID);
-      await sequelizeMSQL.query(
-        `INSERT INTO m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To) SELECT Item_ID, 1, 0, :sqlAppr_Identity, :sqlDtTime, :user_id, :delegated_to FROM m_Item_Manufacturing_template WHERE Item_ID IN (:itemIds);`,
-        { replacements: { sqlAppr_Identity, sqlDtTime, user_id, delegated_to, itemIds }, type: QueryTypes.INSERT, transaction }
-      );
+      const itemIds = candidates.map((c) => c.Item_ID);
+
+      if (item_groupID === 'ä') {
+        await sequelizeMSQL.query(
+          `INSERT INTO m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To) SELECT DISTINCT Item_ID, 1, 0, :sqlAppr_Identity, :sqlDtTime, :user_id, :delegated_to FROM m_Item_Manufacturing_template WHERE Item_ID IN (:itemIds);`,
+          { replacements: { sqlAppr_Identity, sqlDtTime, user_id, delegated_to, itemIds }, type: QueryTypes.RAW, transaction }
+        );
+      } else {
+                await sequelizeMSQL.query(
+          `INSERT INTO m_Item_Manufacturing_Status (Item_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To) SELECT Item_ID, 1, 0, :sqlAppr_Identity, :sqlDtTime, :user_id, :delegated_to FROM m_Item_Manufacturing_template WHERE Item_ID IN (:itemIds);`,
+          { replacements: { sqlAppr_Identity, sqlDtTime, user_id, delegated_to, itemIds }, type: QueryTypes.RAW, transaction }
+        );
+      }
     }
 
     // 5. Manufacturing Supplier
