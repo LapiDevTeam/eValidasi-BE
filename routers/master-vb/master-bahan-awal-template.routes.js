@@ -1,10 +1,9 @@
 const express = require("express");
 const { masterBahanAwalTemplate_CREATE, masterBahanAwalTemplate_UPDATE, masterBahanAwalTemplate_DELETE,printHeader, masterBahanAwalTemplate_APPROVE, getViewDPBATemplate, masterItemPrinciple_CREATE, masterItemPrinciple_UPDATE, masterItemPrinciple_DELETE, getItemDetailsController, getItemSupplier_template, getHistorySupplier_template, checkPeriodController, printTest, cmdApprove, getRevisionsDA, createRevision, getLatestRevisionNumber, createRevisionWithSameNumber, updateOrCreateRevision, getViewDPBA, getManager, getQueryController, updateItemManufacturingRevision } = require("../../controllers/master-vb/master-bahan-awal-template.controller");
 const { authentication } = require("../../middlewares/authentication");
-const { cmdApproveSeparate } = require("../../controllers/master-vb/cmdApproveSeparate.controller");
 const router = express.Router();
 
-router.post("/approve", authentication, cmdApproveSeparate);
+router.post("/approve", authentication, cmdApprove);
 router.get("/manager", authentication, getManager);
 
 router.get("/print-data", getViewDPBATemplate);
