@@ -3007,8 +3007,11 @@ async function printHeader(req, res) {
 }
 
 async function cmdApprove(req, res, next) {
-  const transaction = await sequelizeMSQL.transaction();
-  const { user_id, delegated_to } = req.user;
+  const { Sequelize } = require('sequelize');
+  const transaction = await sequelizeMSQL.transaction({
+    isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE
+  });
+  let { user_id, delegated_to } = req.user;
   const { item_groupID } = req.body;
 
   if (!item_groupID || item_groupID === '') {
