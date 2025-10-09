@@ -236,6 +236,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     const [pkidResult] = await sequelizeMSQL.query(query4, { type: QueryTypes.SELECT });
     let PK_ID = pkidResult ? pkidResult.PKID : 1;
     console.log({ pkidResult, PK_ID });
+    console.log({ item_groupID, item_name, item_kodeGenerik, item_type, item_size, item_description, item_unit });
     const insertQuery = `
             INSERT INTO m_Item_Manufacturing_template (
                 PK_ID, isactive, Item_ID, Item_Name, Item_BPOMGenerik, Item_group, Item_type,
@@ -2745,7 +2746,8 @@ const generateItemID = async (item_groupID, existing = false) => {
     const result = await sequelizeMSQL.query(query2, { type: QueryTypes.SELECT });
     console.log({ result2: result });
     lblItem_ID = result.length > 0 ? result[0].newItemID : `${item_groupID} 001`;
-    if (item_groupID !== 'RH') {
+    console.log({item_groupID});
+    if (item_groupID !== 'ä' && item_groupID !== 'ë') {
       lblItem_ID = lblItem_ID + '.000';
     }
   }
