@@ -6,6 +6,200 @@ const path = require('path');
 const fs = require('fs');
 
 class ExcelExportController {
+  static async exportDAProdukORI(req, res, next) {
+    try {
+  let { productCategory } = req.query;
+  if (!productCategory) productCategory = '01';
+
+      let file;
+      let queryString;
+      let tableName = 'vwProduct';
+      let isCategory01 = productCategory === '01';
+      if (isCategory01 || productCategory) {
+        file = isCategory01 ? 'DA.RD.000001_Rev11.doc' : 'DA.RD.000026.doc';
+        queryString = isCategory01
+          ? `
+            SELECT
+              ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+              A.Product_ID,
+              A.Product_Name,
+              ISNULL(A.Product_Kemasan, '-') AS kemasan,
+              ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+              ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+              CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+              ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+              ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+              CASE WHEN A.product_notppi = 1 THEN '-' ELSE 'ada' END AS customer,
+              ISNULL(A.product_status, '-') AS product_status,
+              A.Kategori_prod
+            FROM ${tableName} A
+            WHERE A.Product_name NOT LIKE 'Granulat%' AND A.isActive = 1 AND A.product_category = :productCategory
+            ORDER BY A.PK_ID
+          `
+          : `
+            SELECT
+              ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+              A.Product_ID,
+              A.Product_Name,
+              ISNULL(A.Product_Kemasan, '-') AS kemasan,
+              ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+              ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+              CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+              ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+              ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+              ISNULL(C.Cust_Name, '-') AS customer
+            FROM ${tableName} A
+            LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+            LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+            WHERE A.isActive = 1 AND A.product_category = :productCategory
+            ORDER BY A.PK_ID
+          `;
+      } else {
+        // No productCategory provided, export all data
+        file = 'DA.RD.000026.doc';
+        queryString = `
+          SELECT
+            ROW_NUMBER() OVER(ORDER BY A.PK_ID ASC) AS Nomor,
+            A.Product_ID,
+            A.Product_Name,
+            ISNULL(A.Product_Kemasan, '-') AS kemasan,
+            ISNULL(A.Product_BentukSediaan, '-') AS bentukSediaan,
+            ISNULL(A.product_ruanglingkup, '-') AS product_ruanglingkup,
+            CASE WHEN ISNULL(A.Product_Unit, '(none)') = '(none)' THEN '-' ELSE A.product_unit END AS Product_Unit,
+            ISNULL(A.Product_VolumeInBox, 0) AS Product_VolumeInBox,
+            ISNULL(A.Product_VolumeInBigBox, 0) AS Product_VolumeInBigBox,
+            ISNULL(C.Cust_Name, '-') AS customer
+          FROM ${tableName} A
+          LEFT JOIN m_Customer_Product B ON A.Product_ID = B.Product_ID
+          LEFT JOIN m_Customer C ON C.Cust_ID = B.Cust_ID
+          WHERE A.isActive = 1
+          ORDER BY A.PK_ID
+        `;
+      }
+
+      // Fetch main product data
+      const products = await sequelizeMSQL.query(queryString, {
+        replacements: productCategory ? { productCategory } : undefined,
+        type: QueryTypes.SELECT,
+      });
+
+      // For each product, fetch its bahan aktif & dosis from m_product_bahanaktif (not _template)
+      for (let i = 0; i < products.length; i++) {
+        const productID = products[i].Product_ID;
+        const bahanAktifQuery = `
+          SELECT Product_BahanAktif, Product_Dosis
+          FROM m_product_bahanaktif
+          WHERE Product_ID = :productID
+          ORDER BY PK_ID ASC
+        `;
+        const bahanAktifRows = await sequelizeMSQL.query(bahanAktifQuery, {
+          replacements: { productID },
+          type: QueryTypes.SELECT,
+        });
+        products[i].bahan_aktif_detail = bahanAktifRows.map(
+          (row) =>
+            `- ${row.Product_BahanAktif?.toString().trim().replace(/\s+/g, ' ') || ''} (${row.Product_Dosis?.toString().trim().replace(/\s+/g, ' ') || ''})`
+        ).join('\n');
+      }
+
+      // Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('DA Produk ORI');
+
+      // Define headers
+      let headers;
+      if (isCategory01) {
+        headers = [
+          'Nomor',
+          'Product_ID',
+          'Product_Name',
+          'kemasan',
+          'bentukSediaan',
+          'product_ruanglingkup',
+          'Product_Unit',
+          'Product_VolumeInBox',
+          'Product_VolumeInBigBox',
+          'customer',
+          'product_status',
+          'Kategori_prod',
+          'Bahan Aktif & Dosis'
+        ];
+      } else {
+        headers = [
+          'Nomor',
+          'Product_ID',
+          'Product_Name',
+          'kemasan',
+          'bentukSediaan',
+          'product_ruanglingkup',
+          'Product_Unit',
+          'Product_VolumeInBox',
+          'Product_VolumeInBigBox',
+          'customer',
+          'Bahan Aktif & Dosis'
+        ];
+      }
+
+      worksheet.addRow(headers);
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Add data rows
+      products.forEach(row => {
+        let rowData = [
+          row.Nomor,
+          row.Product_ID,
+          row.Product_Name,
+          row.kemasan,
+          row.bentukSediaan,
+          row.product_ruanglingkup,
+          row.Product_Unit,
+          row.Product_VolumeInBox,
+          row.Product_VolumeInBigBox,
+          row.customer
+        ];
+        if (isCategory01) {
+          rowData.push(row.product_status, row.Kategori_prod);
+        }
+        rowData.push(row.bahan_aktif_detail);
+        worksheet.addRow(rowData);
+      });
+
+      // Auto-fit columns
+      worksheet.columns.forEach(column => {
+        let maxLength = 0;
+        column.eachCell({ includeEmpty: true }, cell => {
+          const columnLength = cell.value ? cell.value.toString().length : 10;
+          if (columnLength > maxLength) {
+            maxLength = columnLength;
+          }
+        });
+        column.width = maxLength < 10 ? 10 : maxLength + 2;
+      });
+
+      // Generate filename
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filename = `DAProdukORI_${productCategory ? productCategory : 'ALL'}_${timestamp}.xlsx`;
+
+      // Set response headers
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      // Send the Excel file
+      await workbook.xlsx.write(res);
+      res.end();
+
+    } catch (error) {
+      console.error('Error:', error, '@exportDAProdukORI');
+      next(error);
+    }
+  }
+
   static async exportPPIReport(req, res, next) {
       try {
         const { user_id, bagian_user } = req.user;
@@ -148,7 +342,7 @@ class ExcelExportController {
         console.error('Excel export error:', error);
         next(error);
       }
-    }
+  }
 
   static async exportCustomReport(req, res, next) {
     try {

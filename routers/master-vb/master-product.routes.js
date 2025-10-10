@@ -17,7 +17,7 @@ masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 // masterProductRouter.get("/customer", MasterProductController.fetchCustomer);
 
 masterProductRouter.get("/export-dua", authentication, exportControllerProduct.exportProductData);
-masterProductRouter.get("/export-satu", authentication, exportControllerProduct.exportPPIReport);
+masterProductRouter.get("/export-satu", authentication, exportControllerProduct.exportDAProdukORI);
 masterProductRouter.post("/", authentication, MasterProductController.addNewProduct);
 masterProductRouter.patch("/", authentication, MasterProductController.updateProduct);
 masterProductRouter.delete("/", authentication, MasterProductController.deleteProduct);
