@@ -253,7 +253,7 @@ const getPPI = async (req, res) => {
     }
 
     let strSQL = `
-      SELECT TOP 1000
+      SELECT
         PPI_ID + PPI_SUBID + PPI_PRODUCTID + CONVERT(VARCHAR(1), PPI_PRODUCTINIT) as tag,
         PPI_ID,
         PPI_ProductID,
