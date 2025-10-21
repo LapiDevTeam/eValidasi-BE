@@ -40,15 +40,27 @@ class MasterItemBahanKemasTemplateController {
   }
   static async fetchItemWithGroupTemplate(req, res, next) {
     try {
+      console.log({assasa: "MASUK SINI---------------------------------------------------------"});
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
-      const sqlCode = `
-            select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
-        item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
-        item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
-        item_status, IsActive,Owner, ishalal, item_bpomgenerik, namagenerik, item_row from vwM_ItemWithGroup_template where item_type = '${groupType}'
-         ${
-           isActive ? "and IsActive = 1" : ""
-         } and item_id + ' ' + item_name like '%${kodeOrNamaBahan}%'`;
+      let sqlCode = `
+        select * from (
+          select Item_ID, Group_Name, Item_Name, Item_Size, Item_Description, item_unit,
+          item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
+          item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
+          item_status, IsActive, Owner, ishalal, item_bpomgenerik, namagenerik, item_row
+          from vwM_ItemWithGroup where item_type like '${groupType}' and isActive = 1
+          union all
+          select Product_ID as Item_ID, 'OBAT JADI' as Group_Name, Product_Name as Item_Name, '' as Item_Size, '' as Item_Description, Product_Unit as item_unit,
+          '' as item_group, '' as item_type, '' as item_Currency, '' as Item_Price, '' as Item_MinOrder, '' as Item_LeadTime,
+          '' as item_PackingSize, '' as Item_Localindent, '' as Item_LastPriceCurrency, '' as item_LastPrice, '' as item_lastPriceDate,
+          '' as item_status, 1 as IsActive, '' as Owner, '' as ishalal, '' as item_bpomgenerik, '' as namagenerik, '' as item_row
+          from m_product where Product_Name like 'pelarut%' or Product_Name like '%water%' or (Product_Name like '%infer%' and Product_ID <> 'CT')
+        ) as X`;
+
+      if (kodeOrNamaBahan) {
+        sqlCode += ` where (Item_ID like '${kodeOrNamaBahan}%' or Item_Name like '${kodeOrNamaBahan}%')`;
+      }
+
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
       });
