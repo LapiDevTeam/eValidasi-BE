@@ -44,7 +44,7 @@ class MasterItemBahanKemasTemplateController {
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
       let sqlCode = `
         select * from (
-          select Item_ID, Group_Name, Item_Name, Item_Size, Item_Description, item_unit,
+          select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
           item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
           item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
           item_status, IsActive, Owner, ishalal, item_bpomgenerik, namagenerik, item_row
