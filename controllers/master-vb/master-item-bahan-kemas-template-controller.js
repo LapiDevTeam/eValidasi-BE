@@ -40,29 +40,36 @@ class MasterItemBahanKemasTemplateController {
   }
   static async fetchItemWithGroupTemplate(req, res, next) {
     try {
-      console.log({assasa: "MASUK SINI---------------------------------------------------------"});
       const { kodeOrNamaBahan = "", isActive, groupType } = req.query;
-      let sqlCode = `
-        select * from (
-          select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
-          item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
-          item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
-          item_status, IsActive, Owner, ishalal, item_bpomgenerik, namagenerik, item_row
-          from vwM_ItemWithGroup where item_type like '${groupType}' and isActive = 1
-          union all
-          select Product_ID as Item_ID, 'OBAT JADI' as Group_Name, Product_Name as Item_Name, '' as Item_Size, '' as Item_Description, Product_Unit as item_unit,
-          '' as item_group, '' as item_type, '' as item_Currency, '' as Item_Price, '' as Item_MinOrder, '' as Item_LeadTime,
-          '' as item_PackingSize, '' as Item_Localindent, '' as Item_LastPriceCurrency, '' as item_LastPrice, '' as item_lastPriceDate,
-          '' as item_status, 1 as IsActive, '' as Owner, '' as ishalal, '' as item_bpomgenerik, '' as namagenerik, '' as item_row
-          from m_product where Product_Name like 'pelarut%' or Product_Name like '%water%' or (Product_Name like '%infer%' and Product_ID <> 'CT')
-        ) as X`;
 
-      if (kodeOrNamaBahan) {
-        sqlCode += ` where (Item_ID like '${kodeOrNamaBahan}%' or Item_Name like '${kodeOrNamaBahan}%')`;
+      // Build the base SQL query matching original VB6 logic
+      let sqlCode = `
+        select Item_ID, Group_name, Item_Name, Item_Size, Item_Description, item_unit,
+        item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime,
+        item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate,
+        item_status, IsActive, Owner, ishalal, item_bpomgenerik, namagenerik, item_row
+        from vwM_ItemWithGroup_template
+        where item_type like :groupType`;
+
+      // Add isActive filter if specified (matching VB6's conditional logic)
+      if (isActive === "1" || isActive === 1 || isActive === true) {
+        sqlCode += ` and isActive = 1`;
       }
+
+      // Add search filter matching VB6's concatenated search pattern
+      if (kodeOrNamaBahan) {
+        sqlCode += ` and item_id + ' ' + item_name like :kodeOrNamaBahan`;
+      }
+
+      // Add ORDER BY matching VB6's "order by 1"
+      sqlCode += ` order by 1`;
 
       const _data = await sequelizeMSQL.query(sqlCode, {
         type: QueryTypes.SELECT,
+        replacements: {
+          groupType: groupType || '%',
+          kodeOrNamaBahan: `%${kodeOrNamaBahan}%`,
+        },
       });
 
       res.status(200).json({ data: _data });
@@ -74,7 +81,7 @@ class MasterItemBahanKemasTemplateController {
     try {
       const { item_groupID, item_type } = req.query;
       const sqlCode = `
-        select Item_ID , Group_name, Item_Name, Item_Size, Item_Description, item_unit, item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate, item_status, IsActive, '1' as SubCode
+        select Item_ID , Group_Name, Item_Name, Item_Size, Item_Description, item_unit, item_group, item_type, item_Currency, Item_Price, Item_MinOrder, Item_LeadTime, item_PackingSize, Item_Localindent, Item_LastPriceCurrency, item_LastPrice, item_lastPriceDate, item_status, IsActive, '1' as SubCode
       from vwM_ItemWithGroup
       where item_type like '${item_type}' and item_isPPI = 1  and Item_Group = '${item_groupID}' union all Select '${item_groupID} ' + Group_ID, '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '' , '', '0'
       from m_Item_Group where Group_ID <> 'NN' and ISNUMERIC(left(Group_ID,1)) = 0 order by 1;
