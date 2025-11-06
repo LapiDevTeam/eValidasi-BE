@@ -3,6 +3,7 @@ const masterFormulaRouter = express.Router();
 const { authentication, authenticationLoc } = require("../../middlewares/authentication");
 const { getPPIDescription, getPPIFormat, getOwner, getProduct, getPPIItems, getPPI, exportPPI, exportStatusPembuat, getPPIGridData, exportToExcel } = require("../../controllers/master-vb/master-formula.controller");
 const { createNewMasterFormulaTemplate, updateMasterFormulaTemplate, preApprove, checkApprovalLevel, deleteMasterFormulaTemplate, approveSPV, approveMGR, getPrintOutData, exportLockBatch, createKeteranganApprove, editKeteranganApprove, getLvwApprove, getListMergerPPI, createListMergerPPI, deleteKeteranganApprovePPI, refreshListMergerPPI, deleteMergerPPI, updateItemPRC, enableGrid, sbApprButton } = require("../../controllers/master-vb/master-formula-template.controller");
+const MasterFormulaItemGroupTemplateController = require("../../controllers/master-vb/master-formula-item-group-template");
 
 // get Product
 masterFormulaRouter.get("/ppi-desc", getPPIDescription);
@@ -46,6 +47,8 @@ masterFormulaRouter.get("/refresh-list-merger-ppi", refreshListMergerPPI);
 masterFormulaRouter.post("/merger-ppi", authentication, createListMergerPPI);
 masterFormulaRouter.delete("/merger-ppi", authentication, deleteMergerPPI);
 
+// query item (item group template)
+masterFormulaRouter.get("/query-item", authentication, MasterFormulaItemGroupTemplateController.getQueryItem);
 
 
 module.exports = masterFormulaRouter
