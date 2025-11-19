@@ -49,7 +49,10 @@ class ControllerFormulaFix {
 
     let browser;
     try {
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
       const page = await browser.newPage();
 
       await page.goto(link, { waitUntil: "networkidle0" });
@@ -95,8 +98,8 @@ class ControllerFormulaFix {
             </td>
           </tr>
         </table>
-        
-        
+
+
           `,
         margin: { bottom: "70px", top: "110px", left: "70px", right: "80px" },
       });
@@ -587,12 +590,12 @@ class ControllerFormulaFix {
       // Define the main query with UNION inside a CTE (Common Table Expression)
       let query = `
 WITH CombinedItems AS (
-  SELECT 
-    a.Item_ID AS Item_Id, 
-    a.item_name AS ItemName, 
-    c.Prc_Name AS Produsen 
+  SELECT
+    a.Item_ID AS Item_Id,
+    a.item_name AS ItemName,
+    c.Prc_Name AS Produsen
   FROM m_item_manufacturing a
-  LEFT JOIN m_item_manufacturing_supplier b ON a.Item_ID = b.Item_ID 
+  LEFT JOIN m_item_manufacturing_supplier b ON a.Item_ID = b.Item_ID
   LEFT JOIN m_principle c ON c.prc_ID = b.Item_PrcID
   LEFT JOIN t_np_sample_stock np ON np.ItemID = a.Item_ID
   WHERE a.isActive = 1 AND b.isActive = 1
@@ -603,13 +606,13 @@ SELECT * FROM CombinedItems WHERE 1=1
       // Add dynamic filters if parameters are provided
       if (nama) {
         console.log(nama,"< nama");
-        
+
         query += ` AND ItemName = @nama `;
         request.input("nama", sql.VarChar, nama);
       }
       if (kode) {
         console.log(kode,"< kode");
-        
+
         query += ` AND Item_Id = @kode `;
         request.input("kode", sql.VarChar, kode);
       }
@@ -654,7 +657,7 @@ SELECT * FROM CombinedItems WHERE 1=1
       const { product_id } = req.query; // Expecting product_id from query params
 
       let query = `
-        SELECT 
+        SELECT
           pb.Product_BahanAktif,
           pb.Product_Dosis
         FROM m_product_bahanaktif pb
@@ -1354,7 +1357,7 @@ SELECT * FROM CombinedItems WHERE 1=1
         request.query(
           `
             select a.Item_ID as ItemID, a.item_name as ItemName, c.Prc_Name as principle from m_item_manufacturing a
-left join m_item_manufacturing_supplier b on a.Item_ID = b.Item_ID 
+left join m_item_manufacturing_supplier b on a.Item_ID = b.Item_ID
 left join m_principle c on c.prc_ID = b.Item_PrcID
 left join t_np_sample_stock np on np.ItemID = a.Item_ID
 where a. isActive = 1 and b.isActive = 1;

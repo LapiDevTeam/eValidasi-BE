@@ -52,7 +52,10 @@ class ControllerProposalDiversifikasi {
 
     let browser;
     try {
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
       const page = await browser.newPage();
 
       await page.goto(link, { waitUntil: "networkidle0" });
@@ -98,8 +101,8 @@ class ControllerProposalDiversifikasi {
               </td>
             </tr>
           </table>
-          
-          
+
+
             `,
         margin: { bottom: "60px", top: "130px", left: "70px", right: "80px" },
       });

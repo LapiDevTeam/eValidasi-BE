@@ -2765,7 +2765,10 @@ async function printTest(req, res) {
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
@@ -2929,7 +2932,10 @@ async function printHeader(req, res) {
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);

@@ -49,7 +49,10 @@ class ControllerCatatanTrial {
 
     let browser;
     try {
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
       const page = await browser.newPage();
 
       await page.goto(link, { waitUntil: "networkidle0" });

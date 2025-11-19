@@ -607,7 +607,10 @@ async function printHeaderDa(req, res) {
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
     const page = await browser.newPage();
 
     let parts = tanggal.split("/");

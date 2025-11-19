@@ -46,16 +46,19 @@ class ControllerLaporanTrialSkalaLab {
 
    static async printLaporanTrialSkalaLab(req, res) {
       const { link, kode, tanggalPenyusunan, revisi } = req.query;
-  
-     
+
+
 
       let browser;
       try {
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
         const page = await browser.newPage();
-  
+
         await page.goto(link, { waitUntil: "networkidle0" });
-  
+
         await page.addStyleTag({
           content: `
               * {
@@ -65,14 +68,14 @@ class ControllerLaporanTrialSkalaLab {
             `,
         });
         const batasTanggal = new Date("2025-04-10");
-  
+
         // Convert tanggalPenyusunan string "DD/MM/YYYY" ke Date
         const [day, month, year] = tanggalPenyusunan.split("/");
         const inputTanggal = new Date(`${year}-${month}-${day}`);
-        
+
         // Tentukan isi footer
         let revisiFooter, tanggalFooter;
-        
+
         if (inputTanggal >= batasTanggal) {
           revisiFooter = "02";
           tanggalFooter = "10/04/2025";
@@ -80,7 +83,7 @@ class ControllerLaporanTrialSkalaLab {
           revisiFooter = "01";
           tanggalFooter = "18/03/2020";
         }
-        
+
         // Membuat PDF dalam bentuk buffer
         const pdfBuffer = await page.pdf({
           format: "A4",
@@ -103,15 +106,15 @@ class ControllerLaporanTrialSkalaLab {
           headerTemplate: `
            <table style="width: 90%; margin: 0 auto; font-size: 12px; border: 1px solid gray; border-collapse: collapse; font-family: Verdana, sans-serif;">
     <tr>
-    
+
       <td style="border: 1px solid gray; width: 140px; height: 100px; text-align: center;">
         <img src="${logoBase64}" alt="lapilogo" width="100">
       </td>
-  
+
       <td style="border: 1px solid gray; height: 100px; text-align: center; font-weight: bold;">
         Studi Praformulasi
       </td>
-  
+
       <td style="width: 220px; height: 100px; border: 1px solid gray; vertical-align: center;">
     <div style="width: 100%; height: 100px; font-size: 12px; display: flex; flex-direction: column;">
       <div style="display: flex; flex: 1; border-bottom: 1px solid gray;">
@@ -128,24 +131,24 @@ class ControllerLaporanTrialSkalaLab {
       </div>
     </div>
   </td>
-      
+
     </tr>
   </table>
-  
-          
-          
+
+
+
             `,
           margin: { bottom: "60px", top: "150px", left: "70px", right: "80px" },
         });
-  
+
         await browser.close();
-  
+
         res.end(pdfBuffer);
       } catch (error) {
         console.error("Error during printLaporanTrialSkalaLab:", error);
-  
+
         if (browser) await browser.close();
-  
+
         res
           .status(500)
           .send({ error: "An error occurred during PDF generation." });
@@ -1230,7 +1233,7 @@ class ControllerLaporanTrialSkalaLab {
         order: [["id", "ASC"]],
       });
 
- 
+
 
       const usulanPenelitianProduk = await t_usulanPenelitianProduk.findAll({
         where: {
