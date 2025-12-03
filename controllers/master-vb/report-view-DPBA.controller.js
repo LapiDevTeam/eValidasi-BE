@@ -305,9 +305,9 @@ async function exportItemUsageReport(req, res, next) {
     }
 
     // Check user department access (similar to VB logic - only RD departments)
-    if (!bagian_user || !bagian_user.startsWith('RD')) {
-      throw new MyError(403, 'Access denied. Only RD departments can export this report.');
-    }
+    // if (!bagian_user || !bagian_user.startsWith('RD')) {
+    //   throw new MyError(403, 'Access denied. Only RD departments can export this report.');
+    // }
 
     // SQL query from VB code - exact match to the original
     let strTemp = `select d.pengelompokan, b.Product_Name, a.PPI_ProductID, e.PPI_ItemID, f.item_name, sum(convert(float,e.PPI_QTY)) as totalPPI, e.PPI_UnitID, a.PPI_BatchSize, a.PPI_BatchSizeUnitID`;
