@@ -299,17 +299,12 @@ async function exportItemUsageReport(req, res, next) {
       throw new MyError(401, 'Unauthorized request!');
     }
 
-    // Check if itemID is provided (equivalent to txtItemID.Text = "" check)
-    if (!itemID || itemID.trim() === '') {
-      throw new MyError(400, 'Pilih bahan terlebih dahulu');
-    }
-
     // Check user department access (similar to VB logic - only RD departments)
     // if (!bagian_user || !bagian_user.startsWith('RD')) {
     //   throw new MyError(403, 'Access denied. Only RD departments can export this report.');
     // }
 
-    // SQL query from VB code - exact match to the original
+    // SQL query - modified to support optional itemID
     let strTemp = `select d.pengelompokan, b.Product_Name, a.PPI_ProductID, e.PPI_ItemID, f.item_name, sum(convert(float,e.PPI_QTY)) as totalPPI, e.PPI_UnitID, a.PPI_BatchSize, a.PPI_BatchSizeUnitID`;
     strTemp += ` From m_ppi_header a`;
     strTemp += ` left join m_product b on a.PPI_ProductID = b.product_id`;
@@ -317,22 +312,33 @@ async function exportItemUsageReport(req, res, next) {
     strTemp += ` left join m_product_pc_group_header d on d.ID_master = c.ID_master`;
     strTemp += ` left join m_ppi_detail e on a.PPI_ProductID = e.PPI_ProductID and a.PPI_ID = e.PPI_ID and a.PPI_SubID = e.PPI_SubID`;
     strTemp += ` left join m_item_manufacturing f on e.PPI_ItemID = f.item_id`;
-    strTemp += ` where a.PPI_ProductID in`;
-    strTemp += ` (select distinct ppi_productid From m_ppi_detail where PPI_ItemID in (:itemID)`;
-    strTemp += ` and PPI_ProductID+PPI_SubID+PPI_ID in (select PPI_ProductID+PPI_SubID+PPI_ID from m_ppi_header where isActive = 1))`;
-    strTemp += ` and e.PPI_ItemID in (:itemID)`;
-    strTemp += ` and b.isActive = 1`;
-    strTemp += ` and a.status_default = 1`;
+
+    // Conditionally add itemID filter if provided
+    if (itemID && itemID.trim() !== '') {
+      strTemp += ` where a.PPI_ProductID in`;
+      strTemp += ` (select distinct ppi_productid From m_ppi_detail where PPI_ItemID in (:itemID)`;
+      strTemp += ` and PPI_ProductID+PPI_SubID+PPI_ID in (select PPI_ProductID+PPI_SubID+PPI_ID from m_ppi_header where isActive = 1))`;
+      strTemp += ` and e.PPI_ItemID in (:itemID)`;
+      strTemp += ` and b.isActive = 1`;
+      strTemp += ` and a.status_default = 1`;
+    } else {
+      strTemp += ` where b.isActive = 1`;
+      strTemp += ` and a.status_default = 1`;
+    }
+
     strTemp += ` group by d.pengelompokan, b.Product_Name, a.PPI_ProductID, e.PPI_ItemID, f.item_name, e.PPI_UnitID, a.PPI_BatchSize, a.PPI_BatchSizeUnitID`;
     strTemp += ` order by d.pengelompokan, b.product_name`;
 
-    // Execute query
-    const data = await sequelizeMSQL.query(strTemp, {
-      type: QueryTypes.SELECT,
-      replacements: {
-        itemID: itemID
-      }
-    });
+    // Execute query with conditional replacements
+    const queryOptions = {
+      type: QueryTypes.SELECT
+    };
+
+    if (itemID && itemID.trim() !== '') {
+      queryOptions.replacements = { itemID: itemID };
+    }
+
+    const data = await sequelizeMSQL.query(strTemp, queryOptions);
 
     if (!data || data.length === 0) {
       throw new MyError(404, 'No data found for the specified Item ID');
@@ -430,7 +436,9 @@ async function exportItemUsageReport(req, res, next) {
 
     // Generate filename with timestamp
     const timestamp = moment().format('YYYYMMDD_HHmmss');
-    const filename = `Item_Usage_Report_${itemID}_${timestamp}.xlsx`;
+    const filename = itemID && itemID.trim() !== ''
+      ? `Item_Usage_Report_${itemID}_${timestamp}.xlsx`
+      : `Item_Usage_Report_All_${timestamp}.xlsx`;
 
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
