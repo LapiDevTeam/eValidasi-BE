@@ -547,9 +547,9 @@ const exportStatusPembuat = async (req, res) => {
 };
 
 const getPPIGridData = async (req, res) => {
-  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit } = req.query;
+  const { PPI_ID, PPI_SubID = "", PPI_ProductID, PPI_ProductInit } = req.query;
 
-  if (!PPI_ID || !PPI_SubID || !PPI_ProductID || !PPI_ProductInit) {
+  if (!PPI_ID  || !PPI_ProductID || !PPI_ProductInit) {
     return res.status(400).send({ message: "All parameters (PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit) are required" });
   }
 

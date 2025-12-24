@@ -536,7 +536,7 @@ const preApprove = async (req, res, next) => {
 };
 
 const enableGrid = async (req, res) => {
-  const { PPI_ID, PPI_SubID, PPI_ProductID, PPI_ProductInit, txtJumlahLOT, txt_pPI_batchsizekemasan, TXT_rendemen_min } = req.query;
+  const { PPI_ID, PPI_SubID = "", PPI_ProductID, PPI_ProductInit, txtJumlahLOT, txt_pPI_batchsizekemasan, TXT_rendemen_min } = req.query;
   const { user_id, delegated_to } = req.user;
 
   try {
