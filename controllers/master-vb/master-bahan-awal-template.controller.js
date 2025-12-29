@@ -80,87 +80,31 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
 
-      // Handle decimal notation like "BR 181.002"
-      if (item_ID.includes('.')) {
-        const parts = item_ID.split(' ');
-        const prefix = parts[0]; // e.g., "BR"
+      // VBA Query: Matches the exact logic from strSQL1
+      // Pattern: replace(Item_ID,' ','') like '01XA___'
+      // Result: Gets next 3-digit sequence number (001, 002, 003...)
 
-        if (parts.length >= 2) {
-          const decimalPart = parts[1]; // e.g., "181.002"
+      const searchPattern = `${item_groupID}${item_ID}___`; // e.g., "01XA___"
 
-          if (decimalPart.includes('.')) {
-            // First check if the item exists in the database
-            const checkQuery = `
-              SELECT COUNT(*) as itemCount
-              FROM m_Item_Manufacturing_template
-              WHERE Item_ID = :itemId AND isActive = 1
-            `;
+      const sequenceQuery = `
+        SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID,' ','')),3) AS INT), 0) + 1 AS VARCHAR), 3) AS nextSequence
+        FROM m_Item_Manufacturing_template
+        WHERE ISNUMERIC(LEFT(Item_ID,1)) = 1
+          AND REPLACE(Item_ID,' ','') LIKE '${searchPattern}'
+      `;
 
-            const [existResult] = await sequelizeMSQL.query(checkQuery, {
-              replacements: { itemId: item_ID },
-              type: QueryTypes.SELECT,
-            });
+      const sequenceResult = await sequelizeMSQL.query(sequenceQuery, {
+        type: QueryTypes.SELECT,
+      });
 
-            if (existResult && existResult.itemCount > 0) {
-              // Item exists, so increment the decimal suffix
-              const [basePart, decimalSuffix] = decimalPart.split('.');
+      const nextSeq = sequenceResult.length > 0 && sequenceResult[0].nextSequence
+        ? sequenceResult[0].nextSequence
+        : '001';
 
-              if (!isNaN(decimalSuffix)) {
-                const incrementedSuffix = (parseInt(decimalSuffix) + 1).toString().padStart(decimalSuffix.length, '0');
-                lblItem_ID = `${prefix} ${basePart}.${incrementedSuffix}`;
-              } else {
-                // If suffix isn't numeric, fall back to the original ID
-                lblItem_ID = item_ID;
-              }
-            } else {
-              // Item doesn't exist, use the original ID
-              lblItem_ID = item_ID;
-            }
-          } else {
-            // If no decimal but there's a space, add 001
-            lblItem_ID = `${item_ID} 001`;
-          }
-        } else {
-          lblItem_ID = `${item_ID} 001`;
-        }
-      } else {
-        // For non-decimal IDs, follow VBA logic for TxtItem_ID provided case
-        // VBA: Else section starting at line 211
+      // Construct final Item_ID: "01X A 001"
+      lblItem_ID = `${item_groupID} ${item_ID} ${nextSeq}`;
 
-        // Check if this item_ID pattern exists and generate alphabetic suffix
-        const checkQuery = `
-          SELECT * FROM m_Item_Manufacturing_template
-          WHERE Item_ID LIKE :item_pattern
-        `;
-
-        const checkResult = await sequelizeMSQL.query(checkQuery, {
-          replacements: { item_pattern: `${item_ID}%` },
-          type: QueryTypes.SELECT,
-        });
-
-        if (checkResult.length >= 0) {
-          // VBA: If rs.RecordCount >= 0 Then
-          // Generate alphabetic suffix variant (A, B, C...)
-          const variantQuery = `
-            SELECT CASE
-              WHEN ISNUMERIC(RIGHT(MAX(Item_ID), 1)) = 1
-                THEN '${item_ID}' + 'A'
-              ELSE '${item_ID}' + CHAR(ASCII(RIGHT(MAX(Item_ID), 1)) + 1)
-            END AS autonum
-            FROM m_Item_Manufacturing_template
-            WHERE Item_ID LIKE '${item_ID}%'
-          `;
-
-          const variantResult = await sequelizeMSQL.query(variantQuery, {
-            type: QueryTypes.SELECT,
-          });
-
-          lblItem_ID = variantResult.length > 0 && variantResult[0].autonum ? variantResult[0].autonum : item_ID;
-          console.log({ variantQuery, variantResult, lblItem_ID });
-        } else {
-          lblItem_ID = item_ID;
-        }
-      }
+      console.log({ searchPattern, sequenceQuery, sequenceResult, nextSeq, lblItem_ID });
     }
 
     if (item_ID && item_ID !== '' && (existingItem === false || !existingItem)) {
