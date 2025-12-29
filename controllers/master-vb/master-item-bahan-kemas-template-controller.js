@@ -72,7 +72,23 @@ class MasterItemBahanKemasTemplateController {
         },
       });
 
-      res.status(200).json({ data: _data });
+      // Add Item_ID_Fix to each item
+      const dataWithFix = _data.map(item => {
+        let item_ID_Fix = item.Item_ID || "";
+        const groupId = item.item_group || item.Item_group;
+
+        if (groupId && item_ID_Fix.startsWith(groupId)) {
+          // Remove the group prefix (e.g., "01X A 001" -> "A 001")
+          item_ID_Fix = item_ID_Fix.substring(groupId.length).trim();
+        }
+
+        return {
+          ...item,
+          Item_ID_Fix: item_ID_Fix
+        };
+      });
+
+      res.status(200).json({ data: dataWithFix });
     } catch (error) {
       next(error);
     }
