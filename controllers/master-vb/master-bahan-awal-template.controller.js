@@ -124,87 +124,41 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
           lblItem_ID = `${item_ID} 001`;
         }
       } else {
-        // For non-decimal IDs, use original logic
-        const getMiddleCode = (item_ID) => {
-          if (!item_ID) return '';
-          const parts = item_ID.split(' ');
-          return parts.length >= 2 ? parts[1] : '';
-        };
+        // For non-decimal IDs, follow VBA logic for TxtItem_ID provided case
+        // VBA: Else section starting at line 211
 
-        const middleCode = getMiddleCode(item_ID);
-        console.log({ middleCode });
-
-        // Get the latest item_ID from database for this group with same middle code
-        let query = `
-          SELECT TOP 1 item_ID
-          FROM m_Item_Manufacturing_template
-          WHERE item_group = :item_group
+        // Check if this item_ID pattern exists and generate alphabetic suffix
+        const checkQuery = `
+          SELECT * FROM m_Item_Manufacturing_template
+          WHERE Item_ID LIKE :item_pattern
         `;
 
-        // Add middle code condition if it exists
-        if (middleCode && middleCode !== '') {
-          query += ` AND item_ID LIKE :item_pattern `;
-        }
-
-        query += ` ORDER BY item_ID DESC`;
-
-        const replacements = { item_group: item_groupID };
-        if (middleCode && middleCode !== '') {
-          replacements.item_pattern = `${item_groupID} ${middleCode} %`;
-        }
-
-        const [latestItem] = await sequelizeMSQL.query(query, {
-          replacements,
+        const checkResult = await sequelizeMSQL.query(checkQuery, {
+          replacements: { item_pattern: `${item_ID}%` },
           type: QueryTypes.SELECT,
         });
 
-        if (latestItem && latestItem.item_ID) {
-          const latestItemID = latestItem.item_ID;
-          const parts = latestItemID.split(' ');
+        if (checkResult.length >= 0) {
+          // VBA: If rs.RecordCount >= 0 Then
+          // Generate alphabetic suffix variant (A, B, C...)
+          const variantQuery = `
+            SELECT CASE
+              WHEN ISNUMERIC(RIGHT(MAX(Item_ID), 1)) = 1
+                THEN '${item_ID}' + 'A'
+              ELSE '${item_ID}' + CHAR(ASCII(RIGHT(MAX(Item_ID), 1)) + 1)
+            END AS autonum
+            FROM m_Item_Manufacturing_template
+            WHERE Item_ID LIKE '${item_ID}%'
+          `;
 
-          if (parts.length >= 2) {
-            const lastPart = parts[parts.length - 1];
+          const variantResult = await sequelizeMSQL.query(variantQuery, {
+            type: QueryTypes.SELECT,
+          });
 
-            // Handle .000 suffix for non-RH items
-            if (lastPart.includes('.')) {
-              const [number, suffix] = lastPart.split('.');
-              if (!isNaN(number) && number !== '') {
-                const incrementedNumber = (parseInt(number) + 1).toString().padStart(number.length, '0');
-                parts[parts.length - 1] = `${incrementedNumber}.${suffix}`;
-                lblItem_ID = parts.join(' ');
-              } else {
-                // If number part is invalid, default to 001.000
-                parts[parts.length - 1] = `001.${suffix}`;
-                lblItem_ID = parts.join(' ');
-              }
-            } else if (!isNaN(lastPart) && lastPart !== '') {
-              // Handle numeric-only last part
-              const incrementedNumber = (parseInt(lastPart) + 1).toString().padStart(lastPart.length, '0');
-              parts[parts.length - 1] = incrementedNumber;
-              lblItem_ID = parts.join(' ');
-            } else {
-              // If lastPart contains non-numeric characters, extract numeric part
-              const numericMatch = lastPart.match(/(\d+)/);
-              if (numericMatch) {
-                const numericPart = numericMatch[1];
-                const incrementedNumber = (parseInt(numericPart) + 1).toString().padStart(numericPart.length, '0');
-                // Replace the numeric part while keeping non-numeric characters
-                const newLastPart = lastPart.replace(/\d+/, incrementedNumber);
-                parts[parts.length - 1] = newLastPart;
-                lblItem_ID = parts.join(' ');
-              } else {
-                // If no numeric part found, append "001"
-                lblItem_ID = `${latestItemID} 001`;
-              }
-            }
-          }
+          lblItem_ID = variantResult.length > 0 && variantResult[0].autonum ? variantResult[0].autonum : item_ID;
+          console.log({ variantQuery, variantResult, lblItem_ID });
         } else {
-          // If no items found with middle code, create new one with middle code + "001"
-          if (middleCode && middleCode !== '') {
-            lblItem_ID = `${item_groupID} ${middleCode} 001`;
-          } else {
-            lblItem_ID = `${item_ID} 001`;
-          }
+          lblItem_ID = item_ID;
         }
       }
     }
@@ -2730,6 +2684,7 @@ const generateItemID = async (item_groupID, existing = false) => {
       FROM m_Item_Manufacturing_template
       WHERE ISNUMERIC(LEFT(Item_ID, 1)) = 1
         AND REPLACE(Item_ID, ' ', '') LIKE '${item_groupID}___'
+        AND ISNUMERIC(RIGHT(REPLACE(Item_ID, ' ', ''), 3)) = 1
     `;
 
     const result = await sequelizeMSQL.query(query1, { type: QueryTypes.SELECT });
