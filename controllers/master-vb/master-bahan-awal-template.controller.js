@@ -3639,7 +3639,7 @@ const getQueryController = async (req, res, next) => {
     if (result.data && Array.isArray(result.data)) {
       result.data = result.data.map(item => {
         // Calculate Item_ID_Fix by removing item_group from Item_ID
-        let item_ID_Fix = item.Item_ID || "";
+        let item_ID_Fix = item.Item_ID || item.item_sub || "";
         const groupId = item.item_group || item.Item_group;
 
         if (groupId && item_ID_Fix.startsWith(groupId)) {
