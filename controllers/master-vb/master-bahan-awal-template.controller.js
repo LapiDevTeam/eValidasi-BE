@@ -3635,6 +3635,26 @@ const getQueryController = async (req, res, next) => {
       });
     }
 
+    // Add Item_ID_Fix to each item in result.data
+    if (result.data && Array.isArray(result.data)) {
+      result.data = result.data.map(item => {
+        // Calculate Item_ID_Fix by removing item_group from Item_ID
+        let item_ID_Fix = item.Item_ID || "";
+        const groupId = item.item_group || item.Item_group;
+
+        if (groupId && item_ID_Fix.startsWith(groupId)) {
+          // Remove the group prefix (e.g., "01X A 001" -> "A 001")
+          item_ID_Fix = item_ID_Fix.substring(groupId.length).trim();
+        }
+
+        return {
+          ...item,
+          Item_ID_Fix: item_ID_Fix
+        };
+      });
+    }
+
+    console.log({data: result.data});
     // Return successful response with data
     return res.status(200).json({
       success: true,
