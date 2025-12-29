@@ -80,31 +80,69 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
 
-      // VBA Query: Matches the exact logic from strSQL1
-      // Pattern: replace(Item_ID,' ','') like '01XA___'
-      // Result: Gets next 3-digit sequence number (001, 002, 003...)
+      // Check if item_ID contains a number (e.g., "A 003") or just letter (e.g., "A")
+      const parts = item_ID.trim().split(' ');
+      const hasNumericPart = parts.length > 1 && /^\d+$/.test(parts[1]);
 
-      const searchPattern = `${item_groupID}${item_ID}___`; // e.g., "01XA___"
+      if (hasNumericPart) {
+        // Case: "A 003" -> Generate alphabetic variant "01X A 003A", "01X A 003B"
+        // VBA Query: CHAR(isnull(ASCII(max(RIGHT(Item_ID,1))), 64) + 1)
+        // Pattern: replace(Item_ID,' ','') like '01XA003%'
+        // Condition: ISNUMERIC(right(Item_ID,1)) = 0
 
-      const sequenceQuery = `
-        SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID,' ','')),3) AS INT), 0) + 1 AS VARCHAR), 3) AS nextSequence
-        FROM m_Item_Manufacturing_template
-        WHERE ISNUMERIC(LEFT(Item_ID,1)) = 1
-          AND REPLACE(Item_ID,' ','') LIKE '${searchPattern}'
-      `;
+        const baseCode = parts[0]; // "A"
+        const numPart = parts[1];  // "003"
+        const searchPattern = `${item_groupID}${baseCode}${numPart}%`; // "01XA003%"
 
-      const sequenceResult = await sequelizeMSQL.query(sequenceQuery, {
-        type: QueryTypes.SELECT,
-      });
+        const variantQuery = `
+          SELECT CHAR(ISNULL(ASCII(MAX(RIGHT(Item_ID,1))), 64) + 1) AS nextVariant
+          FROM m_Item_Manufacturing_template
+          WHERE ISNUMERIC(LEFT(Item_ID,1)) = 1
+            AND ISNUMERIC(RIGHT(Item_ID,1)) = 0
+            AND REPLACE(Item_ID,' ','') LIKE '${searchPattern}'
+        `;
 
-      const nextSeq = sequenceResult.length > 0 && sequenceResult[0].nextSequence
-        ? sequenceResult[0].nextSequence
-        : '001';
+        const variantResult = await sequelizeMSQL.query(variantQuery, {
+          type: QueryTypes.SELECT,
+        });
 
-      // Construct final Item_ID: "01X A 001"
-      lblItem_ID = `${item_groupID} ${item_ID} ${nextSeq}`;
+        const nextVariant = variantResult.length > 0 && variantResult[0].nextVariant
+          ? variantResult[0].nextVariant
+          : 'A';
 
-      console.log({ searchPattern, sequenceQuery, sequenceResult, nextSeq, lblItem_ID });
+        // Construct final Item_ID: "01X A 003A"
+        lblItem_ID = `${item_groupID} ${baseCode} ${numPart}${nextVariant}`;
+
+        console.log({ baseCode, numPart, searchPattern, variantQuery, variantResult, nextVariant, lblItem_ID });
+
+      } else {
+        // Case: "A" -> Generate numeric sequence "01X A 001", "01X A 002"
+        // VBA Query: RIGHT('00' + CAST(...), 3)
+        // Pattern: replace(Item_ID,' ','') like '01XA___'
+
+        const baseCode = parts[0]; // "A"
+        const searchPattern = `${item_groupID}${baseCode}___`; // "01XA___"
+
+        const sequenceQuery = `
+          SELECT RIGHT('00' + CAST(ISNULL(CAST(RIGHT(MAX(REPLACE(Item_ID,' ','')),3) AS INT), 0) + 1 AS VARCHAR), 3) AS nextSequence
+          FROM m_Item_Manufacturing_template
+          WHERE ISNUMERIC(LEFT(Item_ID,1)) = 1
+            AND REPLACE(Item_ID,' ','') LIKE '${searchPattern}'
+        `;
+
+        const sequenceResult = await sequelizeMSQL.query(sequenceQuery, {
+          type: QueryTypes.SELECT,
+        });
+
+        const nextSeq = sequenceResult.length > 0 && sequenceResult[0].nextSequence
+          ? sequenceResult[0].nextSequence
+          : '001';
+
+        // Construct final Item_ID: "01X A 001"
+        lblItem_ID = `${item_groupID} ${baseCode} ${nextSeq}`;
+
+        console.log({ baseCode, searchPattern, sequenceQuery, sequenceResult, nextSeq, lblItem_ID });
+      }
     }
 
     if (item_ID && item_ID !== '' && (existingItem === false || !existingItem)) {
