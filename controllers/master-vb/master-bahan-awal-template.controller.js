@@ -80,19 +80,37 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
     if (item_ID && item_ID !== '' && existingItem === true) {
       console.log({existingItem, item_ID, item_groupID});
 
-      // Check if item_ID contains a number (e.g., "A 003") or just letter (e.g., "A")
+      // Parse item_ID to detect the pattern
+      // Cases: "A", "A 003", "A 001A"
       const parts = item_ID.trim().split(' ');
-      const hasNumericPart = parts.length > 1 && /^\d+$/.test(parts[1]);
+      const baseCode = parts[0]; // Always the first part: "A"
 
-      if (hasNumericPart) {
-        // Case: "A 003" -> Generate alphabetic variant "01X A 003A", "01X A 003B"
+      // Check if there's a second part and what type it is
+      let hasNumericSequence = false;
+      let hasAlphabeticVariant = false;
+      let numPart = '';
+
+      if (parts.length > 1) {
+        const secondPart = parts[1];
+        // Check if it's purely numeric (e.g., "003") or has alphabetic suffix (e.g., "001A")
+        if (/^\d+$/.test(secondPart)) {
+          // Pure numeric: "A 003" -> Generate "01X A 003A"
+          hasNumericSequence = true;
+          numPart = secondPart;
+        } else if (/^\d+[A-Z]$/.test(secondPart)) {
+          // Numeric with alpha suffix: "A 001A" -> Generate "01X A 001B"
+          hasAlphabeticVariant = true;
+          numPart = secondPart.slice(0, -1); // Extract numeric part: "001"
+        }
+      }
+
+      if (hasNumericSequence || hasAlphabeticVariant) {
+        // Case: "A 003" or "A 001A" -> Generate alphabetic variant "01X A 003A", "01X A 001B"
         // VBA Query: CHAR(isnull(ASCII(max(RIGHT(Item_ID,1))), 64) + 1)
-        // Pattern: replace(Item_ID,' ','') like '01XA003%'
+        // Pattern: replace(Item_ID,' ','') like '01XA003%' or '01XA001%'
         // Condition: ISNUMERIC(right(Item_ID,1)) = 0
 
-        const baseCode = parts[0]; // "A"
-        const numPart = parts[1];  // "003"
-        const searchPattern = `${item_groupID}${baseCode}${numPart}%`; // "01XA003%"
+        const searchPattern = `${item_groupID}${baseCode}${numPart}%`; // "01XA003%" or "01XA001%"
 
         const variantQuery = `
           SELECT CHAR(ISNULL(ASCII(MAX(RIGHT(Item_ID,1))), 64) + 1) AS nextVariant
@@ -110,7 +128,7 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
           ? variantResult[0].nextVariant
           : 'A';
 
-        // Construct final Item_ID: "01X A 003A"
+        // Construct final Item_ID: "01X A 003A" or "01X A 001B"
         lblItem_ID = `${item_groupID} ${baseCode} ${numPart}${nextVariant}`;
 
         console.log({ baseCode, numPart, searchPattern, variantQuery, variantResult, nextVariant, lblItem_ID });
@@ -120,7 +138,6 @@ const masterBahanAwalTemplate_CREATE = async (req, res) => {
         // VBA Query: RIGHT('00' + CAST(...), 3)
         // Pattern: replace(Item_ID,' ','') like '01XA___'
 
-        const baseCode = parts[0]; // "A"
         const searchPattern = `${item_groupID}${baseCode}___`; // "01XA___"
 
         const sequenceQuery = `
