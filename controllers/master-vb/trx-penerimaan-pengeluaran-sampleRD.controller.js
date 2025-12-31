@@ -540,9 +540,12 @@ async function cmdSimpanMasuk(req, res, next) {
       console.log('EXECUTED SQL_tMasuk INSERT');
 
       let SQL_tStock;
+      console.log({coba: txtNoBatch.Tag === undefined, coba2: txtNoBatch.Tag});
       if (!txtPKID_item) {
           SQL_tStock = `INSERT INTO t_NP_Sample_Stock (Periode, PK_ID_Item, ItemID, ItemName, Analisa, batchno, rak, saldoawal, masuk, keluar, UserID, Delegated_To, Process_date, BatchDate, Principle, Supplier, TypeInput, KelBahan, ExpDate, MinStock, satuan, Alert, RemainDay, Ukuran, Komposisi)
-                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag}', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
+                        VALUES ('000000', '${sPK_IDITEM}', '${txtKode_bhn}', '${txtNama_bhn}', '${txtNoAnalisa}', '${txtNoBatch}', '${lblLokasi.Caption}', 0, '${parseFloat(txtJum)}', 0, '${user_id}', '${delegated_to}', GETDATE(), '${txtNoBatch.Tag === undefined ?
+                          '-' : txtNoBatch.Tag
+                         }', '${txtPrincl}', '${txtSupp}', '${txtTypeInput}', '${txtKelompokBahan}', '${moment(txtExpDate, 'MM/DD/YYYY').format('YYYY-MM-DD')}', '${parseFloat(txtMin)}', '${txtSatuan}', '${txtAlert}', '${txtRemainDay}', '${txtUkuran}', '${txtKomposisi}')`;
           await sequelizeMSQL.query(SQL_tStock, { transaction });
           console.log('EXECUTED SQL_tStock INSERT');
       } else {
