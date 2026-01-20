@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const routerUpload = require("../routers/v2/routerUpload");
+const routerKalibrasi = require("../routers/transactions/routerKalibrasi");
 const { authentication } = require("../middlewares/authentication");
 
 
@@ -24,5 +25,6 @@ router.get("/", (req, res) => {
 
 
 router.use("/v2", routerUpload);
+router.use("/transactions/kalibrasi", routerKalibrasi);
 
 module.exports = router;
