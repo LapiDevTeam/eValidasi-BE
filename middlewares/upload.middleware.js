@@ -1,16 +1,35 @@
-const Multer = require("multer-md5");
+const Multer = require("multer");
+const path = require("path");
 
 const maxSize = 100 * 1024 * 1024;
-// const multer = Multer({
-//   dest: "privateuploads/",
-//   limits: { fileSize: maxSize },
-// });
+
+const storagePublic = Multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "publicuploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const storagePublicPdf = Multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "publicuploads/pdf/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
 const multerPublic = Multer({
-  dest: "publicuploads/",
+  storage: storagePublic,
   limits: { fileSize: maxSize },
 });
+
 const multerPublicPdf = Multer({
-  dest: "publicuploads/pdf/",
+  storage: storagePublicPdf,
   limits: { fileSize: maxSize },
 });
 

@@ -1,0 +1,435 @@
+{
+	"info": {
+		"_postman_id": "kalibrasi-permohonan-api-collection",
+		"name": "Kalibrasi Permohonan API Collection",
+		"description": "API endpoints for Kalibrasi Permohonan based on VBA frm_Kal_Permohonan",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get Permohonan List",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/list?tahun=2025&bagian=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"list"
+					],
+					"query": [
+						{
+							"key": "tahun",
+							"value": "2025",
+							"description": "Year to filter (optional)"
+						},
+						{
+							"key": "bagian",
+							"value": "",
+							"description": "Department code (optional, uses user's department if empty)"
+						}
+					]
+				},
+				"description": "Get list of calibration requests (sb_Show_Grid)\n- Returns all permohonan with approver information\n- Filters by year and department"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Permohonan Detail",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/detail?no_permohonan=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"detail"
+					],
+					"query": [
+						{
+							"key": "no_permohonan",
+							"value": "",
+							"description": "Permohonan number (required)"
+						}
+					]
+				},
+				"description": "Get single calibration request detail (grid_Head_DblClick)\n- Returns detailed information for a specific permohonan\n- Requires no_permohonan parameter"
+			},
+			"response": []
+		},
+		{
+			"name": "Search Instrumen",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/instrumen/search?search=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"instrumen",
+						"search"
+					],
+					"query": [
+						{
+							"key": "search",
+							"value": "",
+							"description": "QA_ID or instrument name to search (required)"
+						}
+					]
+				},
+				"description": "Search instruments across kalibrasi tables (cmdCari_Nama_Click)\n- Searches in T_Kalibrasi_DA_Thermohygro\n- Searches in T_Kalibrasi_DA_Anak_Timbangan\n- Searches in T_Kalibrasi_DA_Timbangan\n- Searches in T_Kalibrasi_DA_Bagian"
+			},
+			"response": []
+		},
+		{
+			"name": "Check Approve Button",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/check-approve?no_permohonan=&bagian=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"check-approve"
+					],
+					"query": [
+						{
+							"key": "no_permohonan",
+							"value": "",
+							"description": "Permohonan number (required)"
+						},
+						{
+							"key": "bagian",
+							"value": "",
+							"description": "Department code (optional, uses user's department if empty)"
+						}
+					]
+				},
+				"description": "Check if user can approve and print status (sb_approve_button)\n- Returns can_approve flag\n- Returns can_print flag\n- Checks user permissions in m_approver_lines\n- Checks approval status in t_Kalibrasi_Status"
+			},
+			"response": []
+		},
+		{
+			"name": "Check Is Approved",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/is-approved?no_permohonan=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"is-approved"
+					],
+					"query": [
+						{
+							"key": "no_permohonan",
+							"value": "",
+							"description": "Permohonan number (required)"
+						}
+					]
+				},
+				"description": "Check if permohonan is already approved (fn_IS_approve)\n- Returns is_approved boolean\n- Returns approval_data if approved\n- Checks Approver_No = 1 in t_Kalibrasi_Status"
+			},
+			"response": []
+		},
+		{
+			"name": "Get File Download",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/file?no_permohonan=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"file"
+					],
+					"query": [
+						{
+							"key": "no_permohonan",
+							"value": "",
+							"description": "Permohonan number (required)"
+						}
+					]
+				},
+				"description": "Get file name for download (sbFill_FileDownload)\n- Returns file_name from T_Kalibrasi_Permohonan\n- Returns has_file boolean"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Approver Identity",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/approver/identity?approver_no=1",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"approver",
+						"identity"
+					],
+					"query": [
+						{
+							"key": "approver_no",
+							"value": "1",
+							"description": "Approver number (optional, default 1)"
+						}
+					]
+				},
+				"description": "Get approver identity for current user (fnApprIdentity)\n- Returns approver_identity from m_approver_lines\n- Returns has_approval_right boolean\n- Used to check if user can approve"
+			},
+			"response": []
+		},
+		{
+			"name": "Save Permohonan Kalibrasi",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"no_permohonan\": \"\",\n    \"kategori_permohonan\": \"Re-Kalibrasi\",\n    \"qa_id_rekalibrasi\": \"QA001\",\n    \"ket_rekalibrasi\": \"Rekalibrasi rutin\",\n    \"nama_instrumen\": \"Thermometer Digital\",\n    \"no_identitas_istrumen\": \"THM-001\",\n    \"no_identitas_kalibrasi\": \"KAL-001\",\n    \"alat_ukur_kalibrasi\": \"Thermometer\",\n    \"merk\": \"Fluke\",\n    \"kapasitas\": \"0-100°C\",\n    \"jumlah\": \"1\",\n    \"fungsi\": \"Pengukuran suhu\",\n    \"titik_pengukuran\": \"25°C, 50°C, 75°C\",\n    \"lokasi\": \"Lab QA\",\n    \"tgl_butuh\": \"2026-02-15\",\n    \"no_sertifikat_terakhir\": \"CERT-2025-001\",\n    \"file_name\": \"dokumen.pdf\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/save",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"save"
+					]
+				},
+				"description": "Save (insert or update) calibration request (cmd_Save_Click)\n\n**INSERT Mode** (when no_permohonan is empty or \"Auto\"):\n- Auto-generates number using fnGet_NO_Kal_mohon\n- Inserts all fields including Assm_* fields\n- Handles file name formatting\n\n**UPDATE Mode** (when no_permohonan exists):\n- Checks if already approved (blocks update)\n- Updates all fields\n- Handles file name update\n\n**Validations**:\n- kategori_permohonan required\n- tgl_butuh required\n- ket_rekalibrasi required if kategori is \"Re-Kalibrasi\"\n\n**Note**: Set no_permohonan to empty string or \"Auto\" for new records"
+			},
+			"response": []
+		},
+		{
+			"name": "Approve Permohonan Kalibrasi",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"no_permohonan\": \"KAL/QA/2025/001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/approve",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"approve"
+					]
+				},
+				"description": "Approve calibration request (cmd_Approve_Click)\n- Gets approver identity from m_approver_lines\n- Inserts approval record into t_Kalibrasi_Status\n- Records User_ID, Delegated_To, and timestamp\n- Returns approver_identity in response\n\n**Requirements**:\n- User must have approval rights in m_approver_lines\n- Permohonan must not be already approved\n- no_permohonan cannot be empty or \"Auto\""
+			},
+			"response": []
+		},
+		{
+			"name": "Upload File Kalibrasi",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "no_permohonan",
+							"value": "KAL/QA/2025/001",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/upload",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"upload"
+					]
+				},
+				"description": "Upload file for calibration request (fnUploadFile)\n- Uploads file to FTP server (web.lapilabs.co.id/eKalibrasi)\n- Formats filename by replacing '/' with '_'\n- Updates FILE_NAME in T_Kalibrasi_Permohonan\n- Cleans up temporary local file after upload\n\n**FTP Configuration**:\n- Host: web.lapilabs.co.id\n- User: webattachnew\n- Folder: eKalibrasi\n\n**Request**:\n- Content-Type: multipart/form-data\n- file: File to upload (any extension)\n- no_permohonan: Permohonan number (required)\n\n**File Naming**:\n- Original: KAL/QA/2025/001 with file.pdf\n- Stored as: KAL_QA_2025_001.pdf\n\n**Validations**:\n- File is required\n- no_permohonan is required\n- File size limit: 100MB (configurable)\n\n**Note**: File is uploaded to FTP and local temp file is deleted"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Permohonan Kalibrasi",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "authentication",
+						"value": "{{access_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"no_permohonan\": \"KAL/QA/2025/001\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/transactions/kalibrasi/permohonan/delete",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"transactions",
+						"kalibrasi",
+						"permohonan",
+						"delete"
+					]
+				},
+				"description": "Delete calibration request (cmd_Del_Click)\n- Deletes from T_Kalibrasi_Permohonan table\n- Checks if already approved (blocks delete)\n\n**Validations**:\n- no_permohonan required (cannot be empty or \"Auto\")\n- Cannot delete if already approved\n\n**Warning**: This permanently deletes the record"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "your_access_token_here",
+			"type": "string"
+		}
+	]
+}

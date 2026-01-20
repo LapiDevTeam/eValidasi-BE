@@ -1,13 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const { authentication } = require("../../middlewares/authentication");
+const { checkFileSizePublic } = require("../../middlewares/upload.middleware");
 const {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
   searchInstrumen,
   checkApproveButton,
   checkIsApproved,
-  getFileDownload
+  getFileDownload,
+  savePermohonanKalibrasi,
+  deletePermohonanKalibrasi,
+  approvePermohonanKalibrasi,
+  getApproverIdentity,
+  uploadFileKalibrasi
 } = require("../../controllers/transactions/input-permohonan-kalibrasi.controller");
 
 /**
@@ -51,5 +57,40 @@ router.get("/permohonan/is-approved", authentication, checkIsApproved);
  * Query params: no_permohonan
  */
 router.get("/permohonan/file", authentication, getFileDownload);
+
+/**
+ * GET /api/transactions/kalibrasi/approver/identity
+ * Get approver identity for current user (fnApprIdentity)
+ * Query params: approver_no (optional, default 1)
+ */
+router.get("/approver/identity", authentication, getApproverIdentity);
+
+/**
+ * POST /api/transactions/kalibrasi/permohonan/save
+ * Save (insert or update) calibration request (cmd_Save_Click)
+ * Body: all permohonan fields
+ */
+router.post("/permohonan/save", authentication, savePermohonanKalibrasi);
+
+/**
+ * POST /api/transactions/kalibrasi/permohonan/approve
+ * Approve calibration request (cmd_Approve_Click)
+ * Body: { no_permohonan }
+ */
+router.post("/permohonan/approve", authentication, approvePermohonanKalibrasi);
+
+/**
+ * POST /api/transactions/kalibrasi/permohonan/upload
+ * Upload file for calibration request (fnUploadFile)
+ * Body: { no_permohonan } + file (multipart/form-data)
+ */
+router.post("/permohonan/upload", authentication, checkFileSizePublic, uploadFileKalibrasi);
+
+/**
+ * DELETE /api/transactions/kalibrasi/permohonan/delete
+ * Delete calibration request (cmd_Del_Click)
+ * Body: { no_permohonan }
+ */
+router.delete("/permohonan/delete", authentication, deletePermohonanKalibrasi);
 
 module.exports = router;

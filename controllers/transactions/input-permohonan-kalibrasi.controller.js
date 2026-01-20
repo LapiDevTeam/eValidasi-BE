@@ -1,6 +1,9 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
+const { uploadFileToFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
+const fs = require('fs');
+const path = require('path');
 
 
 const getPermohonanKalibrasiList = async (req, res, next) => {
@@ -421,12 +424,585 @@ const getFileDownload = async (req, res, next) => {
   }
 };
 
+/**
+ * Save Permohonan Kalibrasi (cmd_Save_Click)
+ * Handles both INSERT (new) and UPDATE operations
+ * Based on VBA cmd_Save_Click function
+ */
+const savePermohonanKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const {
+      no_permohonan,
+      kategori_permohonan,
+      qa_id_rekalibrasi,
+      ket_rekalibrasi,
+      nama_instrumen,
+      no_identitas_istrumen,
+      no_identitas_kalibrasi,
+      alat_ukur_kalibrasi,
+      merk,
+      kapasitas,
+      jumlah,
+      fungsi,
+      titik_pengukuran,
+      lokasi,
+      tgl_butuh,
+      no_sertifikat_terakhir,
+      file_name
+    } = req.body;
+
+    // Validation 1: Kategori Permohonan required
+    if (!kategori_permohonan || kategori_permohonan.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Kategori Permohonan harus di isi'
+      });
+    }
+
+    // Validation 2: Tanggal butuh required
+    if (!tgl_butuh || tgl_butuh.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Tanggal butuh harus diisi'
+      });
+    }
+
+    // Validation 3: If Re-Kalibrasi, keterangan required
+    if (kategori_permohonan === 'Re-Kalibrasi' && (!ket_rekalibrasi || ket_rekalibrasi.trim() === '')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Keterangan Re-Kalibrasi harus di isi!'
+      });
+    }
+
+    // Format tgl_butuh to yyyy/MM/dd
+    const formattedTglButuh = moment(tgl_butuh).format('YYYY/MM/DD');
+
+    // Check if this is INSERT (new) or UPDATE
+    const isNew = !no_permohonan || no_permohonan === 'Auto' || no_permohonan === '';
+
+    if (isNew) {
+      // INSERT NEW RECORD
+      // Get auto number using fnGet_NO_Kal_mohon function
+      const autoNumQuery = `SELECT dbo.fnGet_NO_Kal_mohon(:bagian_user) as autoNum`;
+      const autoNumResults = await sequelizeMSQL.query(autoNumQuery, {
+        replacements: { bagian_user },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      const autoNum = autoNumResults[0].autoNum;
+
+      // Prepare file name if file uploaded
+      let v_file_name = '';
+      if (file_name && file_name.trim() !== '') {
+        // Replace / with _ in auto number and append extension
+        const fileNameCleaned = autoNum.replace(/\//g, '_');
+        v_file_name = file_name.includes('.') ? file_name : `${fileNameCleaned}.${file_name}`;
+      }
+
+      // INSERT query - exact match to VBA
+      const insertQuery = `
+        INSERT INTO T_Kalibrasi_Permohonan(
+          No_Permohonan,
+          tanggal,
+          kategori_permohonan,
+          QA_ID_rekalibrasi,
+          Ket_Rekalibrasi,
+          pemohon,
+          bagian,
+          nama_instrumen,
+          No_identitas_Istrumen,
+          No_identitas_kalibrasi,
+          Alat_ukur_kalibrasi,
+          Merk,
+          Kapasitas,
+          Jumlah,
+          fungsi,
+          Titik_pengukuran,
+          Lokasi,
+          tgl_butuh,
+          no_sertifikat_terakhir,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi,
+          Assm_Alat_ukur_kalibrasi,
+          Assm_Merk,
+          Assm_Kapasitas,
+          Assm_Lokasi,
+          Titik_pengukuran_kalibrasi,
+          Group_Da_Dept,
+          FILE_NAME,
+          UserID,
+          Delegated_To,
+          Process_date
+        )
+        VALUES(
+          :no_permohonan,
+          GETDATE(),
+          :kategori_permohonan,
+          :qa_id_rekalibrasi,
+          :ket_rekalibrasi,
+          :user_id,
+          :bagian_user,
+          :nama_instrumen,
+          :no_identitas_istrumen,
+          :no_identitas_kalibrasi,
+          :alat_ukur_kalibrasi,
+          :merk,
+          :kapasitas,
+          :jumlah,
+          :fungsi,
+          :titik_pengukuran,
+          :lokasi,
+          :tgl_butuh,
+          :no_sertifikat_terakhir,
+          :nama_instrumen,
+          :no_identitas_istrumen,
+          :no_identitas_kalibrasi,
+          :alat_ukur_kalibrasi,
+          :merk,
+          :kapasitas,
+          :lokasi,
+          :titik_pengukuran,
+          :bagian_user,
+          :file_name,
+          :user_id,
+          :delegated_to,
+          GETDATE()
+        )
+      `;
+
+      await sequelizeMSQL.query(insertQuery, {
+        replacements: {
+          no_permohonan: autoNum,
+          kategori_permohonan: kategori_permohonan || '',
+          qa_id_rekalibrasi: qa_id_rekalibrasi || '',
+          ket_rekalibrasi: ket_rekalibrasi || '',
+          user_id: user_id,
+          bagian_user: bagian_user,
+          nama_instrumen: nama_instrumen || '',
+          no_identitas_istrumen: no_identitas_istrumen || '',
+          no_identitas_kalibrasi: no_identitas_kalibrasi || '',
+          alat_ukur_kalibrasi: alat_ukur_kalibrasi || '',
+          merk: merk || '',
+          kapasitas: kapasitas || '',
+          jumlah: jumlah || '',
+          fungsi: fungsi || '',
+          titik_pengukuran: titik_pengukuran || '',
+          lokasi: lokasi || '',
+          tgl_butuh: formattedTglButuh,
+          no_sertifikat_terakhir: no_sertifikat_terakhir || '',
+          file_name: v_file_name,
+          delegated_to: delegated_to
+        },
+        type: Sequelize.QueryTypes.INSERT,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Data has been saved',
+        data: {
+          no_permohonan: autoNum
+        }
+      });
+
+    } else {
+      // UPDATE EXISTING RECORD
+      // Check if already approved - cannot update if approved
+      const checkApprovedQuery = `
+        SELECT *
+        FROM t_Kalibrasi_Status
+        WHERE No_Permohonan = :no_permohonan
+          AND Approver_No = 1
+      `;
+
+      const approvedResults = await sequelizeMSQL.query(checkApprovedQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      if (approvedResults.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Data sudah approve, tidak bisa diupdate!'
+        });
+      }
+
+      // Prepare file name update clause
+      let fileNameClause = '';
+      let v_file_name = '';
+      if (file_name && file_name.trim() !== '') {
+        const fileNameCleaned = no_permohonan.replace(/\//g, '_');
+        v_file_name = file_name.includes('.') ? file_name : `${fileNameCleaned}.${file_name}`;
+        fileNameClause = `, FILE_NAME = :file_name`;
+      }
+
+      // UPDATE query - exact match to VBA
+      const updateQuery = `
+        UPDATE T_Kalibrasi_Permohonan
+        SET
+          QA_ID_rekalibrasi = :qa_id_rekalibrasi,
+          Ket_Rekalibrasi = :ket_rekalibrasi,
+          nama_instrumen = :nama_instrumen,
+          No_identitas_Istrumen = :no_identitas_istrumen,
+          No_identitas_kalibrasi = :no_identitas_kalibrasi,
+          Alat_ukur_kalibrasi = :alat_ukur_kalibrasi,
+          Merk = :merk,
+          Kapasitas = :kapasitas,
+          Jumlah = :jumlah,
+          fungsi = :fungsi,
+          Titik_pengukuran = :titik_pengukuran,
+          Lokasi = :lokasi,
+          tgl_butuh = :tgl_butuh,
+          no_sertifikat_terakhir = :no_sertifikat_terakhir,
+          Assm_nama_instrumen = :nama_instrumen,
+          Assm_No_identitas_Istrumen = :no_identitas_istrumen,
+          Assm_No_identitas_kalibrasi = :no_identitas_kalibrasi,
+          Assm_Alat_ukur_kalibrasi = :alat_ukur_kalibrasi,
+          Assm_Merk = :merk,
+          Assm_Kapasitas = :kapasitas,
+          Assm_Lokasi = :lokasi,
+          Titik_pengukuran_kalibrasi = :titik_pengukuran${fileNameClause},
+          UserID = :user_id,
+          Delegated_To = :delegated_to,
+          Process_date = GETDATE()
+        WHERE No_Permohonan = :no_permohonan
+      `;
+
+      await sequelizeMSQL.query(updateQuery, {
+        replacements: {
+          no_permohonan,
+          qa_id_rekalibrasi: qa_id_rekalibrasi || '',
+          ket_rekalibrasi: ket_rekalibrasi || '',
+          nama_instrumen: nama_instrumen || '',
+          no_identitas_istrumen: no_identitas_istrumen || '',
+          no_identitas_kalibrasi: no_identitas_kalibrasi || '',
+          alat_ukur_kalibrasi: alat_ukur_kalibrasi || '',
+          merk: merk || '',
+          kapasitas: kapasitas || '',
+          jumlah: jumlah || '',
+          fungsi: fungsi || '',
+          titik_pengukuran: titik_pengukuran || '',
+          lokasi: lokasi || '',
+          tgl_butuh: formattedTglButuh,
+          no_sertifikat_terakhir: no_sertifikat_terakhir || '',
+          file_name: v_file_name,
+          user_id: user_id,
+          delegated_to: delegated_to
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Data has been updated',
+        data: {
+          no_permohonan
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in savePermohonanKalibrasi:', error);
+    next(error);
+  }
+};
+
+/**
+ * Delete Permohonan Kalibrasi (cmd_Del_Click)
+ * Deletes calibration request if not approved
+ * Based on VBA cmd_Del_Click function
+ */
+const deletePermohonanKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    // Validation 1: no_permohonan required
+    if (!no_permohonan || no_permohonan === 'Auto' || no_permohonan === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih data yang akan dihapus'
+      });
+    }
+
+    // Validation 2: Check if already approved - cannot delete if approved
+    const checkApprovedQuery = `
+      SELECT *
+      FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+        AND Approver_No = 1
+    `;
+
+    const approvedResults = await sequelizeMSQL.query(checkApprovedQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approvedResults.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data sudah approve, tidak bisa dihapus!'
+      });
+    }
+
+    // Delete query - exact match to VBA
+    const deleteQuery = `
+      DELETE FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(deleteQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.DELETE,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data has been deleted',
+      data: {
+        no_permohonan
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in deletePermohonanKalibrasi:', error);
+    next(error);
+  }
+};
+
+/**
+ * Approve Permohonan Kalibrasi (cmd_Approve_Click)
+ * Approves calibration request by inserting approval record
+ * Based on VBA cmd_Approve_Click function
+ */
+const approvePermohonanKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    // Validation: no_permohonan required
+    if (!no_permohonan || no_permohonan === 'Auto' || no_permohonan === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih data yang akan di Approve!'
+      });
+    }
+
+    // Get approver identity using fnApprIdentity equivalent
+    const approverIdentityQuery = `
+      SELECT Appr_Identity
+      FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode LIKE 'KAL_Permohonan'
+        AND Appr_ID = :user_id
+        AND Appr_No = 1
+    `;
+
+    const approverResults = await sequelizeMSQL.query(approverIdentityQuery, {
+      replacements: { user_id },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const appr_ident = approverResults.length > 0 ? approverResults[0].Appr_Identity : '0';
+
+    // Insert approval record - exact match to VBA
+    const insertApprovalQuery = `
+      INSERT INTO t_Kalibrasi_Status(
+        No_Permohonan,
+        Approver_No,
+        isReject,
+        Approver_Identity,
+        Process_Date,
+        User_ID,
+        Delegated_To,
+        flag_update
+      )
+      VALUES(
+        :no_permohonan,
+        1,
+        0,
+        :approver_identity,
+        GETDATE(),
+        :user_id,
+        :delegated_to,
+        NULL
+      )
+    `;
+
+    await sequelizeMSQL.query(insertApprovalQuery, {
+      replacements: {
+        no_permohonan,
+        approver_identity: appr_ident,
+        user_id: user_id,
+        delegated_to: delegated_to
+      },
+      type: Sequelize.QueryTypes.INSERT,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data has been approved',
+      data: {
+        no_permohonan,
+        approver_identity: appr_ident
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in approvePermohonanKalibrasi:', error);
+    next(error);
+  }
+};
+
+/**
+ * Helper function: Get Approver Identity (fnApprIdentity)
+ * Gets approver identity from m_approver_lines
+ * Based on VBA fnApprIdentity function
+ */
+const getApproverIdentity = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { approver_no } = req.query;
+
+    const appr_no = approver_no || '1';
+
+    const query = `
+      SELECT Appr_Identity
+      FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode LIKE 'KAL_Permohonan'
+        AND Appr_ID = :user_id
+        AND Appr_No = :approver_no
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: {
+        user_id,
+        approver_no: appr_no
+      },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const approverIdentity = results.length > 0 ? results[0].Appr_Identity : '0';
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        approver_identity: approverIdentity,
+        has_approval_right: results.length > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getApproverIdentity:', error);
+    next(error);
+  }
+};
+
+/**
+ * Upload File for Kalibrasi Permohonan (fnUploadFile)
+ * Uploads a file to FTP server with formatted filename
+ * Based on VBA fnUploadFile function
+ */
+const uploadFileKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    if (!no_permohonan) {
+      if (req.file.path) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'No_Permohonan is required'
+      });
+    }
+
+    const localFilePath = path.resolve(req.file.path);
+    const originalFileName = req.file.originalname;
+
+    console.log('Upload details:', {
+      localFilePath,
+      exists: fs.existsSync(localFilePath),
+      originalFileName,
+      no_permohonan
+    });
+
+    if (!fs.existsSync(localFilePath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'Uploaded file not found on server'
+      });
+    }
+
+    const remoteFileName = formatFileName(no_permohonan, originalFileName);
+
+    const uploadResult = await uploadFileToFTP(localFilePath, remoteFileName);
+
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
+
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: uploadResult.message || 'Error uploading file to FTP'
+      });
+    }
+
+    const updateQuery = `
+      UPDATE T_Kalibrasi_Permohonan
+      SET FILE_NAME = :fileName
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(updateQuery, {
+      replacements: {
+        fileName: remoteFileName,
+        no_permohonan
+      },
+      type: Sequelize.QueryTypes.UPDATE
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        file_name: remoteFileName,
+        no_permohonan
+      }
+    });
+
+  } catch (error) {
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('Error in uploadFileKalibrasi:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
   searchInstrumen,
   checkApproveButton,
   checkIsApproved,
-  getFileDownload
+  getFileDownload,
+  savePermohonanKalibrasi,
+  deletePermohonanKalibrasi,
+  approvePermohonanKalibrasi,
+  getApproverIdentity,
+  uploadFileKalibrasi
 };
 
