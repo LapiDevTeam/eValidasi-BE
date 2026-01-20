@@ -1,22 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const routerProductBrief = require("./routerProductBrief");
-const routerStudiPraformulasi = require("./routerStudiPraformulasi");
-const routerStudiPaten = require("./routerStudiPaten");
-const routerStudiLiterature = require("./routerStudiLiterature");
 
-const routerCatatanTrial = require("./routerCatatanTrial");
-const routerFormulaFix = require("./routerFormulaFix");
-const routerLaporanTrialSkalaLab = require("./routerLaporanTrialSkalaLab");
-const routerAuditTrail = require("./routerAuditTrail");
-const routerGlobalApi = require("./routerGlobalApi");
-const routerProposalDiversifikasi = require("./routerProposalDiversifikasi");
-const routerKodeTrialObatJadi = require("./routerKodeTrialObatJadi");
-const routerProtokolValidasi = require("./routerProtokolValidasi");
 const routerUpload = require("../routers/v2/routerUpload");
 const { authentication } = require("../middlewares/authentication");
-const masterRouter = require("./master-vb/index");
-const globalRouter = require("./global");
+
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -35,25 +22,6 @@ router.get("/", (req, res) => {
   res.send("Welcome to LAPI Laboratories New API!");
 });
 
-//Master Router
-router.use("/master", masterRouter);
-
-//Global Router
-router.use("/global", globalRouter);
-
-router.use("/", routerProductBrief);
-router.use("/", routerStudiPraformulasi);
-router.use("/", routerStudiPaten);
-router.use("/", routerStudiLiterature);
-
-router.use("/", routerCatatanTrial);
-router.use("/", routerFormulaFix);
-router.use("/", routerLaporanTrialSkalaLab);
-router.use("/", routerAuditTrail);
-router.use("/", routerGlobalApi);
-router.use("/", routerProposalDiversifikasi);
-router.use("/", routerKodeTrialObatJadi);
-router.use("/", routerProtokolValidasi);
 
 router.use("/v2", routerUpload);
 

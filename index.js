@@ -42,5 +42,5 @@ app.use(routers);
 app.use(error);
 
 app.listen(port, () => {
-  console.log(`LAPI eFormulation Record app listening on port ${port}`);
+  console.log(`E-Validation app listening on port ${port}`);
 });

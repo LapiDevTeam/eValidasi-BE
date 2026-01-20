@@ -1,0 +1,264 @@
+{
+	"info": {
+		"_postman_id": "query-item-collection-2025",
+		"name": "Master Formula - Query Item API",
+		"description": "API collection for querying items with group template, combining data from vwM_ItemWithGroup and m_product tables",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Query Item - All Items",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					]
+				},
+				"description": "Fetch all items without any filter (returns all item types and products)"
+			},
+			"response": []
+		},
+		{
+			"name": "Query Item - Filter by Item Type (BK)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item?itemType=BK",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					],
+					"query": [
+						{
+							"key": "itemType",
+							"value": "BK",
+							"description": "Item type filter (e.g., BK for Bahan Kemas, BB for Bahan Baku)"
+						}
+					]
+				},
+				"description": "Fetch items filtered by item type 'BK' (Bahan Kemas)"
+			},
+			"response": []
+		},
+		{
+			"name": "Query Item - Filter by Item Type (BB)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item?itemType=BB",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					],
+					"query": [
+						{
+							"key": "itemType",
+							"value": "BB",
+							"description": "Item type filter (e.g., BB for Bahan Baku)"
+						}
+					]
+				},
+				"description": "Fetch items filtered by item type 'BB' (Bahan Baku)"
+			},
+			"response": []
+		},
+		{
+			"name": "Query Item - Quick Search by Code",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item?quickSearch=01A",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					],
+					"query": [
+						{
+							"key": "quickSearch",
+							"value": "01A",
+							"description": "Quick search by Item_ID (starts with) or Item_Name (contains)"
+						}
+					]
+				},
+				"description": "Search items by code (Item_ID starting with '01A' or Item_Name containing '01A')"
+			},
+			"response": []
+		},
+		{
+			"name": "Query Item - Quick Search by Name",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item?quickSearch=Lanfix",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					],
+					"query": [
+						{
+							"key": "quickSearch",
+							"value": "Lanfix",
+							"description": "Quick search by Item_ID (starts with) or Item_Name (contains)"
+						}
+					]
+				},
+				"description": "Search items by name (Item_ID starting with 'Lanfix' or Item_Name containing 'Lanfix')"
+			},
+			"response": []
+		},
+		{
+			"name": "Query Item - Combined Filter",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text",
+						"description": "Authentication token required"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/query-item?itemType=BK&quickSearch=Lanfix",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"query-item"
+					],
+					"query": [
+						{
+							"key": "itemType",
+							"value": "BK",
+							"description": "Item type filter"
+						},
+						{
+							"key": "quickSearch",
+							"value": "Lanfix",
+							"description": "Quick search by Item_ID or Item_Name"
+						}
+					]
+				},
+				"description": "Search items with both itemType and quickSearch filters applied"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000/api/master-formula",
+			"type": "string",
+			"description": "Base URL for the Master Formula API"
+		},
+		{
+			"key": "access_token",
+			"value": "your_jwt_token_here",
+			"type": "string",
+			"description": "JWT Bearer token for authentication"
+		}
+	]
+}

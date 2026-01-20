@@ -1,22 +1,26 @@
-const decrypt = require("../helpers/crypto");
-const MyError = require("../helpers/errors");
+
 const axios = require("axios");
 
 const authentication = async (req, res, next) => {
   try {
-    const { authentication } = req.headers;
+    // Handle both 'authentication' and 'authorization' headers
+    let token = req.headers.authentication || req.headers.authorization;
 
-    if (!authentication) throw new MyError(401, "Not Authentication");
-    if (authentication) {
-      const response = await fetch(
-        "http://192.168.1.24/api/lms/v1/decode",
-        {
-          method: "GET",
-          headers: {
-            access_token: authentication,
-          },
-        }
-      );
+    // If authorization header has 'Bearer ' prefix, remove it
+    if (token && token.startsWith('Bearer ')) {
+      token = token.substring(7);
+    }
+
+    if (!token) throw new MyError(401, "Not Authentication");
+    if (token) {
+      const response = await fetch("http://192.168.1.38/api/lms-dev/v1/decode", {
+        method: "GET",
+        headers: {
+          access_token: token,
+        },
+      });
+
+      // console.log(response, "response");
 
       const result = await response.json();
 
@@ -31,6 +35,9 @@ const authentication = async (req, res, next) => {
           bagian_user: result?.user?.emp_DeptID || "",
           delegated_to: result?.delegatedTo?.log_NIK || "",
         };
+        if (result?.user?.log_NIK == '') throw new MyError(401, "Not Authentication, Silahkan Login Ulang");
+
+
       } else {
         auth = {
           user_id: result?.user?.log_NIK || "",
@@ -39,15 +46,15 @@ const authentication = async (req, res, next) => {
           jabatan_user: result?.user?.emp_JobLevelID || "",
           joblevel_id_user: +result?.user?.Job_LevelID,
           bagian_user: result?.user?.emp_DeptID || "",
-          delegated_to: result?.user?.log_NIK || "",
+          delegated_to: result?.user?.log_NIK || this.user_id,
         };
+        if (result?.user?.log_NIK == '') throw new MyError(401, "Not Authentication, Silahkan Login Ulang");
       }
 
       req.user = auth;
     }
     next();
   } catch (error) {
-    console.log(error, "<<");
     next(error);
   }
 };
