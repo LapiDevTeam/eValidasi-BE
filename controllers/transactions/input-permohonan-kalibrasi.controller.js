@@ -1,7 +1,7 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
-const { uploadFileToFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
+const { uploadFileToFTP, downloadFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
 
@@ -420,6 +420,91 @@ const getFileDownload = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in getFileDownload:', error);
+    next(error);
+  }
+};
+
+/**
+ * Download File Kalibrasi (cmd_download_Click)
+ * Downloads file from FTP server
+ * Based on VBA cmd_download_Click function
+ */
+const downloadFileKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    // Get filename from database (same as sbFill_FileDownload)
+    const query = `
+      SELECT TOP 1 ISNULL(FILE_NAME, '') as fileNama
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (results.length === 0 || !results[0].fileNama) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+
+    const fileName = results[0].fileNama;
+
+    // Download file from FTP
+    // Create temporary path for download
+    const tempDir = path.join(__dirname, '../../tmp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const localFilePath = path.join(tempDir, fileName);
+
+    // Download from FTP
+    const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
+
+    if (!downloadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: downloadResult.message || 'Error downloading file from FTP'
+      });
+    }
+
+    // Send file to client
+    res.download(localFilePath, fileName, (err) => {
+      // Clean up temporary file after sending
+      if (fs.existsSync(localFilePath)) {
+        try {
+          fs.unlinkSync(localFilePath);
+        } catch (unlinkErr) {
+          console.error('Error deleting temp file:', unlinkErr);
+        }
+      }
+
+      if (err) {
+        console.error('Error sending file:', err);
+        if (!res.headersSent) {
+          return res.status(500).json({
+            success: false,
+            message: 'Error sending file'
+          });
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in downloadFileKalibrasi:', error);
     next(error);
   }
 };
@@ -999,6 +1084,7 @@ module.exports = {
   checkApproveButton,
   checkIsApproved,
   getFileDownload,
+  downloadFileKalibrasi,
   savePermohonanKalibrasi,
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,

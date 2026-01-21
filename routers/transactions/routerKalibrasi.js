@@ -9,6 +9,7 @@ const {
   checkApproveButton,
   checkIsApproved,
   getFileDownload,
+  downloadFileKalibrasi,
   savePermohonanKalibrasi,
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,
@@ -57,6 +58,13 @@ router.get("/permohonan/is-approved", authentication, checkIsApproved);
  * Query params: no_permohonan
  */
 router.get("/permohonan/file", authentication, getFileDownload);
+
+/**
+ * GET /api/transactions/kalibrasi/permohonan/download
+ * Download file from FTP server (cmd_download_Click)
+ * Query params: no_permohonan
+ */
+router.get("/permohonan/download", authentication, downloadFileKalibrasi);
 
 /**
  * GET /api/transactions/kalibrasi/approver/identity
