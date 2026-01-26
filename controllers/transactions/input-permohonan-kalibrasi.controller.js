@@ -52,7 +52,7 @@ const getPermohonanKalibrasiList = async (req, res, next) => {
     // Apply department filter - same logic as VBA
     // If department is not 'VN', filter by department
     const deptToFilter = bagian || userDepartment;
-    if (deptToFilter && deptToFilter !== 'VN' && deptToFilter !== 'QA') {
+    if (deptToFilter && deptToFilter !== 'VN') {
       query += ` AND bagian = :bagian`;
     }
 
