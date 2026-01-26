@@ -593,6 +593,680 @@ const rejectPermohonanAssesment = async (req, res, next) => {
   }
 };
 
+const generatePrint = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    // Main query matches the VBA generate_Print SQL
+    const query = `
+      SELECT
+        A.bagian,
+        A.pemohon,
+        A.No_Permohonan,
+        A.nama_instrumen,
+        A.No_identitas_kalibrasi,
+        A.Alat_ukur_kalibrasi,
+        A.Merk,
+        A.Kapasitas,
+        A.Jumlah,
+        A.fungsi,
+        A.Titik_pengukuran,
+        A.Lokasi,
+        REPLACE(CONVERT(CHAR(11), CAST(A.tgl_butuh AS datetime), 106), ' ', '-') AS tgl_butuh,
+        A.kategori_permohonan,
+        A.Ket_Rekalibrasi,
+        ISNULL(A.no_sertifikat_terakhir, '') AS no_sertifikat_terakhir,
+        A.Assm_nama_instrumen,
+        A.Assm_No_identitas_kalibrasi,
+        REPLACE(CONVERT(CHAR(11), CAST(A.RENCANA_EKSEKUSI AS datetime), 106), ' ', '-') AS RENCANA_EKSEKUSI,
+        A.Jenis_kalibrasi,
+        A.Jenis_External,
+        A.Program_verifikasi,
+        A.Titik_pengukuran_kalibrasi,
+        A.Keterangan,
+        CONVERT(varchar(20), A.tanggal, 13) AS Pemohon_Date,
+        CASE
+          WHEN B.MgrDept_UID = B.MgrDept_Delegate THEN 'Approved By: ' + dbo.fnGetNamaKaryawan(B.MgrDept_UID)
+          ELSE dbo.fnGetNamaKaryawan(B.MgrDept_Delegate)
+        END AS Mgr_Dept_UID,
+        CASE
+          WHEN B.MgrDept_UID = B.MgrDept_Delegate THEN ' '
+          ELSE 'Delegated to: ' + dbo.fnGetNamaKaryawan(B.MgrDept_UID)
+        END AS Mgr_Dept_Delegated,
+        CONVERT(varchar(20), B.MgrDept_date, 13) AS Mgr_Dept_Date,
+        CASE
+          WHEN C.MgrQA_UID = C.MgrQA_Delegate THEN 'Approved By: ' + dbo.fnGetNamaKaryawan(C.MgrQA_UID)
+          ELSE dbo.fnGetNamaKaryawan(C.MgrQA_Delegate)
+        END AS Mgr_QA_UID,
+        CASE
+          WHEN C.MgrQA_UID = C.MgrQA_Delegate THEN ' '
+          ELSE 'Delegated to: ' + dbo.fnGetNamaKaryawan(C.MgrQA_UID)
+        END AS Mgr_QA_Delegated,
+        CONVERT(varchar(20), C.MgrQA_date, 13) AS Mgr_QA_Date,
+        dbo.fnGetNamaKaryawan(A.pemohon) AS Pemohon_Name
+      FROM T_Kalibrasi_Permohonan AS A
+      LEFT JOIN (
+        SELECT
+          No_Permohonan,
+          USER_ID AS MgrDept_UID,
+          Delegated_To AS MgrDept_Delegate,
+          Process_Date AS MgrDept_date
+        FROM T_Kalibrasi_status
+        WHERE Approver_No = 1
+      ) AS B ON A.No_Permohonan = B.No_Permohonan
+      LEFT JOIN (
+        SELECT
+          No_Permohonan,
+          USER_ID AS MgrQA_UID,
+          Delegated_To AS MgrQA_Delegate,
+          Process_Date AS MgrQA_date
+        FROM T_Kalibrasi_status
+        WHERE Approver_No = 2
+      ) AS C ON A.No_Permohonan = C.No_Permohonan
+      WHERE A.No_Permohonan = :no_permohonan
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    const data = results[0];
+
+    // Process data based on VBA bookmark logic
+    const printData = {
+      // Basic Information
+      txt_01_bagian: data.bagian || '',
+      txt_02_Pemohon: data.Pemohon_Name || '',
+      txt_03_No_permohonan: data.No_Permohonan || '',
+      txt_04_Nama_mesin: data.nama_instrumen || '',
+      txt_05_No_ID_mesin: data.No_identitas_kalibrasi || '',
+      txt_06_Alat_ukur_yg: data.Alat_ukur_kalibrasi || '',
+      txt_07_Merk_type: data.Merk || '',
+      txt_08_Kapasitas_Resolusi: data.Kapasitas || '',
+      txt_09_Jumlah: data.Jumlah || '',
+      txt_10_Fungsi_tujuan: data.fungsi || '',
+      txt_11_Titik_pengukuran: data.Titik_pengukuran || '',
+      txt_12_Lokasi: data.Lokasi || '',
+      txt_13_Tgl_Dibutuhkan: data.tgl_butuh || '',
+
+      // Kategori permohonan - checkbox values
+      txt_14A_chk_Kalibrasi_alat: data.kategori_permohonan === 'Alat Baru' ? 1 : 0,
+      txt_14B_chk_Rekalibrasi: data.kategori_permohonan !== 'Alat Baru' ? 1 : 0,
+
+      // Additional Information
+      txt_16_Ket_Rekalibrasi: data.Ket_Rekalibrasi || '',
+
+      // Sertifikat kalibrasi - checkbox values
+      txt_17A_Sertifikat_kalibrasi_Ada: (data.no_sertifikat_terakhir !== '' && data.no_sertifikat_terakhir !== '-') ? '☑' : '☐',
+      txt_17B_Sertifikat_kalibrasi_Tidak: (data.no_sertifikat_terakhir === '' || data.no_sertifikat_terakhir === '-') ? '☑' : '☐',
+
+      txt_18_Nama_Alat_ukur: data.Assm_nama_instrumen || '',
+      txt_19_ID_kalibrasi: data.Assm_No_identitas_kalibrasi || '',
+      txt_20_rencana_eksekusi: data.RENCANA_EKSEKUSI || '',
+
+      // Jenis kalibrasi - checkbox values
+      txt_21A_Jenis_kalibrasi: data.Jenis_kalibrasi === 1 ? 1 : 0, // Internal
+      txt_21B_Jenis_kalibrasi: data.Jenis_kalibrasi === 2 ? 1 : 0, // External
+
+      // Sub External - checkbox values
+      txt_22A_Sub_jenis_kal: data.Jenis_External === 'Insitu' ? 1 : 0,
+      txt_22B_Sub_jenis_kal: data.Jenis_External === 'Eksitu' ? 1 : 0,
+      txt_22C_Sub_jenis_kal: data.Jenis_External === 'Kontrak Suplier' ? 1 : 0,
+
+      // Program Verifikasi - checkbox values
+      txt_23A_Prog_Verifikasi: data.Program_verifikasi === 1 ? 1 : 0, // Ya
+      txt_23B_Prog_Verifikasi: data.Program_verifikasi === 2 ? 1 : 0, // Tidak
+
+      txt_24_Titik_pengukuran: data.Titik_pengukuran_kalibrasi || '',
+      txt_25_Keterangan: data.Keterangan || '',
+      txt_26_TTd_Mgr_bagian: data.bagian || '',
+
+      // Signature sections
+      // Pemohon (Requester)
+      txt_27_TTd_Pemohon01: data.Pemohon_Name || '',
+      txt_27_TTd_Pemohon02: ' ',
+      txt_27_TTd_Pemohon03: data.Pemohon_Date || '',
+
+      // Manager Department
+      txt_28_TTd_Mgr_Dept01: data.Mgr_Dept_UID || '',
+      txt_28_TTd_Mgr_Dept02: data.Mgr_Dept_Delegated || '',
+      txt_28_TTd_Mgr_Dept03: data.Mgr_Dept_Date || '',
+
+      // Manager QA
+      txt_29_TTd_Mgr_QA01: data.Mgr_QA_UID || '',
+      txt_29_TTd_Mgr_QA02: data.Mgr_QA_Delegated || '',
+      txt_29_TTd_Mgr_QA03: data.Mgr_QA_Date || '',
+
+      // Raw data for reference
+      raw_data: {
+        kategori_permohonan: data.kategori_permohonan,
+        no_sertifikat_terakhir: data.no_sertifikat_terakhir,
+        Jenis_kalibrasi: data.Jenis_kalibrasi,
+        Jenis_External: data.Jenis_External,
+        Program_verifikasi: data.Program_verifikasi
+      }
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Print data generated successfully',
+      data: printData
+    });
+
+  } catch (error) {
+    console.error('Error in generatePrint:', error);
+    next(error);
+  }
+};
+
+/**
+ * Helper: Check if permohonan is approved (fn_IS_approve)
+ * Check if Approver_No = 2 exists for the given permohonan
+ */
+const checkIsApprovedForGenerate = async (no_permohonan) => {
+  if (!no_permohonan) {
+    return false;
+  }
+
+  const query = `
+    SELECT * FROM t_Kalibrasi_Status
+    WHERE No_Permohonan = :no_permohonan
+      AND Approver_No = 2
+  `;
+
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { no_permohonan },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return results.length > 0;
+};
+
+/**
+ * Helper: Execute multiple queries with transaction support
+ * Mimics the Execute function from global-helper.vba that handles SQL_Delimiter
+ */
+const executeMultipleQueries = async (sqlString, transaction = null) => {
+  const SQL_DELIMITER = '%%%###$$$';
+  const queries = sqlString.split(SQL_DELIMITER).filter(q => q.trim() !== '');
+
+  const shouldManageTransaction = !transaction;
+  let t = transaction;
+
+  try {
+    if (shouldManageTransaction) {
+      t = await sequelizeMSQL.transaction();
+    }
+
+    for (const query of queries) {
+      if (query.trim()) {
+        await sequelizeMSQL.query(query, {
+          transaction: t,
+          type: Sequelize.QueryTypes.RAW
+        });
+      }
+    }
+
+    if (shouldManageTransaction) {
+      await t.commit();
+    }
+
+    return { success: true };
+  } catch (error) {
+    if (shouldManageTransaction && t) {
+      await t.rollback();
+    }
+    throw error;
+  }
+};
+
+const generateDA = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih no Permohonan!'
+      });
+    }
+
+    // Check if approved
+    const isApproved = await checkIsApprovedForGenerate(no_permohonan);
+    if (!isApproved) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data belum approve, tidak bisa Generate Sertifikat!'
+      });
+    }
+
+    // Get Data
+    const getDataQuery = `
+      SELECT
+        kategori_permohonan,
+        Group_DA,
+        Group_Da_Dept,
+        Parameter_Sertifikasi,
+        QA_Id,
+        ID_no_sertifikat,
+        QA_ID_rekalibrasi,
+        ISNULL(Jenis_kalibrasi, 1) as Jenis_kalibrasi
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const dataResults = await sequelizeMSQL.query(getDataQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (dataResults.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    const data = dataResults[0];
+    const V_kategori_permohonan = data.kategori_permohonan || '';
+    const V_Group_DA = data.Group_DA || '';
+    const V_Group_Da_Dept = data.Group_Da_Dept || '';
+    const V_Parameter_Sertifikasi = data.Parameter_Sertifikasi || '';
+    const V_QA_ID = data.QA_Id || '';
+    const V_ID_No_sertifikat = data.ID_no_sertifikat || '';
+    const V_QA_ID_rekalibrasi = data.QA_ID_rekalibrasi || '';
+    const V_Jenis_kalibrasi = data.Jenis_kalibrasi || '1';
+
+    // Check if already generated
+    if (V_QA_ID !== '') {
+      return res.status(400).json({
+        success: false,
+        message: `Sudah Generate Sertifikat atau DA ${V_QA_ID}`
+      });
+    }
+
+    let SQL_Insert = '';
+    let SQL_Update = '';
+    let Auto_QA_ID = '';
+    const SQL_DELIMITER = '%%%###$$$';
+
+    // Process based on kategori_permohonan
+    if (V_kategori_permohonan === 'Alat Baru') {
+      // ===== ALAT BARU =====
+
+      if (V_Parameter_Sertifikasi === 'Thermohygrometer') {
+        // Insert ke DA TH
+        const qaIdResult = await sequelizeMSQL.query(
+          "SELECT dbo.fnGetKal_DA_TH_No_ID() as QA_ID",
+          { type: Sequelize.QueryTypes.SELECT }
+        );
+        Auto_QA_ID = qaIdResult[0].QA_ID;
+
+        SQL_Insert = `Insert into T_Kalibrasi_DA_Thermohygro (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                      SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,
+                              Assm_nama_instrumen,
+                              Assm_No_identitas_Istrumen,
+                              Assm_No_identitas_kalibrasi,
+                              Group_Da_Dept,
+                              Assm_Kapasitas,
+                              Parameter_Kalibrasi,
+                              Assm_Lokasi,
+                              GETDATE() as tgl_kalibrasi,
+                              Parameter_Interval,
+                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              Keterangan as catatan,
+                              '${user_id}' as UserID,
+                              '${delegated_to}' as Delegated_To,
+                              GETDATE() As Process_date
+                      From T_Kalibrasi_Permohonan
+                      WHERE (No_Permohonan = '${no_permohonan}')`;
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Anak Timbangan') {
+        // Insert ke DA AT
+        const qaIdResult = await sequelizeMSQL.query(
+          "SELECT dbo.fnGetKal_DA_AT_No_ID() as QA_ID",
+          { type: Sequelize.QueryTypes.SELECT }
+        );
+        Auto_QA_ID = qaIdResult[0].QA_ID;
+
+        SQL_Insert = `Insert into T_Kalibrasi_DA_Anak_Timbangan (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                      SELECT (select dbo.fnGetKal_DA_AT_No_ID()) as QA_ID, Jenis_kalibrasi,
+                              Assm_nama_instrumen,
+                              Assm_No_identitas_Istrumen,
+                              Assm_No_identitas_kalibrasi,
+                              Group_Da_Dept,
+                              Assm_Kapasitas,
+                              Parameter_Kalibrasi,
+                              Assm_Lokasi,
+                              GETDATE() as tgl_kalibrasi,
+                              Parameter_Interval,
+                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              Keterangan as catatan,
+                              '${user_id}' as UserID,
+                              '${delegated_to}' as Delegated_To,
+                              GETDATE() As Process_date
+                      From T_Kalibrasi_Permohonan
+                      WHERE (No_Permohonan = '${no_permohonan}')`;
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Timbangan (Massa)') {
+        // Insert ke DA TM timbangan
+        const qaIdResult = await sequelizeMSQL.query(
+          "SELECT dbo.fnGetKal_DA_TM_No_ID() as QA_ID",
+          { type: Sequelize.QueryTypes.SELECT }
+        );
+        Auto_QA_ID = qaIdResult[0].QA_ID;
+
+        SQL_Insert = ` Insert into T_Kalibrasi_DA_Timbangan(QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+                                Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
+                       Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+                                Parameter_Kalibrasi, Assm_Lokasi, getdate() as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,GETDATE()) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
+                                from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Tekanan' || V_Parameter_Sertifikasi === 'Timer' ||
+                 V_Parameter_Sertifikasi === 'Temperatur' || V_Parameter_Sertifikasi === 'Volume' ||
+                 V_Parameter_Sertifikasi === 'Dimensi' || V_Parameter_Sertifikasi === 'Lain-Lain') {
+        // Insert ke DA BA
+        const qaIdResult = await sequelizeMSQL.query(
+          "SELECT dbo.fnGetKal_DA_BA_No_ID() as QA_ID",
+          { type: Sequelize.QueryTypes.SELECT }
+        );
+        Auto_QA_ID = qaIdResult[0].QA_ID;
+
+        SQL_Insert = `Insert into T_Kalibrasi_DA_Bagian (QA_ID,Jenis_kalibrasi,Parameter_Sertifikasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                      SELECT (select dbo.fnGetKal_DA_BA_No_ID()) as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
+                              Assm_nama_instrumen,
+                              Assm_No_identitas_Istrumen,
+                              Assm_No_identitas_kalibrasi,
+                              Group_Da_Dept,
+                              Assm_Kapasitas,
+                              Parameter_Kalibrasi,
+                              Assm_Lokasi,
+                              GETDATE() as tgl_kalibrasi,
+                              Parameter_Interval,
+                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              Keterangan as catatan,
+                              '${user_id}' as UserID,
+                              '${delegated_to}' as Delegated_To,
+                              GETDATE() As Process_date
+                      From T_Kalibrasi_Permohonan
+                      WHERE (No_Permohonan = '${no_permohonan}')`;
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Generate lain-lain belum ada function'
+        });
+      }
+
+    } else if (V_kategori_permohonan === 'Re-Kalibrasi') {
+      // ===== RE-KALIBRASI =====
+
+      if (V_Parameter_Sertifikasi === 'Thermohygrometer') {
+        // Check if exists in DA TH
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+        const checkQuery = `SELECT count(*) as JumRow FROM T_Kalibrasi_DA_Thermohygro WHERE QA_ID = '${V_QA_ID_rekalibrasi}'`;
+        const checkResult = await sequelizeMSQL.query(checkQuery, { type: Sequelize.QueryTypes.SELECT });
+        const jumRow = checkResult[0].JumRow;
+
+        if (jumRow <= 0) {
+          // Insert karena tidak ada
+          SQL_Insert = `Insert into T_Kalibrasi_DA_Thermohygro (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                        SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,
+                                Assm_nama_instrumen,
+                                Assm_No_identitas_Istrumen,
+                                Assm_No_identitas_kalibrasi,
+                                Group_Da_Dept,
+                                Assm_Kapasitas,
+                                Parameter_Kalibrasi,
+                                Assm_Lokasi,
+                                GETDATE() as tgl_kalibrasi,
+                                Parameter_Interval,
+                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                Keterangan as catatan,
+                                '${user_id}' as UserID,
+                                '${delegated_to}' as Delegated_To,
+                                GETDATE() As Process_date
+                        From T_Kalibrasi_Permohonan
+                        WHERE (No_Permohonan = '${no_permohonan}')`;
+        } else {
+          // Update DA jika sudah ada dan rekalibrasi
+          SQL_Insert = ` update T_Kalibrasi_DA_Thermohygro set  QA_ID =  A.QA_ID_Rekalibrasi,
+                          Jenis_kalibrasi= A.Jenis_kalibrasi,
+                          Assm_nama_instrumen= A.Assm_nama_instrumen,
+                          Assm_No_identitas_Istrumen= A.Assm_No_identitas_Istrumen,
+                          Assm_No_identitas_kalibrasi= A.Assm_No_identitas_kalibrasi,
+                          Group_Da_Dept=A.Group_Da_Dept,
+                          Assm_Kapasitas=A.Assm_Kapasitas,
+                          Parameter_Kalibrasi=A.Parameter_Kalibrasi,
+                          Assm_Lokasi=A.Assm_Lokasi,
+                          Tgl_kalibrasi=getdate() ,
+                          Parameter_Interval=12,
+                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Catatan=A.Keterangan,
+                          UserID='${user_id}',
+                          Delegated_To='${delegated_to}',
+                          Process_date = GETDATE()
+                   From T_Kalibrasi_Permohonan as A inner join T_Kalibrasi_DA_Thermohygro as B on A.QA_ID_Rekalibrasi =  B.QA_ID
+                                  WHERE (A.No_Permohonan = '${no_permohonan}')  `;
+        }
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Anak Timbangan') {
+        // Check if exists in DA AT
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+        const checkQuery = `SELECT count(*) as JumRow FROM T_Kalibrasi_DA_Anak_Timbangan WHERE QA_ID = '${V_QA_ID_rekalibrasi}'`;
+        const checkResult = await sequelizeMSQL.query(checkQuery, { type: Sequelize.QueryTypes.SELECT });
+        const jumRow = checkResult[0].JumRow;
+
+        if (jumRow <= 0) {
+          // Insert karena tidak ada
+          SQL_Insert = `Insert into T_Kalibrasi_DA_Anak_Timbangan (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                        SELECT (select dbo.fnGetKal_DA_AT_No_ID()) as QA_ID, Jenis_kalibrasi,
+                                Assm_nama_instrumen,
+                                Assm_No_identitas_Istrumen,
+                                Assm_No_identitas_kalibrasi,
+                                Group_Da_Dept,
+                                Assm_Kapasitas,
+                                Parameter_Kalibrasi,
+                                Assm_Lokasi,
+                                GETDATE() as tgl_kalibrasi,
+                                Parameter_Interval,
+                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                Keterangan as catatan,
+                                '${user_id}' as UserID,
+                                '${delegated_to}' as Delegated_To,
+                                GETDATE() As Process_date
+                        From T_Kalibrasi_Permohonan
+                        WHERE (No_Permohonan = '${no_permohonan}')`;
+        } else {
+          // Update DA jika sudah ada dan rekalibrasi
+          SQL_Insert = ` update T_Kalibrasi_DA_Anak_Timbangan set  QA_ID =  A.QA_ID_Rekalibrasi,
+                          Jenis_kalibrasi= A.Jenis_kalibrasi,
+                          Assm_nama_instrumen= A.Assm_nama_instrumen,
+                          Assm_No_identitas_Istrumen= A.Assm_No_identitas_Istrumen,
+                          Assm_No_identitas_kalibrasi= A.Assm_No_identitas_kalibrasi,
+                          Group_Da_Dept=A.Group_Da_Dept,
+                          Assm_Kapasitas=A.Assm_Kapasitas,
+                          Parameter_Kalibrasi=A.Parameter_Kalibrasi,
+                          Assm_Lokasi=A.Assm_Lokasi,
+                          Tgl_kalibrasi=getdate() ,
+                          Parameter_Interval=12,
+                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Catatan=A.Keterangan,
+                          UserID='${user_id}',
+                          Delegated_To='${delegated_to}',
+                          Process_date = GETDATE()
+                   From T_Kalibrasi_Permohonan as A inner join T_Kalibrasi_DA_Anak_Timbangan as B on A.QA_ID_Rekalibrasi =  B.QA_ID
+                                  WHERE (A.No_Permohonan = '${no_permohonan}')  `;
+        }
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Timbangan (Massa)') {
+        // Check if exists in DA TM
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+        const checkQuery = `SELECT count(*) as JumRow FROM T_Kalibrasi_DA_Timbangan WHERE QA_ID = '${V_QA_ID_rekalibrasi}'`;
+        const checkResult = await sequelizeMSQL.query(checkQuery, { type: Sequelize.QueryTypes.SELECT });
+        const jumRow = checkResult[0].JumRow;
+
+        if (jumRow <= 0) {
+          // Insert karena tidak ada
+          SQL_Insert = ` Insert into T_Kalibrasi_DA_Timbangan(QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+                                Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
+                         Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+                                Parameter_Kalibrasi, Assm_Lokasi, getdate() as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,GETDATE()) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
+                                from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
+        } else {
+          // Update DA jika sudah ada dan rekalibrasi
+          SQL_Insert = ` update T_Kalibrasi_DA_Timbangan set
+                                QA_ID=A.QA_ID_Rekalibrasi,
+                                Jenis_kalibrasi=A.Jenis_kalibrasi,
+                                Program_verifikasi=A.Program_verifikasi,
+                                Assm_nama_instrumen=A.Assm_nama_instrumen,
+                                Assm_No_identitas_Istrumen=A.Assm_No_identitas_Istrumen,
+                                Assm_No_identitas_kalibrasi=A.Assm_No_identitas_kalibrasi,
+                                Group_Da_Dept=A.Group_Da_Dept,
+                                Assm_Kapasitas=A.Assm_Kapasitas,
+                                Parameter_Kalibrasi=A.Parameter_Kalibrasi,
+                                Assm_Lokasi=A.Assm_Lokasi,
+                                Tgl_kalibrasi=getdate(),
+                                Interval=12,
+                                Kalibrasi_selanjutnya=DATEADD(month,12,getdate() ),
+                                Catatan=A.Keterangan,
+                                Parameter_No_id_anak_timbang=A.Parameter_No_id_anak_timbang,
+                                Parameter_Interval=A.Parameter_Interval,
+                                Parameter_kriteria=A.Parameter_kriteria,
+                                Pelaksana_Verifikasi=A.Pelaksana_Verifikasi,
+                                Titik_verifikasi=A.Titik_verifikasi,
+                                UserID='${user_id}',
+                                Delegated_To='${delegated_to}',
+                                Process_date = getdate()
+                          FROM  T_Kalibrasi_Permohonan AS A LEFT OUTER JOIN
+                                T_Kalibrasi_DA_Timbangan AS B ON A.QA_ID_Rekalibrasi = B.QA_ID WHERE (A.No_Permohonan = '${no_permohonan}')`;
+        }
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else if (V_Parameter_Sertifikasi === 'Tekanan' || V_Parameter_Sertifikasi === 'Timer' ||
+                 V_Parameter_Sertifikasi === 'Temperatur' || V_Parameter_Sertifikasi === 'Volume' ||
+                 V_Parameter_Sertifikasi === 'Dimensi' || V_Parameter_Sertifikasi === 'Lain-Lain') {
+        // Check if exists in DA BA
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+        const checkQuery = `SELECT count(*) as JumRow FROM T_Kalibrasi_DA_Bagian WHERE QA_ID = '${V_QA_ID_rekalibrasi}'`;
+        const checkResult = await sequelizeMSQL.query(checkQuery, { type: Sequelize.QueryTypes.SELECT });
+        const jumRow = checkResult[0].JumRow;
+
+        if (jumRow <= 0) {
+          // Insert karena tidak ada
+          SQL_Insert = `Insert into [T_Kalibrasi_DA_Bagian] (QA_ID,Jenis_kalibrasi,Parameter_Sertifikasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
+                        SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
+                                Assm_nama_instrumen,
+                                Assm_No_identitas_Istrumen,
+                                Assm_No_identitas_kalibrasi,
+                                Group_Da_Dept,
+                                Assm_Kapasitas,
+                                Parameter_Kalibrasi,
+                                Assm_Lokasi,
+                                GETDATE() as tgl_kalibrasi,
+                                Parameter_Interval,
+                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                Keterangan as catatan,
+                                '${user_id}' as UserID,
+                                '${delegated_to}' as Delegated_To,
+                                GETDATE() As Process_date
+                        From T_Kalibrasi_Permohonan
+                        WHERE (No_Permohonan = '${no_permohonan}')`;
+        } else {
+          // Update DA jika sudah ada dan rekalibrasi
+          SQL_Insert = ` update T_Kalibrasi_DA_Bagian set  QA_ID =  A.QA_ID_Rekalibrasi,
+                          Jenis_kalibrasi= A.Jenis_kalibrasi,
+                          Parameter_Sertifikasi=A.Parameter_Sertifikasi,
+                          Assm_nama_instrumen= A.Assm_nama_instrumen,
+                          Assm_No_identitas_Istrumen= A.Assm_No_identitas_Istrumen,
+                          Assm_No_identitas_kalibrasi= A.Assm_No_identitas_kalibrasi,
+                          Group_Da_Dept=A.Group_Da_Dept,
+                          Assm_Kapasitas=A.Assm_Kapasitas,
+                          Parameter_Kalibrasi=A.Parameter_Kalibrasi,
+                          Assm_Lokasi=A.Assm_Lokasi,
+                          Tgl_kalibrasi=getdate() ,
+                          Parameter_Interval=12,
+                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Catatan=A.Keterangan,
+                          UserID='${user_id}',
+                          Delegated_To='${delegated_to}',
+                          Process_date = GETDATE()
+                   From T_Kalibrasi_Permohonan as A inner join T_Kalibrasi_DA_Bagian as B on A.QA_ID_Rekalibrasi =  B.QA_ID
+                                  WHERE (A.No_Permohonan = '${no_permohonan}')  `;
+        }
+
+        SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
+
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Generate lain-lain'
+        });
+      }
+    }
+
+    // Execute the queries
+    if (SQL_Insert && SQL_Update) {
+      const combinedSQL = SQL_Insert + SQL_DELIMITER + SQL_Update;
+      await executeMultipleQueries(combinedSQL);
+
+      return res.status(200).json({
+        success: true,
+        message: `Sukses Generate DA ${V_Parameter_Sertifikasi}!`,
+        data: {
+          no_permohonan,
+          qa_id: Auto_QA_ID,
+          parameter_sertifikasi: V_Parameter_Sertifikasi,
+          kategori_permohonan: V_kategori_permohonan
+        }
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Unable to generate DA queries'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in generateDA:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchPermohonanAssesment,
   getPermohonanAssesmentDetail,
@@ -601,6 +1275,8 @@ module.exports = {
   getApproverIdentity,
   checkAllowInput,
   approvePermohonanAssesment,
-  rejectPermohonanAssesment
+  rejectPermohonanAssesment,
+  generatePrint,
+  generateDA
 };
 
