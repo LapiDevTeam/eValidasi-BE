@@ -1,7 +1,7 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
-const { uploadFileToFTP, downloadFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
+const { uploadFileToFTP, downloadFileFromFTP, deleteFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
 
@@ -1077,6 +1077,90 @@ const uploadFileKalibrasi = async (req, res, next) => {
   }
 };
 
+const deleteFileKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'No_Permohonan is required'
+      });
+    }
+
+    const checkQuery = `
+      SELECT
+        FILE_NAME,
+        No_Permohonan
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const [permohonan] = await sequelizeMSQL.query(checkQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT
+    });
+
+    if (!permohonan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    if (!permohonan.FILE_NAME || permohonan.FILE_NAME === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+
+    const checkApprovalQuery = `
+      SELECT *
+      FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+        AND Approver_No = 1
+    `;
+
+    const approvalRecords = await sequelizeMSQL.query(checkApprovalQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT
+    });
+
+    if (approvalRecords.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data sudah approve, tidak bisa hapus file!'
+      });
+    }
+
+    const updateQuery = `
+      UPDATE T_Kalibrasi_Permohonan
+      SET FILE_NAME = ''
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(updateQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.UPDATE
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'File has been deleted',
+      data: {
+        no_permohonan,
+        file_name: ''
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in deleteFileKalibrasi:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
@@ -1089,6 +1173,7 @@ module.exports = {
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,
   getApproverIdentity,
-  uploadFileKalibrasi
+  uploadFileKalibrasi,
+  deleteFileKalibrasi
 };
 

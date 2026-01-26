@@ -107,9 +107,54 @@ function formatFileName(noPermohonan, originalFileName) {
   return `${sanitizedNoPermohonan}.${extension}`;
 }
 
+async function deleteFileFromFTP(remoteFileName) {
+  const client = new ftp.Client();
+  client.ftp.verbose = true;
+
+  try {
+    console.log('FTP Delete - Starting:', {
+      remoteFileName,
+      ftpHost: FTP_CONFIG.host
+    });
+
+    await client.access({
+      host: FTP_CONFIG.host,
+      user: FTP_CONFIG.user,
+      password: FTP_CONFIG.password,
+      secure: FTP_CONFIG.secure
+    });
+
+    console.log('FTP Delete - Connected to FTP server');
+
+    await client.ensureDir(FTP_CONFIG.folder);
+
+    const pwdAfter = await client.pwd();
+    console.log('FTP Delete - Now in directory:', pwdAfter);
+
+    await client.remove(remoteFileName);
+    console.log('FTP Delete - File deleted successfully');
+
+    return {
+      success: true,
+      message: 'File deleted successfully',
+      fileName: remoteFileName
+    };
+  } catch (error) {
+    console.error('FTP Delete Error:', error);
+    return {
+      success: false,
+      message: error.message || 'Error deleting file from FTP',
+      error: error
+    };
+  } finally {
+    client.close();
+  }
+}
+
 module.exports = {
   uploadFileToFTP,
   downloadFileFromFTP,
+  deleteFileFromFTP,
   getFileExtension,
   formatFileName,
   FTP_CONFIG

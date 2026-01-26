@@ -1,5 +1,6 @@
 
 const axios = require("axios");
+const MyError = require("../helpers/errors");
 
 const authentication = async (req, res, next) => {
   try {

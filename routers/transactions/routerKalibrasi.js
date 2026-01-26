@@ -14,7 +14,8 @@ const {
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,
   getApproverIdentity,
-  uploadFileKalibrasi
+  uploadFileKalibrasi,
+  deleteFileKalibrasi
 } = require("../../controllers/transactions/input-permohonan-kalibrasi.controller");
 
 const {
@@ -52,6 +53,8 @@ router.post("/permohonan/approve", authentication, approvePermohonanKalibrasi);
 router.post("/permohonan/upload", authentication, checkFileSizePublic, uploadFileKalibrasi);
 
 router.delete("/permohonan/delete", authentication, deletePermohonanKalibrasi);
+
+router.delete("/permohonan/file", authentication, deleteFileKalibrasi);
 
 // ============== ASSESSMENT ROUTES ==============
 
