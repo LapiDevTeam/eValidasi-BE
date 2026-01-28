@@ -1267,6 +1267,394 @@ const generateDA = async (req, res, next) => {
   }
 };
 
+/**
+ * Generate Sertifikat (cmd_Generate_Ser_Click)
+ * Generates calibration certificate based on Parameter_Sertifikasi type
+ * Based on VBA cmd_Generate_Ser_Click function
+ */
+const generateSertifikat = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.body;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih no Permohonan!'
+      });
+    }
+
+    // Check if approved - matches fn_IS_approve()
+    const checkApproveQuery = `
+      SELECT * FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan AND Approver_No = 2
+    `;
+
+    const approveResults = await sequelizeMSQL.query(checkApproveQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approveResults.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data belum approve, tidak bisa Generate Sertifikat!'
+      });
+    }
+
+    // Get Data - matches VBA query
+    const query = `
+      SELECT kategori_permohonan, Group_DA, Group_Da_Dept, Parameter_Sertifikasi,
+             QA_Id, ID_no_sertifikat, QA_ID_rekalibrasi, Jenis_kalibrasi
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    const data = results[0];
+    const V_kategori_permohonan = data.kategori_permohonan || '';
+    const V_Group_DA = data.Group_DA || '';
+    const V_Group_Da_Dept = data.Group_Da_Dept || '';
+    const V_Parameter_Sertifikasi = data.Parameter_Sertifikasi || '';
+    const V_QA_ID = data.QA_Id || '';
+    const V_ID_No_sertifikat = data.ID_no_sertifikat || '';
+    const V_QA_ID_rekalibrasi = data.QA_ID_Rekalibrasi || '';
+    const V_Jenis_kalibrasi = data.Jenis_kalibrasi ? data.Jenis_kalibrasi.toString() : '';
+
+    // BLOCK GENERATE SERTIFIKAT - matches VBA conditions
+    if (V_Jenis_kalibrasi === '' || V_Jenis_kalibrasi === '2') {
+      return res.status(400).json({
+        success: false,
+        message: 'Hanya Jenis kalibrasi internal yang dapat Generate sertifikat!'
+      });
+    }
+
+    if (V_Parameter_Sertifikasi === 'Anak Timbangan' || V_Parameter_Sertifikasi === 'Volume' || V_Parameter_Sertifikasi === 'Dimensi') {
+      return res.status(400).json({
+        success: false,
+        message: `Parameter Sertifikasi untuk ${V_Parameter_Sertifikasi}, tidak bisa generate Sertifikat`
+      });
+    }
+
+    // Check if already generated
+    if (V_QA_ID !== '') {
+      return res.status(400).json({
+        success: false,
+        message: `Sudah Generate Sertifikat atau DA : ${V_ID_No_sertifikat}`
+      });
+    }
+
+    let SQL_Insert = '';
+    let SQL_Update = '';
+    let Auto_QA_ID = '';
+    let Auto_ID_No_sertifikat = '';
+
+    // 2A# Alat Baru
+    if (V_kategori_permohonan === 'Alat Baru') {
+
+      if (V_Parameter_Sertifikasi === 'Thermohygrometer') {
+        // Insert ke Sertifikat TH THERMOHYGRO NEW
+        const qaIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_DA_TH_No_ID() as QA_ID', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_QA_ID = qaIdResult[0].QA_ID || '';
+
+        const sertifikatIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_Ser_L_No_ID() as ID_No_sertifikat', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else if (V_Parameter_Sertifikasi === 'Timbangan (Massa)') {
+        // Insert ke Sertifikat Timbangan (Massa)
+        const qaIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_DA_TM_No_ID() as QA_ID', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_QA_ID = qaIdResult[0].QA_ID || '';
+
+        const sertifikatIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_Ser_M_No_ID() as ID_No_sertifikat', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Timbangan (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else if (V_Parameter_Sertifikasi === 'Tekanan' || V_Parameter_Sertifikasi === 'Timer' || V_Parameter_Sertifikasi === 'Temperatur') {
+        // Insert ke Sertifikat Bagian
+        const qaIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_DA_BA_No_ID() as QA_ID', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_QA_ID = qaIdResult[0].QA_ID || '';
+
+        let sertifikatQuery = '';
+        if (V_Parameter_Sertifikasi === 'Tekanan') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_P_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Timer') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_R_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Temperatur') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_T_No_ID() as ID_No_sertifikat';
+        }
+
+        const sertifikatIdResult = await sequelizeMSQL.query(sertifikatQuery, {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Bagian (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Tidak dapat generate Sertifikat untuk Parameter Sertifikasi : ${V_Parameter_Sertifikasi}`
+        });
+      }
+
+    // 2B# Re-Kalibrasi
+    } else if (V_kategori_permohonan === 'Re-Kalibrasi') {
+
+      if (V_Parameter_Sertifikasi === 'Thermohygrometer') {
+        // Insert ke Sertifikat TH rekalibrasi
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+
+        const sertifikatIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_Ser_L_No_ID() as ID_No_sertifikat', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else if (V_Parameter_Sertifikasi === 'Timbangan (Massa)') {
+        // Insert ke Sertifikat TM rekalibrasi
+        Auto_QA_ID = V_QA_ID_rekalibrasi;
+
+        const sertifikatIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_Ser_M_No_ID() as ID_No_sertifikat', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Timbangan (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else if (V_Parameter_Sertifikasi === 'Tekanan' || V_Parameter_Sertifikasi === 'Timer' || V_Parameter_Sertifikasi === 'Temperatur') {
+        // Insert ke Sertifikat Bagian rekalibrasi
+        const qaIdResult = await sequelizeMSQL.query('SELECT dbo.fnGetKal_DA_BA_No_ID() as QA_ID', {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_QA_ID = qaIdResult[0].QA_ID || '';
+
+        let sertifikatQuery = '';
+        if (V_Parameter_Sertifikasi === 'Tekanan') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_P_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Timer') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_R_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Temperatur') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_T_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Volume') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_V_No_ID() as ID_No_sertifikat';
+        } else if (V_Parameter_Sertifikasi === 'Dimensi') {
+          sertifikatQuery = 'SELECT dbo.fnGetKal_Ser_D_No_ID() as ID_No_sertifikat';
+        }
+
+        const sertifikatIdResult = await sequelizeMSQL.query(sertifikatQuery, {
+          type: Sequelize.QueryTypes.SELECT,
+        });
+        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+
+        SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Bagian (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
+                      SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi,
+                             GETDATE() as Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+                             '${user_id}' as UserID, '${delegated_to}' as Delegated_To, GETDATE() as Process_date
+                      FROM T_Kalibrasi_Permohonan WHERE No_Permohonan = '${no_permohonan}'`;
+
+        SQL_Update = `UPDATE T_Kalibrasi_Permohonan SET QA_ID='${Auto_QA_ID}', ID_No_Sertifikat='${Auto_ID_No_sertifikat}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date=GETDATE() WHERE No_Permohonan='${no_permohonan}'`;
+
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Tidak dapat generate Sertifikat untuk Parameter Sertifikasi : ${V_Parameter_Sertifikasi}`
+        });
+      }
+    }
+
+    // Execute queries in transaction - matches VBA Execute with SQL_Delimiter
+    const transaction = await sequelizeMSQL.transaction();
+
+    try {
+      await sequelizeMSQL.query(SQL_Insert, {
+        transaction,
+        type: Sequelize.QueryTypes.INSERT
+      });
+
+      await sequelizeMSQL.query(SQL_Update, {
+        transaction,
+        type: Sequelize.QueryTypes.UPDATE
+      });
+
+      await transaction.commit();
+
+      return res.status(200).json({
+        success: true,
+        message: `Sukses Generate Data Sertifikat ${V_Parameter_Sertifikasi}!`,
+        data: {
+          qa_id: Auto_QA_ID,
+          id_no_sertifikat: Auto_ID_No_sertifikat
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Error executing generate sertifikat:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error Insert Data'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in generateSertifikat:', error);
+    next(error);
+  }
+};
+
+/**
+ * Download File from FTP (cmd_download_Click)
+ * Downloads calibration assessment file from FTP server
+ * Based on VBA cmd_download_Click function
+ */
+const downloadFileAssesment = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    // Get file_name from T_Kalibrasi_Permohonan - matches VBA txt_file_download.Text
+    const query = `
+      SELECT ISNULL(file_name, '') as file_name
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    const fileName = results[0].file_name;
+
+    // Check if file exists - matches VBA condition: If txt_file_download.Text = ""
+    if (!fileName || fileName === '') {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+
+    // Create temporary local path for download
+    const tempDir = path.join(__dirname, '../../tmp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const localFilePath = path.join(tempDir, fileName);
+
+    // Download file from FTP
+    // Matches VBA: Inet1.Execute , "GET " & """" & ftp_subFolder & "/" & txt_file_download.Text & """" & " " & """" & f_GMP1_dlg.filename & """"
+    const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
+
+    if (!downloadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Fail download data',
+        error: downloadResult.message
+      });
+    }
+
+    // Check if file was actually downloaded
+    if (!fs.existsSync(localFilePath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'Fail download data'
+      });
+    }
+
+    // Send file to client
+    res.download(localFilePath, fileName, (err) => {
+      // Clean up temporary file after download
+      if (fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
+      }
+
+      if (err) {
+        console.error('Error sending file:', err);
+        if (!res.headersSent) {
+          return res.status(500).json({
+            success: false,
+            message: 'Error sending file'
+          });
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in downloadFileAssesment:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchPermohonanAssesment,
   getPermohonanAssesmentDetail,
@@ -1277,6 +1665,8 @@ module.exports = {
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
-  generateDA
+  generateDA,
+  generateSertifikat,
+  downloadFileAssesment
 };
 
