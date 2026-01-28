@@ -713,8 +713,8 @@ const generatePrint = async (req, res, next) => {
       txt_16_Ket_Rekalibrasi: data.Ket_Rekalibrasi || '',
 
       // Sertifikat kalibrasi - checkbox values
-      txt_17A_Sertifikat_kalibrasi_Ada: (data.no_sertifikat_terakhir !== '' && data.no_sertifikat_terakhir !== '-') ? '☑' : '☐',
-      txt_17B_Sertifikat_kalibrasi_Tidak: (data.no_sertifikat_terakhir === '' || data.no_sertifikat_terakhir === '-') ? '☑' : '☐',
+      txt_17A_Sertifikat_kalibrasi_Ada: (data.no_sertifikat_terakhir !== '' && data.no_sertifikat_terakhir !== '-') ? '1' : '0',
+      txt_17B_Sertifikat_kalibrasi_Tidak: (data.no_sertifikat_terakhir === '' || data.no_sertifikat_terakhir === '-') ? '1' : '0',
 
       txt_18_Nama_Alat_ukur: data.Assm_nama_instrumen || '',
       txt_19_ID_kalibrasi: data.Assm_No_identitas_kalibrasi || '',
