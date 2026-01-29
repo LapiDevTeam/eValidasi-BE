@@ -4,6 +4,8 @@ const moment = require('moment');
 const { uploadFileToFTP, downloadFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
+const puppeteer = require('puppeteer');
+const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 
 /**
  * Search Permohonan for Assessment (cmd_Cari_Pemohon_Click)
@@ -1655,6 +1657,98 @@ const downloadFileAssesment = async (req, res, next) => {
   }
 };
 
+function getBase64Image(filePath) {
+  const image = fs.readFileSync(filePath);
+  return `data:image/jpeg;base64,${image.toString('base64')}`;
+}
+
+ const  printHeader = async (req, res, next) => {
+  const { link, noDoc, tanggal, revisi, judul, landscape = "", } = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    // await page.setExtraHTTPHeaders({
+    //   'authentication': token
+    // });
+
+    await page.goto(link, { waitUntil: 'networkidle0' });
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: ${!landscape ? `10px` : `13px`} !important;
+ font-family: Verdana, sans-serif;        }
+
+        table {
+          margin-top: ${!landscape ? `10px` : `13px`} !important; /* Ensures margin applies to all tables */
+        }
+      `,
+    });
+    let headerLandscape = `
+<table style="width: ${!landscape ? '90%' : '97.2%'}; margin: 0 auto; font-size: 11px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tbody>
+    <tr>
+      <td style="border: 1px solid black; width: 20%; height: 70px; text-align: center;" rowspan="2">
+        <img src="${logoBase64}" alt="lapilogo" width="80%" height="90%" style="object-fit: contain;"/>
+      </td>
+      <td style="border: 1px solid black;">
+        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 16px;">
+            <span>${judul || "PERMOHONAN KALIBRASI INSTRUMEN DAN ALAT UKUR"}</span>
+          </h3>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+      `;
+
+      let footerLandscape =
+      `
+        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tr>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Nomor</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${noDoc}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Tanggal</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${tanggal}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Revisi</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${revisi}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Halaman</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">
+      <span class="pageNumber"></span> dari <span class="totalPages"></span>
+    </td>
+  </tr>
+</table>
+`
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: footerLandscape,
+      headerTemplate:headerLandscape,
+      margin: { bottom: '60px', top: '200px', left: '18px', right: '17px' },
+      landscape: !landscape ? false : true,
+    });
+
+    await browser.close();
+
+    // Set Content-Type header so browser displays as PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printCatatanTrial:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+
 module.exports = {
   searchPermohonanAssesment,
   getPermohonanAssesmentDetail,
@@ -1667,6 +1761,7 @@ module.exports = {
   generatePrint,
   generateDA,
   generateSertifikat,
-  downloadFileAssesment
+  downloadFileAssesment,
+  printHeader
 };
 

@@ -30,7 +30,8 @@ const {
   generatePrint,
   generateDA,
   generateSertifikat,
-  downloadFileAssesment
+  downloadFileAssesment,
+  printHeader
 } = require("../../controllers/transactions/input-assesment-kalibrasi.controller");
 
 
@@ -86,5 +87,7 @@ router.post("/assesment/generate-da", authentication, generateDA);
 router.post("/assesment/generate-sertifikat", authentication, generateSertifikat);
 
 router.get("/assesment/download", authentication, downloadFileAssesment);
+
+router.get("/assesment/print", printHeader);
 
 module.exports = router;
