@@ -1748,6 +1748,97 @@ function getBase64Image(filePath) {
     res.status(500).send({ error: 'An error occurred during PDF generation.' });
   }
 }
+/**
+ * Check if can reject permohonan
+ * Based on VB.NET logic provided by user
+ * Returns boolean indicating if rejection is allowed
+ */
+const checkCanReject = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    let canReject = false;
+
+    // Step 1: Check if there's a record in t_Kalibrasi_Status with approver_no = 1
+    const statusQuery = `
+      SELECT COUNT(*) as JumRow 
+      FROM [t_Kalibrasi_Status] 
+      WHERE no_permohonan = :no_permohonan 
+        AND approver_no = 1
+    `;
+
+    const statusResults = await sequelizeMSQL.query(statusQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const statusCount = statusResults[0]?.JumRow || 0;
+
+    // Step 2: Check if user is allowed to reject (using existing checkAllowInput logic)
+    const allowQuery = `
+      SELECT COUNT(*) as jumRow
+      FROM m_approver_lines
+      WHERE isActive = 1
+        AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+        AND Appr_ID = :userId
+    `;
+
+    const allowResults = await sequelizeMSQL.query(allowQuery, {
+      replacements: { userId: user_id },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const allowCount = allowResults[0]?.jumRow || 0;
+    const strAllow = allowCount > 0;
+
+    // Step 3: If both conditions are met, check QA_ID
+    if (statusCount >= 1 && strAllow) {
+      const qaQuery = `
+        SELECT ISNULL(QA_Id,'') AS QA_Id 
+        FROM T_Kalibrasi_Permohonan 
+        WHERE No_Permohonan = :no_permohonan
+      `;
+
+      const qaResults = await sequelizeMSQL.query(qaQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      const qaId = qaResults[0]?.QA_Id || '';
+
+      // If QA_ID is empty, can reject = true
+      // If QA_ID is not empty, can reject = false (already has QA ID number, cannot reject)
+      canReject = qaId === '';
+    } else {
+      // If status count < 1 OR user not allowed, cannot reject
+      canReject = false;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Check completed',
+      data: {
+        no_permohonan,
+        can_reject: canReject,
+        status_count: statusCount,
+        user_allowed: strAllow,
+        qa_id: qaResults?.[0]?.QA_Id || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in checkCanReject:', error);
+    next(error);
+  }
+};
 
 module.exports = {
   searchPermohonanAssesment,
@@ -1756,6 +1847,7 @@ module.exports = {
   checkIsApproved,
   getApproverIdentity,
   checkAllowInput,
+  checkCanReject,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
