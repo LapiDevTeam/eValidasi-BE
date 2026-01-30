@@ -4,6 +4,8 @@ const moment = require('moment');
 const { uploadFileToFTP, downloadFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
+const puppeteer = require('puppeteer');
+const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 
 /**
  * Search Permohonan for Assessment (cmd_Cari_Pemohon_Click)
@@ -1894,6 +1896,189 @@ const downloadFileAssesment = async (req, res, next) => {
   }
 };
 
+function getBase64Image(filePath) {
+  const image = fs.readFileSync(filePath);
+  return `data:image/jpeg;base64,${image.toString('base64')}`;
+}
+
+ const  printHeader = async (req, res, next) => {
+  const { link, noDoc, tanggal, revisi, judul, landscape = "", } = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    // await page.setExtraHTTPHeaders({
+    //   'authentication': token
+    // });
+
+    await page.goto(link, { waitUntil: 'networkidle0' });
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: ${!landscape ? `10px` : `13px`} !important;
+ font-family: Verdana, sans-serif;        }
+
+        table {
+          margin-top: ${!landscape ? `10px` : `13px`} !important; /* Ensures margin applies to all tables */
+        }
+      `,
+    });
+    let headerLandscape = `
+<table style="width: ${!landscape ? '90%' : '97.2%'}; margin: 0 auto; font-size: 11px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tbody>
+    <tr>
+      <td style="border: 1px solid black; width: 20%; height: 70px; text-align: center;" rowspan="2">
+        <img src="${logoBase64}" alt="lapilogo" width="80%" height="90%" style="object-fit: contain;"/>
+      </td>
+      <td style="border: 1px solid black;">
+        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 16px;">
+            <span>${judul || "PERMOHONAN KALIBRASI INSTRUMEN DAN ALAT UKUR"}</span>
+          </h3>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+      `;
+
+      let footerLandscape =
+      `
+        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tr>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Nomor</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${noDoc}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Tanggal</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${tanggal}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Revisi</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">${revisi}</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">Halaman</td>
+    <td style="border: 1px solid #6b7280; padding: 2px; text-align: center;">
+      <span class="pageNumber"></span> dari <span class="totalPages"></span>
+    </td>
+  </tr>
+</table>
+`
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: footerLandscape,
+      headerTemplate:headerLandscape,
+      margin: { bottom: '60px', top: '200px', left: '18px', right: '17px' },
+      landscape: !landscape ? false : true,
+    });
+
+    await browser.close();
+
+    // Set Content-Type header so browser displays as PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printCatatanTrial:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+/**
+ * Check if can reject permohonan
+ * Based on VB.NET logic provided by user
+ * Returns boolean indicating if rejection is allowed
+ */
+const checkCanReject = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    let canReject = false;
+
+    // Step 1: Check if there's a record in t_Kalibrasi_Status with approver_no = 1
+    const statusQuery = `
+      SELECT COUNT(*) as JumRow
+      FROM [t_Kalibrasi_Status]
+      WHERE no_permohonan = :no_permohonan
+        AND approver_no = 1
+    `;
+
+    const statusResults = await sequelizeMSQL.query(statusQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const statusCount = statusResults[0]?.JumRow || 0;
+
+    // Step 2: Check if user is allowed to reject (using existing checkAllowInput logic)
+    const allowQuery = `
+      SELECT COUNT(*) as jumRow
+      FROM m_approver_lines
+      WHERE isActive = 1
+        AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+        AND Appr_ID = :userId
+    `;
+
+    const allowResults = await sequelizeMSQL.query(allowQuery, {
+      replacements: { userId: user_id },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const allowCount = allowResults[0]?.jumRow || 0;
+    const strAllow = allowCount > 0;
+
+    // Step 3: If both conditions are met, check QA_ID
+    if (statusCount >= 1 && strAllow) {
+      const qaQuery = `
+        SELECT ISNULL(QA_Id,'') AS QA_Id
+        FROM T_Kalibrasi_Permohonan
+        WHERE No_Permohonan = :no_permohonan
+      `;
+
+      const qaResults = await sequelizeMSQL.query(qaQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      const qaId = qaResults[0]?.QA_Id || '';
+
+      // If QA_ID is empty, can reject = true
+      // If QA_ID is not empty, can reject = false (already has QA ID number, cannot reject)
+      canReject = qaId === '';
+    } else {
+      // If status count < 1 OR user not allowed, cannot reject
+      canReject = false;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Check completed',
+      data: {
+        no_permohonan,
+        can_reject: canReject,
+        status_count: statusCount,
+        user_allowed: strAllow,
+        qa_id: qaResults?.[0]?.QA_Id || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in checkCanReject:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchPermohonanAssesment,
   getPermohonanAssesmentDetail,
@@ -1902,11 +2087,13 @@ module.exports = {
   getApproverIdentity,
   checkAllowInput,
   saveAssesmentKalibrasi,
+  checkCanReject,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
   generateDA,
   generateSertifikat,
-  downloadFileAssesment
+  downloadFileAssesment,
+  printHeader
 };
 

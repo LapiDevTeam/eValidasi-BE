@@ -15,7 +15,7 @@ const errorHandler = require("./middlewares/errorHandler");
 const error = require("./middlewares/error");
 const { BASE_URL } = require("./config/configMssql");
 const port = process.env.PORT || 3001;
-
+const sqllapi = process.env.MS_SQL_DB_SERVER;
 cron.schedule("30 7 * * *", async () => {
   try {
     const response = await fetch(`${BASE_URL}/studi-praformulasi-pending`);
@@ -42,5 +42,5 @@ app.use(routers);
 app.use(error);
 
 app.listen(port, () => {
-  console.log(`E-Validation app listening on port ${port}`);
+  console.log(`E-Validation app listening on port ${port} ${sqllapi}`);
 });

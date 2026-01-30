@@ -26,12 +26,14 @@ const {
   getApproverIdentity: getApproverIdentityAssesment,
   checkAllowInput,
   saveAssesmentKalibrasi,
+  checkCanReject,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
   generateDA,
   generateSertifikat,
-  downloadFileAssesment
+  downloadFileAssesment,
+  printHeader
 } = require("../../controllers/transactions/input-assesment-kalibrasi.controller");
 
 
@@ -77,6 +79,7 @@ router.get("/assesment/approver-identity", authentication, getApproverIdentityAs
 router.get("/assesment/check-allow-input", authentication, checkAllowInput);
 
 router.post("/assesment/save", authentication, saveAssesmentKalibrasi);
+router.get("/assesment/check-can-reject", authentication, checkCanReject);
 
 router.post("/assesment/approve", authentication, approvePermohonanAssesment);
 
@@ -89,5 +92,7 @@ router.post("/assesment/generate-da", authentication, generateDA);
 router.post("/assesment/generate-sertifikat", authentication, generateSertifikat);
 
 router.get("/assesment/download", authentication, downloadFileAssesment);
+
+router.get("/assesment/print", printHeader);
 
 module.exports = router;
