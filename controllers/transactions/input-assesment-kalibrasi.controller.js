@@ -404,10 +404,249 @@ const checkAllowInput = async (req, res, next) => {
 };
 
 /**
- * Approve Permohonan Assessment (cmd_Approve_Click)
- * Insert approval record for Approver_No = 2
- * Uses req.body for no_permohonan
+ * Save Assessment Kalibrasi (cmd_Save_Click)
+ * Update T_Kalibrasi_Permohonan with assessment data
+ * Performs validation checks before updating
+ * Uses req.body for all parameters
  */
+const saveAssesmentKalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const {
+      no_permohonan,
+      kategori_permohonan,
+      group_da,
+      parameter_sertifikasi,
+      nama_instrumen,
+      no_identitas_instrumen,
+      no_identitas_kalibrasi,
+      alat_ukur_kalibrasi,
+      merk,
+      kapasitas,
+      lokasi,
+      rencana_eksekusi,
+      jenis_kalibrasi,
+      jenis_external,
+      program_verifikasi,
+      pelaksana_verifikasi,
+      titik_verifikasi,
+      titik_pengukuran_kalibrasi,
+      keterangan,
+      group_da_dept,
+      parameter_kalibrasi,
+      parameter_no_id_anak_timbang,
+      parameter_interval,
+      parameter_kriteria
+    } = req.body;
+
+    // Validation 1: Check group_da
+    if (!group_da || group_da.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih Group DA yang akan di assesment!'
+      });
+    }
+
+    // Validation 2: Check parameter_sertifikasi
+    if (!parameter_sertifikasi || parameter_sertifikasi.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih Parameter Sertifikasi yang akan di assesment!'
+      });
+    }
+
+    // Validation 3: Check nama_instrumen
+    if (!nama_instrumen || nama_instrumen.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap isi Nama Mesin/Instrumen yang akan di assesment!'
+      });
+    }
+
+    // Validation 4: Check no_identitas_instrumen
+    if (!no_identitas_instrumen || no_identitas_instrumen.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap isi No. Identitas Mesin/Instrumen yang akan di assesment!'
+      });
+    }
+
+    // Validation 5: Check no_identitas_kalibrasi
+    if (!no_identitas_kalibrasi || no_identitas_kalibrasi.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap isi No. Identitas Kalibrasi (Sesuai DA) yang akan di assesment!'
+      });
+    }
+
+    // Validation 6: Check if no_identitas_kalibrasi already exists in DA for new equipment (fnID_kalibrasi)
+    if (kategori_permohonan === 'Alat Baru') {
+      const checkIdKalibrasiQuery = `
+        SELECT assm_no_identitas_kalibrasi
+        FROM vw_Kal_No_ID_DA
+        WHERE assm_no_identitas_kalibrasi LIKE :no_identitas_kalibrasi
+      `;
+
+      const existingIdResults = await sequelizeMSQL.query(checkIdKalibrasiQuery, {
+        replacements: { no_identitas_kalibrasi: no_identitas_kalibrasi.trim() },
+        type: Sequelize.QueryTypes.SELECT,
+      });
+
+      if (existingIdResults.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No. Identitas Kalibrasi (Sesuai DA) sudah ada dalam daftar DA'
+        });
+      }
+    }
+
+    // Validation 7: Check jenis_kalibrasi (fn_get_Opt_jenis)
+    if (!jenis_kalibrasi || (jenis_kalibrasi !== 1 && jenis_kalibrasi !== 2)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih jenis kalibrasi yang akan di assesment!'
+      });
+    }
+
+    // Validation 8: Check program_verifikasi (fn_get_Opt_Prog)
+    if (!program_verifikasi || (program_verifikasi !== 1 && program_verifikasi !== 2)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih program verifikasi yang akan di assesment!'
+      });
+    }
+
+    // Validation 9: Check parameter_kalibrasi
+    if (!parameter_kalibrasi || parameter_kalibrasi.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap isi parameter kalibrasi yang akan di assesment!'
+      });
+    }
+
+    // Validation 10: Check no_permohonan
+    if (!no_permohonan || no_permohonan.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Harap pilih no Permohonan yang akan di assesment!'
+      });
+    }
+
+    // Validation 11: Check if already approved (fn_IS_approve)
+    const checkApprovalQuery = `
+      SELECT *
+      FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+        AND Approver_No = 2
+    `;
+
+    const approvalResults = await sequelizeMSQL.query(checkApprovalQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approvalResults.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data sudah approve, tidak bisa diUpdate!'
+      });
+    }
+
+    // Validation 12: If jenis_kalibrasi is External (2), jenis_external must be filled
+    if (jenis_kalibrasi === 2 && (!jenis_external || jenis_external.trim() === '')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Jenis external belum di isi'
+      });
+    }
+
+    // Prepare date for RENCANA_EKSEKUSI (fnSetDate logic)
+    let rencanaEksekusiValue = 'NULL';
+    if (rencana_eksekusi && rencana_eksekusi.trim() !== '') {
+      // Format date to YYYY/MM/DD
+      const formattedDate = moment(rencana_eksekusi).format('YYYY/MM/DD');
+      rencanaEksekusiValue = `'${formattedDate}'`;
+    }
+
+    // Build UPDATE query - exact match to VBA cmd_Save_Click
+    const updateQuery = `
+      UPDATE T_Kalibrasi_Permohonan
+      SET
+        Assm_nama_instrumen = :nama_instrumen,
+        Assm_No_identitas_Istrumen = :no_identitas_instrumen,
+        Assm_No_identitas_kalibrasi = :no_identitas_kalibrasi,
+        Assm_Alat_ukur_kalibrasi = :alat_ukur_kalibrasi,
+        Assm_Merk = :merk,
+        Assm_Kapasitas = :kapasitas,
+        Assm_Lokasi = :lokasi,
+        RENCANA_EKSEKUSI = ${rencanaEksekusiValue},
+        Jenis_kalibrasi = :jenis_kalibrasi,
+        Jenis_External = :jenis_external,
+        Program_verifikasi = :program_verifikasi,
+        Pelaksana_Verifikasi = :pelaksana_verifikasi,
+        Titik_verifikasi = :titik_verifikasi,
+        Titik_pengukuran_kalibrasi = :titik_pengukuran_kalibrasi,
+        Keterangan = :keterangan,
+        Group_DA = :group_da,
+        Group_Da_Dept = :group_da_dept,
+        Parameter_Sertifikasi = :parameter_sertifikasi,
+        Parameter_Kalibrasi = :parameter_kalibrasi,
+        Parameter_No_id_anak_timbang = :parameter_no_id_anak_timbang,
+        Parameter_Interval = :parameter_interval,
+        Parameter_kriteria = :parameter_kriteria,
+        Process_Date = GETDATE(),
+        UserID = :user_id,
+        Delegated_To = :delegated_to
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(updateQuery, {
+      replacements: {
+        nama_instrumen: nama_instrumen || '',
+        no_identitas_instrumen: (no_identitas_instrumen || '').trim(),
+        no_identitas_kalibrasi: (no_identitas_kalibrasi || '').trim(),
+        alat_ukur_kalibrasi: alat_ukur_kalibrasi || '',
+        merk: merk || '',
+        kapasitas: kapasitas || '',
+        lokasi: lokasi || '',
+        jenis_kalibrasi: jenis_kalibrasi,
+        jenis_external: jenis_external || '',
+        program_verifikasi: program_verifikasi,
+        pelaksana_verifikasi: pelaksana_verifikasi || '',
+        titik_verifikasi: titik_verifikasi || '',
+        titik_pengukuran_kalibrasi: titik_pengukuran_kalibrasi || '',
+        keterangan: keterangan || '',
+        group_da: group_da || '',
+        group_da_dept: group_da_dept || '',
+        parameter_sertifikasi: parameter_sertifikasi || '',
+        parameter_kalibrasi: parameter_kalibrasi || '',
+        parameter_no_id_anak_timbang: parameter_no_id_anak_timbang || '',
+        parameter_interval: parameter_interval || '',
+        parameter_kriteria: parameter_kriteria || '',
+        user_id: user_id,
+        delegated_to: delegated_to,
+        no_permohonan: no_permohonan
+      },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data has been updated successfully',
+      data: {
+        no_permohonan,
+        user_id,
+        delegated_to
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in saveAssesmentKalibrasi:', error);
+    next(error);
+  }
+};
+
+
 const approvePermohonanAssesment = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
@@ -1662,6 +1901,7 @@ module.exports = {
   checkIsApproved,
   getApproverIdentity,
   checkAllowInput,
+  saveAssesmentKalibrasi,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
