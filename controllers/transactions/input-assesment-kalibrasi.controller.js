@@ -2081,6 +2081,78 @@ const checkCanReject = async (req, res, next) => {
   }
 };
 
+/**
+ * Check if Approve Button Should Be Enabled
+ * Based on VB.NET logic:
+ * 1. Check if user is allowed (has Appr_No = 2 for KAL_Permohonan)
+ * 2. Check if no approval exists yet (approver_no = 2 in t_Kalibrasi_Status)
+ * Button enabled if: no approval exists AND user is allowed
+ * Uses req.query for no_permohonan parameter
+ */
+const checkCanApprove = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    // Step 1: Check if user is allowed (strAllow)
+    const allowQuery = `
+      SELECT * FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode = 'KAL_Permohonan'
+        AND Appr_No = 2
+        AND Appr_ID = :userId
+    `;
+
+    const allowResults = await sequelizeMSQL.query(allowQuery, {
+      replacements: { userId: user_id },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const strAllow = allowResults.length > 0;
+
+    // Step 2: Check if approval already exists
+    const statusQuery = `
+      SELECT COUNT(*) as JumRow
+      FROM [t_Kalibrasi_Status]
+      WHERE no_permohonan = :no_permohonan
+        AND approver_no = 2
+    `;
+
+    const statusResults = await sequelizeMSQL.query(statusQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const jumRow = statusResults[0]?.JumRow || 0;
+
+    // Button enabled if: no approval exists (jumRow = 0) AND user is allowed
+    const canApprove = jumRow === 0 && strAllow;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Check completed',
+      data: {
+        no_permohonan,
+        can_approve: canApprove,
+        user_allowed: strAllow,
+        approval_exists: jumRow > 0,
+        approval_count: jumRow
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in checkCanApprove:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchPermohonanAssesment,
   getPermohonanAssesmentDetail,
@@ -2090,6 +2162,7 @@ module.exports = {
   checkAllowInput,
   saveAssesmentKalibrasi,
   checkCanReject,
+  checkCanApprove,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,

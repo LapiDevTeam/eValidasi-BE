@@ -27,6 +27,7 @@ const {
   checkAllowInput,
   saveAssesmentKalibrasi,
   checkCanReject,
+  checkCanApprove,
   approvePermohonanAssesment,
   rejectPermohonanAssesment,
   generatePrint,
@@ -79,7 +80,10 @@ router.get("/assesment/approver-identity", authentication, getApproverIdentityAs
 router.get("/assesment/check-allow-input", authentication, checkAllowInput);
 
 router.post("/assesment/save", authentication, saveAssesmentKalibrasi);
+
 router.get("/assesment/check-can-reject", authentication, checkCanReject);
+
+router.get("/assesment/check-can-approve", authentication, checkCanApprove);
 
 router.post("/assesment/approve", authentication, approvePermohonanAssesment);
 
