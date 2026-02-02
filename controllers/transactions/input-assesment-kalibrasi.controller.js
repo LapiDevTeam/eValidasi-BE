@@ -2023,10 +2023,10 @@ const checkCanReject = async (req, res, next) => {
 
     // Step 2: Check if user is allowed to reject (using existing checkAllowInput logic)
     const allowQuery = `
-      SELECT COUNT(*) as jumRow
-      FROM m_approver_lines
-      WHERE isActive = 1
-        AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+      SELECT * FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode = 'Kal_Permohonan'
+        AND Appr_No = 2
         AND Appr_ID = :userId
     `;
 
@@ -2035,8 +2035,7 @@ const checkCanReject = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
-    const allowCount = allowResults[0]?.jumRow || 0;
-    const strAllow = allowCount > 0;
+    const strAllow = allowResults.length > 0;
 
     let qaId = null;
 
