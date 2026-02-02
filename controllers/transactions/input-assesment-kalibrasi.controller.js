@@ -2038,6 +2038,8 @@ const checkCanReject = async (req, res, next) => {
     const allowCount = allowResults[0]?.jumRow || 0;
     const strAllow = allowCount > 0;
 
+    let qaId = null;
+
     // Step 3: If both conditions are met, check QA_ID
     if (statusCount >= 1 && strAllow) {
       const qaQuery = `
@@ -2051,7 +2053,7 @@ const checkCanReject = async (req, res, next) => {
         type: Sequelize.QueryTypes.SELECT,
       });
 
-      const qaId = qaResults[0]?.QA_Id || '';
+      qaId = qaResults[0]?.QA_Id || '';
 
       // If QA_ID is empty, can reject = true
       // If QA_ID is not empty, can reject = false (already has QA ID number, cannot reject)
@@ -2069,7 +2071,7 @@ const checkCanReject = async (req, res, next) => {
         can_reject: canReject,
         status_count: statusCount,
         user_allowed: strAllow,
-        qa_id: qaResults?.[0]?.QA_Id || null
+        qa_id: qaId
       }
     });
 
