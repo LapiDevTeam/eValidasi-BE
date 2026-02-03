@@ -116,10 +116,10 @@ const searchSertifikat = async (req, res, next) => {
     // Format dates
     const formattedResults = results.map(row => ({
       ...row,
-      tgl: row.tgl ? moment(row.tgl).format('DD-MMM-YYYY') : '',
-      Tgl_kalibrasi: row.Tgl_kalibrasi ? moment(row.Tgl_kalibrasi).format('DD-MMM-YYYY') : '',
-      ApproveDate: row.ApproveDate ? moment(row.ApproveDate).format('DD-MMM-YYYY HH:mm:ss') : '',
-      Generate_DA_Date: row.Generate_DA_Date ? moment(row.Generate_DA_Date).format('DD-MMM-YYYY HH:mm:ss') : ''
+      tgl: row.tgl ? moment.utc(row.tgl).format('DD-MMM-YYYY HH:mm:ss') : '',
+      Tgl_kalibrasi: row.Tgl_kalibrasi ? moment.utc(row.Tgl_kalibrasi).format('DD-MMM-YYYY') : '',
+      ApproveDate: row.ApproveDate ? moment.utc(row.ApproveDate).format('DD-MMM-YYYY HH:mm:ss') : '',
+      Generate_DA_Date: row.Generate_DA_Date ? moment.utc(row.Generate_DA_Date).format('DD-MMM-YYYY HH:mm:ss') : ''
     }));
 
     return res.status(200).json({
