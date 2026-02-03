@@ -36,6 +36,30 @@ const {
   printHeader
 } = require("../../controllers/transactions/input-assesment-kalibrasi.controller");
 
+const {
+  searchSertifikat,
+  getSertifikatDetail,
+  getSuhuData,
+  getKelembabanData,
+  checkIsApproved: checkIsApprovedSertifikat,
+  getApproverIdentity: getApproverIdentitySertifikat,
+  checkTglKalibrasi,
+  checkAllowInput: checkAllowInputSertifikat,
+  searchResertifikasi,
+  searchDAThermo,
+  checkApproveButton: checkApproveButtonSertifikat,
+  saveSertifikatHeader,
+  saveSuhuData,
+  saveKelembabanData,
+  deleteSuhuData,
+  deleteKelembabanData,
+  approveSertifikat,
+  rejectSertifikat,
+  generateDASertifikat,
+  createNewSertifikat,
+  resertifikasi
+} = require("../../controllers/transactions/sertifikasi.controller");
+
 
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
 
@@ -94,5 +118,72 @@ router.post("/assesment/generate-sertifikat", authentication, generateSertifikat
 router.get("/assesment/download", authentication, downloadFileAssesment);
 
 router.get("/assesment/print", printHeader);
+
+// ============== SERTIFIKAT THERMOHYGRO ROUTES ==============
+
+// Search sertifikat with department filtering
+router.get("/sertifikat/search", authentication, searchSertifikat);
+
+// Get sertifikat detail by QA_ID and ID_No_Sertifikat
+router.get("/sertifikat/detail", authentication, getSertifikatDetail);
+
+// Get temperature (Suhu) grid data
+router.get("/sertifikat/suhu", authentication, getSuhuData);
+
+// Get humidity (Kelembaban) grid data
+router.get("/sertifikat/kelembaban", authentication, getKelembabanData);
+
+// Check if approved at specific level
+router.get("/sertifikat/is-approved", authentication, checkIsApprovedSertifikat);
+
+// Get approver identity
+router.get("/sertifikat/approver-identity", authentication, getApproverIdentitySertifikat);
+
+// Check if tanggal kalibrasi is input
+router.get("/sertifikat/check-tgl-kalibrasi", authentication, checkTglKalibrasi);
+
+// Check if user is allowed to input
+router.get("/sertifikat/check-allow-input", authentication, checkAllowInputSertifikat);
+
+// Search for re-sertifikasi
+router.get("/sertifikat/search-resertifikasi", authentication, searchResertifikasi);
+
+// Search DA Thermohygro for new certificate
+router.get("/sertifikat/search-da", authentication, searchDAThermo);
+
+// Check approve button state
+router.get("/sertifikat/check-approve-button", authentication, checkApproveButtonSertifikat);
+
+// ============== SERTIFIKAT POST OPERATIONS ==============
+
+// Save/Update sertifikat header
+router.post("/sertifikat/save", authentication, saveSertifikatHeader);
+
+// Save/Update Suhu data
+router.post("/sertifikat/suhu/save", authentication, saveSuhuData);
+
+// Save/Update Kelembaban data
+router.post("/sertifikat/kelembaban/save", authentication, saveKelembabanData);
+
+// Delete Suhu data
+router.delete("/sertifikat/suhu/delete", authentication, deleteSuhuData);
+
+// Delete Kelembaban data
+router.delete("/sertifikat/kelembaban/delete", authentication, deleteKelembabanData);
+
+// Approve sertifikat
+router.post("/sertifikat/approve", authentication, approveSertifikat);
+
+// Reject sertifikat
+router.post("/sertifikat/reject", authentication, rejectSertifikat);
+
+// Generate DA from sertifikat
+router.post("/sertifikat/generate-da", authentication, generateDASertifikat);
+
+// Create new sertifikat from DA
+router.post("/sertifikat/create-new", authentication, createNewSertifikat);
+
+// Re-sertifikasi - copy existing certificate
+router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
 
 module.exports = router;
