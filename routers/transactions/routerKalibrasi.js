@@ -58,8 +58,23 @@ const {
   rejectSertifikat,
   generateDASertifikat,
   createNewSertifikat,
-  resertifikasi
+  resertifikasi,
+  generateSertifikatPDF
 } = require("../../controllers/transactions/sertifikasi.controller");
+
+const {
+  getDAThermohygroList,
+  getDAThermohygroDetail,
+  getDAThermohygroForExport,
+  checkIsApproved: checkIsApprovedDA,
+  checkApproveButton: checkApproveButtonDA,
+  getApproverIdentity: getApproverIdentityDA,
+  getFileInfo,
+  getPrintData,
+  getLabelData,
+  getDepartments,
+  checkAllowInput: checkAllowInputDA
+} = require("../../controllers/transactions/sertifikasi-DA.controller");
 
 
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
@@ -187,7 +202,44 @@ router.post("/sertifikat/generate-da", authentication, generateDASertifikat);
 // Create new sertifikat from DA
 router.post("/sertifikat/create-new", authentication, createNewSertifikat);
 
-// Re-sertifikasi - copy existing certificate
 router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
+
+// Generate PDF data for sertifikat (Command2_Click from VBA)
+router.post("/sertifikat/print-data", authentication, generateSertifikatPDF);
+
+// ============== DA THERMOHYGRO ROUTES ==============
+
+// Get DA Thermohygro list
+router.get("/da-thermohygro/list", authentication, getDAThermohygroList);
+
+// Get DA Thermohygro detail by QA_ID
+router.get("/da-thermohygro/detail", authentication, getDAThermohygroDetail);
+
+// Get DA Thermohygro data for export
+router.get("/da-thermohygro/export", authentication, getDAThermohygroForExport);
+
+// Check if DA is approved
+router.get("/da-thermohygro/is-approved", authentication, checkIsApprovedDA);
+
+// Check approve button status
+router.get("/da-thermohygro/check-approve", authentication, checkApproveButtonDA);
+
+// Get approver identity
+router.get("/da-thermohygro/approver-identity", authentication, getApproverIdentityDA);
+
+// Get file information
+router.get("/da-thermohygro/file", authentication, getFileInfo);
+
+// Get print data for DA report
+router.get("/da-thermohygro/print-data", authentication, getPrintData);
+
+// Get label data for Terkalibrasi label
+router.get("/da-thermohygro/label-data", authentication, getLabelData);
+
+// Get departments list
+router.get("/da-thermohygro/departments", authentication, getDepartments);
+
+// Check if user is allowed to input
+router.get("/da-thermohygro/allow-input", authentication, checkAllowInputDA);
 
 module.exports = router;

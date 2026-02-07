@@ -1869,6 +1869,161 @@ const resertifikasi = async (req, res, next) => {
   }
 };
 
+/**
+ * Generate Sertifikat PDF Data (Command2_Click from VBA)
+ * Route: POST /api/kalibrasi/sertifikat/generate-pdf
+ */
+const generateSertifikatPDF = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { qa_id, id_no_sertifikat } = req.body;
+
+    // Validation: Check if data is selected
+    if (!qa_id || !id_no_sertifikat) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data belum di pilih'
+      });
+    }
+
+    // Check if approved (fn_IS_approve(1) = False means not approved)
+    const checkApprovalQuery = `
+      SELECT *
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Status
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+        AND Approver_No = 1
+    `;
+
+    const approvalResult = await sequelizeMSQL.query(checkApprovalQuery, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approvalResult.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tidak bisa print sertifikat karena belum approve'
+      });
+    }
+
+    // Get main sertifikat data (Header data)
+    const headerQuery = `
+      SELECT
+        QA_ID,
+        ID_No_Sertifikat,
+        tgl,
+        Assm_nama_instrumen,
+        Assm_No_identitas_kalibrasi,
+        Assm_Merk,
+        SERIAL_NUMBER,
+        Assm_Kapasitas,
+        Assm_Lokasi,
+        Nama,
+        No_Ident_No_batch,
+        No_Sertifikat,
+        Tertelusur_melalui,
+        Rekalibrasi,
+        Tgl_kalibrasi,
+        Interval,
+        Metode_kalibrasi,
+        Suhu_Kelembaban,
+        Catatan
+      FROM T_Kalibrasi_Sertifikat_Thermohygro
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+    `;
+
+    const headerData = await sequelizeMSQL.query(headerQuery, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (headerData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Data not found'
+      });
+    }
+
+    const header = headerData[0];
+
+    // Get Suhu (Temperature) data - Loop suhu table pertama
+    const suhuQuery = `
+      SELECT Pembacaan_Alat, Pembacaan_standar, ERROR, Ketidakpastian
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Suhu
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+      ORDER BY Process_date ASC
+    `;
+
+    const suhuData = await sequelizeMSQL.query(suhuQuery, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    // Get Kelembaban (Humidity) data - Loop row selanjutnya
+    const kelembabanQuery = `
+      SELECT Pembacaan_Alat, Pembacaan_standar, ERROR, Ketidakpastian
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Kelembaban
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+      ORDER BY Process_date ASC
+    `;
+
+    const kelembabanData = await sequelizeMSQL.query(kelembabanQuery, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    // Get approval signature data - isi approve TTD
+    const approvalSignatureQuery = `
+      SELECT
+        CASE
+          WHEN USER_ID = Delegated_To THEN 'Approved By :' + dbo.fnGetNamaKaryawan(USER_ID)
+          ELSE dbo.fnGetNamaKaryawan(Delegated_To)
+        END as apprID,
+        CASE
+          WHEN USER_ID = Delegated_To THEN ''
+          ELSE 'Delegated as ' + dbo.fnGetNamaKaryawan(USER_ID)
+        END as apprDelegated,
+        CONVERT(varchar(20), Process_Date, 13) as apprDate
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Status
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+        AND Approver_No = 1
+    `;
+
+    const approvalSignature = await sequelizeMSQL.query(approvalSignatureQuery, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    // Format dates with UTC+7 offset
+    const formattedHeader = {
+      ...header,
+      tgl: header.tgl ? moment(header.tgl).utcOffset(7).format('DD-MMM-YYYY') : '',
+      Tgl_kalibrasi: header.Tgl_kalibrasi ? moment(header.Tgl_kalibrasi).utcOffset(7).format('DD-MMM-YYYY') : ''
+    };
+
+    // Return all data needed for PDF generation in JSON format
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        header: formattedHeader,
+        suhuData: suhuData,
+        kelembabanData: kelembabanData,
+        approvalSignature: approvalSignature[0] || {}
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in generateSertifikatPDF:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchSertifikat,
   getSertifikatDetail,
@@ -1890,5 +2045,6 @@ module.exports = {
   rejectSertifikat,
   generateDASertifikat,
   createNewSertifikat,
-  resertifikasi
+  resertifikasi,
+  generateSertifikatPDF
 };

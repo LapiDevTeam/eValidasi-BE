@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eValidasi Print System - Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.show {
+            display: block;
+        }
+        .job-id {
+            font-family: monospace;
+            font-weight: bold;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖨️ Silent Print Test</h1>
+        <p class="subtitle">Test your local print agent integration</p>
+
+        <form id="printForm">
+            <div class="form-group">
+                <label for="documentId">Document ID</label>
+                <input type="text" id="documentId" value="TEST-001" required>
+            </div>
+
+            <div class="form-group">
+                <label for="documentType">Document Type</label>
+                <select id="documentType" required>
+                    <option value="test">Test Document</option>
+                    <option value="certificate">Certificate</option>
+                    <option value="report">Report</option>
+                    <option value="invoice">Invoice</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="printerProfile">Printer</label>
+                <select id="printerProfile" required>
+                    <option value="default">Default Printer</option>
+                    <option value="Adobe PDF">Adobe PDF</option>
+                    <option value="Microsoft Print to PDF">Microsoft Print to PDF</option>
+                    <option value="EPSON L3250 Series">EPSON L3250 Series</option>
+                    <option value="EPSON LQ-310">EPSON LQ-310</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="copies">Number of Copies</label>
+                <input type="number" id="copies" value="1" min="1" max="10" required>
+            </div>
+
+            <button type="submit" class="btn" id="printBtn">
+                <span id="btnText">🖨️ Print Now</span>
+            </button>
+        </form>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+        let currentJobId = null;
+
+        const form = document.getElementById('printForm');
+        const printBtn = document.getElementById('printBtn');
+        const btnText = document.getElementById('btnText');
+        const statusDiv = document.getElementById('status');
+        const printerSelect = document.getElementById('printerProfile');
+
+        // Load available printers on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadPrinters();
+        });
+
+        async function loadPrinters() {
+            try {
+                const response = await fetch(`${API_URL}/v2/print-job/printer-profiles`);
+                if (!response.ok) return;
+                
+                const result = await response.json();
+                const printers = result.data?.printers || [];
+                
+                if (printers.length > 0) {
+                    // Keep default option
+                    const defaultOption = printerSelect.querySelector('option[value="default"]');
+                    
+                    // Clear other options
+                    printerSelect.innerHTML = '';
+                    printerSelect.appendChild(defaultOption);
+                    
+                    // Add detected printers
+                    printers.forEach(printer => {
+                        const option = document.createElement('option');
+                        option.value = printer;
+                        option.textContent = printer;
+                        
+                        // Mark LQ-310 printers
+                        if (printer.includes('LQ-310') || printer.includes('LQ310')) {
+                            option.textContent += ' (Dot Matrix)';
+                        }
+                        
+                        printerSelect.appendChild(option);
+                    });
+                    
+                    console.log(`✅ Loaded ${printers.length} printers`);
+                }
+            } catch (error) {
+                console.warn('Could not load printers:', error.message);
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await submitPrintJob();
+        });
+
+        async function submitPrintJob() {
+            const formData = {
+                documentId: document.getElementById('documentId').value,
+                documentType: document.getElementById('documentType').value,
+                printerProfile: document.getElementById('printerProfile').value,
+                copies: parseInt(document.getElementById('copies').value)
+            };
+
+            // Disable button and show loading
+            printBtn.disabled = true;
+            btnText.innerHTML = '<span class="spinner"></span>Creating print job...';
+            showStatus('info', 'Creating print job...');
+
+            try {
+                // Create print job
+                const response = await fetch(`${API_URL}/v2/print-job`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                currentJobId = result.data.jobId;
+
+                showStatus('success', `✅ Print job created: <span class="job-id">${currentJobId}</span>`);
+
+                // Start polling for status
+                btnText.innerHTML = '<span class="spinner"></span>Waiting for print agent...';
+                pollJobStatus(currentJobId);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('error', `❌ Error: ${error.message}`);
+                resetButton();
+            }
+        }
+
+        async function pollJobStatus(jobId) {
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds max
+
+            const interval = setInterval(async () => {
+                attempts++;
+
+                try {
+                    const response = await fetch(`${API_URL}/v2/print-job/${jobId}`);
+                    const result = await response.json();
+                    const status = result.data.status;
+
+                    if (status === 'completed') {
+                        clearInterval(interval);
+                        showStatus('success', `✅ Document printed successfully! Job: <span class="job-id">${jobId}</span>`);
+                        resetButton();
+                    } else if (status === 'failed') {
+                        clearInterval(interval);
+                        showStatus('error', `❌ Print failed: ${result.data.errorMessage || 'Unknown error'}`);
+                        resetButton();
+                    } else if (status === 'processing') {
+                        showStatus('info', `⏳ Printing... Job: <span class="job-id">${jobId}</span>`);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        showStatus('error', '❌ Timeout: Print agent not responding. Check if agent is running.');
+                        resetButton();
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    showStatus('error', `❌ Status check failed: ${error.message}`);
+                    resetButton();
+                }
+            }, 1000);
+        }
+
+        function showStatus(type, message) {
+            statusDiv.className = `status ${type} show`;
+            statusDiv.innerHTML = message;
+        }
+
+        function resetButton() {
+            printBtn.disabled = false;
+            btnText.innerHTML = '🖨️ Print Now';
+        }
+    </script>
+</body>
+</html>

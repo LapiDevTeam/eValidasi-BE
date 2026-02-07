@@ -1,0 +1,28 @@
+{
+  "name": "evaluasi-print-agent",
+  "version": "1.0.0",
+  "description": "Local Print Agent for eValidasi - Silent printing service for Windows",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "install-service": "node install-service.js",
+    "uninstall-service": "node uninstall-service.js",
+    "test": "node test-print.js"
+  },
+  "keywords": [
+    "print",
+    "windows",
+    "silent-print",
+    "local-agent"
+  ],
+  "author": "eValidasi Team",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "pdf-to-printer": "^5.6.0",
+    "node-windows": "^1.0.0-beta.8"
+  }
+}
