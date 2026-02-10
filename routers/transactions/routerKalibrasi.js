@@ -60,7 +60,9 @@ const {
   createNewSertifikat,
   resertifikasi,
   generateSertifikatPDF,
-  printLabelTerkalibrasi
+  printLabelTerkalibrasi,
+  printHeaderThermo,
+  printTerkalibrasi
 } = require("../../controllers/transactions/sertifikasi.controller");
 
 const {
@@ -206,7 +208,12 @@ router.post("/sertifikat/create-new", authentication, createNewSertifikat);
 router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
 
 // Generate PDF data for sertifikat (Command2_Click from VBA)
-router.post("/sertifikat/print-data", authentication, generateSertifikatPDF);
+router.post("/sertifikat/print-data", generateSertifikatPDF);
+
+// Generate PDF data for sertifikat (Command2_Click from VBA)
+router.get("/sertifikat/print", printHeaderThermo);
+
+router.get("/sertifikat/print-terkalibrasi", printTerkalibrasi)
 
 // Print Label Terkalibrasi (cmdLabelTerkalibrasi_Click from VBA)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
