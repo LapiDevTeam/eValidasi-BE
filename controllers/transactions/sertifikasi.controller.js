@@ -2024,6 +2024,159 @@ const generateSertifikatPDF = async (req, res, next) => {
   }
 };
 
+/**
+ * Print Label Terkalibrasi
+ * Based on VBA cmdLabelTerkalibrasi_Click -> PrintLabelTerkalibrasi_Kecil
+ * Route: POST /api/kalibrasi/sertifikat/print-label
+ */
+const printLabelTerkalibrasi = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { qa_id, id_no_sertifikat } = req.body;
+
+    // Validation - matching VBA: If txt_QA_ID.Text = "" Or txt_ID_no_sertifikat.Text = ""
+    if (!qa_id || !id_no_sertifikat) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data belum di pilih'
+      });
+    }
+
+    // Query matching VBA strTemp
+    const query = `
+      SELECT
+        QA_ID,
+        Jenis_kalibrasi,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        Tgl_kalibrasi,
+        Interval,
+        DATEADD(MONTH, Interval, Tgl_kalibrasi) as kalibrasi_selanjutnya,
+        Catatan,
+        :user_id as UserID,
+        :delegated_to as Delegated_To,
+        GETDATE() as Process_date,
+        Print_LabelDate,
+        Print_LabelUserID,
+        Print_LabelDelegatedTo
+      FROM T_Kalibrasi_Sertifikat_Thermohygro
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: {
+        qa_id,
+        id_no_sertifikat,
+        user_id,
+        delegated_to
+      },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    // Check if record exists - matching VBA: If Not recTemp.EOF Then
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Label Terkalibrasi tidak dapat di cetak! Data Sertifikat Kalibrasi belum tersedia'
+      });
+    }
+
+    const recTemp = results[0];
+    let strLabelPrintDate;
+    let strLabelParafBy;
+    let needsUpdate = false;
+
+    // Check if Print_LabelDate is NULL - matching VBA: If IsNull(recTemp!Print_LabelDate) = True
+    if (!recTemp.Print_LabelDate) {
+      // Get current datetime - matching VBA: strLabelPrintDate = Get_DateTime
+      strLabelPrintDate = getDateTime();
+      strLabelParafBy = delegated_to;
+      needsUpdate = true;
+
+      // Update query matching VBA:
+      // strTemp = "Update T_Kalibrasi_Sertifikat_Thermohygro Set Print_labeldate = '" & strLabelPrintDate & "' , Print_LabelUserID = '" & gstrUserName & "', Print_LabelDelegatedTo = '" & gstrDelegatedTo & "'"
+      const updateQuery = `
+        UPDATE T_Kalibrasi_Sertifikat_Thermohygro
+        SET Print_labeldate = :print_date,
+            Print_LabelUserID = :user_id,
+            Print_LabelDelegatedTo = :delegated_to
+        WHERE QA_ID = :qa_id
+          AND ID_No_Sertifikat = :id_no_sertifikat
+      `;
+
+      await sequelizeMSQL.query(updateQuery, {
+        replacements: {
+          print_date: strLabelPrintDate,
+          user_id,
+          delegated_to,
+          qa_id,
+          id_no_sertifikat
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+      });
+    } else {
+      // Use existing values - matching VBA:
+      // strLabelPrintDate = Format(recTemp!Print_LabelDate, "dd-MMM-yyyy hh:mm:ss")
+      // strLabelParafBy = recTemp!Print_LabelDelegatedTo
+      strLabelPrintDate = moment(recTemp.Print_LabelDate).utcOffset(7).format('DD-MMM-YYYY HH:mm:ss');
+      strLabelParafBy = recTemp.Print_LabelDelegatedTo;
+    }
+
+    // Get employee name - matching VBA: Get_EmployeeName(strLabelParafBy)
+    const employeeName = await getEmployeeName(strLabelParafBy);
+
+    // Get No ID (Assm_No_identitas_kalibrasi) from query
+    // Also need to query from the detail as VBA uses txt_no_identias_kalibrasi.Text
+    const detailQuery = `
+      SELECT Assm_No_identitas_kalibrasi
+      FROM T_Kalibrasi_Sertifikat_Thermohygro
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+    `;
+
+    const detailResults = await sequelizeMSQL.query(detailQuery, {
+      replacements: {
+        qa_id,
+        id_no_sertifikat
+      },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const noIdentitas = detailResults[0]?.Assm_No_identitas_kalibrasi || '';
+
+    // Return label data for printing
+    // Matching VBA fields used in PrintLabelTerkalibrasi_Kecil:
+    // - txt_no_identias_kalibrasi.Text (No.ID)
+    // - dtNextKalibrasi (Kalibrasi Ulang)
+    // - Get_EmployeeName(strLabelParafBy) (Paraf - Approved by)
+    // - strLabelPrintDate (Print date)
+    return res.status(200).json({
+      success: true,
+      message: needsUpdate ? 'Label data prepared and print date updated' : 'Label data prepared',
+      data: {
+        qa_id: recTemp.QA_ID,
+        id_no_sertifikat: id_no_sertifikat,
+        no_identitas: noIdentitas,
+        kalibrasi_selanjutnya: recTemp.kalibrasi_selanjutnya ? moment(recTemp.kalibrasi_selanjutnya).utcOffset(7).format('DD/MM/YY') : '',
+        approved_by: employeeName,
+        print_date: moment(strLabelPrintDate).utcOffset(7).format('DD/MM/YY HH:mm:ss'),
+        print_date_full: strLabelPrintDate,
+        paraf_by: strLabelParafBy
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in printLabelTerkalibrasi:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   searchSertifikat,
   getSertifikatDetail,
@@ -2046,5 +2199,6 @@ module.exports = {
   generateDASertifikat,
   createNewSertifikat,
   resertifikasi,
-  generateSertifikatPDF
+  generateSertifikatPDF,
+  printLabelTerkalibrasi
 };

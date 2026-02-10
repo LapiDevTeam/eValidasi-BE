@@ -59,7 +59,8 @@ const {
   generateDASertifikat,
   createNewSertifikat,
   resertifikasi,
-  generateSertifikatPDF
+  generateSertifikatPDF,
+  printLabelTerkalibrasi
 } = require("../../controllers/transactions/sertifikasi.controller");
 
 const {
@@ -206,6 +207,9 @@ router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
 
 // Generate PDF data for sertifikat (Command2_Click from VBA)
 router.post("/sertifikat/print-data", authentication, generateSertifikatPDF);
+
+// Print Label Terkalibrasi (cmdLabelTerkalibrasi_Click from VBA)
+router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
 
 // ============== DA THERMOHYGRO ROUTES ==============
 
