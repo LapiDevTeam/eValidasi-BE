@@ -96,6 +96,7 @@ const {
   approveDaAnakTimbangan,
   rejectDaAnakTimbangan,
   uploadFileDaAnakTimbangan,
+  downloadFileDaAnakTimbangan,
   deleteFileDaAnakTimbangan,
 } = require("../../controllers/transactions/sertifikasi-DA-Anak-Timbangan.controller");
 
@@ -306,7 +307,9 @@ router.post("/da-anak-timbangan/approve", authentication, approveDaAnakTimbangan
 
 router.post("/da-anak-timbangan/reject", authentication, rejectDaAnakTimbangan);
 
-router.post("/da-anak-timbangan/upload", authentication, uploadFileDaAnakTimbangan);
+router.post("/da-anak-timbangan/upload", authentication, checkFileSizePublic, uploadFileDaAnakTimbangan);
+
+router.get("/da-anak-timbangan/download", authentication, downloadFileDaAnakTimbangan);
 
 router.post("/da-anak-timbangan/delete-file", authentication, deleteFileDaAnakTimbangan);
 

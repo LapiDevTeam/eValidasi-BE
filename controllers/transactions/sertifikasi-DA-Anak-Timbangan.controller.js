@@ -1,7 +1,11 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment-timezone');
+const ExcelJS = require('exceljs');
 const { getDateTime, getEmployeeName, getApproverIdentity } = require('../../helpers/kalibrasi.helper');
+const { uploadFileToFTP, downloadFileFromFTP, deleteFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * Get DA Anak Timbangan List
@@ -126,6 +130,7 @@ const getDaAnakTimbanganForExport = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
 
+    // Query based on VBA gStrListerTag from cmdExcel_Click
     const query = `
       SELECT
         A.QA_ID,
@@ -158,15 +163,129 @@ const getDaAnakTimbanganForExport = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
 
-    return res.status(200).json({
-      success: true,
-      data: results,
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('DA Anak Timbangan');
+
+    // Get current date for filename and report header
+    const currentDate = moment().utcOffset(7).format('DD-MMM-YYYY');
+    const currentDateTime = moment().utcOffset(7).format('DD-MMM-YYYY HH:mm:ss');
+
+    // Add report header
+    worksheet.addRow(['DA Anak Timbangan Export Report']);
+    worksheet.addRow([`Exported on ${currentDateTime}`]);
+    worksheet.addRow([`Exported by ${nama_user || user_id}`]);
+    worksheet.addRow([]);
+
+    // Define column headers based on VBA query
+    const headers = [
+      'QA_ID',
+      'Jenis_Kalibrasi',
+      'Assm_nama_instrumen',
+      'Assm_No_identitas_Istrumen',
+      'Assm_No_identitas_kalibrasi',
+      'Group_Da_Dept',
+      'Assm_Kapasitas',
+      'Parameter_Kalibrasi',
+      'Assm_Lokasi',
+      'Tgl_kalibrasi',
+      'Kalibrasi_selanjutnya',
+      'Catatan',
+      'user_ID',
+      'Process_date',
+      'f_fileName'
+    ];
+
+    // Add header row with styling
+    const headerRow = worksheet.addRow(headers);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF366092' }
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 20;
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 15 },  // QA_ID
+      { width: 15 },  // Jenis_Kalibrasi
+      { width: 30 },  // Assm_nama_instrumen
+      { width: 25 },  // Assm_No_identitas_Istrumen
+      { width: 25 },  // Assm_No_identitas_kalibrasi
+      { width: 20 },  // Group_Da_Dept
+      { width: 35 },  // Assm_Kapasitas
+      { width: 20 },  // Parameter_Kalibrasi
+      { width: 20 },  // Assm_Lokasi
+      { width: 15 },  // Tgl_kalibrasi
+      { width: 15 },  // Kalibrasi_selanjutnya
+      { width: 30 },  // Catatan
+      { width: 15 },  // user_ID
+      { width: 20 },  // Process_date
+      { width: 30 }   // f_fileName
+    ];
+
+    // Add data rows
+    results.forEach((row) => {
+      const dataRow = worksheet.addRow([
+        row.QA_ID || '',
+        row.Jenis_Kalibrasi || '',
+        row.Assm_nama_instrumen || '',
+        row.Assm_No_identitas_Istrumen || '',
+        row.Assm_No_identitas_kalibrasi || '',
+        row.Group_Da_Dept || '',
+        row.Assm_Kapasitas || '',
+        row.Parameter_Kalibrasi || '',
+        row.Assm_Lokasi || '',
+        row.Tgl_kalibrasi || '',
+        row.Kalibrasi_selanjutnya || '',
+        row.Catatan || '',
+        row.user_ID || '',
+        row.Process_date || '',
+        row.f_fileName || ''
+      ]);
+
+      // Apply borders to data cells
+      dataRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
     });
+
+    // Apply borders to header row
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Generate Excel file buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Set response headers for file download
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="DA-Anak-Timbangan-${currentDate}.xlsx"`
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+    return res.send(buffer);
   } catch (error) {
     console.error('Error in getDaAnakTimbanganForExport:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching DA Anak Timbangan export data',
+      message: 'Error exporting DA Anak Timbangan to Excel',
       error: error.message,
     });
   }
@@ -991,10 +1110,15 @@ const rejectDaAnakTimbangan = async (req, res, next) => {
   }
 };
 
+/**
+ * Upload File to FTP for DA Anak Timbangan
+ * Based on VBA f_GMP1_upl_Click function
+ * Route: POST /api/kalibrasi/da-anak-timbangan/upload
+ */
 const uploadFileDaAnakTimbangan = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, file_name } = req.body;
+    const { qa_id } = req.body;
 
     // Validation: qa_id required
     if (!qa_id || qa_id === '') {
@@ -1043,11 +1167,48 @@ const uploadFileDaAnakTimbangan = async (req, res, next) => {
       });
     }
 
-    // Validation: file_name required
-    if (!file_name || file_name === '') {
+    // Validation: file uploaded
+    if (!req.file) {
       return res.status(400).json({
         success: false,
         message: 'Harap browse file yang akan di upload!',
+      });
+    }
+
+    const localFilePath = path.resolve(req.file.path);
+    const originalFileName = req.file.originalname;
+    const fileExtension = getFileExtension(originalFileName);
+
+    console.log('Upload details:', {
+      localFilePath,
+      exists: fs.existsSync(localFilePath),
+      originalFileName,
+      qa_id,
+      fileExtension
+    });
+
+    if (!fs.existsSync(localFilePath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'Uploaded file not found on server'
+      });
+    }
+
+    // Format remote filename: QA_ID.extension (matching VBA logic)
+    const remoteFileName = `${qa_id}.${fileExtension}`;
+
+    // Upload to FTP
+    const uploadResult = await uploadFileToFTP(localFilePath, remoteFileName);
+
+    // Clean up local file
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
+
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: uploadResult.message || 'Error uploading file to FTP'
       });
     }
 
@@ -1064,7 +1225,7 @@ const uploadFileDaAnakTimbangan = async (req, res, next) => {
     await sequelizeMSQL.query(updateQuery, {
       replacements: {
         qa_id,
-        file_name,
+        file_name: remoteFileName,
         user_id: user_id,
         delegated_to: delegated_to
       },
@@ -1076,11 +1237,15 @@ const uploadFileDaAnakTimbangan = async (req, res, next) => {
       message: 'Data has been upload',
       data: {
         qa_id,
-        file_name
+        file_name: remoteFileName
       }
     });
 
   } catch (error) {
+    // Clean up local file if it exists
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     console.error('Error in uploadFileDaAnakTimbangan:', error);
     return res.status(500).json({
       success: false,
@@ -1091,6 +1256,101 @@ const uploadFileDaAnakTimbangan = async (req, res, next) => {
 };
 
 
+/**
+ * Download File from FTP for DA Anak Timbangan
+ * Based on VBA f_GMP1_Dow_Click function
+ * Route: GET /api/kalibrasi/da-anak-timbangan/download
+ */
+const downloadFileDaAnakTimbangan = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { qa_id } = req.query;
+
+    // Validation: qa_id required
+    if (!qa_id || qa_id === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'DA belum di pilih',
+      });
+    }
+
+    // Get file name from database
+    const checkFileQuery = `
+      SELECT f_fileName
+      FROM T_Kalibrasi_DA_Anak_Timbangan
+      WHERE QA_ID = :qa_id
+    `;
+
+    const fileResults = await sequelizeMSQL.query(checkFileQuery, {
+      replacements: { qa_id },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (fileResults.length === 0 || !fileResults[0].f_fileName) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found',
+      });
+    }
+
+    const fileName = fileResults[0].f_fileName;
+
+    // Download file from FTP
+    // Create temporary path for download
+    const tempDir = path.join(__dirname, '../../tmp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const localFilePath = path.join(tempDir, fileName);
+
+    // Download from FTP
+    const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
+
+    if (!downloadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: downloadResult.message || 'Error downloading file from FTP'
+      });
+    }
+
+    // Send file to client
+    res.download(localFilePath, fileName, (err) => {
+      // Clean up temporary file after sending
+      if (fs.existsSync(localFilePath)) {
+        try {
+          fs.unlinkSync(localFilePath);
+        } catch (unlinkErr) {
+          console.error('Error deleting temp file:', unlinkErr);
+        }
+      }
+
+      if (err) {
+        console.error('Error sending file:', err);
+        if (!res.headersSent) {
+          return res.status(500).json({
+            success: false,
+            message: 'Error sending file'
+          });
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in downloadFileDaAnakTimbangan:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error downloading file',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete File from FTP for DA Anak Timbangan
+ * Based on VBA f_GMP1_del_Click function
+ * Route: POST /api/kalibrasi/da-anak-timbangan/delete-file
+ */
 const deleteFileDaAnakTimbangan = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
@@ -1123,6 +1383,8 @@ const deleteFileDaAnakTimbangan = async (req, res, next) => {
       });
     }
 
+    const fileName = fileResults[0].f_fileName;
+
     // Check if already approved - cannot delete if approved
     const checkApprovedQuery = `
       SELECT *
@@ -1142,6 +1404,14 @@ const deleteFileDaAnakTimbangan = async (req, res, next) => {
         message: 'Tidak bisa hapus file, karena data sudah approve!',
       });
     }
+
+    // Note: VBA doesn't delete from FTP, only removes database reference
+    // Following the VBA implementation - just update database
+    // If you want to delete from FTP, uncomment below:
+    // const deleteResult = await deleteFileFromFTP(fileName);
+    // if (!deleteResult.success) {
+    //   console.warn('FTP delete warning:', deleteResult.message);
+    // }
 
     // Update record to remove file - exact match to VBA
     const updateQuery = `
@@ -1197,5 +1467,6 @@ module.exports = {
   approveDaAnakTimbangan,
   rejectDaAnakTimbangan,
   uploadFileDaAnakTimbangan,
+  downloadFileDaAnakTimbangan,
   deleteFileDaAnakTimbangan,
 };
