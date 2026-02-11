@@ -79,6 +79,26 @@ const {
   checkAllowInput: checkAllowInputDA
 } = require("../../controllers/transactions/sertifikasi-DA.controller");
 
+const {
+  getDaAnakTimbanganList,
+  getDaAnakTimbanganDetail,
+  getDaAnakTimbanganForExport,
+  getDepartments: getDepartmentsAnakTimbangan,
+  checkIsApproved: checkIsApprovedAnakTimbangan,
+  checkApproveButton: checkApproveButtonAnakTimbangan,
+  getApprIdentity: getApprIdentityAnakTimbangan,
+  getFileName,
+  getNextCalibrationDate,
+  checkAllowInput: checkAllowInputAnakTimbangan,
+  getPrintData: getPrintDataAnakTimbangan,
+  getLabelData: getLabelDataAnakTimbangan,
+  saveDaAnakTimbangan,
+  approveDaAnakTimbangan,
+  rejectDaAnakTimbangan,
+  uploadFileDaAnakTimbangan,
+  deleteFileDaAnakTimbangan,
+} = require("../../controllers/transactions/sertifikasi-DA-Anak-Timbangan.controller");
+
 
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
 
@@ -252,5 +272,42 @@ router.get("/da-thermohygro/departments", authentication, getDepartments);
 
 // Check if user is allowed to input
 router.get("/da-thermohygro/allow-input", authentication, checkAllowInputDA);
+
+// ============== DA ANAK TIMBANGAN ROUTES ==============
+
+router.get("/da-anak-timbangan/list", authentication, getDaAnakTimbanganList);
+
+router.get("/da-anak-timbangan/detail", authentication, getDaAnakTimbanganDetail);
+
+router.get("/da-anak-timbangan/export", authentication, getDaAnakTimbanganForExport);
+
+router.get("/da-anak-timbangan/departments", authentication, getDepartmentsAnakTimbangan);
+
+router.get("/da-anak-timbangan/is-approved", authentication, checkIsApprovedAnakTimbangan);
+
+router.get("/da-anak-timbangan/check-approve-button", authentication, checkApproveButtonAnakTimbangan);
+
+router.get("/da-anak-timbangan/approver-identity", authentication, getApprIdentityAnakTimbangan);
+
+router.get("/da-anak-timbangan/file-name", authentication, getFileName);
+
+router.get("/da-anak-timbangan/next-calibration", authentication, getNextCalibrationDate);
+
+router.get("/da-anak-timbangan/allow-input", authentication, checkAllowInputAnakTimbangan);
+
+router.get("/da-anak-timbangan/print-data", authentication, getPrintDataAnakTimbangan);
+
+router.get("/da-anak-timbangan/label-data", authentication, getLabelDataAnakTimbangan);
+
+// POST routes for DA Anak Timbangan
+router.post("/da-anak-timbangan/save", authentication, saveDaAnakTimbangan);
+
+router.post("/da-anak-timbangan/approve", authentication, approveDaAnakTimbangan);
+
+router.post("/da-anak-timbangan/reject", authentication, rejectDaAnakTimbangan);
+
+router.post("/da-anak-timbangan/upload", authentication, uploadFileDaAnakTimbangan);
+
+router.post("/da-anak-timbangan/delete-file", authentication, deleteFileDaAnakTimbangan);
 
 module.exports = router;
