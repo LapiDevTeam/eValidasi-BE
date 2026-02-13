@@ -2328,7 +2328,7 @@ border-left: 0; border-right:0;
 }
 
  const  printTerkalibrasi = async (req, res, next) => {
-  const { link, noDoc, tanggal, revisi, judul, landscape = "", } = req.query;
+  const { link, noDoc, tanggal, revisi, judul} = req.query;
 
   let browser;
   try {
@@ -2337,109 +2337,62 @@ border-left: 0; border-right:0;
 
     const logoBase64 = getBase64Image(logoPath);
 
-    // await page.setExtraHTTPHeaders({
-    //   'authentication': token
-    // });
+    // Navigate to the page and wait for it to load
+    await page.goto(link, {
+      waitUntil: 'networkidle0',
+      timeout: 30000 // 30 second timeout
+    });
 
-    await page.goto(link, { waitUntil: 'networkidle0' });
+    // Wait for content to be loaded using a promise-based timeout
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     await page.addStyleTag({
       content: `
         * {
-          font-size: ${!landscape ? `10px` : `13px`} !important;
- font-family: Verdana, sans-serif;        }
+          font-size: 7px !important;
+          font-family: Verdana, sans-serif;
+        }
 
-        table {
-          margin-top: ${!landscape ? `10px` : `13px`} !important; /* Ensures margin applies to all tables */
+        .print-component {
+          margin-top: 7px !important;
+        }
+
+        table table {
+          margin-top: 0 !important;
         }
       `,
     });
     let headerLandscape = `
-<table
-  style="
-    width: ${!landscape ? '90%' : '97.2%'};
-    margin: 0 auto;
-    font-size: 11px;
-    border-left: 2px solid black;
-    border-right: 2px solid black;
-    border-bottom: 4px double black;
-    border-top: 0; border-left: 0; border-right:0;
-
-
-    border-collapse: collapse;
-    font-family: Verdana, sans-serif;
-  "
->
+<table style="width: ${'95%'}; margin: 0 auto; font-size: !7px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tbody>
     <tr>
-      <td
-        style="
-          border: 1px solid black;
-          border-top: 0;
-border-left: 0; border-right:0;
-          width: 20%;
-          height: 70px;
-          text-align: center;
-        "
-        rowspan="2"
-      >
-        <img
-          src="${logoBase64}"
-          alt="lapilogo"
-          width="80%"
-          height="90%"
-          style="object-fit: contain;"
-        />
+      <td style="border: 1px solid black; width: 30%; height: 40px; text-align: center;" rowspan="2">
+        <img src="${logoBase64}" alt="lapilogo" width="90%" height="90%" style="object-fit: contain;"/>
       </td>
-
-      <td
-        style="
-          border: 1px solid black;
-          border-top: 0;
-border-left: 0; border-right:0;
-        "
-      >
-        <div
-          style="
-            font-size: 11px;
-            padding-top: 0.1rem;
-            padding-bottom: 0.1rem;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          "
-        >
-          <h3
-            style="
-              font-weight: bold;
-              line-height: 1.1;
-              margin: 0;
-              font-size: 16px;
-            "
-          >
-            <span>${judul || "SERTIFIKAT KALIBRASI"}</span>
+      <td style="border: 1px solid #6b7280;">
+        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 8px;">
+            <span>${judul || "TERKALIBRASI"}</span>
           </h3>
         </div>
       </td>
     </tr>
   </tbody>
 </table>
-
       `;
 
       let footerLandscape =
       `
-        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <table style="width: ${'95%'}; margin: 0 auto; font-size: 7px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
   <tr>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Nomor</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${noDoc}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Tanggal</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${tanggal}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Revisi</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${revisi}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Halaman</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Nomor</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${noDoc}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Tanggal</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${tanggal}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Revisi</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${revisi}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Halaman</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">
       <span class="pageNumber"></span> dari <span class="totalPages"></span>
     </td>
   </tr>
@@ -2448,28 +2401,21 @@ border-left: 0; border-right:0;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      // Use explicit width/height to match VB label dimensions (3" x 1.4")
-      width: '3in',
-      height: '1.4in',
-      printBackground: true,
-      // No header/footer for label printing
+      height: '7cm',
+      width: '9cm',
       displayHeaderFooter: false,
-      // Remove margins so layout matches label area; adjust if needed
-      margin: { top: '0in', bottom: '0in', left: '0in', right: '0in' },
-      // Ensure default portrait orientation for label (width > height controls layout)
-      landscape: false,
+      printBackground: true,
+      footerTemplate: footerLandscape,
+      headerTemplate: headerLandscape,
+      margin: { bottom: '0px', top: '90px', left: '20px', right: '20px' },
     });
 
     await browser.close();
-
-    // Set Content-Type header so browser displays as PDF
-    res.setHeader('Content-Type', 'application/pdf');
     res.end(pdfBuffer);
   } catch (error) {
-    console.error('Error during printCatatanTrial:', error);
+    console.error('Error during printBphp:', error);
     if (browser) await browser.close();
     res.status(500).send({ error: 'An error occurred during PDF generation.' });
-    next(error);
   }
 }
 
