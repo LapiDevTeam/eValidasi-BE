@@ -76,7 +76,13 @@ const {
   getPrintData,
   getLabelData,
   getDepartments,
-  checkAllowInput: checkAllowInputDA
+  checkAllowInput: checkAllowInputDA,
+  saveDAThermohygro,
+  approveDAThermohygro,
+  rejectDAThermohygro,
+  uploadFileDAThermohygro,
+  downloadFileDAThermohygro,
+  deleteFileDAThermohygro
 } = require("../../controllers/transactions/sertifikasi-DA.controller");
 
 const {
@@ -273,6 +279,15 @@ router.get("/da-thermohygro/departments", authentication, getDepartments);
 
 // Check if user is allowed to input
 router.get("/da-thermohygro/allow-input", authentication, checkAllowInputDA);
+
+// ============== DA THERMOHYGRO POST OPERATIONS ==============
+
+router.post("/da-thermohygro/save", authentication, saveDAThermohygro);
+router.post("/da-thermohygro/approve", authentication, approveDAThermohygro);
+router.post("/da-thermohygro/reject", authentication, rejectDAThermohygro);
+router.post("/da-thermohygro/upload", authentication, checkFileSizePublic, uploadFileDAThermohygro);
+router.get("/da-thermohygro/download", authentication, downloadFileDAThermohygro);
+router.post("/da-thermohygro/delete-file", authentication, deleteFileDAThermohygro);
 
 // ============== DA ANAK TIMBANGAN ROUTES ==============
 

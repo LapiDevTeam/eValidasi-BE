@@ -4,19 +4,19 @@ const moment = require('moment');
 const crypto = require('crypto');
 
 /**
- * Get current date in format YYYY-MM-DD
+ * Get current date in format YYYY-MM-DD (UTC+7)
  * VBA equivalent: Get_Date()
  */
 const getDate = () => {
-  return moment().format('YYYY-MM-DD');
+  return moment().utcOffset(7).format('YYYY-MM-DD');
 };
 
 /**
- * Get current date and time in format YYYY-MM-DD HH:mm:ss
+ * Get current date and time in format YYYY-MM-DD HH:mm:ss (UTC+7)
  * VBA equivalent: Get_DateTime()
  */
 const getDateTime = () => {
-  return moment().format('YYYY-MM-DD HH:mm:ss');
+  return moment().utcOffset(7).format('YYYY-MM-DD HH:mm:ss');
 };
 
 /**
