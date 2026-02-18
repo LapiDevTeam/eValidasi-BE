@@ -141,6 +141,147 @@ const getAutoKelembabanID = async (qaId, idNoSertifikat) => {
   }
 };
 
+/**
+ * Get Auto Sequence ID for Pre-Adjustment data (Timbangan)
+ * VBA equivalent: fnGetAuto_Pre_Adj
+ */
+const getAutoPreAdjID = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT ISNULL(MAX(Seq_ID), 0) + 1 as autoNumSuhu
+      FROM T_Kalibrasi_Sertifikat_Timbangan_Pre_Adj
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNumSuhu || 1;
+  } catch (error) {
+    console.error('Error in getAutoPreAdjID:', error);
+    return 1;
+  }
+};
+
+/**
+ * Get Auto Sequence ID for Pusat Pan data (Timbangan)
+ * VBA equivalent: fnGetAuto_Pusat_Pan
+ */
+const getAutoPusatPanID = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT ISNULL(MAX(Seq_ID), 0) + 1 as autoNumSuhu
+      FROM T_Kalibrasi_Sertifikat_Timbangan_Pusat_Pan
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNumSuhu || 1;
+  } catch (error) {
+    console.error('Error in getAutoPusatPanID:', error);
+    return 1;
+  }
+};
+
+/**
+ * Get Auto Sequence ID for Daya Ulang data (Timbangan)
+ * VBA equivalent: fnGetAuto_KelembabanID from Timbangan
+ */
+const getAutoDayaUlangID = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT ISNULL(MAX(Seq_ID), 0) + 1 as autoNumSuhu
+      FROM T_Kalibrasi_Sertifikat_Timbangan_Daya_Ulang
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNumSuhu || 1;
+  } catch (error) {
+    console.error('Error in getAutoDayaUlangID:', error);
+    return 1;
+  }
+};
+
+/**
+ * Get Auto Sequence ID for Massa Standard data (Timbangan)
+ * VBA equivalent: fnGetAuto_Massa_standar
+ */
+const getAutoMassaStandardID = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT ISNULL(MAX(Seq_ID), 0) + 1 as autoNumSuhu
+      FROM T_Kalibrasi_Sertifikat_Timbangan_Massa_Std
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNumSuhu || 1;
+  } catch (error) {
+    console.error('Error in getAutoMassaStandardID:', error);
+    return 1;
+  }
+};
+
+/**
+ * Check if Tgl Kalibrasi has been input (Timbangan)
+ * VBA equivalent: fnIsInputTglKalibrasi
+ */
+const isInputTglKalibrasiTimbangan = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT Tgl_kalibrasi
+      FROM T_Kalibrasi_Sertifikat_Timbangan
+      WHERE QA_id = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const tglKalibrasi = result[0]?.Tgl_kalibrasi;
+    return tglKalibrasi !== null && tglKalibrasi !== undefined && tglKalibrasi !== '';
+  } catch (error) {
+    console.error('Error in isInputTglKalibrasiTimbangan:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if user is allowed to input (Timbangan)
+ * VBA equivalent: fnIsAllowInput
+ */
+const isAllowInputTimbangan = async (userId) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as jumRow
+      FROM m_approver_lines
+      WHERE isActive = 1
+        AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+        AND Appr_ID = :userId
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { userId },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return parseInt(result[0]?.jumRow || 0);
+  } catch (error) {
+    console.error('Error in isAllowInputTimbangan:', error);
+    return 0;
+  }
+};
+
 module.exports = {
   getDate,
   getDateTime,
@@ -149,5 +290,11 @@ module.exports = {
   formatDateForSQL,
   getApproverIdentity,
   getAutoSuhuID,
-  getAutoKelembabanID
+  getAutoKelembabanID,
+  getAutoPreAdjID,
+  getAutoPusatPanID,
+  getAutoDayaUlangID,
+  getAutoMassaStandardID,
+  isInputTglKalibrasiTimbangan,
+  isAllowInputTimbangan
 };
