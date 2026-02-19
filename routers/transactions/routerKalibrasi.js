@@ -62,7 +62,8 @@ const {
   generateSertifikatPDF,
   printLabelTerkalibrasi,
   printHeaderThermo,
-  printTerkalibrasi
+  printTerkalibrasi,
+  printDAThermo
 } = require("../../controllers/transactions/sertifikasi.controller");
 
 const {
@@ -183,6 +184,7 @@ router.post("/sertifikat/print-data", generateSertifikatPDF);
 router.get("/sertifikat/print", printHeaderThermo);
 router.get("/sertifikat/print-terkalibrasi", printTerkalibrasi)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
+router.get("/sertifikat/print-da-thermo", printDAThermo);
 
 // ============== SERTIFIKAT TIMBANGAN ROUTES ==============
 
