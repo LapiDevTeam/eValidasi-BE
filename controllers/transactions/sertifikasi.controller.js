@@ -2419,6 +2419,109 @@ border-left: 0; border-right:0;
   }
 }
 
+const printDAThermo = async (req, res) => {
+  const { link, type, kode = '-', revisi = '', judul = '', landscape = 0 } = req.query;
+
+  let browser;
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+    });
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    // await page.setExtraHTTPHeaders({
+    //   'authentication': token
+    // });
+
+    await page.goto(link, { waitUntil: 'networkidle0' });
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: 11px !important;
+          font-family: Verdana, sans-serif;
+        }
+
+        table {
+          margin-top: 11px !important; /* Ensures margin applies to all tables */
+        }
+      `,
+    });
+       let headerTemplateNew = `
+  <table style="width: ${landscape ? '90%' : '93%'}; margin: 0 auto; font-size: 12px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+ <tr>
+          <td style="border: 1px solid black; width: 140px; height: 96px; text-align: center;" rowspan="2">
+            <img src="${logoBase64}" alt="lapilogo" width="100">
+          </td>
+
+          <td style="border: 1px solid black; text-align: start; font-weight: bold; height: 12px; padding-left: 10px; width : 56%">
+            DAFTAR
+          </td>
+
+          <td style="width: 220px; height: 96px; border: 1px solid black; vertical-align: top;" rowspan="2">
+            <div style="width: 100%; font-size: 12px; display: flex; flex-direction: column;">
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 35%; padding: 5px; padding-bottom: 8px; border-right: 1px solid black;">
+                  <span>Nomor</span>
+
+                </div>
+                <div style="width: 50%; padding: 5px;">${kode}
+                </div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 35%; padding: 5px; border-right: 1px solid black;">
+                  <span>Tanggal</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">
+      <div style="height: 12px;"></div>
+      </div>
+              </div>
+              <div style="display: flex; flex: 1; border-bottom: 1px solid black;">
+                <div style="width: 35%; padding: 5px; border-right: 1px solid black;">
+                  <span>Revisi</span>
+                </div>
+                <div style="width: 50%; padding: 5px;">${revisi}</div>
+              </div>
+              <div style="display: flex; flex: 1;">
+                <div style="width: 35%; padding: 5px; border-right: 1px solid black;">
+                  <span>Halaman</span>
+                </div>
+                <div style="width: 50%; padding: 5px;"><span class="pageNumber"></span> dari <span class="totalPages"></span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="border: 1px solid black; height: 45px; text-align: center; font-weight: bold;">
+            ${judul}
+          </td>
+        </tr>      </table>
+      `;
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: ` `,
+      headerTemplate: headerTemplateNew,
+      margin: { bottom: '60px', top: '140px', left: '40px', right: '40px' },
+      landscape: landscape ? false : true,
+    });
+
+    await browser.close();
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printCatatanTrial:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+
 module.exports = {
   searchSertifikat,
   getSertifikatDetail,
@@ -2444,5 +2547,6 @@ module.exports = {
   generateSertifikatPDF,
   printLabelTerkalibrasi,
   printHeaderThermo,
-  printTerkalibrasi
+  printTerkalibrasi,
+  printDAThermo
 };
