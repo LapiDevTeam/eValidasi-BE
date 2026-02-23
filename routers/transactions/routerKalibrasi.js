@@ -74,7 +74,34 @@ const {
   getPenyimpanganData,
   getPusatPanData,
   searchResertifikasiTimbangan,
-  searchDATimbangan
+  searchDATimbangan,
+  // check/helper GETs
+  checkIsApprovedTimbangan,
+  checkTglKalibrasiTimbangan,
+  checkAllowInputTimbangan,
+  getApproverIdentityTimbangan,
+  checkApproveButtonTimbangan,
+  getPrintDataTimbangan,
+  // POST save
+  saveSertifikatTimbanganHeader,
+  savePreAdjData,
+  saveDayaUlangData,
+  saveMassaStdData,
+  savePusatPanData,
+  // DELETE
+  deletePreAdjData,
+  deleteDayaUlangData,
+  deleteMassaStdData,
+  deletePusatPanData,
+  // approve / reject
+  approveSertifikatTimbangan,
+  rejectSertifikatTimbangan,
+  // generate DA / create new / resertifikasi
+  generateDASertifikatTimbangan,
+  createNewSertifikatTimbangan,
+  resertifikasiTimbangan,
+  // print label
+  printLabelTerkalibrasiTimbangan,
 } = require("../../controllers/transactions/sertifikasi-Timbangan.controller");
 
 const {
@@ -196,6 +223,31 @@ router.get("/sertifikat-timbangan/penyimpangan", authentication, getPenyimpangan
 router.get("/sertifikat-timbangan/pusat-pan", authentication, getPusatPanData);
 router.get("/sertifikat-timbangan/search-resertifikasi", authentication, searchResertifikasiTimbangan);
 router.get("/sertifikat-timbangan/search-da", authentication, searchDATimbangan);
+
+// ============== SERTIFIKAT TIMBANGAN GET HELPERS ==============
+router.get("/sertifikat-timbangan/is-approved", authentication, checkIsApprovedTimbangan);
+router.get("/sertifikat-timbangan/check-tgl-kalibrasi", authentication, checkTglKalibrasiTimbangan);
+router.get("/sertifikat-timbangan/check-allow-input", authentication, checkAllowInputTimbangan);
+router.get("/sertifikat-timbangan/approver-identity", authentication, getApproverIdentityTimbangan);
+router.get("/sertifikat-timbangan/check-approve-button", authentication, checkApproveButtonTimbangan);
+router.get("/sertifikat-timbangan/print-data", authentication, getPrintDataTimbangan);
+
+// ============== SERTIFIKAT TIMBANGAN POST OPERATIONS ==============
+router.post("/sertifikat-timbangan/save", authentication, saveSertifikatTimbanganHeader);
+router.post("/sertifikat-timbangan/pre-adj/save", authentication, savePreAdjData);
+router.post("/sertifikat-timbangan/daya-ulang/save", authentication, saveDayaUlangData);
+router.post("/sertifikat-timbangan/massa-std/save", authentication, saveMassaStdData);
+router.post("/sertifikat-timbangan/pusat-pan/save", authentication, savePusatPanData);
+router.delete("/sertifikat-timbangan/pre-adj/delete", authentication, deletePreAdjData);
+router.delete("/sertifikat-timbangan/daya-ulang/delete", authentication, deleteDayaUlangData);
+router.delete("/sertifikat-timbangan/massa-std/delete", authentication, deleteMassaStdData);
+router.delete("/sertifikat-timbangan/pusat-pan/delete", authentication, deletePusatPanData);
+router.post("/sertifikat-timbangan/approve", authentication, approveSertifikatTimbangan);
+router.post("/sertifikat-timbangan/reject", authentication, rejectSertifikatTimbangan);
+router.post("/sertifikat-timbangan/generate-da", authentication, generateDASertifikatTimbangan);
+router.post("/sertifikat-timbangan/create-new", authentication, createNewSertifikatTimbangan);
+router.post("/sertifikat-timbangan/resertifikasi", authentication, resertifikasiTimbangan);
+router.post("/sertifikat-timbangan/print-label", authentication, printLabelTerkalibrasiTimbangan);
 
 // ============== DA THERMOHYGRO ROUTES ==============
 
