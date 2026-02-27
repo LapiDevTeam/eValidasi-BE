@@ -2185,7 +2185,7 @@ function getBase64Image(filePath) {
 }
 
  const  printHeaderThermo = async (req, res, next) => {
-  const { link, noDoc, tanggal, revisi, judul, landscape = "", } = req.query;
+  const { link, noDoc, tanggal, revisi, judul, landscape = "", font = false } = req.query;
 
   let browser;
   try {
@@ -2272,7 +2272,8 @@ border-left: 0; border-right:0;
               font-weight: bold;
               line-height: 1.1;
               margin: 0;
-              font-size: 16px;
+              font-size: 32px;
+              font-family: ${font ? 'Imprint MT Shadow' : 'Verdana, sans-serif'};
             "
           >
             <span>${judul || "SERTIFIKAT KALIBRASI"}</span>
@@ -2310,7 +2311,7 @@ border-left: 0; border-right:0;
       printBackground: true,
       footerTemplate: footerLandscape,
       headerTemplate:headerLandscape,
-      margin: { bottom: '60px', top: '260px', left: '18px', right: '17px' },
+      margin: { bottom: '60px', top: '0px', left: '18px', right: '17px' },
       landscape: !landscape ? false : true,
     });
 
