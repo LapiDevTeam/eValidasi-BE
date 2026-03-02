@@ -782,38 +782,30 @@ const rejectPermohonanAssesment = async (req, res, next) => {
 
     const vAppr_ident = approverResults.length > 0 ? approverResults[0].Appr_Identity : '';
 
-    // Insert rejection record
-    const insertQuery = `
-      INSERT INTO t_Kalibrasi_Status(
-        No_Permohonan,
-        Approver_No,
-        isReject,
-        Approver_Identity,
-        Process_Date,
-        User_ID,
-        Delegated_To,
-        flag_update
-      )
-      VALUES(
-        :no_permohonan,
-        2,
-        1,
-        :approver_identity,
-        GETDATE(),
-        :user_id,
-        :delegated_to,
-        NULL
-      )
+    // Step 1: UPDATE all status records with reject flag (mirrors VB UPDATE before DELETE)
+    const updateQuery = `
+      UPDATE t_Kalibrasi_Status
+      SET Process_Date = GETDATE(),
+          User_ID      = :user_id,
+          Delegated_To = :delegated_to,
+          flag_update  = 'Update for reject'
+      WHERE No_Permohonan = :no_permohonan
     `;
 
-    await sequelizeMSQL.query(insertQuery, {
-      replacements: {
-        no_permohonan,
-        approver_identity: vAppr_ident,
-        user_id,
-        delegated_to
-      },
-      type: Sequelize.QueryTypes.INSERT,
+    await sequelizeMSQL.query(updateQuery, {
+      replacements: { no_permohonan, user_id, delegated_to },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+
+    // Step 2: DELETE ALL status records — full reset so re-approval starts from Level 1
+    const deleteQuery = `
+      DELETE FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(deleteQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.DELETE,
     });
 
     return res.status(200).json({
@@ -821,8 +813,6 @@ const rejectPermohonanAssesment = async (req, res, next) => {
       message: 'Data has been rejected successfully',
       data: {
         no_permohonan,
-        approver_no: 2,
-        is_reject: true,
         user_id,
         delegated_to
       }
