@@ -4,6 +4,7 @@ const router = express.Router();
 const routerUpload = require("../routers/v2/routerUpload");
 const routerPrintJob = require("../routers/v2/routerPrintJob");
 const routerKalibrasi = require("../routers/transactions/routerKalibrasi");
+const routerDaTimbangaMassa = require("../routers/transactions/Da-Timbangan-Massa.router");
 const { authentication } = require("../middlewares/authentication");
 
 
@@ -28,5 +29,6 @@ router.get("/", (req, res) => {
 router.use("/v2", routerUpload);
 router.use("/v2", routerPrintJob);
 router.use("/transactions/kalibrasi", routerKalibrasi);
+router.use("/transactions/da-timbangan-massa", routerDaTimbangaMassa);
 
 module.exports = router;
