@@ -5,6 +5,7 @@ const routerUpload = require("../routers/v2/routerUpload");
 const routerPrintJob = require("../routers/v2/routerPrintJob");
 const routerKalibrasi = require("../routers/transactions/routerKalibrasi");
 const routerDaTimbangaMassa = require("../routers/transactions/Da-Timbangan-Massa.router");
+const routerSertifikasiKalibrasiBAGIAN = require("../routers/transactions/sertifikasi-Kalibrasi-Bagian.router");
 const { authentication } = require("../middlewares/authentication");
 
 
@@ -30,5 +31,6 @@ router.use("/v2", routerUpload);
 router.use("/v2", routerPrintJob);
 router.use("/transactions/kalibrasi", routerKalibrasi);
 router.use("/transactions/da-timbangan-massa", routerDaTimbangaMassa);
+router.use("/transactions/kalibrasi/sertifikat-bagian", routerSertifikasiKalibrasiBAGIAN);
 
 module.exports = router;

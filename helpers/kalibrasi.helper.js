@@ -282,6 +282,78 @@ const isAllowInputTimbangan = async (userId) => {
   }
 };
 
+/**
+ * Check if user is allowed to input (generic / Bagian)
+ * VBA equivalent: fnIsAllowInput from frm_Kal_Ser_Bagian.vba
+ */
+const isAllowInputBagian = async (userId) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as jumRow
+      FROM m_approver_lines
+      WHERE isActive = 1
+        AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+        AND Appr_ID = :userId
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { userId },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return parseInt(result[0]?.jumRow || 0);
+  } catch (error) {
+    console.error('Error in isAllowInputBagian:', error);
+    return 0;
+  }
+};
+
+/**
+ * Get Auto Sequence ID for Hasil Kalibrasi Bagian data
+ * VBA equivalent: fnGetAuto_SuhuID from frm_Kal_Ser_Bagian.vba
+ */
+const getAutoHasilKalBagianID = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT ISNULL(MAX(Seq_ID), 0) + 1 as autoNumSuhu
+      FROM T_Kalibrasi_Sertifikat_Bagian_Hasil_Kal
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNumSuhu || 1;
+  } catch (error) {
+    console.error('Error in getAutoHasilKalBagianID:', error);
+    return 1;
+  }
+};
+
+/**
+ * Check if Tgl Kalibrasi has been input (Bagian)
+ * VBA equivalent: fnIsInputTglKalibrasi from frm_Kal_Ser_Bagian.vba
+ */
+const isInputTglKalibrasiBAGIAN = async (qaId, idNoSertifikat) => {
+  try {
+    const query = `
+      SELECT Tgl_kalibrasi
+      FROM T_Kalibrasi_Sertifikat_Bagian
+      WHERE QA_id = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const tglKalibrasi = result[0]?.Tgl_kalibrasi;
+    return tglKalibrasi !== null && tglKalibrasi !== undefined && tglKalibrasi !== '';
+  } catch (error) {
+    console.error('Error in isInputTglKalibrasiBAGIAN:', error);
+    return false;
+  }
+};
+
 module.exports = {
   getDate,
   getDateTime,
@@ -296,5 +368,8 @@ module.exports = {
   getAutoDayaUlangID,
   getAutoMassaStandardID,
   isInputTglKalibrasiTimbangan,
-  isAllowInputTimbangan
+  isAllowInputTimbangan,
+  isAllowInputBagian,
+  getAutoHasilKalBagianID,
+  isInputTglKalibrasiBAGIAN,
 };
