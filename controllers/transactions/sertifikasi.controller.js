@@ -2402,12 +2402,12 @@ border-left: 0; border-right:0;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      height: '7cm',
-      width: '9cm',
+      height: '1.5in',
+      width: '3.1in',
       displayHeaderFooter: false,
       printBackground: true,
-      footerTemplate: footerLandscape,
-      headerTemplate: headerLandscape,
+      footerTemplate: "<div></div>",
+      headerTemplate: "<div></div>",
       margin: { bottom: '0px', top: '90px', left: '20px', right: '20px' },
     });
 

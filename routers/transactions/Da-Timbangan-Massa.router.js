@@ -37,13 +37,13 @@ router.get('/detail', authentication, getDaTimbangaDetail);
 router.get('/export', authentication, getDaTimbangaForExport);
 
 // Print data - DA Kalibrasi document (generate_DA_Thermo)
-router.get('/print-data-da', authentication, getPrintDataDA);
+router.get('/print-data-da', getPrintDataDA);
 
 // Print data - DA Verifikasi document (generate_DA_Verifikasi)
-router.get('/print-data-da-verifikasi', authentication, getPrintDataDAVerifikasi);
+router.get('/print-data-da-verifikasi', getPrintDataDAVerifikasi);
 
 // Label terkalibrasi data (PrintLabelTerkalibrasi_Besar / PrintLabelTerkalibrasi_Kecil)
-router.get('/label-data', authentication, getLabelData);
+router.get('/label-data', getLabelData);
 
 // Get file name for a record (sbTampil_FIle_name)
 router.get('/file-name', authentication, getFileName);
