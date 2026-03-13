@@ -2,10 +2,45 @@ const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment-timezone');
 const ExcelJS = require('exceljs');
-const { getDateTime, getEmployeeName, getApproverIdentity } = require('../../helpers/kalibrasi.helper');
+const { getEmployeeName } = require('../../helpers/kalibrasi.helper');
 const { uploadFileToFTP, downloadFileFromFTP, deleteFileFromFTP, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
+
+const hasAllowInputPermission = async (user_id) => {
+  const query = `
+    SELECT COUNT(*) AS jumRow
+    FROM m_approver_lines
+    WHERE isActive = 1
+      AND Appr_ApplicationCode IN ('KAL_Allow_Input')
+      AND Appr_ID = :user_id
+  `;
+
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { user_id },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return Number(results[0].jumRow) > 0;
+};
+
+const isDaBagianApproverLevel1 = async (user_id) => {
+  const query = `
+    SELECT COUNT(*) AS jumRow
+    FROM m_approver_lines
+    WHERE isactive = 1
+      AND Appr_ApplicationCode = 'KAL_DA_Bagian'
+      AND Appr_No = 1
+      AND Appr_ID = :user_id
+  `;
+
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { user_id },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return Number(results[0].jumRow) > 0;
+};
 
 /**
  * Get DA Bagian List
@@ -389,9 +424,50 @@ const getLabelData = async (req, res, next) => {
       });
     }
 
+    const data = results[0];
+
+    // VBA parity: label only allowed for External OR Internal with parameter sertifikasi starting with "LAIN".
+    const jenisKalibrasi = String(data.Jenis_Kalibrasi || '').toUpperCase();
+    const parameterSertifikasi = String(data.Parameter_Sertifikasi || '').toUpperCase();
+    const isExternal = jenisKalibrasi === 'EXTERNAL';
+    const isLainLain = parameterSertifikasi.startsWith('LAIN');
+
+    if (!isExternal && !isLainLain) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tombol ini khusus Label terkalibrasi External dan Internal dengan parameter sertifikasi lain-lain !',
+      });
+    }
+
+    // VBA parity: stamp print metadata once when first print happens.
+    if (!data.Print_LabelDate) {
+      const printDate = moment().tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss');
+      const updateQuery = `
+        UPDATE T_Kalibrasi_DA_Bagian
+        SET Print_labeldate = :printDate,
+            Print_LabelUserID = :user_id,
+            Print_LabelDelegatedTo = :delegated_to
+        WHERE QA_ID = :qa_id
+      `;
+
+      await sequelizeMSQL.query(updateQuery, {
+        replacements: { printDate, user_id, delegated_to, qa_id },
+        type: Sequelize.QueryTypes.UPDATE,
+      });
+
+      data.Print_LabelDate = printDate;
+      data.Print_LabelUserID = user_id;
+      data.Print_LabelDelegatedTo = delegated_to;
+    }
+
+    const employeeName = await getEmployeeName(data.Print_LabelDelegatedTo || delegated_to);
+
     return res.status(200).json({
       success: true,
-      data: results[0],
+      data: {
+        ...data,
+        employeeName,
+      },
     });
   } catch (error) {
     console.error('Error in getLabelData:', error);
@@ -791,6 +867,14 @@ const saveDaBagian = async (req, res, next) => {
       catatan,
     } = req.body;
 
+    const hasInputPermission = await hasAllowInputPermission(user_id);
+    if (!hasInputPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'User tidak memiliki akses input data',
+      });
+    }
+
     // Validate tgl_kalibrasi
     if (!tgl_kalibrasi || tgl_kalibrasi === '') {
       return res.status(400).json({
@@ -979,6 +1063,25 @@ const approveDaBagian = async (req, res, next) => {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id } = req.body;
 
+    const [hasInputPermission, isApprover] = await Promise.all([
+      hasAllowInputPermission(user_id),
+      isDaBagianApproverLevel1(user_id),
+    ]);
+
+    if (!hasInputPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'User tidak memiliki akses input data',
+      });
+    }
+
+    if (!isApprover) {
+      return res.status(403).json({
+        success: false,
+        message: 'User bukan approver KAL_DA_Bagian level 1',
+      });
+    }
+
     if (!qa_id || qa_id === '') {
       return res.status(400).json({
         success: false,
@@ -1078,6 +1181,25 @@ const rejectDaBagian = async (req, res, next) => {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id } = req.body;
 
+    const [hasInputPermission, isApprover] = await Promise.all([
+      hasAllowInputPermission(user_id),
+      isDaBagianApproverLevel1(user_id),
+    ]);
+
+    if (!hasInputPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'User tidak memiliki akses input data',
+      });
+    }
+
+    if (!isApprover) {
+      return res.status(403).json({
+        success: false,
+        message: 'User bukan approver KAL_DA_Bagian level 1',
+      });
+    }
+
     if (!qa_id || qa_id === '') {
       return res.status(400).json({
         success: false,
@@ -1139,6 +1261,14 @@ const uploadFileDaBagian = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id } = req.body;
+
+    const hasInputPermission = await hasAllowInputPermission(user_id);
+    if (!hasInputPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'User tidak memiliki akses input data',
+      });
+    }
 
     if (!qa_id || qa_id === '') {
       return res.status(400).json({
@@ -1322,6 +1452,14 @@ const deleteFileDaBagian = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id } = req.body;
+
+    const hasInputPermission = await hasAllowInputPermission(user_id);
+    if (!hasInputPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'User tidak memiliki akses input data',
+      });
+    }
 
     if (!qa_id || qa_id === '') {
       return res.status(400).json({
