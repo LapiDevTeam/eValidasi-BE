@@ -42,7 +42,7 @@ router.get('/export', authentication, getDaBagianForExport);
 router.get('/print-data', getPrintData);
 
 // Label terkalibrasi data (PrintLabelTerkalibrasi_Besar / PrintLabelTerkalibrasi_Kecil)
-router.get('/label-data', getLabelData);
+router.get('/label-data', authentication, getLabelData);
 
 // Get file name for a record (sbTampil_FIle_name)
 router.get('/file-name', authentication, getFileName);

@@ -327,7 +327,6 @@ const getDaBagianForExport = async (req, res, next) => {
  */
 const getPrintData = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { bagian } = req.query;
 
     if (!bagian) {

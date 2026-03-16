@@ -738,7 +738,6 @@ const getApproverIdentityBagian = async (req, res, next) => {
  */
 const getLabelData = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
@@ -823,7 +822,6 @@ const getLabelData = async (req, res, next) => {
  */
 const getPrintData = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
