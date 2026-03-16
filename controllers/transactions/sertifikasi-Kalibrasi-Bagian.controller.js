@@ -1792,7 +1792,7 @@ const printLabelTerkalibrasi = async (req, res, next) => {
         kalibrasi_selanjutnya: row.kalibrasi_selanjutnya
           ? moment.utc(row.kalibrasi_selanjutnya).format('DD/MM/YY')
           : '',
-        paraf_by: `Approved by ${parafNama}`,
+        paraf_by: `${parafNama}`,
         print_label_date: labelPrintDate,
       },
     });
