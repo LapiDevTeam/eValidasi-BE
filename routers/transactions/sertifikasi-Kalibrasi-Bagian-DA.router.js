@@ -39,10 +39,10 @@ router.get('/detail', authentication, getDaBagianDetail);
 router.get('/export', authentication, getDaBagianForExport);
 
 // Print data for DA document, filtered by bagian (generate_DA_Thermo)
-router.get('/print-data', authentication, getPrintData);
+router.get('/print-data', getPrintData);
 
 // Label terkalibrasi data (PrintLabelTerkalibrasi_Besar / PrintLabelTerkalibrasi_Kecil)
-router.get('/label-data', authentication, getLabelData);
+router.get('/label-data', getLabelData);
 
 // Get file name for a record (sbTampil_FIle_name)
 router.get('/file-name', authentication, getFileName);
