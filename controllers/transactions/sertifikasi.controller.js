@@ -2203,7 +2203,7 @@ function getBase64Image(filePath) {
     await page.addStyleTag({
       content: `
         * {
-          font-size: ${!landscape ? `10px` : `13px`} !important;
+          font-size: ${!landscape ? `11px` : `13px`} !important;
  font-family: Verdana, sans-serif;        }
 
         table {
@@ -2351,6 +2351,11 @@ border-left: 0; border-right:0;
       content: `
         * {
           font-size: 7px !important;
+          font-family: Verdana, sans-serif;
+        }
+
+         h1 {
+          font-size: 11px !important;
           font-family: Verdana, sans-serif;
         }
 

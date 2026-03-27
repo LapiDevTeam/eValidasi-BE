@@ -67,10 +67,10 @@ router.get('/check-allow-input', authentication, checkAllowInput);
 router.get('/approver-identity', authentication, getApproverIdentityBagian);
 
 // Get label terkalibrasi data (PrintLabelTerkalibrasi_Besar / Kecil)
-router.get('/label-data', authentication, getLabelData);
+router.get('/label-data', getLabelData);
 
 // Get print/export data for sertifikat document (generate_Sert_Thermo)
-router.get('/print-data', authentication, getPrintData);
+router.get('/print-data', getPrintData);
 
 // ============================================================
 // SERTIFIKAT BAGIAN POST / MUTATION ROUTES

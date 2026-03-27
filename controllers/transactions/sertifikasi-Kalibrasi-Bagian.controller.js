@@ -738,7 +738,6 @@ const getApproverIdentityBagian = async (req, res, next) => {
  */
 const getLabelData = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
@@ -823,7 +822,6 @@ const getLabelData = async (req, res, next) => {
  */
 const getPrintData = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
@@ -1794,7 +1792,7 @@ const printLabelTerkalibrasi = async (req, res, next) => {
         kalibrasi_selanjutnya: row.kalibrasi_selanjutnya
           ? moment.utc(row.kalibrasi_selanjutnya).format('DD/MM/YY')
           : '',
-        paraf_by: `Approved by ${parafNama}`,
+        paraf_by: `${parafNama}`,
         print_label_date: labelPrintDate,
       },
     });
