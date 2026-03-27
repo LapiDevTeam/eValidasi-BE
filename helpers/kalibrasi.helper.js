@@ -354,6 +354,42 @@ const isInputTglKalibrasiBAGIAN = async (qaId, idNoSertifikat) => {
   }
 };
 
+/**
+ * Get auto number for new Penghapusan header
+ * VBA equivalent: fnGetNo_Penghapusan → dbo.fnGetKal_No_hapus(gstrDepartment)
+ */
+const getNoHapus = async (bagian) => {
+  try {
+    const query = `SELECT dbo.fnGetKal_No_hapus(:bagian) AS autoNum`;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { bagian },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.autoNum || '';
+  } catch (error) {
+    console.error('Error in getNoHapus:', error);
+    return '';
+  }
+};
+
+/**
+ * Get next seq_ID for a Penghapusan Detail item
+ * VBA equivalent: dbo.fnGet_SeqID_No_hapus(no_penghapusan)
+ */
+const getSeqIDNoHapus = async (no_penghapusan) => {
+  try {
+    const query = `SELECT dbo.fnGet_SeqID_No_hapus(:no_penghapusan) AS no_SeqID`;
+    const result = await sequelizeMSQL.query(query, {
+      replacements: { no_penghapusan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+    return result[0]?.no_SeqID || '';
+  } catch (error) {
+    console.error('Error in getSeqIDNoHapus:', error);
+    return '';
+  }
+};
+
 module.exports = {
   getDate,
   getDateTime,
@@ -372,4 +408,6 @@ module.exports = {
   isAllowInputBagian,
   getAutoHasilKalBagianID,
   isInputTglKalibrasiBAGIAN,
+  getNoHapus,
+  getSeqIDNoHapus,
 };
