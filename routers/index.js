@@ -8,6 +8,7 @@ const routerDaTimbangaMassa = require("../routers/transactions/Da-Timbangan-Mass
 const routerSertifikasiKalibrasiBAGIAN = require("../routers/transactions/sertifikasi-Kalibrasi-Bagian.router");
 const routerSertifikasiKalibrasiBAGIAN_DA = require("../routers/transactions/sertifikasi-Kalibrasi-Bagian-DA.router");
 const routerPenghapusanAlat = require("../routers/transactions/penghapusan-alat.router");
+const routerAuditTrail = require("../routers/transactions/auditTrail.router");
 const { authentication } = require("../middlewares/authentication");
 
 
@@ -36,5 +37,6 @@ router.use("/transactions/da-timbangan-massa", routerDaTimbangaMassa);
 router.use("/transactions/kalibrasi/sertifikat-bagian", routerSertifikasiKalibrasiBAGIAN);
 router.use("/transactions/da-bagian", routerSertifikasiKalibrasiBAGIAN_DA);
 router.use("/transactions/penghapusan-alat", routerPenghapusanAlat);
+router.use("/audit-trail", routerAuditTrail);
 
 module.exports = router;
