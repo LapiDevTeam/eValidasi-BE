@@ -39,7 +39,7 @@ router.get('/check-approve-button', authentication, checkApproveButton);
 router.get('/browse-da', authentication, browseDaInstruments);
 
 // Get print datasets for Penghapusan form (generate_Print)
-router.get('/print-data', authentication, getPenghapusanPrintData);
+router.get('/print-data', getPenghapusanPrintData);
 
 // Get approver identity for KAL_Penghapusan (fnApprIdentity)
 router.get('/approver-identity', authentication, getApproverIdentityPenghapusan);
