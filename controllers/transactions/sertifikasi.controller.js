@@ -2528,6 +2528,111 @@ const printDAThermo = async (req, res) => {
   }
 }
 
+const printHapusAlat = async (req, res) => {
+  const { link, noDoc, tanggal, revisi, judul} = req.query;
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
+    const page = await browser.newPage();
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    // Navigate to the page and wait for it to load
+    console.log('Navigating to:', link);
+    await page.goto(link, {
+      waitUntil: 'networkidle0',
+      timeout: 30000 // 30 second timeout
+    });
+
+    // Wait for content to be loaded using a promise-based timeout
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    await page.addStyleTag({
+      content: `
+        * {
+          font-size: 9px !important;
+          font-family: Verdana, sans-serif;
+        }
+
+        .print-component {
+          margin-top: 9px !important;
+        }
+
+        table table {
+          margin-top: 0 !important;
+        }
+      `,
+    });
+    let headerLandscape = `
+<table style="width: ${'91%'}; margin: 0 auto; font-size: 11px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tbody>
+    <tr>
+      <td style="border: 1px solid black; width: 20%; height: 50px; text-align: center;" rowspan="2">
+        <img src="${logoBase64}" alt="lapilogo" width="90%" height="90%" style="object-fit: contain;"/>
+      </td>
+      <td style="border: 1px solid black;">
+        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
+          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 14px;">
+            <span>${judul || "LAPORAN MANHOURS PRODUKSI"}</span>
+          </h3>
+        </div>
+      </td>
+    </tr>
+  </tbody>
+</table>
+      `;
+
+      let footerLandscape =
+      `
+        <table style="width: ${'91%'}; margin: 0 auto; font-size: 9px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+  <tr>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Nomor</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${noDoc}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Tanggal</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${tanggal}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Revisi</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">${revisi}</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">Halaman</td>
+    <td style="border: 1px solid black; padding: 2px; text-align: center;">
+      <span class="pageNumber"></span> dari <span class="totalPages"></span>
+    </td>
+  </tr>
+</table>
+`
+
+    // Membuat PDF dalam bentuk buffer
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      displayHeaderFooter: true,
+      printBackground: true,
+      footerTemplate: footerLandscape,
+      headerTemplate:headerLandscape,
+      margin: { bottom: '60px', top: '70px', left: '0.5cm', right: '0.5cm' },
+      landscape: false,
+    });
+
+    await browser.close();
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Error during printHapusAlat:', error);
+    if (browser) await browser.close();
+    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+  }
+}
+
 module.exports = {
   searchSertifikat,
   getSertifikatDetail,
@@ -2554,5 +2659,6 @@ module.exports = {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
-  printDAThermo
+  printDAThermo,
+  printHapusAlat
 };

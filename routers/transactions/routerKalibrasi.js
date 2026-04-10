@@ -63,7 +63,8 @@ const {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
-  printDAThermo
+  printDAThermo,
+  printHapusAlat
 } = require("../../controllers/transactions/sertifikasi.controller");
 
 const {
@@ -212,6 +213,7 @@ router.get("/sertifikat/print", printHeaderThermo);
 router.get("/sertifikat/print-terkalibrasi", printTerkalibrasi)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
 router.get("/sertifikat/print-da-thermo", printDAThermo);
+router.get("/sertifikat/print-hapus-alat", printHapusAlat);
 
 // ============== SERTIFIKAT TIMBANGAN ROUTES ==============
 
