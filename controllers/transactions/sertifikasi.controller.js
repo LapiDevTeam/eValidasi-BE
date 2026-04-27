@@ -2407,8 +2407,8 @@ border-left: 0; border-right:0;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      height: '1.5in',
-      width: '3.1in',
+      height: '2.3cm',
+      width: '5.7cm',
       displayHeaderFooter: false,
       printBackground: true,
       footerTemplate: "<div></div>",
