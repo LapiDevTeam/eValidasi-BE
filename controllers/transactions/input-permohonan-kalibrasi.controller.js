@@ -32,6 +32,7 @@ const getPermohonanKalibrasiList = async (req, res, next) => {
         Lokasi,
         tgl_butuh,
         no_sertifikat_terakhir,
+        ISNULL(A.reject_remark, '') as reject_remark,
         dbo.fnGetNamaKaryawan(B.USER_ID) as Approver_Identity,
         CONVERT(varchar(20), B.Process_Date, 13) as Process_Date,
         dbo.fnGetNamaKaryawan(C.USER_ID) as Approver_MgrQA,
