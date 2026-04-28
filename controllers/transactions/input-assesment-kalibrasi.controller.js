@@ -737,7 +737,7 @@ const approvePermohonanAssesment = async (req, res, next) => {
 const rejectPermohonanAssesment = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { no_permohonan } = req.body;
+    const { no_permohonan, reject_remark } = req.body;
 
     if (!no_permohonan) {
       return res.status(400).json({
@@ -745,6 +745,15 @@ const rejectPermohonanAssesment = async (req, res, next) => {
         message: 'no_permohonan is required'
       });
     }
+
+    if (!reject_remark || reject_remark.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Keterangan Reject Harus diisi!'
+      });
+    }
+
+    const cleanedRejectRemark = reject_remark.trim();
 
     // Check if QA_ID exists (cannot reject if already generated)
     const checkQuery = `
@@ -782,6 +791,26 @@ const rejectPermohonanAssesment = async (req, res, next) => {
 
     const vAppr_ident = approverResults.length > 0 ? approverResults[0].Appr_Identity : '';
 
+    // Save VN rejection remark to permohonan
+    const updateRemarkQuery = `
+      UPDATE T_Kalibrasi_Permohonan
+      SET reject_remark = :reject_remark,
+          UserID = :user_id,
+          Delegated_To = :delegated_to,
+          Process_date = GETDATE()
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    await sequelizeMSQL.query(updateRemarkQuery, {
+      replacements: {
+        no_permohonan,
+        reject_remark: cleanedRejectRemark,
+        user_id,
+        delegated_to
+      },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+
     // Step 1: UPDATE all status records with reject flag (mirrors VB UPDATE before DELETE)
     const updateQuery = `
       UPDATE t_Kalibrasi_Status
@@ -813,6 +842,7 @@ const rejectPermohonanAssesment = async (req, res, next) => {
       message: 'Data has been rejected successfully',
       data: {
         no_permohonan,
+        reject_remark: cleanedRejectRemark,
         user_id,
         delegated_to
       }

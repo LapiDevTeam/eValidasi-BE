@@ -123,7 +123,8 @@ const getPermohonanDetail = async (req, res, next) => {
         Titik_pengukuran,
         Lokasi,
         tgl_butuh,
-        no_sertifikat_terakhir
+        no_sertifikat_terakhir,
+        ISNULL(reject_remark, '') as reject_remark
       FROM T_Kalibrasi_Permohonan
       WHERE No_Permohonan = :no_permohonan
     `;
@@ -749,6 +750,7 @@ const savePermohonanKalibrasi = async (req, res, next) => {
           Assm_Kapasitas = :kapasitas,
           Assm_Lokasi = :lokasi,
           Titik_pengukuran_kalibrasi = :titik_pengukuran${fileNameClause},
+          reject_remark = NULL,
           UserID = :user_id,
           Delegated_To = :delegated_to,
           Process_date = GETDATE()
