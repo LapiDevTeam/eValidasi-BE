@@ -2350,14 +2350,20 @@ border-left: 0; border-right:0;
     await page.addStyleTag({
       content: `
         * {
-          font-size: 7px !important;
+          font-size: 6px !important;
           font-family: Verdana, sans-serif;
         }
 
          h1 {
-          font-size: 11px !important;
+          font-size: 7px !important;
           font-family: Verdana, sans-serif;
         }
+
+         h4 {
+          font-size: 5px !important;
+          font-family: Verdana, sans-serif;
+        }
+
 
         .print-component {
           margin-top: 7px !important;
@@ -2369,51 +2375,56 @@ border-left: 0; border-right:0;
       `,
     });
     let headerLandscape = `
-<table style="width: ${'95%'}; margin: 0 auto; font-size: !7px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
-  <tbody>
-    <tr>
-      <td style="border: 1px solid black; width: 30%; height: 40px; text-align: center;" rowspan="2">
-        <img src="${logoBase64}" alt="lapilogo" width="90%" height="90%" style="object-fit: contain;"/>
-      </td>
-      <td style="border: 1px solid #6b7280;">
-        <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
-          <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 8px;">
-            <span>${judul || "TERKALIBRASI"}</span>
-          </h3>
-        </div>
-      </td>
-    </tr>
-  </tbody>
-</table>
-      `;
-
-      let footerLandscape =
-      `
-        <table style="width: ${'95%'}; margin: 0 auto; font-size: 7px; border: 1px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
-  <tr>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">Nomor</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">${noDoc}</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">Tanggal</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">${tanggal}</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">Revisi</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">${revisi}</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">Halaman</td>
-    <td style="border: 1px solid black; padding: 2px; text-align: center;">
-      <span class="pageNumber"></span> dari <span class="totalPages"></span>
-    </td>
-  </tr>
-</table>
-`
+    <table style="width:95%; margin:0 auto; border:1px solid black; border-collapse:collapse; font-family:Verdana, sans-serif;">
+      <tbody>
+        <tr style="height:1px;">
+          <td style="border:1px solid black; width:30%; text-align:center; padding:0;">
+            <img src="${logoBase64}" 
+                style="height:1px; object-fit:contain;" />
+          </td>
+          <td style="border:1px solid #6b7280; padding:0;">
+            <div style="text-align:center; line-height:1;">
+              <span style="font-weight:bold; font-size:7px;">
+                ${judul || "TERKALIBRASI"}
+              </span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    `;
+    let footerLandscape = `
+    <table style="width:95%; margin:0 auto; border:1px solid black; border-collapse:collapse; font-family:Verdana, sans-serif; font-size:6px;">
+      <tr style="height:14px;">
+        <td style="border:1px solid black; padding:1px; text-align:center;">Nomor</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${noDoc}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">Tanggal</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${tanggal}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">Revisi</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${revisi}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">Halaman</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">
+          <span class="pageNumber"></span>/<span class="totalPages"></span>
+        </td>
+      </tr>
+    </table>
+    `;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      height: '2.3cm',
-      width: '5.7cm',
+      height: '0.9in', // 2.3 cm ≈ 0.9 in
+      width: '2.24in', // 5.7 cm ≈ 2.24 in
       displayHeaderFooter: false,
+      landscape: true,
       printBackground: true,
       footerTemplate: "<div></div>",
       headerTemplate: "<div></div>",
-      margin: { bottom: '0px', top: '90px', left: '20px', right: '20px' },
+      margin: {
+        top: '0px',
+        bottom: '0px',
+        left: '0px',
+        right: '0px',
+      },
     });
 
     await browser.close();
