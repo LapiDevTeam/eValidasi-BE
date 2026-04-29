@@ -46,6 +46,9 @@ async function create(data) {
   request.input('Detectability',            sql.Int,                 data.detectability            ?? null);
   request.input('RPN',                      sql.Int,                 data.rpn                      ?? null);
   request.input('RiskCategory',             sql.NVarChar(50),        data.riskCategory             || null);
+  request.input('SeverityNote',             sql.NVarChar(sql.MAX),   data.severityNote             || null);
+  request.input('ProbabilityNote',          sql.NVarChar(sql.MAX),   data.probabilityNote          || null);
+  request.input('DetectabilityNote',        sql.NVarChar(sql.MAX),   data.detectabilityNote        || null);
   request.input('CalibrationDecision',      sql.NVarChar(255),       data.calibrationDecision);
   request.input('DecisionReason',           sql.NVarChar(sql.MAX),   data.decisionReason           || null);
   request.input('Status',                      sql.NVarChar(50),        data.status                      || 'Draft');
@@ -62,7 +65,8 @@ async function create(data) {
       ImpactsProductQualityCQA, UsedForCPP, UsedForGxPEnvironment,
       UsedForBatchRelease, ImpactsSafety, IsImpactCritical,
       Severity, Probability, Detectability, RPN,
-      RiskCategory, CalibrationDecision, DecisionReason,
+      RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
+      CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt,
       QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
     )
@@ -71,7 +75,8 @@ async function create(data) {
       @ImpactsProductQualityCQA, @UsedForCPP, @UsedForGxPEnvironment,
       @UsedForBatchRelease, @ImpactsSafety, @IsImpactCritical,
       @Severity, @Probability, @Detectability, @RPN,
-      @RiskCategory, @CalibrationDecision, @DecisionReason,
+      @RiskCategory, @SeverityNote, @ProbabilityNote, @DetectabilityNote,
+      @CalibrationDecision, @DecisionReason,
       @Status, 0, @CreatedBy, GETDATE(),
       @QA_ID, @Assm_No_identitas_kalibrasi, @Group_Da_Dept, @Assm_Kapasitas, @Parameter_Kalibrasi
     );
@@ -124,7 +129,8 @@ async function findAll({ decision, category, instrumentCode, status, keyword } =
       ImpactsProductQualityCQA, UsedForCPP, UsedForGxPEnvironment,
       UsedForBatchRelease, ImpactsSafety, IsImpactCritical,
       Severity, Probability, Detectability, RPN,
-      RiskCategory, CalibrationDecision, DecisionReason,
+      RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
+      CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt,
       QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
     FROM RA_CalibrationAssessment
@@ -151,7 +157,8 @@ async function findById(id) {
       ImpactsProductQualityCQA, UsedForCPP, UsedForGxPEnvironment,
       UsedForBatchRelease, ImpactsSafety, IsImpactCritical,
       Severity, Probability, Detectability, RPN,
-      RiskCategory, CalibrationDecision, DecisionReason,
+      RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
+      CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt,
       QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
     FROM RA_CalibrationAssessment
@@ -186,6 +193,9 @@ async function update(id, data) {
   request.input('Detectability',            sql.Int,                 data.detectability            ?? null);
   request.input('RPN',                      sql.Int,                 data.rpn                      ?? null);
   request.input('RiskCategory',             sql.NVarChar(50),        data.riskCategory             || null);
+  request.input('SeverityNote',             sql.NVarChar(sql.MAX),   data.severityNote             || null);
+  request.input('ProbabilityNote',          sql.NVarChar(sql.MAX),   data.probabilityNote          || null);
+  request.input('DetectabilityNote',        sql.NVarChar(sql.MAX),   data.detectabilityNote        || null);
   request.input('CalibrationDecision',          sql.NVarChar(255),       data.calibrationDecision);
   request.input('DecisionReason',               sql.NVarChar(sql.MAX),   data.decisionReason               || null);
   request.input('UpdatedBy',                    sql.NVarChar(100),       data.updatedBy                    || null);
@@ -214,6 +224,9 @@ async function update(id, data) {
       Detectability            = @Detectability,
       RPN                      = @RPN,
       RiskCategory             = @RiskCategory,
+      SeverityNote             = @SeverityNote,
+      ProbabilityNote          = @ProbabilityNote,
+      DetectabilityNote        = @DetectabilityNote,
       CalibrationDecision      = @CalibrationDecision,
       DecisionReason           = @DecisionReason,
       QA_ID                    = @QA_ID,
