@@ -225,6 +225,18 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Assm_Lokasi
         FROM T_Kalibrasi_DA_Bagian
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName          AS Assm_nama_instrumen,
+          InstrumentCode          AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi,
+          Group_Da_Dept,
+          Assm_Kapasitas,
+          Parameter_Kalibrasi,
+          Location                AS Assm_Lokasi
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
       ) AS A
       WHERE (
         QA_ID LIKE :search OR
