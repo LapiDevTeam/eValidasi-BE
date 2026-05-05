@@ -181,7 +181,23 @@ const searchInstrumen = async (req, res, next) => {
     }
 
     const query = `
-      SELECT * FROM (
+      SELECT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
+        CASE
+          WHEN MAX(Kalibrasi_selanjutnya) IS NULL THEN 'Unknown'
+          WHEN MAX(Kalibrasi_selanjutnya) < GETDATE() THEN 'Overdue'
+          WHEN MAX(Kalibrasi_selanjutnya) <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
+          ELSE 'Compliant'
+        END AS status
+      FROM (
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -190,7 +206,8 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Thermohygro
         UNION ALL
         SELECT DISTINCT
@@ -201,7 +218,8 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Anak_Timbangan
         UNION ALL
         SELECT DISTINCT
@@ -212,7 +230,8 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Timbangan
         UNION ALL
         SELECT DISTINCT
@@ -223,7 +242,8 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Bagian
         UNION ALL
         SELECT DISTINCT
@@ -234,7 +254,8 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Location                AS Assm_Lokasi
+          Location                AS Assm_Lokasi,
+          NULL                    AS Kalibrasi_selanjutnya
         FROM RA_CalibrationAssessment
         WHERE IsDeleted = 0
       ) AS A
@@ -244,6 +265,15 @@ const searchInstrumen = async (req, res, next) => {
         Assm_No_identitas_Istrumen LIKE :search OR
         Assm_No_identitas_kalibrasi LIKE :search
       )
+      GROUP BY
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi
       ORDER BY 1
     `;
 
@@ -261,6 +291,146 @@ const searchInstrumen = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in searchInstrumen:', error);
+    next(error);
+  }
+};
+
+/**
+ * Dashboard Summary
+ * Returns Total Alat, Due Soon, Overdue, and Compliant counts
+ */
+const getDashboardSummary = async (req, res, next) => {
+  try {
+    const totalQuery = `
+      SELECT COUNT(*) as total FROM (
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Thermohygro
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Anak_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Bagian
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName AS Assm_nama_instrumen,
+          InstrumentCode AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
+      ) AS A
+    `;
+
+    const statusQuery = `
+      SELECT
+        SUM(CASE WHEN latest_date < GETDATE() THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN latest_date >= GETDATE() AND latest_date <= DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS due_soon,
+        SUM(CASE WHEN latest_date > DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS compliant
+      FROM (
+        SELECT QA_ID, MAX(Kalibrasi_selanjutnya) AS latest_date
+        FROM (
+          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Thermohygro   WHERE Kalibrasi_selanjutnya IS NOT NULL
+          UNION ALL
+          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Anak_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+          UNION ALL
+          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Timbangan      WHERE Kalibrasi_selanjutnya IS NOT NULL
+          UNION ALL
+          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Bagian         WHERE Kalibrasi_selanjutnya IS NOT NULL
+        ) AS all_dates
+        GROUP BY QA_ID
+      ) AS latest_per_instrument
+    `;
+
+    const [totalResults, statusResults] = await Promise.all([
+      sequelizeMSQL.query(totalQuery, { type: Sequelize.QueryTypes.SELECT }),
+      sequelizeMSQL.query(statusQuery, { type: Sequelize.QueryTypes.SELECT }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        total_alat: totalResults[0].total,
+        due_soon:   statusResults[0].due_soon   || 0,
+        overdue:    statusResults[0].overdue    || 0,
+        compliant:  statusResults[0].compliant  || 0,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getDashboardSummary:', error);
+    next(error);
+  }
+};
+
+/**
+ * Count Instrumen
+ * Returns total count of instruments across all kalibrasi tables
+ */
+const countInstrumen = async (req, res, next) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as total FROM (
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Thermohygro
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Anak_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Bagian
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName          AS Assm_nama_instrumen,
+          InstrumentCode          AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
+      ) AS A
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        total: results[0].total
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in countInstrumen:', error);
     next(error);
   }
 };
@@ -1180,6 +1350,8 @@ module.exports = {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
   searchInstrumen,
+  countInstrumen,
+  getDashboardSummary,
   checkApproveButton,
   checkIsApproved,
   getFileDownload,
