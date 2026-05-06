@@ -328,7 +328,6 @@ const getDaTimbangaForExport = async (req, res, next) => {
  */
 const getPrintDataDA = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
 
     const query = `
       SELECT
@@ -371,7 +370,6 @@ const getPrintDataDA = async (req, res, next) => {
  */
 const getPrintDataDAVerifikasi = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
 
     const query = `
       SELECT
