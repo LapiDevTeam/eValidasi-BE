@@ -171,7 +171,8 @@ const getPermohonanDetail = async (req, res, next) => {
 const searchInstrumen = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { search } = req.query;
+    // const { search } = req.query;
+    const search = "%"
 
     if (!search) {
       return res.status(400).json({
@@ -301,6 +302,28 @@ const searchInstrumen = async (req, res, next) => {
  */
 const getDashboardSummary = async (req, res, next) => {
   try {
+    let { month, year } = req.query;
+
+    // Normalize input
+    month = month ? month.toString().padStart(2, "0") : null;
+    year = year || null;
+
+    const replacements = {};
+
+    // Only apply filter if BOTH month & year exist
+    let dateFilter = "";
+
+    if (month && year) {
+      month = month.toString().padStart(2, "0");
+
+      replacements.month = parseInt(month, 10);
+      replacements.year = parseInt(year, 10);
+
+      dateFilter = `
+        WHERE YEAR(latest_date) = :year
+        AND MONTH(latest_date) = :month
+      `;
+    }
     const totalQuery = `
       SELECT COUNT(*) as total FROM (
         SELECT DISTINCT
@@ -335,38 +358,47 @@ const getDashboardSummary = async (req, res, next) => {
         SUM(CASE WHEN latest_date >= GETDATE() AND latest_date <= DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS due_soon,
         SUM(CASE WHEN latest_date > DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS compliant
       FROM (
-        SELECT QA_ID, MAX(Kalibrasi_selanjutnya) AS latest_date
+        SELECT *
         FROM (
-          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Thermohygro   WHERE Kalibrasi_selanjutnya IS NOT NULL
-          UNION ALL
-          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Anak_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
-          UNION ALL
-          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Timbangan      WHERE Kalibrasi_selanjutnya IS NOT NULL
-          UNION ALL
-          SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Bagian         WHERE Kalibrasi_selanjutnya IS NOT NULL
-        ) AS all_dates
-        GROUP BY QA_ID
-      ) AS latest_per_instrument
+          SELECT QA_ID, MAX(Kalibrasi_selanjutnya) AS latest_date
+          FROM (
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Thermohygro WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Anak_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Bagian WHERE Kalibrasi_selanjutnya IS NOT NULL
+          ) AS all_dates
+          GROUP BY QA_ID
+        ) AS latest_per_instrument
+        ${dateFilter}   -- ← optional filter here
+      ) AS filtered_latest
     `;
 
     const [totalResults, statusResults] = await Promise.all([
-      sequelizeMSQL.query(totalQuery, { type: Sequelize.QueryTypes.SELECT }),
-      sequelizeMSQL.query(statusQuery, { type: Sequelize.QueryTypes.SELECT }),
+      sequelizeMSQL.query(totalQuery, {
+        type: Sequelize.QueryTypes.SELECT,
+      }),
+      sequelizeMSQL.query(statusQuery, {
+        type: Sequelize.QueryTypes.SELECT,
+        replacements,
+      }),
     ]);
 
     return res.status(200).json({
       success: true,
-      message: 'Data fetched successfully',
+      message: "Data fetched successfully",
       data: {
-        total_alat: totalResults[0].total,
-        due_soon:   statusResults[0].due_soon   || 0,
-        overdue:    statusResults[0].overdue    || 0,
-        compliant:  statusResults[0].compliant  || 0,
-      }
+        total_alat: totalResults[0]?.total || 0,
+        due_soon: statusResults[0]?.due_soon || 0,
+        overdue: statusResults[0]?.overdue || 0,
+        compliant: statusResults[0]?.compliant || 0,
+      },
     });
 
   } catch (error) {
-    console.error('Error in getDashboardSummary:', error);
+    console.error("Error in getDashboardSummary:", error);
     next(error);
   }
 };
