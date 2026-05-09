@@ -171,8 +171,7 @@ const getPermohonanDetail = async (req, res, next) => {
 const searchInstrumen = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    // const { search } = req.query;
-    const search = "%"
+    const { search } = req.query;
 
     if (!search) {
       return res.status(400).json({
