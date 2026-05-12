@@ -10,6 +10,7 @@ const routerSertifikasiKalibrasiBAGIAN_DA = require("../routers/transactions/ser
 const routerPenghapusanAlat = require("../routers/transactions/penghapusan-alat.router");
 const routerAuditTrail = require("../routers/transactions/auditTrail.router");
 const routerCalibrationRiskAssessment = require("../routers/transactions/calibration-risk-assessment.router");
+const routerPressureCalibration = require("../routers/transactions/pressure-calibration.router");
 const { authentication } = require("../middlewares/authentication");
 
 
@@ -40,5 +41,6 @@ router.use("/transactions/da-bagian", routerSertifikasiKalibrasiBAGIAN_DA);
 router.use("/transactions/penghapusan-alat", routerPenghapusanAlat);
 router.use("/audit-trail", routerAuditTrail);
 router.use("/api/calibration-risk-assessments", routerCalibrationRiskAssessment);
+router.use("/pressure-calibration", routerPressureCalibration);
 
 module.exports = router;
