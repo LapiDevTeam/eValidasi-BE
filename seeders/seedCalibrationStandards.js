@@ -138,9 +138,16 @@ const STANDARDS = [
     serial_number:           '00516600005, NA',
     unit:                    'Bar',
 
-    // TODO: Add specific correction points for the 84-CP module once the
-    //   certificate data for the ADT155-CP35-760 CP module is available.
-    points: [],
+    // Initial points from workbook "Perhitungan Tekanan.xls" (MASTER STANDARD).
+    // Follow the same interpolation setup used for VN084 certificate workflow.
+    points: [
+      { actual_pressure: 0,     indicator_increasing: 0,         indicator_decreasing: -0.00007, uncertainty: 0.00024, unit: 'Bar' },
+      { actual_pressure: -0.1,  indicator_increasing: -0.10007,  indicator_decreasing: -0.10006, uncertainty: 0.00024, unit: 'Bar' },
+      { actual_pressure: -0.2,  indicator_increasing: -0.20014,  indicator_decreasing: -0.20015, uncertainty: 0.00024, unit: 'Bar' },
+      { actual_pressure: -0.4,  indicator_increasing: -0.40029,  indicator_decreasing: -0.40030, uncertainty: 0.00024, unit: 'Bar' },
+      { actual_pressure: -0.6,  indicator_increasing: -0.60042,  indicator_decreasing: -0.60045, uncertainty: 0.00024, unit: 'Bar' },
+      { actual_pressure: -0.85, indicator_increasing: -0.85059,  indicator_decreasing: -0.85059, uncertainty: 0.00024, unit: 'Bar' },
+    ],
   },
 
   // ---------------------------------------------------------------------------
