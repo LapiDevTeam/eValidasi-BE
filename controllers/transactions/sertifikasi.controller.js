@@ -2127,7 +2127,7 @@ const printLabelTerkalibrasi = async (req, res, next) => {
       // Use existing values - matching VBA:
       // strLabelPrintDate = Format(recTemp!Print_LabelDate, "dd-MMM-yyyy hh:mm:ss")
       // strLabelParafBy = recTemp!Print_LabelDelegatedTo
-      strLabelPrintDate = moment(recTemp.Print_LabelDate).utcOffset(7).format('DD-MMM-YYYY HH:mm:ss');
+      strLabelPrintDate = moment.utc(recTemp.Print_LabelDate).format('DD-MMM-YYYY HH:mm:ss');
       strLabelParafBy = recTemp.Print_LabelDelegatedTo;
     }
 
@@ -2166,7 +2166,7 @@ const printLabelTerkalibrasi = async (req, res, next) => {
         qa_id: recTemp.QA_ID,
         id_no_sertifikat: id_no_sertifikat,
         no_identitas: noIdentitas,
-        kalibrasi_selanjutnya: recTemp.kalibrasi_selanjutnya ? moment(recTemp.kalibrasi_selanjutnya).utcOffset(7).format('DD/MM/YY') : '',
+        kalibrasi_selanjutnya: recTemp.kalibrasi_selanjutnya ? moment.utc(recTemp.kalibrasi_selanjutnya).format('DD/MM/YY') : '',
         approved_by: employeeName,
         print_date: moment(strLabelPrintDate).utcOffset(7).format('DD/MM/YY HH:mm:ss'),
         print_date_full: strLabelPrintDate,

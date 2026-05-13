@@ -192,6 +192,10 @@ const searchInstrumen = async (req, res, next) => {
         Assm_Lokasi,
         MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
         CASE
+          WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
+          ELSE 'External'
+        END AS Jenis_Kalibrasi,
+        CASE
           WHEN MAX(Kalibrasi_selanjutnya) IS NULL THEN 'Unknown'
           WHEN MAX(Kalibrasi_selanjutnya) < GETDATE() THEN 'Overdue'
           WHEN MAX(Kalibrasi_selanjutnya) <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
@@ -207,9 +211,12 @@ const searchInstrumen = async (req, res, next) => {
           Assm_Kapasitas,
           Parameter_Kalibrasi,
           Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Thermohygro
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -219,9 +226,12 @@ const searchInstrumen = async (req, res, next) => {
           Assm_Kapasitas,
           Parameter_Kalibrasi,
           Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Anak_Timbangan
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -231,9 +241,12 @@ const searchInstrumen = async (req, res, next) => {
           Assm_Kapasitas,
           Parameter_Kalibrasi,
           Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Timbangan
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -243,19 +256,23 @@ const searchInstrumen = async (req, res, next) => {
           Assm_Kapasitas,
           Parameter_Kalibrasi,
           Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Bagian
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
-          InstrumentName          AS Assm_nama_instrumen,
-          InstrumentCode          AS Assm_No_identitas_Istrumen,
+          InstrumentName AS Assm_nama_instrumen,
+          InstrumentCode AS Assm_No_identitas_Istrumen,
           Assm_No_identitas_kalibrasi,
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Location                AS Assm_Lokasi,
-          NULL                    AS Kalibrasi_selanjutnya
+          Location AS Assm_Lokasi,
+          CAST(1 AS INT) AS Jenis_Kalibrasi,
+          NULL AS Kalibrasi_selanjutnya
         FROM RA_CalibrationAssessment
         WHERE IsDeleted = 0
       ) AS A
@@ -276,6 +293,7 @@ const searchInstrumen = async (req, res, next) => {
         Assm_Lokasi
       ORDER BY 1
     `;
+
 
     const results = await sequelizeMSQL.query(query, {
       replacements: { search: `%${search}%` },
