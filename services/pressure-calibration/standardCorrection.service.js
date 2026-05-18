@@ -52,6 +52,49 @@ function getUnitFactor(from, to) {
 }
 
 /**
+ * Workbook parity note:
+ * In the current template, AN/AO regression cells reference AJ-series values.
+ * To keep Node.js output identical to that workbook, both increasing and
+ * decreasing correction paths use indicator_increasing as the X axis.
+ */
+function getIndicatorKeyForCorrection() {
+  return 'indicator_increasing';
+}
+
+function buildRegressionOverrideMap(regressionCoefficients) {
+  const map = new Map();
+  if (!Array.isArray(regressionCoefficients)) return map;
+
+  for (const row of regressionCoefficients) {
+    const rowLabel = Number(row && row.rowLabel);
+    if (!Number.isFinite(rowLabel)) continue;
+
+    const AL = Number(row.AL);
+    const AM = Number(row.AM);
+    const AN = Number(row.AN);
+    const AO = Number(row.AO);
+    if (![AL, AM, AN, AO].every(Number.isFinite)) continue;
+
+    map.set(rowLabel, { AL, AM, AN, AO });
+  }
+
+  return map;
+}
+
+function getDirectionRegression(overrideMap, rowLabel, fallbackRowLabel, direction) {
+  const segment = overrideMap.get(rowLabel) || overrideMap.get(fallbackRowLabel);
+  if (!segment) return null;
+
+  if (String(direction).toLowerCase() === 'decreasing') {
+    if (!Number.isFinite(segment.AN) || !Number.isFinite(segment.AO)) return null;
+    return { slope: Number(segment.AN), intercept: Number(segment.AO) };
+  }
+
+  if (!Number.isFinite(segment.AL) || !Number.isFinite(segment.AM)) return null;
+  return { slope: Number(segment.AL), intercept: Number(segment.AM) };
+}
+
+/**
  * Find the two adjacent certificate points that bracket a raw standard reading.
  *
  * Excel concept: for each raw standard reading, Excel finds the segment on
@@ -69,6 +112,8 @@ function getUnitFactor(from, to) {
  * @returns {{
  *   p1: object,
  *   p2: object,
+ *   rowLabel: number,
+ *   fallbackRowLabel: number,
  *   warning: string|null
  * }}
  */
@@ -77,8 +122,7 @@ function findSegment(points, rawReading, direction) {
     throw new Error('findSegment: need at least 2 certificate points.');
   }
 
-  const indicatorKey =
-    direction === 'decreasing' ? 'indicator_decreasing' : 'indicator_increasing';
+  const indicatorKey = getIndicatorKeyForCorrection();
 
   // Sort a copy ascending by indicator value
   const sorted = [...points].sort(
@@ -102,7 +146,13 @@ function findSegment(points, rawReading, direction) {
     const lo = Number(sorted[i][indicatorKey]);
     const hi = Number(sorted[i + 1][indicatorKey]);
     if (raw >= lo && raw <= hi) {
-      return { p1: sorted[i], p2: sorted[i + 1], warning: null };
+      return {
+        p1: sorted[i],
+        p2: sorted[i + 1],
+        rowLabel: 16 + i,
+        fallbackRowLabel: 16 + i,
+        warning: null,
+      };
     }
   }
 
@@ -113,6 +163,8 @@ function findSegment(points, rawReading, direction) {
     return {
       p1: sorted[0],
       p2: sorted[1],
+      rowLabel: 16,
+      fallbackRowLabel: 16,
       warning: overshoot > tolerance
         ? `Standard reading ${raw} is below certificate range (min ${certMin}). Using first segment.`
         : null,
@@ -124,6 +176,8 @@ function findSegment(points, rawReading, direction) {
   return {
     p1: sorted[last - 1],
     p2: sorted[last],
+    rowLabel: 16 + last,
+    fallbackRowLabel: 16 + (last - 1),
     warning: overshoot > tolerance
       ? `Standard reading ${raw} is above certificate range (max ${certMax}). Using last segment.`
       : null,
@@ -140,20 +194,26 @@ function findSegment(points, rawReading, direction) {
  * @param {Array}  points
  * @param {number} rawReading
  * @param {string} direction  – 'increasing' | 'decreasing'
+ * @param {Map<number, {AL:number, AM:number, AN:number, AO:number}>} [overrideMap]
  * @returns {{ corrected: number, warning: string|null }}
  */
-function correctStandardReading(points, rawReading, direction) {
-  const { p1, p2, warning } = findSegment(points, rawReading, direction);
+function correctStandardReading(points, rawReading, direction, overrideMap = new Map()) {
+  const { p1, p2, rowLabel, fallbackRowLabel, warning } = findSegment(points, rawReading, direction);
 
-  const indicatorKey =
-    direction === 'decreasing' ? 'indicator_decreasing' : 'indicator_increasing';
+  const indicatorKey = getIndicatorKeyForCorrection();
 
   const x1 = Number(p1[indicatorKey]);
   const y1 = Number(p1.actual_pressure);
   const x2 = Number(p2[indicatorKey]);
   const y2 = Number(p2.actual_pressure);
 
-  const { slope, intercept } = linearRegression(x1, y1, x2, y2);
+  const overrideRegression = getDirectionRegression(
+    overrideMap,
+    rowLabel,
+    fallbackRowLabel,
+    direction
+  );
+  const { slope, intercept } = overrideRegression || linearRegression(x1, y1, x2, y2);
   const corrected = slope * Number(rawReading) + intercept;
 
   return { corrected, warning };
@@ -178,11 +238,13 @@ function correctStandardReading(points, rawReading, direction) {
  * @param {object} [options]
  * @param {string} [options.readingUnit]  – unit of standard_reading (e.g. 'Pa')
  * @param {string} [options.certUnit]     – unit of certificate points (e.g. 'Bar')
+ * @param {Array<{rowLabel:number, AL:number, AM:number, AN:number, AO:number}>} [options.regressionCoefficients]
  * @returns {{ correctedReadings: Array, warnings: string[] }}
  */
 function applyCorrections(readings, certificatePoints, options = {}) {
   const readingUnit = options.readingUnit || (certificatePoints[0] && certificatePoints[0].unit) || 'Pa';
   const certUnit    = options.certUnit    || (certificatePoints[0] && certificatePoints[0].unit) || 'Pa';
+  const overrideMap = buildRegressionOverrideMap(options.regressionCoefficients);
 
   // Factor: reading unit → cert unit (applied before interpolation)
   const toCert    = getUnitFactor(readingUnit, certUnit);
@@ -197,7 +259,8 @@ function applyCorrections(readings, certificatePoints, options = {}) {
     const { corrected, warning } = correctStandardReading(
       certificatePoints,
       readingInCertUnit,
-      r.direction
+      r.direction,
+      overrideMap
     );
     if (warning) warnings.push(warning);
 
@@ -207,4 +270,9 @@ function applyCorrections(readings, certificatePoints, options = {}) {
   return { correctedReadings, warnings };
 }
 
-module.exports = { findSegment, correctStandardReading, applyCorrections };
+module.exports = {
+  findSegment,
+  correctStandardReading,
+  applyCorrections,
+  getUnitFactor,
+};

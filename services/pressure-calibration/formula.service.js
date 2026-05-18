@@ -85,7 +85,14 @@ function groupAndAverage(readings) {
  * @returns {number}
  */
 function calcLevelCorrection(mediaDensity, gravity, deltaH) {
-  return Number(mediaDensity) * Number(gravity) * Number(deltaH);
+  const hydrostaticPa = Number(mediaDensity) * Number(gravity) * Number(deltaH);
+
+  // Workbook chain:
+  //   AK56 = rho * g * delta_h
+  //   AK57 = AK56 * 10^-5
+  //   AK59 = (1 / AN53) * AK57, with AN53 = 0.1 in the template
+  // Net factor = 10^-4 from AK56 to correction term used in error table.
+  return hydrostaticPa * 1e-4;
 }
 
 /**
@@ -117,6 +124,105 @@ function calcRepeatability(uutReadings) {
     .map(Number);
   if (valid.length === 0) return 0;
   return Math.max(...valid) - Math.min(...valid);
+}
+
+function buildCycleMap(readings) {
+  const map = new Map();
+  for (const row of readings || []) {
+    const code = String(row.cycleCode || '').toUpperCase();
+    if (!code) continue;
+    map.set(code, {
+      uut: Number(row.uutReading || 0),
+      std: Number(row.correctedStandard || 0),
+    });
+  }
+  return map;
+}
+
+function getCycleValue(cycleMap, cycleCode, key) {
+  const row = cycleMap.get(cycleCode);
+  if (!row) return 0;
+  const value = Number(row[key]);
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Workbook repeatability (H39:H46):
+ *   MAX(
+ *     ABS((Drow-D23)-(Brow-B23)-(Erow-E23)+(Crow-C23)),
+ *     ABS((Jrow-D23)-(Hrow-B23)-(Krow-E23)+(Irow-C23))
+ *   )
+ *
+ * Cycle mapping:
+ *   B/C = X1 (uut/std), D/E = X3, H/I = X2, J/K = X4
+ */
+function calcWorkbookRepeatability(pointReadings, zeroPointReadings) {
+  const pointMap = buildCycleMap(pointReadings);
+  const zeroMap = buildCycleMap(zeroPointReadings);
+
+  const pX1Uut = getCycleValue(pointMap, 'X1', 'uut');
+  const pX1Std = getCycleValue(pointMap, 'X1', 'std');
+  const pX2Uut = getCycleValue(pointMap, 'X2', 'uut');
+  const pX2Std = getCycleValue(pointMap, 'X2', 'std');
+  const pX3Uut = getCycleValue(pointMap, 'X3', 'uut');
+  const pX3Std = getCycleValue(pointMap, 'X3', 'std');
+  const pX4Uut = getCycleValue(pointMap, 'X4', 'uut');
+  const pX4Std = getCycleValue(pointMap, 'X4', 'std');
+
+  const zX1Uut = getCycleValue(zeroMap, 'X1', 'uut');
+  const zX1Std = getCycleValue(zeroMap, 'X1', 'std');
+  const zX3Uut = getCycleValue(zeroMap, 'X3', 'uut');
+  const zX3Std = getCycleValue(zeroMap, 'X3', 'std');
+
+  const termInc = Math.abs(
+    (pX3Uut - zX3Uut)
+    - (pX1Uut - zX1Uut)
+    - (pX3Std - zX3Std)
+    + (pX1Std - zX1Std)
+  );
+
+  const termDec = Math.abs(
+    (pX4Uut - zX3Uut)
+    - (pX2Uut - zX1Uut)
+    - (pX4Std - zX3Std)
+    + (pX2Std - zX1Std)
+  );
+
+  return Math.max(termInc, termDec);
+}
+
+/**
+ * Workbook zero-point uncertainty source (I39:I46):
+ *   MAX(
+ *     ABS(H23-B23-(I23-C23)),
+ *     ABS(J23-D23-(K23-E23)),
+ *     ABS(L23-F23-(M23-G23))
+ *   )
+ *
+ * Cycle mapping:
+ *   X1..X6 pairs => (X2-X1), (X4-X3), (X6-X5)
+ */
+function calcWorkbookZeroDeviation(zeroPointReadings) {
+  const zeroMap = buildCycleMap(zeroPointReadings);
+
+  const x1Uut = getCycleValue(zeroMap, 'X1', 'uut');
+  const x1Std = getCycleValue(zeroMap, 'X1', 'std');
+  const x2Uut = getCycleValue(zeroMap, 'X2', 'uut');
+  const x2Std = getCycleValue(zeroMap, 'X2', 'std');
+  const x3Uut = getCycleValue(zeroMap, 'X3', 'uut');
+  const x3Std = getCycleValue(zeroMap, 'X3', 'std');
+  const x4Uut = getCycleValue(zeroMap, 'X4', 'uut');
+  const x4Std = getCycleValue(zeroMap, 'X4', 'std');
+  const x5Uut = getCycleValue(zeroMap, 'X5', 'uut');
+  const x5Std = getCycleValue(zeroMap, 'X5', 'std');
+  const x6Uut = getCycleValue(zeroMap, 'X6', 'uut');
+  const x6Std = getCycleValue(zeroMap, 'X6', 'std');
+
+  const term1 = Math.abs((x2Uut - x1Uut) - (x2Std - x1Std));
+  const term2 = Math.abs((x4Uut - x3Uut) - (x4Std - x3Std));
+  const term3 = Math.abs((x6Uut - x5Uut) - (x6Std - x5Std));
+
+  return Math.max(term1, term2, term3);
 }
 
 /**
@@ -162,6 +268,8 @@ module.exports = {
   calcError,
   calcRepeatability,
   calcZeroDeviation,
+  calcWorkbookRepeatability,
+  calcWorkbookZeroDeviation,
   applyUnitConversion,
   INCREASING_CYCLES,
   DECREASING_CYCLES,

@@ -27,11 +27,15 @@ router.get('/instruments/:id', ctrl.getInstrument);
 // ── Calibration Standards ────────────────────────────────────────────────────
 // GET  /api/pressure-calibration/standards            – List standards
 // POST /api/pressure-calibration/standards            – Create standard
+// PUT  /api/pressure-calibration/standards/:id         – Update standard
+// DELETE /api/pressure-calibration/standards/:id       – Soft delete standard
 // GET  /api/pressure-calibration/standards/:id        – Get standard detail
 // GET  /api/pressure-calibration/standards/:id/points – List certificate points
 // POST /api/pressure-calibration/standards/:id/points – Add certificate point
 router.get('/standards',              ctrl.listStandards);
 router.post('/standards',             ctrl.createStandard);
+router.put('/standards/:id',          ctrl.updateStandard);
+router.delete('/standards/:id',       ctrl.deleteStandard);
 router.get('/standards/:id',          ctrl.getStandard);
 router.get('/standards/:id/points',   ctrl.getStandardPoints);
 router.post('/standards/:id/points',  ctrl.addStandardPoint);

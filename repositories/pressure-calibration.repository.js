@@ -34,6 +34,12 @@ async function getPool() {
   return _pool;
 }
 
+async function createRequest(transaction) {
+  if (transaction) return new sql.Request(transaction);
+  const pool = await getPool();
+  return pool.request();
+}
+
 // =============================================================================
 // INSTRUMENT  (read-only – unified view across all DA calibration tables)
 // =============================================================================
@@ -146,35 +152,45 @@ async function getInstrumentById(qaId) {
 // =============================================================================
 
 async function listStandards() {
-  const pool   = await getPool();
-  const result = await pool.request().query(`
+  const request = await createRequest();
+  const result = await request.query(`
     SELECT
-      standard_id, standard_code, standard_name,
-      certificate_no, traceability, recalibration_date, unit, created_at
-    FROM [dbo].[calibration_standards]
-    WHERE is_deleted = 0
+      s.standard_id, s.standard_code, s.standard_name,
+      s.certificate_no, s.traceability, s.recalibration_date, s.unit, s.created_at,
+      (
+        SELECT COUNT(1)
+        FROM [dbo].[calibration_standard_points] p
+        WHERE p.standard_id = s.standard_id
+      ) AS point_count
+    FROM [dbo].[calibration_standards] s
+    WHERE s.is_deleted = 0
     ORDER BY standard_name
   `);
   return result.recordset;
 }
 
 async function getStandardById(id) {
-  const pool   = await getPool();
-  const result = await pool.request()
+  const request = await createRequest();
+  const result = await request
     .input('Id', sql.Int, id)
     .query(`
       SELECT
-        standard_id, standard_code, standard_name,
-        certificate_no, traceability, recalibration_date, unit, created_at
-      FROM [dbo].[calibration_standards]
-      WHERE standard_id = @Id AND is_deleted = 0
+        s.standard_id, s.standard_code, s.standard_name,
+        s.certificate_no, s.traceability, s.recalibration_date, s.unit, s.created_at,
+        (
+          SELECT COUNT(1)
+          FROM [dbo].[calibration_standard_points] p
+          WHERE p.standard_id = s.standard_id
+        ) AS point_count
+      FROM [dbo].[calibration_standards] s
+      WHERE s.standard_id = @Id AND s.is_deleted = 0
     `);
   return result.recordset[0] || null;
 }
 
-async function createStandard(data) {
-  const pool = await getPool();
-  const result = await pool.request()
+async function createStandard(data, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
     .input('StandardCode',       sql.VarChar(50),  data.standardCode       || null)
     .input('StandardName',       sql.VarChar(255), data.standardName)
     .input('CertificateNo',      sql.VarChar(100), data.certificateNo      || null)
@@ -191,13 +207,53 @@ async function createStandard(data) {
   return result.recordset[0].standard_id;
 }
 
+async function updateStandard(id, data, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('Id',                 sql.Int,          id)
+    .input('StandardCode',       sql.VarChar(50),  data.standardCode       || null)
+    .input('StandardName',       sql.VarChar(255), data.standardName)
+    .input('CertificateNo',      sql.VarChar(100), data.certificateNo      || null)
+    .input('Traceability',       sql.VarChar(255), data.traceability       || null)
+    .input('RecalibrationDate',  sql.Date,         data.recalibrationDate  || null)
+    .input('Unit',               sql.VarChar(20),  data.unit               || null)
+    .query(`
+      UPDATE [dbo].[calibration_standards]
+      SET
+        standard_code      = @StandardCode,
+        standard_name      = @StandardName,
+        certificate_no     = @CertificateNo,
+        traceability       = @Traceability,
+        recalibration_date = @RecalibrationDate,
+        unit               = @Unit
+      WHERE standard_id = @Id
+        AND is_deleted = 0
+    `);
+
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function softDeleteStandard(id, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('Id', sql.Int, id)
+    .query(`
+      UPDATE [dbo].[calibration_standards]
+      SET is_deleted = 1
+      WHERE standard_id = @Id
+        AND is_deleted = 0
+    `);
+
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
 // =============================================================================
 // CALIBRATION STANDARD POINTS (certificate correction data)
 // =============================================================================
 
 async function getStandardPoints(standardId) {
-  const pool   = await getPool();
-  const result = await pool.request()
+  const request = await createRequest();
+  const result = await request
     .input('StandardId', sql.Int, standardId)
     .query(`
       SELECT
@@ -211,14 +267,14 @@ async function getStandardPoints(standardId) {
   return result.recordset;
 }
 
-async function insertStandardPoint(data) {
-  const pool = await getPool();
-  const result = await pool.request()
+async function insertStandardPoint(data, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
     .input('StandardId',           sql.Int,           data.standardId)
     .input('ActualPressure',       sql.Decimal(18,10), data.actualPressure)
     .input('IndicatorIncreasing',  sql.Decimal(18,10), data.indicatorIncreasing)
     .input('IndicatorDecreasing',  sql.Decimal(18,10), data.indicatorDecreasing)
-    .input('Uncertainty',          sql.Decimal(18,10), data.uncertainty        || 0)
+    .input('Uncertainty',          sql.Decimal(18,10), data.uncertainty        ?? 0)
     .input('Unit',                 sql.VarChar(20),    data.unit               || null)
     .query(`
       INSERT INTO [dbo].[calibration_standard_points]
@@ -228,6 +284,66 @@ async function insertStandardPoint(data) {
         (@StandardId, @ActualPressure, @IndicatorIncreasing, @IndicatorDecreasing, @Uncertainty, @Unit)
     `);
   return result.recordset[0].point_id;
+}
+
+async function replaceStandardPoints(standardId, points = [], transaction) {
+  const request = await createRequest(transaction);
+  await request
+    .input('StandardId', sql.Int, standardId)
+    .query('DELETE FROM [dbo].[calibration_standard_points] WHERE standard_id = @StandardId');
+
+  for (const point of points) {
+    await insertStandardPoint({
+      standardId,
+      actualPressure:      point.actualPressure,
+      indicatorIncreasing: point.indicatorIncreasing,
+      indicatorDecreasing: point.indicatorDecreasing,
+      uncertainty:         point.uncertainty,
+      unit:                point.unit,
+    }, transaction);
+  }
+}
+
+async function createStandardWithPoints(data, points = []) {
+  const pool = await getPool();
+  const txn  = new sql.Transaction(pool);
+  await txn.begin();
+
+  try {
+    const standardId = await createStandard(data, txn);
+    if (Array.isArray(points) && points.length > 0) {
+      await replaceStandardPoints(standardId, points, txn);
+    }
+    await txn.commit();
+    return standardId;
+  } catch (err) {
+    await txn.rollback();
+    throw err;
+  }
+}
+
+async function updateStandardWithPoints(standardId, data, points) {
+  const pool = await getPool();
+  const txn  = new sql.Transaction(pool);
+  await txn.begin();
+
+  try {
+    const updated = await updateStandard(standardId, data, txn);
+    if (!updated) {
+      await txn.rollback();
+      return false;
+    }
+
+    if (Array.isArray(points)) {
+      await replaceStandardPoints(standardId, points, txn);
+    }
+
+    await txn.commit();
+    return true;
+  } catch (err) {
+    await txn.rollback();
+    throw err;
+  }
 }
 
 // =============================================================================
@@ -245,6 +361,8 @@ async function createSession(data) {
     .input('Pic',             sql.VarChar(100),  data.pic             || null)
     .input('UutUnit',         sql.VarChar(20),   data.uutUnit         || null)
     .input('StandardUnit',    sql.VarChar(20),   data.standardUnit    || null)
+    .input('IndicatorType',   sql.VarChar(20),   data.indicatorType   || 'Digital')
+    .input('Resolution',      sql.Decimal(18,8), data.resolution      ?? 1)
     .input('DeltaH',          sql.Decimal(18,8), data.deltaH          ?? 0)
     .input('MediaDensity',    sql.Decimal(18,8), data.mediaDensity    ?? 1.2)
     .input('Gravity',         sql.Decimal(18,8), data.gravity         ?? 9.78)
@@ -252,12 +370,14 @@ async function createSession(data) {
     .query(`
       INSERT INTO [dbo].[calibration_sessions]
         (instrument_id, standard_id, calibration_date, temperature, humidity,
-         pic, uut_unit, standard_unit, delta_h, media_density, gravity,
+         pic, uut_unit, standard_unit, indicator_type, resolution,
+         delta_h, media_density, gravity,
          status, created_by)
       OUTPUT INSERTED.session_id
       VALUES
         (@InstrumentId, @StandardId, @CalibrationDate, @Temperature, @Humidity,
-         @Pic, @UutUnit, @StandardUnit, @DeltaH, @MediaDensity, @Gravity,
+         @Pic, @UutUnit, @StandardUnit, @IndicatorType, @Resolution,
+         @DeltaH, @MediaDensity, @Gravity,
          'DRAFT', @CreatedBy)
     `);
   return result.recordset[0].session_id;
@@ -284,6 +404,8 @@ async function listSessions({ limit = 50 } = {}) {
         cs.pic,
         cs.uut_unit,
         cs.standard_unit,
+        cs.indicator_type,
+        cs.resolution,
         cs.status,
         cs.created_by,
         cs.created_at,
@@ -306,6 +428,7 @@ async function getSessionById(sessionId) {
       SELECT
         session_id, instrument_id, standard_id, calibration_date,
         temperature, humidity, pic, uut_unit, standard_unit,
+        indicator_type, resolution,
         delta_h, media_density, gravity, status, created_by, created_at
       FROM [dbo].[calibration_sessions]
       WHERE session_id = @SessionId AND is_deleted = 0
@@ -501,9 +624,14 @@ module.exports = {
   listStandards,
   getStandardById,
   createStandard,
+  updateStandard,
+  softDeleteStandard,
+  createStandardWithPoints,
+  updateStandardWithPoints,
   // standard points
   getStandardPoints,
   insertStandardPoint,
+  replaceStandardPoints,
   // sessions
   listSessions,
   createSession,

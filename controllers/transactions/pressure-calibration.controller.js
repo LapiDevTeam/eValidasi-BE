@@ -11,6 +11,106 @@
 const repo   = require('../../repositories/pressure-calibration.repository');
 const calSvc = require('../../services/pressure-calibration/calibration.service');
 
+function createBadRequestError(message) {
+  const err = new Error(message);
+  err.statusCode = 400;
+  return err;
+}
+
+function normalizeString(value) {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  return s.length ? s : null;
+}
+
+function normalizeDate(value) {
+  const str = normalizeString(value);
+  if (!str) return null;
+  const parsed = new Date(str);
+  if (Number.isNaN(parsed.getTime())) {
+    throw createBadRequestError('recalibrationDate must be a valid date.');
+  }
+  return str;
+}
+
+function normalizeNumber(value, fieldName, { required = false, defaultValue = null } = {}) {
+  if (value === undefined || value === null || value === '') {
+    if (required) {
+      throw createBadRequestError(`${fieldName} is required.`);
+    }
+    return defaultValue;
+  }
+
+  const n = Number(value);
+  if (Number.isNaN(n)) {
+    throw createBadRequestError(`${fieldName} must be numeric.`);
+  }
+  return n;
+}
+
+function buildStandardPayload(body) {
+  const standardName = normalizeString(body.standardName);
+  if (!standardName) throw createBadRequestError('standardName is required.');
+
+  return {
+    standardCode:      normalizeString(body.standardCode),
+    standardName,
+    certificateNo:     normalizeString(body.certificateNo),
+    traceability:      normalizeString(body.traceability),
+    recalibrationDate: normalizeDate(body.recalibrationDate),
+    unit:              normalizeString(body.unit),
+  };
+}
+
+function buildPointPayload(row, index, fallbackUnit) {
+  const actualPressure = normalizeNumber(row.actualPressure, `points[${index}].actualPressure`, {
+    required: true,
+  });
+  const indicatorIncreasing = normalizeNumber(
+    row.indicatorIncreasing,
+    `points[${index}].indicatorIncreasing`,
+    { required: true }
+  );
+  const indicatorDecreasing = normalizeNumber(
+    row.indicatorDecreasing,
+    `points[${index}].indicatorDecreasing`,
+    { required: true }
+  );
+  const uncertainty = normalizeNumber(row.uncertainty, `points[${index}].uncertainty`, {
+    required: false,
+    defaultValue: 0,
+  });
+
+  return {
+    actualPressure,
+    indicatorIncreasing,
+    indicatorDecreasing,
+    uncertainty,
+    unit: normalizeString(row.unit) || fallbackUnit || null,
+  };
+}
+
+function buildPointsPayload(points, fallbackUnit) {
+  if (!Array.isArray(points)) return undefined;
+
+  const normalized = [];
+  points.forEach((row, index) => {
+    const current = row || {};
+
+    const allEmpty = [
+      current.actualPressure,
+      current.indicatorIncreasing,
+      current.indicatorDecreasing,
+      current.uncertainty,
+    ].every((v) => v === undefined || v === null || String(v).trim() === '');
+
+    if (allEmpty) return;
+    normalized.push(buildPointPayload(current, index, fallbackUnit));
+  });
+
+  return normalized;
+}
+
 // =============================================================================
 // INSTRUMENTS  (read-only, references existing master table)
 // =============================================================================
@@ -68,11 +168,56 @@ const listStandards = async (req, res, next) => {
  */
 const createStandard = async (req, res, next) => {
   try {
-    const { standardName } = req.body;
-    if (!standardName) return res.status(400).json({ message: 'standardName is required.' });
+    const standardPayload = buildStandardPayload(req.body);
+    const pointsPayload = buildPointsPayload(req.body.points, standardPayload.unit);
 
-    const id = await repo.createStandard(req.body);
+    const id = Array.isArray(pointsPayload)
+      ? await repo.createStandardWithPoints(standardPayload, pointsPayload)
+      : await repo.createStandard(standardPayload);
+
     res.status(201).json({ standardId: id });
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * PUT /api/pressure-calibration/standards/:id
+ * Body: { standardCode, standardName, certificateNo, traceability, recalibrationDate, unit, points? }
+ */
+const updateStandard = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid standard id.' });
+
+    const standardPayload = buildStandardPayload(req.body);
+    const pointsPayload = buildPointsPayload(req.body.points, standardPayload.unit);
+
+    const updated = Array.isArray(pointsPayload)
+      ? await repo.updateStandardWithPoints(id, standardPayload, pointsPayload)
+      : await repo.updateStandard(id, standardPayload);
+
+    if (!updated) return res.status(404).json({ message: `Standard ${id} not found.` });
+    res.status(200).json({ standardId: id, updated: true });
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/pressure-calibration/standards/:id
+ */
+const deleteStandard = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ message: 'Invalid standard id.' });
+
+    const deleted = await repo.softDeleteStandard(id);
+    if (!deleted) return res.status(404).json({ message: `Standard ${id} not found.` });
+
+    res.status(200).json({ standardId: id, deleted: true });
   } catch (err) {
     next(err);
   }
@@ -119,16 +264,15 @@ const addStandardPoint = async (req, res, next) => {
     const standardId = parseInt(req.params.id, 10);
     if (Number.isNaN(standardId)) return res.status(400).json({ message: 'Invalid standard id.' });
 
-    const { actualPressure, indicatorIncreasing, indicatorDecreasing } = req.body;
-    if (actualPressure === undefined || indicatorIncreasing === undefined || indicatorDecreasing === undefined) {
-      return res.status(400).json({
-        message: 'actualPressure, indicatorIncreasing, and indicatorDecreasing are required.',
-      });
-    }
+    const standard = await repo.getStandardById(standardId);
+    if (!standard) return res.status(404).json({ message: `Standard ${standardId} not found.` });
 
-    const pointId = await repo.insertStandardPoint({ standardId, ...req.body });
+    const pointPayload = buildPointPayload(req.body, 0, normalizeString(req.body.unit) || standard.unit);
+
+    const pointId = await repo.insertStandardPoint({ standardId, ...pointPayload });
     res.status(201).json({ pointId });
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
     next(err);
   }
 };
@@ -231,7 +375,7 @@ const calculate = async (req, res, next) => {
     const sessionId = parseInt(req.params.sessionId, 10);
     if (Number.isNaN(sessionId)) return res.status(400).json({ message: 'Invalid session id.' });
 
-    const result = await calSvc.calculate(sessionId);
+    const result = await calSvc.calculate(sessionId, req.body || {});
     res.status(200).json(result);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
@@ -260,6 +404,8 @@ module.exports = {
   getInstrument,
   listStandards,
   createStandard,
+  updateStandard,
+  deleteStandard,
   getStandard,
   getStandardPoints,
   addStandardPoint,

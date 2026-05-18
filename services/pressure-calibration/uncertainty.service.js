@@ -3,114 +3,137 @@
 /**
  * uncertainty.service.js  –  Uncertainty Budget Calculator
  *
- * Implements the GUM (ISO/IEC Guide 98-3) uncertainty budget for
- * pressure calibration of Differential Pressure Gauges.
+ * Excel-aligned implementation for sheet "0 sd 600 Pa (750 Pa)" in
+ * Perhitungan Tekanan.xls.
  *
- * Each uncertainty component is a separate function so that individual
- * contributions can be inspected and validated against the Excel workbook.
+ * Workbook mapping:
+ *   T13 = IF(T12="Analog",0.2,IF(T12="Digital",0.5))
+ *   G52 = T13 * T11
  *
- * Components used in the budget:
- *   u1 – Resolution uncertainty (UUT)          [Type B, rectangular]
- *   u2 – Repeatability uncertainty             [Type A]
- *   u3 – Standard calibration uncertainty      [Type B, from certificate]
- *   u4 – Level correction uncertainty          [Type B, rectangular]
- *
- * TODO: Validate each component's divisor and degrees of freedom against
- *       the Excel workbook sheet "Uncertainty Budget".
- *       If the workbook uses a different number of components or different
- *       distribution types, update the corresponding function below.
+ * Uncertainty components in workbook table:
+ *   u1 – Ketidakpastian Zero Point : MAX(I39:I46) / SQRT(3),  vi=50
+ *   u2 – Tes Keberulangan          : MAX(H39:H46) / SQRT(3),  vi=50
+ *   u3 – Standar                   : U_certificate / k,       vi=60
+ *   u4 – Resolusi                  : (T13*T11) / SQRT(3),     vi=50
+ *   u5 – Metal Rule                : 0.0003 / 2,              vi=60
  */
 
 const { tDistribution9545 } = require('../../helpers/math.util');
 
-// ---------------------------------------------------------------------------
-// Individual uncertainty components
-// ---------------------------------------------------------------------------
+const INDICATOR_RESOLUTION_FACTOR = {
+  Analog: 0.2,
+  Digital: 0.5,
+};
 
-/**
- * Resolution uncertainty (Type B, rectangular distribution).
- *
- * Excel concept: u_resolution = resolution / (2 * sqrt(3))
- *
- * For a digital display: resolution = smallest scale division.
- * The rectangular half-width is resolution/2, divided by sqrt(3).
- *
- * Degrees of freedom for Type B rectangular: effectively infinite (ν = ∞ → 50 used as proxy).
- *
- * @param {number} resolution  – UUT smallest scale increment (same unit as calibration)
- * @returns {{ u: number, nu: number }}
- */
-function calcResolutionUncertainty(resolution) {
-  // TODO: Confirm divisor with workbook. Some implementations use resolution / sqrt(12).
-  //       resolution / (2*sqrt(3)) === resolution / sqrt(12) — they are equivalent.
-  const u = Number(resolution) / (2 * Math.sqrt(3));
-  return { u, nu: 50 }; // ν = 50 as proxy for infinite DoF
+const WORKBOOK_STANDARD_CI = 0.00014;
+const WORKBOOK_METAL_RULE_CI = 0.0001;
+
+function normalizeIndicatorType(indicatorType) {
+  const raw = String(indicatorType || '').trim().toLowerCase();
+  if (raw === 'analog') return 'Analog';
+  return 'Digital';
+}
+
+function getResolutionFactor(indicatorType) {
+  const normalized = normalizeIndicatorType(indicatorType);
+  return INDICATOR_RESOLUTION_FACTOR[normalized];
+}
+
+function buildComponent(name, u, divisor, nu, ci = 1) {
+  const rawU = Math.abs(Number(u) || 0);
+  const den = Number(divisor) || 1;
+  const sensitivity = Number(ci) || 1;
+  const ui = rawU / den;
+  const uici = ui * sensitivity;
+  const square = Math.pow(uici, 2);
+
+  return {
+    name,
+    u: rawU,
+    divisor: den,
+    nu: Number(nu),
+    ui,
+    ci: sensitivity,
+    uici,
+    square,
+    fourthOverNu: Number(nu) > 0 ? Math.pow(square, 2) / Number(nu) : 0,
+  };
 }
 
 /**
- * Repeatability uncertainty (Type A).
- *
- * Excel concept: u_repeatability = R / (2 * sqrt(3))
- *   where R = max(UUT readings) – min(UUT readings) at same nominal point.
- *
- * TODO: Validate whether the workbook uses range/2√3 or std_dev/√n.
- *       Common alternatives:
- *         a) u = R / (2*sqrt(3))          — range method, rectangular
- *         b) u = sampleStdDev / sqrt(n)   — standard error of the mean
- *       Update the divisor below to match your workbook.
- *
- * @param {number} repeatability  – Range (max – min) of UUT readings at one point
- * @param {number} [numReadings]  – Number of readings (used for DoF)
- * @returns {{ u: number, nu: number }}
+ * Excel u4 (Resolusi): ui = (resolutionFactor * resolution) / sqrt(3)
+ * where resolutionFactor follows T13 switch from T12.
  */
-function calcRepeatabilityUncertainty(repeatability, numReadings = 3) {
-  const u = Number(repeatability) / (2 * Math.sqrt(3));
-  // Degrees of freedom for Type A: ν = n - 1
-  const nu = Math.max(numReadings - 1, 1);
-  return { u, nu };
+function calcResolutionUncertainty(resolution, indicatorType = 'Digital') {
+  const resolutionFactor = getResolutionFactor(indicatorType);
+  const component = buildComponent(
+    'Resolusi',
+    resolutionFactor * Number(resolution || 0),
+    Math.sqrt(3),
+    50
+  );
+
+  return {
+    u: component.ui,
+    nu: component.nu,
+    rawU: component.u,
+    resolutionFactor,
+    indicatorType: normalizeIndicatorType(indicatorType),
+  };
 }
 
 /**
- * Standard instrument calibration uncertainty (Type B, from certificate).
- *
- * Excel concept: u_standard = U_certificate / k_certificate
- *   where U_certificate is the expanded uncertainty from the standard's certificate
- *   and k_certificate is the coverage factor stated on that certificate (typically 2).
- *
- * TODO: Confirm the certificate k-factor used in the workbook.
- *       If the certificate states k=2 for 95% confidence, divisor = 2.
- *       If k=2 for 95.45%, divisor is also 2.
- *
- * @param {number} certUncertainty  – Expanded uncertainty from standard certificate
- * @param {number} [certK]          – Coverage factor stated on the certificate (default 2)
- * @returns {{ u: number, nu: number }}
+ * Excel u2 (Tes Keberulangan): ui = maxRepeatability / sqrt(3), vi=50
+ */
+function calcRepeatabilityUncertainty(repeatability) {
+  const component = buildComponent(
+    'Tes Keberulangan',
+    Number(repeatability || 0),
+    Math.sqrt(3),
+    50
+  );
+  return { u: component.ui, nu: component.nu, rawU: component.u };
+}
+
+/**
+ * Excel u3 (Standar): ui = certUncertainty / certK, vi=60
  */
 function calcStandardUncertainty(certUncertainty, certK = 2) {
-  const u = Number(certUncertainty) / Number(certK);
-  return { u, nu: 50 }; // Type B: effective ν ≈ 50
+  const component = buildComponent(
+    'Standar',
+    Number(certUncertainty || 0),
+    Number(certK) || 2,
+    60,
+    WORKBOOK_STANDARD_CI
+  );
+  return { u: component.ui, nu: component.nu, rawU: component.u };
 }
 
 /**
- * Level correction uncertainty (Type B, rectangular distribution).
- *
- * Arises from uncertainty in the height difference measurement Δh.
- *
- * Excel concept: u_level = (ρ × g × u_deltaH) / sqrt(3)
- *   where u_deltaH is the uncertainty in height measurement (metres).
- *
- * TODO: Confirm the half-width of the height measurement uncertainty
- *       used in the workbook (typical value: 0.001 m for tape measure).
- *
- * @param {number} mediaDensity   – kg/m³
- * @param {number} gravity        – m/s²
- * @param {number} uDeltaH        – uncertainty in Δh measurement (metres, half-width)
- * @returns {{ u: number, nu: number }}
+ * Excel u1 (Zero Point): ui = zeroDeviation / sqrt(3), vi=50
  */
-function calcLevelCorrectionUncertainty(mediaDensity, gravity, uDeltaH = 0.001) {
-  // Rectangular distribution: u = half-width / sqrt(3)
-  const halfWidth = Number(mediaDensity) * Number(gravity) * Number(uDeltaH);
-  const u = halfWidth / Math.sqrt(3);
-  return { u, nu: 50 };
+function calcZeroPointUncertainty(zeroDeviation) {
+  const component = buildComponent(
+    'Ketidakpastian Zero Point',
+    Number(zeroDeviation || 0),
+    Math.sqrt(3),
+    50
+  );
+  return { u: component.ui, nu: component.nu, rawU: component.u };
+}
+
+/**
+ * Excel u5 (Metal Rule): ui = metalRule / 2, vi=60
+ */
+function calcMetalRuleUncertainty(metalRule = 0.0003) {
+  const component = buildComponent(
+    'Metal Rule',
+    Number(metalRule || 0.0003),
+    2,
+    60,
+    WORKBOOK_METAL_RULE_CI
+  );
+  return { u: component.ui, nu: component.nu, rawU: component.u };
 }
 
 // ---------------------------------------------------------------------------
@@ -123,11 +146,16 @@ function calcLevelCorrectionUncertainty(mediaDensity, gravity, uDeltaH = 0.001) 
  * GUM: uc = sqrt( Σ ci² × ui² )
  *   Sensitivity coefficients ci = 1 for all independent additive components.
  *
- * @param {Array<{ u: number }>} components
+ * @param {Array<{ ui?: number, uici?: number, u?: number }>} components
  * @returns {number} combined standard uncertainty
  */
 function calcCombinedUncertainty(components) {
-  const sumSq = components.reduce((acc, c) => acc + Math.pow(Number(c.u), 2), 0);
+  const sumSq = components.reduce((acc, c) => {
+    const term = c.uici !== undefined
+      ? Number(c.uici)
+      : (c.ui !== undefined ? Number(c.ui) : Number(c.u));
+    return acc + Math.pow(term, 2);
+  }, 0);
   return Math.sqrt(sumSq);
 }
 
@@ -136,15 +164,22 @@ function calcCombinedUncertainty(components) {
  *
  * GUM E.4:  νeff = uc⁴ / Σ( ui⁴ / νi )
  *
- * @param {Array<{ u: number, nu: number }>} components
+ * @param {Array<{ ui?: number, uici?: number, nu: number, fourthOverNu?: number }>} components
  * @param {number} uc  – combined standard uncertainty
  * @returns {number}
  */
 function calcEffectiveDegreeFreedom(components, uc) {
   const denominator = components.reduce((acc, c) => {
+    if (c.fourthOverNu !== undefined) return acc + Number(c.fourthOverNu);
+
     const nu = Number(c.nu);
     if (nu === 0 || !Number.isFinite(nu)) return acc;
-    return acc + Math.pow(Number(c.u), 4) / nu;
+
+    const term = c.uici !== undefined
+      ? Number(c.uici)
+      : (c.ui !== undefined ? Number(c.ui) : Number(c.u));
+
+    return acc + Math.pow(term, 4) / nu;
   }, 0);
 
   if (denominator === 0) return Infinity;
@@ -182,18 +217,19 @@ function calcExpandedUncertainty(combinedUncertainty, coverageFactor) {
  * Build the complete uncertainty budget for a calibration session.
  *
  * @param {{
- *   resolution:            number,  – UUT resolution (scale division)
+ *   zeroDeviation:         number,  – workbook u1 source
  *   maxRepeatability:      number,  – worst-case repeatability across all points
  *   certUncertainty:       number,  – standard certificate expanded uncertainty
  *   certK:                 number,  – certificate coverage factor (default 2)
- *   mediaDensity:          number,
- *   gravity:               number,
- *   uDeltaH:               number,  – height measurement uncertainty (metres)
- *   numReadings:           number,  – number of readings per point
+ *   resolution:            number,  – workbook T11 value
+ *   indicatorType:         string,  – workbook T12 ('Analog'|'Digital')
+ *   metalRule:             number,  – workbook G53 base value (default 0.0003)
  * }} params
  *
  * @returns {{
- *   components:          Array<{ name, u, nu }>,
+ *   components:          Array<{ name, u, divisor, ui, ci, uici, square, nu, fourthOverNu }>,
+ *   resolutionFactor:    number,
+ *   indicatorType:       string,
  *   combinedUncertainty: number,
  *   effectiveDegreeFreedom: number,
  *   coverageFactor:      number,
@@ -202,26 +238,36 @@ function calcExpandedUncertainty(combinedUncertainty, coverageFactor) {
  */
 function buildUncertaintyBudget(params) {
   const {
+    zeroDeviation   = 0,
     resolution,
     maxRepeatability,
     certUncertainty,
     certK        = 2,
-    mediaDensity = 1.2,
-    gravity      = 9.78,
-    uDeltaH      = 0.001,
-    numReadings  = 3,
+    indicatorType = 'Digital',
+    metalRule    = 0.0003,
   } = params;
 
-  const u1 = calcResolutionUncertainty(resolution);
-  const u2 = calcRepeatabilityUncertainty(maxRepeatability, numReadings);
-  const u3 = calcStandardUncertainty(certUncertainty, certK);
-  const u4 = calcLevelCorrectionUncertainty(mediaDensity, gravity, uDeltaH);
+  const normalizedIndicatorType = normalizeIndicatorType(indicatorType);
+  const resolutionFactor = getResolutionFactor(normalizedIndicatorType);
 
   const components = [
-    { name: 'Resolution (UUT)',           ...u1 },
-    { name: 'Repeatability',              ...u2 },
-    { name: 'Standard calibration cert',  ...u3 },
-    { name: 'Level correction',           ...u4 },
+    buildComponent('Ketidakpastian Zero Point', Number(zeroDeviation || 0), Math.sqrt(3), 50),
+    buildComponent('Tes Keberulangan', Number(maxRepeatability || 0), Math.sqrt(3), 50),
+    buildComponent(
+      'Standar',
+      Number(certUncertainty || 0),
+      Number(certK) || 2,
+      60,
+      WORKBOOK_STANDARD_CI
+    ),
+    buildComponent('Resolusi', resolutionFactor * Number(resolution || 0), Math.sqrt(3), 50),
+    buildComponent(
+      'Metal Rule',
+      Number(metalRule || 0.0003),
+      2,
+      60,
+      WORKBOOK_METAL_RULE_CI
+    ),
   ];
 
   const uc   = calcCombinedUncertainty(components);
@@ -231,6 +277,8 @@ function buildUncertaintyBudget(params) {
 
   return {
     components,
+    resolutionFactor,
+    indicatorType: normalizedIndicatorType,
     combinedUncertainty:      uc,
     effectiveDegreeFreedom:   veff,
     coverageFactor:           k,
@@ -239,10 +287,14 @@ function buildUncertaintyBudget(params) {
 }
 
 module.exports = {
+  INDICATOR_RESOLUTION_FACTOR,
+  normalizeIndicatorType,
+  getResolutionFactor,
+  calcZeroPointUncertainty,
+  calcMetalRuleUncertainty,
   calcResolutionUncertainty,
   calcRepeatabilityUncertainty,
   calcStandardUncertainty,
-  calcLevelCorrectionUncertainty,
   calcCombinedUncertainty,
   calcEffectiveDegreeFreedom,
   calcCoverageFactor,

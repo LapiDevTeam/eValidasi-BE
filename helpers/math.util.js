@@ -72,56 +72,148 @@ function linearRegression(x1, y1, x2, y2) {
 }
 
 /**
- * Approximate the two-tailed Student's t-value for 95.45 % confidence
- * (equivalent to k=2 for infinite DoF) using a simple lookup table
- * supplemented by interpolation.
+ * Approximate Excel TINV(0.05, veff) (two-tailed 95 % confidence)
+ * using a numerical inverse CDF for Student's t-distribution.
  *
- * Source: ISO/IEC Guide 98-3 (GUM) Table G.2 – coverage factor for p = 95.45 %
+ * This aligns more closely with workbook formulas that use TINV(0.05, veff).
  *
  * @param {number} veff - effective degrees of freedom (Welch-Satterthwaite)
  * @returns {number} coverage factor k
  */
 function tDistribution9545(veff) {
-  // GUM Table G.2: t_p(v) for p = 95.45 %
-  const table = [
-    { v: 1,   t: 13.97 },
-    { v: 2,   t: 4.53  },
-    { v: 3,   t: 3.31  },
-    { v: 4,   t: 2.87  },
-    { v: 5,   t: 2.65  },
-    { v: 6,   t: 2.52  },
-    { v: 7,   t: 2.43  },
-    { v: 8,   t: 2.37  },
-    { v: 9,   t: 2.32  },
-    { v: 10,  t: 2.28  },
-    { v: 11,  t: 2.25  },
-    { v: 12,  t: 2.23  },
-    { v: 14,  t: 2.20  },
-    { v: 16,  t: 2.17  },
-    { v: 18,  t: 2.15  },
-    { v: 20,  t: 2.13  },
-    { v: 25,  t: 2.11  },
-    { v: 30,  t: 2.09  },
-    { v: 35,  t: 2.08  },
-    { v: 40,  t: 2.07  },
-    { v: 45,  t: 2.07  },
-    { v: 50,  t: 2.07  },
-    { v: 100, t: 2.03  },
-    { v: Infinity, t: 2.00 },
+  const v = Number(veff);
+  if (v <= 0 || Number.isNaN(v)) return 1.959963984540054;
+
+  // Legacy Excel TINV truncates degrees_of_freedom to integer.
+  const dof = Math.max(1, Math.floor(v));
+
+  // Two-tailed 95 % => upper-tail probability 0.025 => CDF target 0.975
+  return inverseStudentTCdf(0.975, dof);
+}
+
+function gammaLn(z) {
+  const cof = [
+    76.18009172947146,
+    -86.50532032941677,
+    24.01409824083091,
+    -1.231739572450155,
+    0.001208650973866179,
+    -0.000005395239384953,
   ];
 
-  const v = Number(veff);
-  if (v <= 0 || Number.isNaN(v)) return 2.0;
-  if (v >= 100) return 2.0066; // close to k for veff~52 in the sample
+  let x = z;
+  let y = z;
+  let tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
 
-  // Linear interpolation between two surrounding table entries
-  for (let i = 0; i < table.length - 1; i++) {
-    if (v >= table[i].v && v <= table[i + 1].v) {
-      const frac = (v - table[i].v) / (table[i + 1].v - table[i].v);
-      return table[i].t + frac * (table[i + 1].t - table[i].t);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < cof.length; j += 1) {
+    y += 1;
+    ser += cof[j] / y;
+  }
+
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+
+function betaCf(a, b, x) {
+  const maxIterations = 200;
+  const eps = 1e-12;
+  const fpMin = 1e-300;
+
+  let qab = a + b;
+  let qap = a + 1;
+  let qam = a - 1;
+  let c = 1;
+  let d = 1 - (qab * x) / qap;
+  if (Math.abs(d) < fpMin) d = fpMin;
+  d = 1 / d;
+  let h = d;
+
+  for (let m = 1; m <= maxIterations; m += 1) {
+    const m2 = 2 * m;
+
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpMin) d = fpMin;
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpMin) c = fpMin;
+    d = 1 / d;
+    h *= d * c;
+
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpMin) d = fpMin;
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpMin) c = fpMin;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+
+    if (Math.abs(del - 1) <= eps) break;
+  }
+
+  return h;
+}
+
+function regularizedIncompleteBeta(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+
+  const bt = Math.exp(
+    gammaLn(a + b) - gammaLn(a) - gammaLn(b)
+    + a * Math.log(x)
+    + b * Math.log(1 - x)
+  );
+
+  if (x < (a + 1) / (a + b + 2)) {
+    return (bt * betaCf(a, b, x)) / a;
+  }
+
+  return 1 - (bt * betaCf(b, a, 1 - x)) / b;
+}
+
+function studentTCdf(t, dof) {
+  const v = Number(dof);
+  if (!Number.isFinite(v) || v <= 0) return Number.NaN;
+
+  const x = v / (v + t * t);
+  const ib = regularizedIncompleteBeta(x, v / 2, 0.5);
+
+  if (t >= 0) return 1 - 0.5 * ib;
+  return 0.5 * ib;
+}
+
+function inverseStudentTCdf(probability, dof) {
+  const p = Number(probability);
+  const v = Number(dof);
+
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  if (p === 0.5) return 0;
+
+  if (p < 0.5) {
+    return -inverseStudentTCdf(1 - p, v);
+  }
+
+  let low = 0;
+  let high = 1;
+
+  while (studentTCdf(high, v) < p && high < 1e6) {
+    high *= 2;
+  }
+
+  for (let i = 0; i < 120; i += 1) {
+    const mid = (low + high) / 2;
+    const cdf = studentTCdf(mid, v);
+
+    if (cdf < p) {
+      low = mid;
+    } else {
+      high = mid;
     }
   }
-  return 2.0;
+
+  return (low + high) / 2;
 }
 
 /**
