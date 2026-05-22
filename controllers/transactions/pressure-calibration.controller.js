@@ -48,6 +48,34 @@ function normalizeNumber(value, fieldName, { required = false, defaultValue = nu
   return n;
 }
 
+function parseBooleanQuery(value, fieldName, defaultValue = false) {
+  if (value === undefined || value === null || value === '') return defaultValue;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+
+  throw createBadRequestError(`${fieldName} must be boolean.`);
+}
+
+function normalizeJenisKalibrasi(value) {
+  const normalized = normalizeString(value);
+  if (!normalized) return null;
+
+  if (/^internal$/i.test(normalized)) return 'Internal';
+  if (/^external$/i.test(normalized)) return 'External';
+
+  throw createBadRequestError('jenisKalibrasi must be Internal or External.');
+}
+
+function resolveIncludeWorkbookFormatted(req) {
+  if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'includeWorkbookFormatted')) {
+    return parseBooleanQuery(req.body.includeWorkbookFormatted, 'includeWorkbookFormatted', true);
+  }
+
+  return parseBooleanQuery(req.query.includeWorkbookFormatted, 'includeWorkbookFormatted', true);
+}
+
 function buildStandardPayload(body) {
   const standardName = normalizeString(body.standardName);
   if (!standardName) throw createBadRequestError('standardName is required.');
@@ -117,13 +145,29 @@ function buildPointsPayload(points, fallbackUnit) {
 
 /**
  * GET /api/pressure-calibration/instruments
- * Optional: ?search=<text> to filter by qa_id / name / code
+ * Optional filters:
+ *   ?search=<text>
+ *   ?department=<text>
+ *   ?parameter=<text>
+ *   ?location=<text>
+ *   ?jenisKalibrasi=Internal|External
+ *   ?includeExternal=true|false (default: false)
  */
 const listInstruments = async (req, res, next) => {
   try {
-    const data = await repo.listInstruments(req.query.search || null);
+    const filters = {
+      search:          normalizeString(req.query.search),
+      department:      normalizeString(req.query.department),
+      parameter:       normalizeString(req.query.parameter),
+      location:        normalizeString(req.query.location),
+      jenisKalibrasi:  normalizeJenisKalibrasi(req.query.jenisKalibrasi),
+      includeExternal: parseBooleanQuery(req.query.includeExternal, 'includeExternal', false),
+    };
+
+    const data = await repo.listInstruments(filters);
     res.status(200).json(data);
   } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
     next(err);
   }
 };
@@ -369,13 +413,18 @@ const getReadings = async (req, res, next) => {
 
 /**
  * POST /api/pressure-calibration/sessions/:sessionId/calculate
+ * Optional: ?includeWorkbookFormatted=true|false (default: true)
  */
 const calculate = async (req, res, next) => {
   try {
     const sessionId = parseInt(req.params.sessionId, 10);
     if (Number.isNaN(sessionId)) return res.status(400).json({ message: 'Invalid session id.' });
 
-    const result = await calSvc.calculate(sessionId, req.body || {});
+    const includeWorkbookFormatted = resolveIncludeWorkbookFormatted(req);
+    const result = await calSvc.calculate(sessionId, {
+      ...(req.body || {}),
+      includeWorkbookFormatted,
+    });
     res.status(200).json(result);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
@@ -385,13 +434,15 @@ const calculate = async (req, res, next) => {
 
 /**
  * GET /api/pressure-calibration/sessions/:sessionId/result
+ * Optional: ?includeWorkbookFormatted=true|false (default: true)
  */
 const getResult = async (req, res, next) => {
   try {
     const sessionId = parseInt(req.params.sessionId, 10);
     if (Number.isNaN(sessionId)) return res.status(400).json({ message: 'Invalid session id.' });
 
-    const result = await calSvc.getResult(sessionId);
+    const includeWorkbookFormatted = resolveIncludeWorkbookFormatted(req);
+    const result = await calSvc.getResult(sessionId, { includeWorkbookFormatted });
     res.status(200).json(result);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });

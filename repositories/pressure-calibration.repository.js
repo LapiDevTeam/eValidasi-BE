@@ -102,27 +102,123 @@ const INSTRUMENT_UNION_SQL = `
 `;
 
 /**
- * List all instruments.
- * Supports optional text search (qa_id / name / code / calibration_id).
+ * List pressure instruments with DA Bagian detail shape.
  *
- * @param {string} [search] - optional search string
+ * @param {object|string} [filters] - filter object or backward-compatible search string
+ * @param {string} [filters.search] - text search across key instrument fields
+ * @param {string} [filters.department] - optional department filter
+ * @param {string} [filters.parameter] - optional calibration parameter filter
+ * @param {string} [filters.location] - optional location filter
+ * @param {'Internal'|'External'} [filters.jenisKalibrasi] - optional exact calibration type filter
+ * @param {boolean} [filters.includeExternal=false] - include External rows in default listing
+ *
  * @returns {Promise<Array>}
  */
-async function listInstruments(search) {
+async function listInstruments(filters = {}) {
   const pool = await getPool();
+  const normalized = typeof filters === 'string'
+    ? { search: filters }
+    : (filters || {});
 
-  let query = `SELECT * FROM (${INSTRUMENT_UNION_SQL}) AS instruments`;
+  const search = normalized.search || null;
+  const department = normalized.department || null;
+  const parameter = normalized.parameter || null;
+  const location = normalized.location || null;
+  const jenisKalibrasi = normalized.jenisKalibrasi || null;
+  const includeExternal = normalized.includeExternal === true
+    || ['1', 'true', 'yes', 'on'].includes(String(normalized.includeExternal || '').trim().toLowerCase());
 
   const request = pool.request();
+  const whereClauses = [];
+
   if (search) {
     request.input('Search', sql.NVarChar(100), `%${search}%`);
-    query += `
-      WHERE qa_id           LIKE @Search
-         OR instrument_name LIKE @Search
-         OR instrument_code LIKE @Search
-         OR calibration_id  LIKE @Search`;
+    whereClauses.push(`
+      (
+        A.QA_ID LIKE @Search
+        OR A.Assm_nama_instrumen LIKE @Search
+        OR A.Assm_No_identitas_Istrumen LIKE @Search
+        OR A.Assm_No_identitas_kalibrasi LIKE @Search
+        OR A.Group_Da_Dept LIKE @Search
+        OR A.Parameter_Kalibrasi LIKE @Search
+        OR A.Assm_Lokasi LIKE @Search
+      )
+    `);
   }
-  query += ` ORDER BY instrument_name`;
+
+  if (department) {
+    request.input('Department', sql.NVarChar(100), `%${department}%`);
+    whereClauses.push('A.Group_Da_Dept LIKE @Department');
+  }
+
+  if (parameter) {
+    request.input('ParameterFilter', sql.NVarChar(100), `%${parameter}%`);
+    whereClauses.push('A.Parameter_Kalibrasi LIKE @ParameterFilter');
+  }
+
+  if (location) {
+    request.input('LocationFilter', sql.NVarChar(100), `%${location}%`);
+    whereClauses.push('A.Assm_Lokasi LIKE @LocationFilter');
+  }
+
+  if (jenisKalibrasi === 'Internal') {
+    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) = 1');
+  } else if (jenisKalibrasi === 'External') {
+    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) <> 1');
+  } else if (!includeExternal) {
+    // Default behavior for the instrument picker checkbox: hide External rows.
+    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) = 1');
+  }
+
+  let query = `
+    SELECT
+      A.QA_ID,
+      CASE WHEN ISNULL(A.Jenis_Kalibrasi, 1) = 1 THEN 'Internal' ELSE 'External' END AS Jenis_Kalibrasi,
+      A.Parameter_Sertifikasi,
+      A.Assm_nama_instrumen,
+      A.Assm_No_identitas_Istrumen,
+      A.Assm_No_identitas_kalibrasi,
+      A.Group_Da_Dept,
+      A.Assm_Kapasitas,
+      A.Parameter_Kalibrasi,
+      A.Assm_Lokasi,
+      REPLACE(CONVERT(CHAR(11), A.Tgl_kalibrasi, 106), ' ', '-') AS Tgl_kalibrasi,
+      CAST(A.Parameter_Interval AS VARCHAR(20)) + ' Bulan' AS Parameter_Interval,
+      REPLACE(CONVERT(CHAR(11), A.Kalibrasi_selanjutnya, 106), ' ', '-') AS Kalibrasi_selanjutnya,
+      A.Catatan,
+      B.user_ID,
+      CONVERT(VARCHAR(20), B.Process_date, 13) AS Process_date,
+      ISNULL(A.f_fileName, '') AS f_fileName,
+      CASE
+        WHEN A.Kalibrasi_selanjutnya IS NULL THEN 'Unknown'
+        WHEN A.Kalibrasi_selanjutnya < GETDATE() THEN 'Overdue'
+        WHEN A.Kalibrasi_selanjutnya <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
+        ELSE 'Compliant'
+      END AS status,
+
+      -- backward-compatible aliases used by pressure-calibration consumers
+      A.QA_ID AS qa_id,
+      A.Assm_nama_instrumen AS instrument_name,
+      A.Assm_No_identitas_Istrumen AS instrument_code,
+      A.Assm_No_identitas_kalibrasi AS calibration_id,
+      A.Group_Da_Dept AS department,
+      A.Assm_Kapasitas AS capacity,
+      A.Parameter_Kalibrasi AS parameter,
+      A.Assm_Lokasi AS location,
+      A.Kalibrasi_selanjutnya AS next_calibration_date
+    FROM T_Kalibrasi_DA_Bagian AS A
+    LEFT JOIN (
+      SELECT QA_id, user_ID, Process_date
+      FROM T_Kalibrasi_DA_Bagian_status
+      WHERE approver_no = 1
+    ) AS B ON A.QA_ID = B.QA_id
+  `;
+
+  if (whereClauses.length > 0) {
+    query += `\n WHERE ${whereClauses.join('\n   AND ')}`;
+  }
+
+  query += `\n ORDER BY A.QA_ID ASC`;
 
   const result = await request.query(query);
   return result.recordset;

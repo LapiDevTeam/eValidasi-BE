@@ -37,6 +37,85 @@ function diffNullable(a, b) {
   return Number(a) - Number(b);
 }
 
+function normalizeIncludeWorkbookFormatted(value) {
+  if (value === undefined || value === null || value === '') return true;
+  if (typeof value === 'boolean') return value;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+
+  return true;
+}
+
+function formatWorkbookNumber(value, decimals) {
+  if (value === null || value === undefined || value === '') return null;
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+
+  return numeric.toFixed(decimals);
+}
+
+function buildWorkbookSummaryFormatted(summary) {
+  return {
+    combinedUncertainty:    formatWorkbookNumber(summary.combinedUncertainty, 3),
+    effectiveDegreeFreedom: formatWorkbookNumber(summary.effectiveDegreeFreedom, 2),
+    coverageFactor:         formatWorkbookNumber(summary.coverageFactor, 2),
+    expandedUncertainty:    formatWorkbookNumber(summary.expandedUncertainty, 1),
+    resolution:             formatWorkbookNumber(summary.resolution, 0),
+    resolutionFactor:       formatWorkbookNumber(summary.resolutionFactor, 1),
+    zeroDeviation:          formatWorkbookNumber(summary.zeroDeviation, 3),
+    maxRepeatability:       formatWorkbookNumber(summary.maxRepeatability, 3),
+    maxCertUncertainty:     formatWorkbookNumber(summary.maxCertUncertainty, 4),
+    additionalUncertainty:  formatWorkbookNumber(summary.additionalUncertainty, 4),
+  };
+}
+
+function buildWorkbookPointFormatted(point) {
+  return {
+    nominalValue:            formatWorkbookNumber(point.nominalValue, 0),
+    dataNaikStandar:         formatWorkbookNumber(point.dataNaikStandar, 0),
+    dataNaikUut:             formatWorkbookNumber(point.dataNaikUut, 0),
+    dataNaikError:           formatWorkbookNumber(point.dataNaikError, 0),
+    dataTurunStandar:        formatWorkbookNumber(point.dataTurunStandar, 0),
+    dataTurunUut:            formatWorkbookNumber(point.dataTurunUut, 0),
+    dataTurunError:          formatWorkbookNumber(point.dataTurunError, 0),
+    meanStandar:             formatWorkbookNumber(point.meanStandar, 0),
+    meanUut:                 formatWorkbookNumber(point.meanUut, 0),
+    bedaLevelAcuan:          formatWorkbookNumber(point.bedaLevelAcuan, 3),
+    uutMean:                 formatWorkbookNumber(point.uutMean, 0),
+    standardMean:            formatWorkbookNumber(point.standardMean, 0),
+    levelCorrection:         formatWorkbookNumber(point.levelCorrection, 3),
+    errorValue:              formatWorkbookNumber(point.errorValue, 0),
+    repeatability:           formatWorkbookNumber(point.repeatability, 3),
+    zeroDeviation:           formatWorkbookNumber(point.zeroDeviation, 3),
+    combinedUncertainty:     formatWorkbookNumber(point.combinedUncertainty, 3),
+    effectiveDegreeFreedom:  formatWorkbookNumber(point.effectiveDegreeFreedom, 2),
+    coverageFactor:          formatWorkbookNumber(point.coverageFactor, 2),
+    expandedUncertainty:     formatWorkbookNumber(point.expandedUncertainty, 1),
+    lowerLimit:              formatWorkbookNumber(point.lowerLimit, 1),
+    upperLimit:              formatWorkbookNumber(point.upperLimit, 1),
+  };
+}
+
+function withWorkbookFormattedPayload(payload) {
+  const summary = payload.summary || {};
+  const points = Array.isArray(payload.points) ? payload.points : [];
+
+  return {
+    ...payload,
+    summary: {
+      ...summary,
+      workbookFormatted: buildWorkbookSummaryFormatted(summary),
+    },
+    points: points.map((point) => ({
+      ...point,
+      workbookFormatted: buildWorkbookPointFormatted(point),
+    })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Validators
 // ---------------------------------------------------------------------------
@@ -221,6 +300,10 @@ async function saveReadings(sessionId, body) {
  * @returns {Promise<object>}  – structured result ready for API response
  */
 async function calculate(sessionId, options = {}) {
+  const includeWorkbookFormatted = normalizeIncludeWorkbookFormatted(
+    options.includeWorkbookFormatted
+  );
+
   const regressionCoefficients = normalizeRegressionCoefficientsInput(
     options.regressionCoefficients
   );
@@ -411,7 +494,7 @@ async function calculate(sessionId, options = {}) {
   // Update session status to CALCULATED
   await repo.updateSessionStatus(sessionId, 'CALCULATED');
 
-  return {
+  const payload = {
     sessionId,
     summary: {
       combinedUncertainty:    budget.combinedUncertainty,
@@ -431,6 +514,10 @@ async function calculate(sessionId, options = {}) {
     points:   finalPoints,
     warnings,
   };
+
+  return includeWorkbookFormatted
+    ? withWorkbookFormattedPayload(payload)
+    : payload;
 }
 
 // ---------------------------------------------------------------------------
@@ -443,7 +530,11 @@ async function calculate(sessionId, options = {}) {
  * @param {number} sessionId
  * @returns {Promise<object>}
  */
-async function getResult(sessionId) {
+async function getResult(sessionId, options = {}) {
+  const includeWorkbookFormatted = normalizeIncludeWorkbookFormatted(
+    options.includeWorkbookFormatted
+  );
+
   const session = await repo.getSessionById(sessionId);
   if (!session) {
     const err = new Error(`Session ${sessionId} not found.`);
@@ -506,7 +597,7 @@ async function getResult(sessionId) {
     });
   }
 
-  return {
+  const payload = {
     sessionId,
     summary: {
       combinedUncertainty:    first.combined_uncertainty,
@@ -556,6 +647,10 @@ async function getResult(sessionId) {
       };
     }),
   };
+
+  return includeWorkbookFormatted
+    ? withWorkbookFormattedPayload(payload)
+    : payload;
 }
 
 module.exports = {
