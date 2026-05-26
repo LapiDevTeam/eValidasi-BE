@@ -459,6 +459,8 @@ async function createSession(data) {
     .input('StandardUnit',    sql.VarChar(20),   data.standardUnit    || null)
     .input('IndicatorType',   sql.VarChar(20),   data.indicatorType   || 'Digital')
     .input('Resolution',      sql.Decimal(18,8), data.resolution      ?? 1)
+    .input('StandardUncertainty', sql.Decimal(18,8), data.standardUncertainty ?? null)
+    .input('MetalRuleUncertainty', sql.Decimal(18,8), data.metalRuleUncertainty ?? null)
     .input('DeltaH',          sql.Decimal(18,8), data.deltaH          ?? 0)
     .input('MediaDensity',    sql.Decimal(18,8), data.mediaDensity    ?? 1.2)
     .input('Gravity',         sql.Decimal(18,8), data.gravity         ?? 9.78)
@@ -467,12 +469,14 @@ async function createSession(data) {
       INSERT INTO [dbo].[calibration_sessions]
         (instrument_id, standard_id, calibration_date, temperature, humidity,
          pic, uut_unit, standard_unit, indicator_type, resolution,
+         standard_uncertainty, metal_rule_uncertainty,
          delta_h, media_density, gravity,
          status, created_by)
       OUTPUT INSERTED.session_id
       VALUES
         (@InstrumentId, @StandardId, @CalibrationDate, @Temperature, @Humidity,
          @Pic, @UutUnit, @StandardUnit, @IndicatorType, @Resolution,
+         @StandardUncertainty, @MetalRuleUncertainty,
          @DeltaH, @MediaDensity, @Gravity,
          'DRAFT', @CreatedBy)
     `);
@@ -502,6 +506,8 @@ async function listSessions({ limit = 50 } = {}) {
         cs.standard_unit,
         cs.indicator_type,
         cs.resolution,
+        cs.standard_uncertainty,
+        cs.metal_rule_uncertainty,
         cs.status,
         cs.created_by,
         cs.created_at,
@@ -525,11 +531,31 @@ async function getSessionById(sessionId) {
         session_id, instrument_id, standard_id, calibration_date,
         temperature, humidity, pic, uut_unit, standard_unit,
         indicator_type, resolution,
+        standard_uncertainty, metal_rule_uncertainty,
         delta_h, media_density, gravity, status, created_by, created_at
       FROM [dbo].[calibration_sessions]
       WHERE session_id = @SessionId AND is_deleted = 0
     `);
   return result.recordset[0] || null;
+}
+
+async function updateSessionManualUncertainties(
+  sessionId,
+  standardUncertainty,
+  metalRuleUncertainty
+) {
+  const pool = await getPool();
+  await pool.request()
+    .input('SessionId', sql.Int, sessionId)
+    .input('StandardUncertainty', sql.Decimal(18,8), standardUncertainty ?? null)
+    .input('MetalRuleUncertainty', sql.Decimal(18,8), metalRuleUncertainty ?? null)
+    .query(`
+      UPDATE [dbo].[calibration_sessions]
+      SET
+        standard_uncertainty = @StandardUncertainty,
+        metal_rule_uncertainty = @MetalRuleUncertainty
+      WHERE session_id = @SessionId
+    `);
 }
 
 async function updateSessionStatus(sessionId, status) {
@@ -732,6 +758,7 @@ module.exports = {
   listSessions,
   createSession,
   getSessionById,
+  updateSessionManualUncertainties,
   updateSessionStatus,
   // readings
   upsertReadings,

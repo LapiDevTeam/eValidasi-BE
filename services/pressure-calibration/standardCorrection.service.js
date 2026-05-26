@@ -51,13 +51,21 @@ function getUnitFactor(from, to) {
   return fPa / tPa;
 }
 
+function isAnalogIndicatorType(indicatorType) {
+  return String(indicatorType || '').trim().toLowerCase() === 'analog';
+}
+
 /**
- * Workbook parity note:
- * In the current template, AN/AO regression cells reference AJ-series values.
- * To keep Node.js output identical to that workbook, both increasing and
- * decreasing correction paths use indicator_increasing as the X axis.
+ * Regression X-axis selector.
+ *
+ * Digital mode keeps workbook AJ-path parity (increasing axis for both paths).
+ * Analog mode switches the decreasing path to the AK-axis equivalent.
  */
-function getIndicatorKeyForCorrection() {
+function getIndicatorKeyForCorrection(direction, indicatorType = 'Digital') {
+  const normalizedDirection = String(direction || '').trim().toLowerCase();
+  if (normalizedDirection === 'decreasing' && isAnalogIndicatorType(indicatorType)) {
+    return 'indicator_decreasing';
+  }
   return 'indicator_increasing';
 }
 
@@ -109,20 +117,26 @@ function getDirectionRegression(overrideMap, rowLabel, fallbackRowLabel, directi
  * @param {number}   rawReading  – The raw standard reading to correct
  * @param {string}   direction   – 'increasing' | 'decreasing'
  *
+ * @param {string}   indicatorType  – 'Analog' | 'Digital'
  * @returns {{
  *   p1: object,
  *   p2: object,
  *   rowLabel: number,
  *   fallbackRowLabel: number,
+ *   axisKey: string,
  *   warning: string|null
  * }}
  */
-function findSegment(points, rawReading, direction) {
+function findSegment(points, rawReading, direction, indicatorType = 'Digital') {
   if (!Array.isArray(points) || points.length < 2) {
     throw new Error('findSegment: need at least 2 certificate points.');
   }
 
-  const indicatorKey = getIndicatorKeyForCorrection();
+  let indicatorKey = getIndicatorKeyForCorrection(direction, indicatorType);
+  const hasFiniteAxis = points.every((p) => Number.isFinite(Number(p[indicatorKey])));
+  if (!hasFiniteAxis) {
+    indicatorKey = 'indicator_increasing';
+  }
 
   // Sort a copy ascending by indicator value
   const sorted = [...points].sort(
@@ -151,6 +165,7 @@ function findSegment(points, rawReading, direction) {
         p2: sorted[i + 1],
         rowLabel: 16 + i,
         fallbackRowLabel: 16 + i,
+        axisKey: indicatorKey,
         warning: null,
       };
     }
@@ -165,6 +180,7 @@ function findSegment(points, rawReading, direction) {
       p2: sorted[1],
       rowLabel: 16,
       fallbackRowLabel: 16,
+      axisKey: indicatorKey,
       warning: overshoot > tolerance
         ? `Standard reading ${raw} is below certificate range (min ${certMin}). Using first segment.`
         : null,
@@ -178,6 +194,7 @@ function findSegment(points, rawReading, direction) {
     p2: sorted[last],
     rowLabel: 16 + last,
     fallbackRowLabel: 16 + (last - 1),
+    axisKey: indicatorKey,
     warning: overshoot > tolerance
       ? `Standard reading ${raw} is above certificate range (max ${certMax}). Using last segment.`
       : null,
@@ -195,12 +212,24 @@ function findSegment(points, rawReading, direction) {
  * @param {number} rawReading
  * @param {string} direction  – 'increasing' | 'decreasing'
  * @param {Map<number, {AL:number, AM:number, AN:number, AO:number}>} [overrideMap]
+ * @param {string} indicatorType
  * @returns {{ corrected: number, warning: string|null }}
  */
-function correctStandardReading(points, rawReading, direction, overrideMap = new Map()) {
-  const { p1, p2, rowLabel, fallbackRowLabel, warning } = findSegment(points, rawReading, direction);
+function correctStandardReading(
+  points,
+  rawReading,
+  direction,
+  overrideMap = new Map(),
+  indicatorType = 'Digital'
+) {
+  const { p1, p2, rowLabel, fallbackRowLabel, axisKey, warning } = findSegment(
+    points,
+    rawReading,
+    direction,
+    indicatorType
+  );
 
-  const indicatorKey = getIndicatorKeyForCorrection();
+  const indicatorKey = axisKey || getIndicatorKeyForCorrection(direction, indicatorType);
 
   const x1 = Number(p1[indicatorKey]);
   const y1 = Number(p1.actual_pressure);
@@ -238,12 +267,14 @@ function correctStandardReading(points, rawReading, direction, overrideMap = new
  * @param {object} [options]
  * @param {string} [options.readingUnit]  – unit of standard_reading (e.g. 'Pa')
  * @param {string} [options.certUnit]     – unit of certificate points (e.g. 'Bar')
+ * @param {string} [options.indicatorType] – 'Analog' | 'Digital'
  * @param {Array<{rowLabel:number, AL:number, AM:number, AN:number, AO:number}>} [options.regressionCoefficients]
  * @returns {{ correctedReadings: Array, warnings: string[] }}
  */
 function applyCorrections(readings, certificatePoints, options = {}) {
   const readingUnit = options.readingUnit || (certificatePoints[0] && certificatePoints[0].unit) || 'Pa';
   const certUnit    = options.certUnit    || (certificatePoints[0] && certificatePoints[0].unit) || 'Pa';
+  const indicatorType = options.indicatorType || 'Digital';
   const overrideMap = buildRegressionOverrideMap(options.regressionCoefficients);
 
   // Factor: reading unit → cert unit (applied before interpolation)
@@ -260,7 +291,8 @@ function applyCorrections(readings, certificatePoints, options = {}) {
       certificatePoints,
       readingInCertUnit,
       r.direction,
-      overrideMap
+      overrideMap,
+      indicatorType
     );
     if (warning) warnings.push(warning);
 
@@ -275,4 +307,5 @@ module.exports = {
   correctStandardReading,
   applyCorrections,
   getUnitFactor,
+  getIndicatorKeyForCorrection,
 };

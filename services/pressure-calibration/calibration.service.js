@@ -67,7 +67,10 @@ function buildWorkbookSummaryFormatted(summary) {
     resolutionFactor:       formatWorkbookNumber(summary.resolutionFactor, 1),
     zeroDeviation:          formatWorkbookNumber(summary.zeroDeviation, 3),
     maxRepeatability:       formatWorkbookNumber(summary.maxRepeatability, 3),
+    certificateMaxUncertainty: formatWorkbookNumber(summary.certificateMaxUncertainty, 4),
     maxCertUncertainty:     formatWorkbookNumber(summary.maxCertUncertainty, 4),
+    standardUncertainty:    formatWorkbookNumber(summary.standardUncertainty, 4),
+    metalRuleUncertainty:   formatWorkbookNumber(summary.metalRuleUncertainty, 4),
     additionalUncertainty:  formatWorkbookNumber(summary.additionalUncertainty, 4),
   };
 }
@@ -140,6 +143,25 @@ function validateSessionInput(body) {
     }
   }
 
+  if (body.standardUncertainty !== undefined && body.standardUncertainty !== null && body.standardUncertainty !== '') {
+    const standardUncertainty = Number(body.standardUncertainty);
+    if (!Number.isFinite(standardUncertainty) || standardUncertainty < 0) {
+      errors.push('standardUncertainty must be a non-negative number.');
+    }
+  }
+
+  const metalRuleUncertaintyInput =
+    body.metalRuleUncertainty !== undefined
+      ? body.metalRuleUncertainty
+      : body.additionalUncertainty;
+
+  if (metalRuleUncertaintyInput !== undefined && metalRuleUncertaintyInput !== null && metalRuleUncertaintyInput !== '') {
+    const metalRuleUncertainty = Number(metalRuleUncertaintyInput);
+    if (!Number.isFinite(metalRuleUncertainty) || metalRuleUncertainty < 0) {
+      errors.push('metalRuleUncertainty must be a non-negative number.');
+    }
+  }
+
   return errors;
 }
 
@@ -196,15 +218,25 @@ function normalizeRegressionCoefficientsInput(coefficients) {
   });
 }
 
-function normalizeAdditionalUncertaintyInput(value) {
-  if (value === undefined || value === null || value === '') return undefined;
+function normalizeManualUncertaintyInput(value, fieldName) {
+  if (value === undefined || value === '') return undefined;
+  if (value === null) return null;
 
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric < 0) {
-    const err = new Error('additionalUncertainty must be a non-negative number.');
+    const err = new Error(`${fieldName} must be a non-negative number.`);
     err.statusCode = 400;
     throw err;
   }
+
+  return numeric;
+}
+
+function normalizePersistedUncertainty(value) {
+  if (value === undefined || value === null || value === '') return null;
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
 
   return numeric;
 }
@@ -232,6 +264,16 @@ async function createSession(body, createdBy) {
   const resolution = (body.resolution === undefined || body.resolution === null || body.resolution === '')
     ? 1
     : Number(body.resolution);
+  const standardUncertainty = normalizeManualUncertaintyInput(
+    body.standardUncertainty,
+    'standardUncertainty'
+  );
+  const metalRuleUncertainty = normalizeManualUncertaintyInput(
+    body.metalRuleUncertainty !== undefined
+      ? body.metalRuleUncertainty
+      : body.additionalUncertainty,
+    'metalRuleUncertainty'
+  );
 
   const sessionId = await repo.createSession({
     instrumentId:    body.instrumentId,
@@ -244,6 +286,8 @@ async function createSession(body, createdBy) {
     standardUnit:    body.standardUnit   || null,
     indicatorType,
     resolution,
+    standardUncertainty,
+    metalRuleUncertainty,
     deltaH:          body.deltaH         ?? 0,
     mediaDensity:    body.mediaDensity   ?? 1.2,
     gravity:         body.gravity        ?? 9.78,
@@ -307,8 +351,15 @@ async function calculate(sessionId, options = {}) {
   const regressionCoefficients = normalizeRegressionCoefficientsInput(
     options.regressionCoefficients
   );
-  const additionalUncertainty = normalizeAdditionalUncertaintyInput(
-    options.additionalUncertainty
+  const standardUncertaintyInput = normalizeManualUncertaintyInput(
+    options.standardUncertainty,
+    'standardUncertainty'
+  );
+  const metalRuleUncertaintyInput = normalizeManualUncertaintyInput(
+    options.metalRuleUncertainty !== undefined
+      ? options.metalRuleUncertainty
+      : options.additionalUncertainty,
+    'metalRuleUncertainty'
   );
 
   // 1. Load session
@@ -337,6 +388,8 @@ async function calculate(sessionId, options = {}) {
     throw err;
   }
 
+  const indicatorType = normalizeIndicatorType(session.indicator_type) || 'Digital';
+
   // 4. Correct standard readings using piecewise linear interpolation
   //    Pass unit context so the correction function converts between the session's
   //    reading unit (e.g. Pa) and the certificate's stored unit (e.g. Bar).
@@ -346,6 +399,7 @@ async function calculate(sessionId, options = {}) {
     {
       readingUnit: session.standard_unit || 'Pa',
       certUnit:    (certPoints[0] && certPoints[0].unit) || 'Bar',
+      indicatorType,
       regressionCoefficients,
     }
   );
@@ -448,7 +502,45 @@ async function calculate(sessionId, options = {}) {
   const certToSessionFactor = stdCorrection.getUnitFactor(certUnit, sessionStandardUnit);
   const maxCertUncertainty = certRawUncertainty * certToSessionFactor;
 
-  const indicatorType = normalizeIndicatorType(session.indicator_type) || 'Digital';
+  const persistedStandardUncertainty = normalizePersistedUncertainty(
+    session.standard_uncertainty
+  );
+  const persistedMetalRuleUncertainty = normalizePersistedUncertainty(
+    session.metal_rule_uncertainty
+  );
+
+  const shouldPersistManualUncertainty =
+    standardUncertaintyInput !== undefined ||
+    metalRuleUncertaintyInput !== undefined;
+
+  const nextStoredStandardUncertainty =
+    standardUncertaintyInput === undefined
+      ? persistedStandardUncertainty
+      : standardUncertaintyInput;
+
+  const nextStoredMetalRuleUncertainty =
+    metalRuleUncertaintyInput === undefined
+      ? persistedMetalRuleUncertainty
+      : metalRuleUncertaintyInput;
+
+  if (shouldPersistManualUncertainty) {
+    await repo.updateSessionManualUncertainties(
+      sessionId,
+      nextStoredStandardUncertainty,
+      nextStoredMetalRuleUncertainty
+    );
+  }
+
+  const effectiveStandardUncertainty =
+    nextStoredStandardUncertainty === null
+      ? maxCertUncertainty
+      : nextStoredStandardUncertainty;
+
+  const effectiveMetalRuleUncertainty =
+    nextStoredMetalRuleUncertainty === null
+      ? 0.0003
+      : nextStoredMetalRuleUncertainty;
+
   const resolution = Number(session.resolution ?? 1);
 
   const budget = uncertaintySvc.buildUncertaintyBudget({
@@ -456,9 +548,9 @@ async function calculate(sessionId, options = {}) {
     resolution,
     indicatorType,
     maxRepeatability,
-    certUncertainty: maxCertUncertainty,
+    certUncertainty: effectiveStandardUncertainty,
     certK:           2,
-    metalRule:       additionalUncertainty,
+    metalRule:       effectiveMetalRuleUncertainty,
   });
 
   // 10. Assemble final point objects including uncertainty
@@ -507,9 +599,14 @@ async function calculate(sessionId, options = {}) {
       resolutionFactor:       budget.resolutionFactor,
       zeroDeviation,
       maxRepeatability,
-      maxCertUncertainty,
+      certificateMaxUncertainty: maxCertUncertainty,
+      maxCertUncertainty:      effectiveStandardUncertainty,
+      standardUncertainty:     effectiveStandardUncertainty,
+      metalRuleUncertainty:    effectiveMetalRuleUncertainty,
       customRegressionCount:  regressionCoefficients.length,
-      additionalUncertainty:  additionalUncertainty ?? 0.0003,
+      additionalUncertainty:   effectiveMetalRuleUncertainty,
+      manualStandardUncertainty: nextStoredStandardUncertainty,
+      manualMetalRuleUncertainty: nextStoredMetalRuleUncertainty,
     },
     points:   finalPoints,
     warnings,
@@ -570,14 +667,31 @@ async function getResult(sessionId, options = {}) {
   const certToSessionFactor = stdCorrection.getUnitFactor(certUnit, sessionStandardUnit);
   const maxCertUncertainty = certRawUncertainty * certToSessionFactor;
 
+  const persistedStandardUncertainty = normalizePersistedUncertainty(
+    session.standard_uncertainty
+  );
+  const persistedMetalRuleUncertainty = normalizePersistedUncertainty(
+    session.metal_rule_uncertainty
+  );
+
+  const effectiveStandardUncertainty =
+    persistedStandardUncertainty === null
+      ? maxCertUncertainty
+      : persistedStandardUncertainty;
+
+  const effectiveMetalRuleUncertainty =
+    persistedMetalRuleUncertainty === null
+      ? 0.0003
+      : persistedMetalRuleUncertainty;
+
   const budget = uncertaintySvc.buildUncertaintyBudget({
     zeroDeviation,
     resolution,
     indicatorType,
     maxRepeatability,
-    certUncertainty: maxCertUncertainty,
+    certUncertainty: effectiveStandardUncertainty,
     certK: 2,
-    metalRule: 0.0003,
+    metalRule: effectiveMetalRuleUncertainty,
   });
 
   const readings = await repo.getReadingsBySession(sessionId);
@@ -610,8 +724,13 @@ async function getResult(sessionId, options = {}) {
       resolutionFactor:       budget.resolutionFactor,
       zeroDeviation,
       maxRepeatability,
-      maxCertUncertainty,
-      additionalUncertainty:  0.0003,
+      certificateMaxUncertainty: maxCertUncertainty,
+      maxCertUncertainty:      effectiveStandardUncertainty,
+      standardUncertainty:     effectiveStandardUncertainty,
+      metalRuleUncertainty:    effectiveMetalRuleUncertainty,
+      additionalUncertainty:   effectiveMetalRuleUncertainty,
+      manualStandardUncertainty: persistedStandardUncertainty,
+      manualMetalRuleUncertainty: persistedMetalRuleUncertainty,
     },
     points: results.map((r) => {
       const pointIndex = Number(r.point_index);

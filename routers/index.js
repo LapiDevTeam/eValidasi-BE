@@ -11,6 +11,7 @@ const routerPenghapusanAlat = require("../routers/transactions/penghapusan-alat.
 const routerAuditTrail = require("../routers/transactions/auditTrail.router");
 const routerCalibrationRiskAssessment = require("../routers/transactions/calibration-risk-assessment.router");
 const routerPressureCalibration = require("../routers/transactions/pressure-calibration.router");
+const routerCalibrationWorkbook = require("../routers/transactions/calibration-workbook.router");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
 
@@ -42,6 +43,7 @@ router.use("/transactions/penghapusan-alat", routerPenghapusanAlat);
 router.use("/audit-trail", routerAuditTrail);
 router.use("/api/calibration-risk-assessments", routerCalibrationRiskAssessment);
 router.use("/pressure-calibration", routerPressureCalibration);
+router.use("/api", routerCalibrationWorkbook);
 router.use("/master", masterRouter);
 
 module.exports = router;
