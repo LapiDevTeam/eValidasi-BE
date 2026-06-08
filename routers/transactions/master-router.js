@@ -3,7 +3,13 @@
 const express = require('express');
 const router = express.Router();
 const { authentication } = require('../../middlewares/authentication');
-const { getMasterRKTPreview, exportMasterRKT } = require('../../controllers/transactions/master-rkt.controller');
+const {
+  getMasterRKTPreview,
+  exportMasterRKT,
+  requestMasterRKTApproval,
+  approveMasterRKT,
+  rejectMasterRKT,
+} = require('../../controllers/transactions/master-rkt.controller');
 const {
   getMasterJadwalBulananPreview,
   exportMasterJadwalBulanan,
@@ -19,6 +25,15 @@ router.get('/rkt/preview', getMasterRKTPreview);
 
 // GET /master/rkt/export?year=2026
 router.get('/rkt/export', exportMasterRKT);
+
+// POST /master/rkt/request-approve
+router.post('/rkt/request-approve', requestMasterRKTApproval);
+
+// POST /master/rkt/approve
+router.post('/rkt/approve', approveMasterRKT);
+
+// POST /master/rkt/reject
+router.post('/rkt/reject', rejectMasterRKT);
 
 // GET /master/jadwal-bulanan/preview?year=2026&month=5
 router.get('/jadwal-bulanan/preview', getMasterJadwalBulananPreview);

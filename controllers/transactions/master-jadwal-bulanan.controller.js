@@ -19,13 +19,6 @@ const MONTH_NAMES_ID = [
   'Desember',
 ];
 
-const CATEGORY_ORDER = {
-  Unlisted: 0,
-  Thermohygrometer: 1,
-  Timbangan: 2,
-  'Diff. Pressure Gauge': 3,
-};
-
 const WEEK_LABELS = ['MINGGU 1', 'MINGGU 2', 'MINGGU 3', 'MINGGU 4'];
 const CALIBRATION_SCOPE = {
   INTERNAL: 'internal',
@@ -95,14 +88,8 @@ const getWeekNumber = (value) => {
 
 const sortMappedRows = (rows) => {
   rows.sort((a, b) => {
-    if (a.week !== b.week) return a.week - b.week;
-
-    const catA = CATEGORY_ORDER[a.category] ?? 99;
-    const catB = CATEGORY_ORDER[b.category] ?? 99;
-    if (catA !== catB) return catA - catB;
-
-    const dateA = toDateObject(a.plan_due_date)?.getTime() || 0;
-    const dateB = toDateObject(b.plan_due_date)?.getTime() || 0;
+    const dateA = toDateObject(a.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const dateB = toDateObject(b.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
     if (dateA !== dateB) return dateA - dateB;
 
     const nameA = String(a.assm_nama_instrumen || '').toLowerCase();
@@ -134,6 +121,7 @@ const sortExternalRows = (rows) => {
 const mapMonthlyRows = (results) => {
   const mapped = (results || []).map((item, index) => {
     const planDueDate = formatDateISO(item?.Kalibrasi_selanjutnya);
+    const tglKalibrasi = formatDateISO(item?.Tgl_kalibrasi);
     const category = getCategory(item?.Assm_No_identitas_Istrumen);
     const week = getWeekNumber(item?.Kalibrasi_selanjutnya);
 
@@ -150,7 +138,8 @@ const mapMonthlyRows = (results) => {
       week,
       pic: item?.default_pic || '',
       plan_due_date: planDueDate,
-      realisasi_eksekusi: null,
+      tgl_kalibrasi: tglKalibrasi,
+      realisasi_eksekusi: tglKalibrasi,
       ket: '',
     };
   });
@@ -174,10 +163,12 @@ const mapMonthlyExternalRows = (results) => {
     assm_lokasi: item?.Assm_Lokasi || '',
     jenis_kalibrasi: item?.Jenis_Kalibrasi || 'External',
     jatuh_tempo: formatDateISO(item?.Kalibrasi_selanjutnya),
+    tgl_kalibrasi: formatDateISO(item?.Tgl_kalibrasi),
     tgl_eksekusi_insitu: null,
     tgl_penyerahan_alat_oleh_user: null,
     tgl_pengembalian_alat_oleh_vn: null,
-    realisasi: null,
+    realisasi: formatDateISO(item?.Tgl_kalibrasi),
+    keterangan: '',
   }));
 
   sortExternalRows(mapped);
@@ -202,6 +193,7 @@ const getMonthlyCalibrationData = async (
       Group_Da_Dept,
       Assm_Lokasi,
       MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
+      MAX(Tgl_kalibrasi) AS Tgl_kalibrasi,
       CASE
         WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
         ELSE 'External'
@@ -217,6 +209,7 @@ const getMonthlyCalibrationData = async (
         Parameter_Kalibrasi,
         Assm_Lokasi,
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Thermohygro
 
@@ -232,6 +225,7 @@ const getMonthlyCalibrationData = async (
         Parameter_Kalibrasi,
         Assm_Lokasi,
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Anak_Timbangan
 
@@ -247,6 +241,7 @@ const getMonthlyCalibrationData = async (
         Parameter_Kalibrasi,
         Assm_Lokasi,
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Timbangan
 
@@ -262,6 +257,7 @@ const getMonthlyCalibrationData = async (
         Parameter_Kalibrasi,
         Assm_Lokasi,
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Bagian
 
@@ -277,6 +273,7 @@ const getMonthlyCalibrationData = async (
         Parameter_Kalibrasi,
         Location AS Assm_Lokasi,
         CAST(1 AS INT) AS Jenis_Kalibrasi,
+        NULL AS Tgl_kalibrasi,
         NULL AS Kalibrasi_selanjutnya
       FROM RA_CalibrationAssessment
       WHERE IsDeleted = 0
@@ -389,7 +386,8 @@ const normalizeIncomingRows = (rows) => {
       category,
       week: Number(week) >= 1 && Number(week) <= 4 ? Number(week) : 4,
       plan_due_date: planDueDate,
-      realisasi_eksekusi: formatDateISO(item?.realisasi_eksekusi),
+      tgl_kalibrasi: formatDateISO(item?.tgl_kalibrasi),
+      realisasi_eksekusi: formatDateISO(item?.tgl_kalibrasi || item?.realisasi_eksekusi),
       ket,
     };
   });
@@ -409,7 +407,9 @@ const normalizeIncomingExternalRows = (rows) => {
     tgl_penyerahan_alat_oleh_user: formatDateISO(item?.tgl_penyerahan_alat_oleh_user),
     tgl_pengembalian_alat_oleh_vn: formatDateISO(item?.tgl_pengembalian_alat_oleh_vn),
     jatuh_tempo: formatDateISO(item?.jatuh_tempo || item?.plan_due_date),
-    realisasi: formatDateISO(item?.realisasi || item?.realisasi_eksekusi),
+    tgl_kalibrasi: formatDateISO(item?.tgl_kalibrasi),
+    realisasi: formatDateISO(item?.tgl_kalibrasi || item?.realisasi || item?.realisasi_eksekusi),
+    keterangan: String(item?.keterangan ?? '').trim(),
   }));
 };
 
@@ -470,13 +470,14 @@ const writeExternalTableHeader = (worksheet, startRow) => {
   worksheet.getCell(`F${startRow}`).value = 'Tanggal Eksekusi';
   worksheet.getCell(`I${startRow}`).value = 'Jatuh Tempo';
   worksheet.getCell(`J${startRow}`).value = 'Realisasi';
+  worksheet.getCell(`K${startRow}`).value = 'Keterangan';
 
   worksheet.getCell(`F${startRow + 1}`).value = 'Insitu*';
   worksheet.getCell(`G${startRow + 1}`).value = 'Penyerahan Alat Oleh User';
   worksheet.getCell(`H${startRow + 1}`).value = 'Pengembalian Alat Oleh VN';
 
   for (let rowNumber = startRow; rowNumber <= startRow + 1; rowNumber += 1) {
-    for (let col = 1; col <= 10; col += 1) {
+    for (let col = 1; col <= 11; col += 1) {
       const cell = worksheet.getCell(rowNumber, col);
       cell.font = { bold: true };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -501,6 +502,7 @@ const writeExternalTableHeader = (worksheet, startRow) => {
   worksheet.mergeCells(`E${startRow}:E${startRow + 1}`);
   worksheet.mergeCells(`I${startRow}:I${startRow + 1}`);
   worksheet.mergeCells(`J${startRow}:J${startRow + 1}`);
+  worksheet.mergeCells(`K${startRow}:K${startRow + 1}`);
 };
 
 const applyRowBorderRange = (worksheet, rowNumber, fromCol, toCol) => {
@@ -545,7 +547,6 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
     sortMappedRows(rows);
     rows = rows.map((row, idx) => ({ ...row, no: idx + 1 }));
 
-    const grouped = getGroupedData(rows);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(`Jadwal-${selectedMonth}-${selectedYear}`);
 
@@ -573,54 +574,27 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
 
     let currentRow = 4;
     let numberCounter = 1;
-    for (const weekGroup of grouped) {
-      worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-      worksheet.getCell(`A${currentRow}`).value = weekGroup.week_label;
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      worksheet.getCell(`A${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-      worksheet.getCell(`A${currentRow}`).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFD9D9D9' },
-      };
+    for (const rowItem of rows) {
+      const row = worksheet.getRow(currentRow);
+      row.getCell(1).value = numberCounter;
+      row.getCell(2).value = rowItem.assm_nama_instrumen || '';
+      row.getCell(3).value = rowItem.assm_no_identitas_istrumen || '';
+      row.getCell(4).value = rowItem.group_da_dept || '';
+      row.getCell(5).value = rowItem.assm_lokasi || '';
+      row.getCell(6).value = rowItem.pic || '';
+      row.getCell(7).value = formatDateDisplay(rowItem.plan_due_date);
+      row.getCell(8).value = formatDateDisplay(rowItem.realisasi_eksekusi);
+      row.getCell(9).value = rowItem.ket === 'S' ? '√' : '';
+      row.getCell(10).value = rowItem.ket === 'D' ? '√' : '';
+      row.getCell(11).value = rowItem.ket === 'M' ? '√' : '';
+
+      row.height = 20;
+      row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      row.getCell(5).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       applyRowBorder(worksheet, currentRow);
       currentRow += 1;
-
-      for (const categoryGroup of weekGroup.categories) {
-        if (!categoryGroup.items.length) {
-          continue;
-        }
-
-        worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-        worksheet.getCell(`A${currentRow}`).value = categoryGroup.category;
-        worksheet.getCell(`A${currentRow}`).font = { italic: true, bold: true };
-        worksheet.getCell(`A${currentRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
-        applyRowBorder(worksheet, currentRow);
-        currentRow += 1;
-
-        for (const rowItem of categoryGroup.items) {
-          const row = worksheet.getRow(currentRow);
-          row.getCell(1).value = numberCounter;
-          row.getCell(2).value = rowItem.assm_nama_instrumen || '';
-          row.getCell(3).value = rowItem.assm_no_identitas_istrumen || '';
-          row.getCell(4).value = rowItem.group_da_dept || '';
-          row.getCell(5).value = rowItem.assm_lokasi || '';
-          row.getCell(6).value = rowItem.pic || '';
-          row.getCell(7).value = formatDateDisplay(rowItem.plan_due_date);
-          row.getCell(8).value = formatDateDisplay(rowItem.realisasi_eksekusi);
-          row.getCell(9).value = rowItem.ket === 'S' ? '√' : '';
-          row.getCell(10).value = rowItem.ket === 'D' ? '√' : '';
-          row.getCell(11).value = rowItem.ket === 'M' ? '√' : '';
-
-          row.height = 20;
-          row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-          row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-          row.getCell(5).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-          applyRowBorder(worksheet, currentRow);
-          currentRow += 1;
-          numberCounter += 1;
-        }
-      }
+      numberCounter += 1;
     }
 
     const lastRow = Math.max(currentRow - 1, 3);
@@ -714,9 +688,10 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
       { width: 22 }, // Pengembalian
       { width: 12 }, // Jatuh Tempo
       { width: 12 }, // Realisasi
+      { width: 26 }, // Keterangan
     ];
 
-    worksheet.mergeCells('A1:J1');
+    worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value =
       `JADWAL BULANAN KALIBRASI EXTERNAL - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear}`;
     worksheet.getCell('A1').font = { bold: true, size: 14 };
@@ -738,24 +713,25 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
       row.getCell(8).value = formatDateDisplay(rowItem.tgl_pengembalian_alat_oleh_vn);
       row.getCell(9).value = formatDateDisplay(rowItem.jatuh_tempo);
       row.getCell(10).value = formatDateDisplay(rowItem.realisasi);
+      row.getCell(11).value = rowItem.keterangan || '';
 
       row.height = 20;
       row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      applyRowBorderRange(worksheet, currentRow, 1, 10);
+      applyRowBorderRange(worksheet, currentRow, 1, 11);
       currentRow += 1;
     }
 
     if (!rows.length) {
-      worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
+      worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
       worksheet.getCell(`A${currentRow}`).value = 'Tidak ada data external di periode ini.';
       worksheet.getCell(`A${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-      applyRowBorderRange(worksheet, currentRow, 1, 10);
+      applyRowBorderRange(worksheet, currentRow, 1, 11);
     }
 
     const lastRow = Math.max(currentRow - 1, 3);
-    worksheet.autoFilter = `A2:J${lastRow}`;
+    worksheet.autoFilter = `A2:K${lastRow}`;
 
     const fileName =
       `Master-Jadwal-Bulanan-External-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
