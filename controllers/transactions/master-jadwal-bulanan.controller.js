@@ -24,6 +24,14 @@ const CALIBRATION_SCOPE = {
   INTERNAL: 'internal',
   EXTERNAL: 'external',
 };
+const MONTHLY_SCHEDULE_STATUS = {
+  REQUESTED: 'REQUESTED',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SUPERSEDED: 'SUPERSEDED',
+};
+const BUFFER_DAYS = 0;
+const CHECKMARK_SYMBOL = 'X';
 
 const parseYear = (year) => {
   const selectedYear = Number(year);
@@ -46,6 +54,12 @@ const toDateObject = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date;
+};
+
+const toDateOnly = (value) => {
+  const date = toDateObject(value);
+  if (!date) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 };
 
 const formatDateDisplay = (value) => {
@@ -86,11 +100,48 @@ const getWeekNumber = (value) => {
   return 4;
 };
 
+const shiftDateByDays = (value, offset) => {
+  const date = toDateOnly(value);
+  if (!date || !Number.isFinite(offset)) return null;
+  date.setDate(date.getDate() + offset);
+  return date;
+};
+
+const isDateWithinRange = (value, startDate, endDate) => {
+  const date = toDateOnly(value);
+  if (!date || !startDate || !endDate) return false;
+  return date >= startDate && date <= endDate;
+};
+
+const getMonthlyWindow = (selectedYear, selectedMonth) => {
+  const periodStart = new Date(selectedYear, selectedMonth - 1, 1);
+  const periodEnd = new Date(selectedYear, selectedMonth, 0);
+  const bufferStart = shiftDateByDays(periodStart, -BUFFER_DAYS);
+  const bufferEnd = shiftDateByDays(periodEnd, BUFFER_DAYS);
+
+  return {
+    periodStart,
+    periodEnd,
+    bufferStart,
+    bufferEnd,
+    periodStartISO: formatDateISO(periodStart),
+    periodEndISO: formatDateISO(periodEnd),
+    bufferStartISO: formatDateISO(bufferStart),
+    bufferEndISO: formatDateISO(bufferEnd),
+  };
+};
+
 const sortMappedRows = (rows) => {
   rows.sort((a, b) => {
-    const dateA = toDateObject(a.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    const dateB = toDateObject(b.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const dateA = toDateObject(a.source_date || a.plan_due_date || a.tgl_kalibrasi)?.getTime()
+      ?? Number.MAX_SAFE_INTEGER;
+    const dateB = toDateObject(b.source_date || b.plan_due_date || b.tgl_kalibrasi)?.getTime()
+      ?? Number.MAX_SAFE_INTEGER;
     if (dateA !== dateB) return dateA - dateB;
+
+    const dueDateA = toDateObject(a.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const dueDateB = toDateObject(b.plan_due_date)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    if (dueDateA !== dueDateB) return dueDateA - dueDateB;
 
     const nameA = String(a.assm_nama_instrumen || '').toLowerCase();
     const nameB = String(b.assm_nama_instrumen || '').toLowerCase();
@@ -118,15 +169,200 @@ const sortExternalRows = (rows) => {
   });
 };
 
-const mapMonthlyRows = (results) => {
+const getMonthlyCalibrationData = async (
+  selectedYear,
+  selectedMonth,
+  calibrationScope = CALIBRATION_SCOPE.INTERNAL,
+  transaction = null
+) => {
+  const { bufferStartISO, bufferEndISO } = getMonthlyWindow(selectedYear, selectedMonth);
+  const scopeCondition =
+    calibrationScope === CALIBRATION_SCOPE.EXTERNAL
+      ? 'MAX(ISNULL(Jenis_Kalibrasi, 1)) <> 1'
+      : 'MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1';
+
+  const query = `
+    SELECT
+      QA_ID,
+      Assm_nama_instrumen,
+      Assm_No_identitas_Istrumen,
+      Group_Da_Dept,
+      Assm_Lokasi,
+      MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
+      MAX(Tgl_kalibrasi) AS Tgl_kalibrasi,
+      CASE
+        WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
+        ELSE 'External'
+      END AS Jenis_Kalibrasi,
+      MAX(Source_Table) AS Source_Table,
+      MAX(Source_Key) AS Source_Key
+    FROM (
+      SELECT DISTINCT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
+        Kalibrasi_selanjutnya,
+        CAST('T_Kalibrasi_DA_Thermohygro' AS VARCHAR(128)) AS Source_Table,
+        CAST(QA_ID AS VARCHAR(100)) AS Source_Key
+      FROM T_Kalibrasi_DA_Thermohygro
+
+      UNION ALL
+
+      SELECT DISTINCT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
+        Kalibrasi_selanjutnya,
+        CAST('T_Kalibrasi_DA_Anak_Timbangan' AS VARCHAR(128)) AS Source_Table,
+        CAST(QA_ID AS VARCHAR(100)) AS Source_Key
+      FROM T_Kalibrasi_DA_Anak_Timbangan
+
+      UNION ALL
+
+      SELECT DISTINCT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
+        Kalibrasi_selanjutnya,
+        CAST('T_Kalibrasi_DA_Timbangan' AS VARCHAR(128)) AS Source_Table,
+        CAST(QA_ID AS VARCHAR(100)) AS Source_Key
+      FROM T_Kalibrasi_DA_Timbangan
+
+      UNION ALL
+
+      SELECT DISTINCT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+        Tgl_kalibrasi,
+        Kalibrasi_selanjutnya,
+        CAST('T_Kalibrasi_DA_Bagian' AS VARCHAR(128)) AS Source_Table,
+        CAST(QA_ID AS VARCHAR(100)) AS Source_Key
+      FROM T_Kalibrasi_DA_Bagian
+
+      UNION ALL
+
+      SELECT DISTINCT
+        QA_ID,
+        InstrumentName AS Assm_nama_instrumen,
+        InstrumentCode AS Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Location AS Assm_Lokasi,
+        CAST(1 AS INT) AS Jenis_Kalibrasi,
+        NULL AS Tgl_kalibrasi,
+        NULL AS Kalibrasi_selanjutnya,
+        CAST('RA_CalibrationAssessment' AS VARCHAR(128)) AS Source_Table,
+        CAST(QA_ID AS VARCHAR(100)) AS Source_Key
+      FROM RA_CalibrationAssessment
+      WHERE IsDeleted = 0
+    ) AS A
+    GROUP BY
+      QA_ID,
+      Assm_nama_instrumen,
+      Assm_No_identitas_Istrumen,
+      Group_Da_Dept,
+      Assm_Lokasi
+    HAVING
+      (
+        (
+          MAX(Kalibrasi_selanjutnya) IS NOT NULL
+          AND CONVERT(DATE, MAX(Kalibrasi_selanjutnya)) BETWEEN :bufferStart AND :bufferEnd
+        )
+        OR (
+          MAX(Tgl_kalibrasi) IS NOT NULL
+          AND CONVERT(DATE, MAX(Tgl_kalibrasi)) BETWEEN :bufferStart AND :bufferEnd
+        )
+      )
+      AND ${scopeCondition}
+    ORDER BY
+      CASE
+        WHEN MAX(Kalibrasi_selanjutnya) IS NOT NULL
+          AND CONVERT(DATE, MAX(Kalibrasi_selanjutnya)) BETWEEN :bufferStart AND :bufferEnd
+          THEN MAX(Kalibrasi_selanjutnya)
+        ELSE MAX(Tgl_kalibrasi)
+      END,
+      Assm_nama_instrumen
+  `;
+
+  return sequelizeMSQL.query(query, {
+    replacements: {
+      bufferStart: bufferStartISO,
+      bufferEnd: bufferEndISO,
+    },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+};
+
+const resolveSourceMatch = (dueDate, calibrationDate, window) => {
+  const dueInRange = isDateWithinRange(dueDate, window.bufferStart, window.bufferEnd);
+  const calibrationInRange = isDateWithinRange(
+    calibrationDate,
+    window.bufferStart,
+    window.bufferEnd
+  );
+  const dueInPeriod = isDateWithinRange(dueDate, window.periodStart, window.periodEnd);
+  const calibrationInPeriod = isDateWithinRange(
+    calibrationDate,
+    window.periodStart,
+    window.periodEnd
+  );
+
+  let matchType = 'NONE';
+  if (dueInRange && calibrationInRange) matchType = 'BOTH';
+  else if (dueInRange) matchType = 'DUE_DATE';
+  else if (calibrationInRange) matchType = 'CALIBRATION_DATE';
+
+  return {
+    matchType,
+    dueInRange,
+    calibrationInRange,
+    dueInPeriod,
+    calibrationInPeriod,
+    sourceDate: dueInRange ? dueDate : calibrationInRange ? calibrationDate : dueDate || calibrationDate,
+  };
+};
+
+const mapMonthlyRows = (results, selectedYear, selectedMonth) => {
+  const window = getMonthlyWindow(selectedYear, selectedMonth);
   const mapped = (results || []).map((item, index) => {
-    const planDueDate = formatDateISO(item?.Kalibrasi_selanjutnya);
-    const tglKalibrasi = formatDateISO(item?.Tgl_kalibrasi);
-    const category = getCategory(item?.Assm_No_identitas_Istrumen);
-    const week = getWeekNumber(item?.Kalibrasi_selanjutnya);
+    const dueDate = formatDateISO(item?.Kalibrasi_selanjutnya);
+    const calibrationDate = formatDateISO(item?.Tgl_kalibrasi);
+    const match = resolveSourceMatch(dueDate, calibrationDate, window);
 
     return {
       row_id: `${item?.QA_ID || 'NA'}-${item?.Assm_No_identitas_Istrumen || 'NA'}-${index + 1}`,
+      schedule_detail_id: null,
       no: index + 1,
       qa_id: item?.QA_ID || '',
       assm_nama_instrumen: item?.Assm_nama_instrumen || '',
@@ -134,18 +370,25 @@ const mapMonthlyRows = (results) => {
       group_da_dept: item?.Group_Da_Dept || '',
       assm_lokasi: item?.Assm_Lokasi || '',
       jenis_kalibrasi: item?.Jenis_Kalibrasi || 'Internal',
-      category,
-      week,
-      pic: item?.default_pic || '',
-      plan_due_date: planDueDate,
-      tgl_kalibrasi: tglKalibrasi,
-      realisasi_eksekusi: tglKalibrasi,
-      ket: '',
+      category: getCategory(item?.Assm_No_identitas_Istrumen),
+      week: getWeekNumber(match.sourceDate || dueDate || calibrationDate),
+      pic: '',
+      plan_due_date: dueDate,
+      tgl_kalibrasi: calibrationDate,
+      realisasi_eksekusi: calibrationDate,
+      source_date: formatDateISO(match.sourceDate),
+      source_match_type: match.matchType,
+      is_due_in_period: match.dueInPeriod,
+      is_calibration_in_period: match.calibrationInPeriod,
+      checklist_s: false,
+      checklist_d: false,
+      checklist_m: false,
+      source_table: item?.Source_Table || null,
+      source_key: item?.Source_Key || null,
     };
   });
 
   sortMappedRows(mapped);
-
   return mapped.map((row, idx) => ({
     ...row,
     no: idx + 1,
@@ -175,134 +418,6 @@ const mapMonthlyExternalRows = (results) => {
   return mapped.map((row, idx) => ({ ...row, no: idx + 1 }));
 };
 
-const getMonthlyCalibrationData = async (
-  selectedYear,
-  selectedMonth,
-  calibrationScope = CALIBRATION_SCOPE.INTERNAL
-) => {
-  const scopeCondition =
-    calibrationScope === CALIBRATION_SCOPE.EXTERNAL
-      ? 'MAX(ISNULL(Jenis_Kalibrasi, 1)) <> 1'
-      : 'MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1';
-
-  const query = `
-    SELECT
-      QA_ID,
-      Assm_nama_instrumen,
-      Assm_No_identitas_Istrumen,
-      Group_Da_Dept,
-      Assm_Lokasi,
-      MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
-      MAX(Tgl_kalibrasi) AS Tgl_kalibrasi,
-      CASE
-        WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
-        ELSE 'External'
-      END AS Jenis_Kalibrasi
-    FROM (
-      SELECT DISTINCT
-        QA_ID,
-        Assm_nama_instrumen,
-        Assm_No_identitas_Istrumen,
-        Assm_No_identitas_kalibrasi,
-        Group_Da_Dept,
-        Assm_Kapasitas,
-        Parameter_Kalibrasi,
-        Assm_Lokasi,
-        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
-        Tgl_kalibrasi,
-        Kalibrasi_selanjutnya
-      FROM T_Kalibrasi_DA_Thermohygro
-
-      UNION ALL
-
-      SELECT DISTINCT
-        QA_ID,
-        Assm_nama_instrumen,
-        Assm_No_identitas_Istrumen,
-        Assm_No_identitas_kalibrasi,
-        Group_Da_Dept,
-        Assm_Kapasitas,
-        Parameter_Kalibrasi,
-        Assm_Lokasi,
-        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
-        Tgl_kalibrasi,
-        Kalibrasi_selanjutnya
-      FROM T_Kalibrasi_DA_Anak_Timbangan
-
-      UNION ALL
-
-      SELECT DISTINCT
-        QA_ID,
-        Assm_nama_instrumen,
-        Assm_No_identitas_Istrumen,
-        Assm_No_identitas_kalibrasi,
-        Group_Da_Dept,
-        Assm_Kapasitas,
-        Parameter_Kalibrasi,
-        Assm_Lokasi,
-        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
-        Tgl_kalibrasi,
-        Kalibrasi_selanjutnya
-      FROM T_Kalibrasi_DA_Timbangan
-
-      UNION ALL
-
-      SELECT DISTINCT
-        QA_ID,
-        Assm_nama_instrumen,
-        Assm_No_identitas_Istrumen,
-        Assm_No_identitas_kalibrasi,
-        Group_Da_Dept,
-        Assm_Kapasitas,
-        Parameter_Kalibrasi,
-        Assm_Lokasi,
-        ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
-        Tgl_kalibrasi,
-        Kalibrasi_selanjutnya
-      FROM T_Kalibrasi_DA_Bagian
-
-      UNION ALL
-
-      SELECT DISTINCT
-        QA_ID,
-        InstrumentName AS Assm_nama_instrumen,
-        InstrumentCode AS Assm_No_identitas_Istrumen,
-        Assm_No_identitas_kalibrasi,
-        Group_Da_Dept,
-        Assm_Kapasitas,
-        Parameter_Kalibrasi,
-        Location AS Assm_Lokasi,
-        CAST(1 AS INT) AS Jenis_Kalibrasi,
-        NULL AS Tgl_kalibrasi,
-        NULL AS Kalibrasi_selanjutnya
-      FROM RA_CalibrationAssessment
-      WHERE IsDeleted = 0
-    ) AS A
-    GROUP BY
-      QA_ID,
-      Assm_nama_instrumen,
-      Assm_No_identitas_Istrumen,
-      Group_Da_Dept,
-      Assm_Lokasi
-    HAVING
-      MAX(Kalibrasi_selanjutnya) IS NOT NULL
-      AND YEAR(MAX(Kalibrasi_selanjutnya)) = :year
-      AND MONTH(MAX(Kalibrasi_selanjutnya)) = :month
-      AND ${scopeCondition}
-    ORDER BY
-      DAY(MAX(Kalibrasi_selanjutnya)),
-      Assm_nama_instrumen
-  `;
-
-  return sequelizeMSQL.query(query, {
-    replacements: {
-      year: selectedYear,
-      month: selectedMonth,
-    },
-    type: Sequelize.QueryTypes.SELECT,
-  });
-};
-
 const getGroupedData = (rows) => {
   const grouped = {};
   for (let week = 1; week <= 4; week += 1) {
@@ -322,48 +437,10 @@ const getGroupedData = (rows) => {
     const week = row?.week || 4;
     const weekObj = grouped[week];
     const categoryObj = weekObj.categories.find((cat) => cat.category === row.category);
-    if (categoryObj) {
-      categoryObj.items.push(row);
-    }
+    if (categoryObj) categoryObj.items.push(row);
   }
 
   return Object.values(grouped);
-};
-
-const getMasterJadwalBulananPreview = async (req, res, next) => {
-  try {
-    const selectedYear = parseYear(req.query.year);
-    const selectedMonth = parseMonth(req.query.month);
-
-    if (!selectedYear || !selectedMonth) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid year and month query parameters are required',
-      });
-    }
-
-    const rawResults = await getMonthlyCalibrationData(
-      selectedYear,
-      selectedMonth,
-      CALIBRATION_SCOPE.INTERNAL
-    );
-    const rows = mapMonthlyRows(rawResults);
-    const grouped = getGroupedData(rows);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Data fetched successfully',
-      year: selectedYear,
-      month: selectedMonth,
-      period_label: `${MONTH_NAMES_ID[selectedMonth - 1]} ${selectedYear}`,
-      count: rows.length,
-      rows,
-      grouped,
-    });
-  } catch (error) {
-    console.error('Error in getMasterJadwalBulananPreview:', error);
-    next(error);
-  }
 };
 
 const normalizeIncomingRows = (rows) => {
@@ -371,24 +448,32 @@ const normalizeIncomingRows = (rows) => {
   return rows.map((item, index) => {
     const category = getCategory(item?.assm_no_identitas_istrumen);
     const planDueDate = formatDateISO(item?.plan_due_date);
-    const week = item?.week || getWeekNumber(planDueDate);
-    const ketValue = String(item?.ket || '').trim().toUpperCase();
-    const ket = ['S', 'D', 'M'].includes(ketValue) ? ketValue : '';
+    const calibrationDate = formatDateISO(item?.tgl_kalibrasi);
+    const sourceDate = formatDateISO(item?.source_date || item?.plan_due_date || item?.tgl_kalibrasi);
+    const week = item?.week || getWeekNumber(sourceDate || planDueDate || calibrationDate);
 
     return {
       row_id: item?.row_id || `ROW-${index + 1}`,
+      schedule_detail_id: Number(item?.schedule_detail_id) || null,
       no: Number(item?.no) || index + 1,
+      qa_id: item?.qa_id || '',
       assm_nama_instrumen: item?.assm_nama_instrumen || '',
       assm_no_identitas_istrumen: item?.assm_no_identitas_istrumen || '',
       group_da_dept: item?.group_da_dept || '',
       assm_lokasi: item?.assm_lokasi || '',
-      pic: item?.pic || '',
+      pic: String(item?.pic || '').trim(),
       category,
       week: Number(week) >= 1 && Number(week) <= 4 ? Number(week) : 4,
       plan_due_date: planDueDate,
-      tgl_kalibrasi: formatDateISO(item?.tgl_kalibrasi),
-      realisasi_eksekusi: formatDateISO(item?.tgl_kalibrasi || item?.realisasi_eksekusi),
-      ket,
+      tgl_kalibrasi: calibrationDate,
+      realisasi_eksekusi: formatDateISO(item?.realisasi_eksekusi || item?.tgl_kalibrasi),
+      source_date: sourceDate,
+      source_match_type: String(item?.source_match_type || 'NONE').toUpperCase(),
+      checklist_s: Boolean(item?.checklist_s),
+      checklist_d: Boolean(item?.checklist_d),
+      checklist_m: Boolean(item?.checklist_m),
+      source_table: item?.source_table || null,
+      source_key: item?.source_key || null,
     };
   });
 };
@@ -414,7 +499,7 @@ const normalizeIncomingExternalRows = (rows) => {
 };
 
 const writeTableHeader = (worksheet, startRow) => {
-  worksheet.mergeCells(`I${startRow}:K${startRow}`);
+  worksheet.mergeCells(`J${startRow}:L${startRow}`);
   worksheet.getCell(`A${startRow}`).value = 'No';
   worksheet.getCell(`B${startRow}`).value = 'Nama Alat';
   worksheet.getCell(`C${startRow}`).value = 'ID';
@@ -422,16 +507,17 @@ const writeTableHeader = (worksheet, startRow) => {
   worksheet.getCell(`E${startRow}`).value = 'Lokasi';
   worksheet.getCell(`F${startRow}`).value = 'PIC';
   worksheet.getCell(`G${startRow}`).value = 'Plan / Due Date';
-  worksheet.getCell(`H${startRow}`).value = 'Realisasi Eksekusi';
-  worksheet.getCell(`I${startRow}`).value = 'Ket.';
+  worksheet.getCell(`H${startRow}`).value = 'Tgl Kalibrasi';
+  worksheet.getCell(`I${startRow}`).value = 'Source Date';
+  worksheet.getCell(`J${startRow}`).value = 'Ket.';
 
-  worksheet.getCell(`I${startRow + 1}`).value = 'S';
-  worksheet.getCell(`J${startRow + 1}`).value = 'D';
-  worksheet.getCell(`K${startRow + 1}`).value = 'M';
+  worksheet.getCell(`J${startRow + 1}`).value = 'S';
+  worksheet.getCell(`K${startRow + 1}`).value = 'D';
+  worksheet.getCell(`L${startRow + 1}`).value = 'M';
 
   const headerRows = [startRow, startRow + 1];
   for (const rowNumber of headerRows) {
-    for (let col = 1; col <= 11; col += 1) {
+    for (let col = 1; col <= 12; col += 1) {
       const cell = worksheet.getCell(rowNumber, col);
       cell.font = { bold: true };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -457,6 +543,7 @@ const writeTableHeader = (worksheet, startRow) => {
   worksheet.mergeCells(`F${startRow}:F${startRow + 1}`);
   worksheet.mergeCells(`G${startRow}:G${startRow + 1}`);
   worksheet.mergeCells(`H${startRow}:H${startRow + 1}`);
+  worksheet.mergeCells(`I${startRow}:I${startRow + 1}`);
 };
 
 const writeExternalTableHeader = (worksheet, startRow) => {
@@ -517,13 +604,1025 @@ const applyRowBorderRange = (worksheet, rowNumber, fromCol, toCol) => {
 };
 
 const applyRowBorder = (worksheet, rowNumber) => {
-  applyRowBorderRange(worksheet, rowNumber, 1, 11);
+  applyRowBorderRange(worksheet, rowNumber, 1, 12);
+};
+
+const getLatestMonthlyScheduleHeaderByStatus = async (
+  selectedYear,
+  selectedMonth,
+  status,
+  transaction = null
+) => {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        Schedule_Header_ID,
+        Period_Year,
+        Period_Month,
+        Revision_No,
+        [Status],
+        Is_Locked,
+        Period_Start,
+        Period_End,
+        Buffer_Start,
+        Buffer_End,
+        Requested_By,
+        Requested_Date,
+        Approved_By,
+        Approved_Date,
+        Rejected_By,
+        Rejected_Date,
+        Remarks,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_Header
+      WHERE Period_Year = :year
+        AND Period_Month = :month
+        AND [Status] = :status
+      ORDER BY Revision_No DESC, Schedule_Header_ID DESC
+    `,
+    {
+      replacements: {
+        year: selectedYear,
+        month: selectedMonth,
+        status,
+      },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  return rows[0] || null;
+};
+
+const getLatestApprovedMonthlyScheduleHeader = (selectedYear, selectedMonth, transaction = null) =>
+  getLatestMonthlyScheduleHeaderByStatus(
+    selectedYear,
+    selectedMonth,
+    MONTHLY_SCHEDULE_STATUS.APPROVED,
+    transaction
+  );
+
+const getLatestRequestedMonthlyScheduleHeader = (selectedYear, selectedMonth, transaction = null) =>
+  getLatestMonthlyScheduleHeaderByStatus(
+    selectedYear,
+    selectedMonth,
+    MONTHLY_SCHEDULE_STATUS.REQUESTED,
+    transaction
+  );
+
+const getMonthlyScheduleHeaderById = async (scheduleHeaderId, transaction = null) => {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT
+        Schedule_Header_ID,
+        Period_Year,
+        Period_Month,
+        Revision_No,
+        [Status],
+        Is_Locked,
+        Period_Start,
+        Period_End,
+        Buffer_Start,
+        Buffer_End,
+        Requested_By,
+        Requested_Date,
+        Approved_By,
+        Approved_Date,
+        Rejected_By,
+        Rejected_Date,
+        Remarks,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_Header
+      WHERE Schedule_Header_ID = :scheduleHeaderId
+    `,
+    {
+      replacements: { scheduleHeaderId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  return rows[0] || null;
+};
+
+const getMonthlyScheduleDetails = async (scheduleHeaderId, transaction = null) =>
+  sequelizeMSQL.query(
+    `
+      SELECT
+        Schedule_Detail_ID,
+        Schedule_Header_ID,
+        Line_No,
+        QA_ID,
+        Instrument_Name,
+        Instrument_ID,
+        Department,
+        [Location],
+        Due_Date,
+        Tgl_Kalibrasi,
+        Source_Date,
+        Source_Match_Type,
+        PIC,
+        Checklist_S,
+        Checklist_D,
+        Checklist_M,
+        Source_Table,
+        Source_Key,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_Detail
+      WHERE Schedule_Header_ID = :scheduleHeaderId
+      ORDER BY Line_No, Schedule_Detail_ID
+    `,
+    {
+      replacements: { scheduleHeaderId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+const mapMonthlyScheduleRevisionInfo = (header) => {
+  if (!header) return null;
+
+  return {
+    schedule_header_id: header.Schedule_Header_ID,
+    year: header.Period_Year,
+    month: header.Period_Month,
+    revision_no: header.Revision_No,
+    status: header.Status,
+    is_locked: Boolean(header.Is_Locked),
+    period_start: header.Period_Start,
+    period_end: header.Period_End,
+    buffer_start: header.Buffer_Start,
+    buffer_end: header.Buffer_End,
+    requested_by: header.Requested_By,
+    requested_date: header.Requested_Date,
+    approved_by: header.Approved_By,
+    approved_date: header.Approved_Date,
+    rejected_by: header.Rejected_By,
+    rejected_date: header.Rejected_Date,
+    remarks: header.Remarks,
+    created_by: header.Created_By,
+    created_date: header.Created_Date,
+    updated_by: header.Updated_By,
+    updated_date: header.Updated_Date,
+  };
+};
+
+const getMonthlyScheduleRevisionState = async (selectedYear, selectedMonth, transaction = null) => {
+  const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+  const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+
+  return {
+    currentHeader,
+    requestedHeader,
+    revisions: {
+      current: mapMonthlyScheduleRevisionInfo(currentHeader),
+      requested: mapMonthlyScheduleRevisionInfo(requestedHeader),
+    },
+  };
+};
+
+const mapMonthlyScheduleDetailRows = (details) => {
+  const mapped = (details || []).map((item, index) => ({
+    row_id: `DETAIL-${item.Schedule_Detail_ID || index + 1}`,
+    schedule_detail_id: item.Schedule_Detail_ID,
+    no: item.Line_No || index + 1,
+    qa_id: item.QA_ID || '',
+    assm_nama_instrumen: item.Instrument_Name || '',
+    assm_no_identitas_istrumen: item.Instrument_ID || '',
+    group_da_dept: item.Department || '',
+    assm_lokasi: item.Location || '',
+    category: getCategory(item.Instrument_ID),
+    week: getWeekNumber(item.Source_Date || item.Due_Date || item.Tgl_Kalibrasi),
+    pic: item.PIC || '',
+    plan_due_date: item.Due_Date || null,
+    tgl_kalibrasi: item.Tgl_Kalibrasi || null,
+    realisasi_eksekusi: item.Tgl_Kalibrasi || null,
+    source_date: item.Source_Date || null,
+    source_match_type: item.Source_Match_Type || 'NONE',
+    checklist_s: Boolean(item.Checklist_S),
+    checklist_d: Boolean(item.Checklist_D),
+    checklist_m: Boolean(item.Checklist_M),
+    source_table: item.Source_Table || null,
+    source_key: item.Source_Key || null,
+  }));
+
+  sortMappedRows(mapped);
+  return mapped.map((row, idx) => ({
+    ...row,
+    no: idx + 1,
+  }));
+};
+
+const buildMonthlyScheduleSnapshotPayload = async (header, transaction = null) => {
+  if (!header?.Schedule_Header_ID) return null;
+
+  const details = await getMonthlyScheduleDetails(header.Schedule_Header_ID, transaction);
+  const data = mapMonthlyScheduleDetailRows(details);
+  const { revisions } = await getMonthlyScheduleRevisionState(
+    header.Period_Year,
+    header.Period_Month,
+    transaction
+  );
+
+  return {
+    success: true,
+    message: 'Revision fetched successfully',
+    year: header.Period_Year,
+    month: header.Period_Month,
+    period_label: `${MONTH_NAMES_ID[header.Period_Month - 1]} ${header.Period_Year}`,
+    buffer_days: BUFFER_DAYS,
+    source_window: {
+      period_start: header.Period_Start,
+      period_end: header.Period_End,
+      buffer_start: header.Buffer_Start,
+      buffer_end: header.Buffer_End,
+    },
+    count: data.length,
+    source: header.Status === MONTHLY_SCHEDULE_STATUS.REQUESTED ? 'requested' : 'snapshot',
+    editable: header.Status === MONTHLY_SCHEDULE_STATUS.REQUESTED && !header.Is_Locked,
+    snapshot: mapMonthlyScheduleRevisionInfo(header),
+    revisions,
+    rows: data,
+  };
+};
+
+const buildMonthlyScheduleLivePayload = async (selectedYear, selectedMonth, transaction = null) => {
+  const rawResults = await getMonthlyCalibrationData(
+    selectedYear,
+    selectedMonth,
+    CALIBRATION_SCOPE.INTERNAL,
+    transaction
+  );
+  const rows = mapMonthlyRows(rawResults, selectedYear, selectedMonth);
+  const grouped = getGroupedData(rows);
+  const { revisions } = await getMonthlyScheduleRevisionState(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+  const window = getMonthlyWindow(selectedYear, selectedMonth);
+
+  return {
+    success: true,
+    message: 'Data fetched successfully',
+    year: selectedYear,
+    month: selectedMonth,
+    period_label: `${MONTH_NAMES_ID[selectedMonth - 1]} ${selectedYear}`,
+    buffer_days: BUFFER_DAYS,
+    source_window: {
+      period_start: window.periodStartISO,
+      period_end: window.periodEndISO,
+      buffer_start: window.bufferStartISO,
+      buffer_end: window.bufferEndISO,
+    },
+    count: rows.length,
+    source: 'live',
+    editable: false,
+    snapshot: null,
+    revisions,
+    rows,
+    grouped,
+  };
+};
+
+const insertMonthlyScheduleDetails = async (scheduleHeaderId, rows, userId, transaction) => {
+  for (const item of rows) {
+    await sequelizeMSQL.query(
+      `
+        INSERT INTO T_Monthly_Schedule_Detail
+          (
+            Schedule_Header_ID,
+            Line_No,
+            QA_ID,
+            Instrument_Name,
+            Instrument_ID,
+            Department,
+            [Location],
+            Due_Date,
+            Tgl_Kalibrasi,
+            Source_Date,
+            Source_Match_Type,
+            PIC,
+            Checklist_S,
+            Checklist_D,
+            Checklist_M,
+            Source_Table,
+            Source_Key,
+            Created_By,
+            Created_Date,
+            Updated_By,
+            Updated_Date
+          )
+        VALUES
+          (
+            :scheduleHeaderId,
+            :lineNo,
+            :qaId,
+            :instrumentName,
+            :instrumentId,
+            :department,
+            :location,
+            :dueDate,
+            :tglKalibrasi,
+            :sourceDate,
+            :sourceMatchType,
+            :pic,
+            :checklistS,
+            :checklistD,
+            :checklistM,
+            :sourceTable,
+            :sourceKey,
+            :userId,
+            GETDATE(),
+            :userId,
+            GETDATE()
+          )
+      `,
+      {
+        replacements: {
+          scheduleHeaderId,
+          lineNo: item.no,
+          qaId: item.qa_id || null,
+          instrumentName: item.assm_nama_instrumen || null,
+          instrumentId: item.assm_no_identitas_istrumen || null,
+          department: item.group_da_dept || null,
+          location: item.assm_lokasi || null,
+          dueDate: item.plan_due_date || null,
+          tglKalibrasi: item.tgl_kalibrasi || null,
+          sourceDate: item.source_date || item.plan_due_date || item.tgl_kalibrasi || null,
+          sourceMatchType: item.source_match_type || 'NONE',
+          pic: item.pic || null,
+          checklistS: item.checklist_s ? 1 : 0,
+          checklistD: item.checklist_d ? 1 : 0,
+          checklistM: item.checklist_m ? 1 : 0,
+          sourceTable: item.source_table || null,
+          sourceKey: item.source_key || null,
+          userId,
+        },
+        type: Sequelize.QueryTypes.INSERT,
+        transaction,
+      }
+    );
+  }
+};
+
+const getMasterJadwalBulananPreview = async (req, res, next) => {
+  try {
+    const selectedYear = parseYear(req.query.year);
+    const selectedMonth = parseMonth(req.query.month);
+    const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
+      ? req.query.source
+      : 'snapshot';
+
+    if (!selectedYear || !selectedMonth) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid year and month query parameters are required',
+      });
+    }
+
+    if (source === 'requested') {
+      const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (requestedHeader) {
+        const requestedPayload = await buildMonthlyScheduleSnapshotPayload(requestedHeader);
+        return res.status(200).json(requestedPayload);
+      }
+    } else if (source !== 'live') {
+      const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (currentHeader) {
+        const currentPayload = await buildMonthlyScheduleSnapshotPayload(currentHeader);
+        return res.status(200).json(currentPayload);
+      }
+
+      const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (requestedHeader) {
+        const requestedPayload = await buildMonthlyScheduleSnapshotPayload(requestedHeader);
+        return res.status(200).json(requestedPayload);
+      }
+    }
+
+    const livePayload = await buildMonthlyScheduleLivePayload(selectedYear, selectedMonth);
+    return res.status(200).json(livePayload);
+  } catch (error) {
+    console.error('Error in getMasterJadwalBulananPreview:', error);
+    next(error);
+  }
+};
+
+const saveMasterJadwalBulanan = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const incomingRows = normalizeIncomingRows(req.body?.rows);
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Schedule header ID or valid year and month are required',
+      });
+    }
+
+    if (!incomingRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No schedule rows were provided.',
+      });
+    }
+
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      let header = null;
+      if (scheduleHeaderId) {
+        header = await getMonthlyScheduleHeaderById(scheduleHeaderId, transaction);
+      } else {
+        header = await getLatestRequestedMonthlyScheduleHeader(
+          selectedYear,
+          selectedMonth,
+          transaction
+        );
+      }
+
+      if (!header) {
+        const error = new Error('No requested monthly schedule revision is available to save.');
+        error.status = 404;
+        throw error;
+      }
+
+      if (
+        header.Status !== MONTHLY_SCHEDULE_STATUS.REQUESTED
+        || Boolean(header.Is_Locked)
+      ) {
+        const error = new Error('The selected monthly schedule period is locked and cannot be edited.');
+        error.status = 409;
+        throw error;
+      }
+
+      for (const item of incomingRows) {
+        await sequelizeMSQL.query(
+          `
+            UPDATE T_Monthly_Schedule_Detail
+            SET
+              PIC = :pic,
+              Checklist_S = :checklistS,
+              Checklist_D = :checklistD,
+              Checklist_M = :checklistM,
+              Updated_By = :userId,
+              Updated_Date = GETDATE()
+            WHERE Schedule_Header_ID = :scheduleHeaderId
+              AND (
+                Schedule_Detail_ID = :scheduleDetailId
+                OR (
+                  :scheduleDetailId IS NULL
+                  AND ISNULL(Source_Key, '') = ISNULL(:sourceKey, '')
+                  AND ISNULL(Instrument_ID, '') = ISNULL(:instrumentId, '')
+                )
+              )
+          `,
+          {
+            replacements: {
+              scheduleHeaderId: header.Schedule_Header_ID,
+              scheduleDetailId: item.schedule_detail_id,
+              sourceKey: item.source_key || null,
+              instrumentId: item.assm_no_identitas_istrumen || null,
+              pic: item.pic || null,
+              checklistS: item.checklist_s ? 1 : 0,
+              checklistD: item.checklist_d ? 1 : 0,
+              checklistM: item.checklist_m ? 1 : 0,
+              userId: user_id,
+            },
+            type: Sequelize.QueryTypes.UPDATE,
+            transaction,
+          }
+        );
+      }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_Header
+          SET
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_Header_ID = :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            scheduleHeaderId: header.Schedule_Header_ID,
+            userId: user_id,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      const refreshedHeader = await getMonthlyScheduleHeaderById(
+        header.Schedule_Header_ID,
+        transaction
+      );
+      return buildMonthlyScheduleSnapshotPayload(refreshedHeader, transaction);
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'Monthly schedule draft has been saved.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error('Error in saveMasterJadwalBulanan:', error);
+    next(error);
+  }
+};
+
+const requestMasterJadwalBulananApproval = async (req, res, next) => {
+  try {
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!selectedYear || !selectedMonth) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid year and month are required',
+      });
+    }
+
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const livePayload = await buildMonthlyScheduleLivePayload(selectedYear, selectedMonth);
+    if (!livePayload.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No monthly schedule data is available to request approval.',
+      });
+    }
+
+    const snapshotPayload = await sequelizeMSQL.transaction(async (transaction) => {
+      const existingRequested = await sequelizeMSQL.query(
+        `
+          SELECT TOP 1 Schedule_Header_ID
+          FROM T_Monthly_Schedule_Header WITH (UPDLOCK, HOLDLOCK)
+          WHERE Period_Year = :year
+            AND Period_Month = :month
+            AND [Status] = 'REQUESTED'
+          ORDER BY Revision_No DESC, Schedule_Header_ID DESC
+        `,
+        {
+          replacements: {
+            year: selectedYear,
+            month: selectedMonth,
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+
+      if (existingRequested.length) {
+        const error = new Error('A monthly schedule revision is already waiting for approval.');
+        error.status = 409;
+        throw error;
+      }
+
+      const revisionRows = await sequelizeMSQL.query(
+        `
+          SELECT ISNULL(MAX(Revision_No), 0) + 1 AS NextRevision
+          FROM T_Monthly_Schedule_Header WITH (UPDLOCK, HOLDLOCK)
+          WHERE Period_Year = :year
+            AND Period_Month = :month
+        `,
+        {
+          replacements: {
+            year: selectedYear,
+            month: selectedMonth,
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+
+      const revisionNo = revisionRows[0]?.NextRevision || 1;
+      const window = getMonthlyWindow(selectedYear, selectedMonth);
+      const headerRows = await sequelizeMSQL.query(
+        `
+          DECLARE @InsertedHeader TABLE
+          (
+            Schedule_Header_ID INT,
+            Period_Year INT,
+            Period_Month INT,
+            Revision_No INT,
+            [Status] VARCHAR(20),
+            Is_Locked BIT,
+            Period_Start DATE,
+            Period_End DATE,
+            Buffer_Start DATE,
+            Buffer_End DATE,
+            Requested_By NVARCHAR(50),
+            Requested_Date DATETIME2(0),
+            Approved_By NVARCHAR(50),
+            Approved_Date DATETIME2(0),
+            Rejected_By NVARCHAR(50),
+            Rejected_Date DATETIME2(0),
+            Remarks NVARCHAR(MAX),
+            Created_By NVARCHAR(50),
+            Created_Date DATETIME2(0),
+            Updated_By NVARCHAR(50),
+            Updated_Date DATETIME2(0)
+          );
+
+          INSERT INTO T_Monthly_Schedule_Header
+            (
+              Period_Year,
+              Period_Month,
+              Revision_No,
+              [Status],
+              Is_Locked,
+              Period_Start,
+              Period_End,
+              Buffer_Start,
+              Buffer_End,
+              Requested_By,
+              Requested_Date,
+              Remarks,
+              Created_By,
+              Created_Date,
+              Updated_By,
+              Updated_Date
+            )
+          OUTPUT
+            INSERTED.Schedule_Header_ID,
+            INSERTED.Period_Year,
+            INSERTED.Period_Month,
+            INSERTED.Revision_No,
+            INSERTED.[Status],
+            INSERTED.Is_Locked,
+            INSERTED.Period_Start,
+            INSERTED.Period_End,
+            INSERTED.Buffer_Start,
+            INSERTED.Buffer_End,
+            INSERTED.Requested_By,
+            INSERTED.Requested_Date,
+            INSERTED.Approved_By,
+            INSERTED.Approved_Date,
+            INSERTED.Rejected_By,
+            INSERTED.Rejected_Date,
+            INSERTED.Remarks,
+            INSERTED.Created_By,
+            INSERTED.Created_Date,
+            INSERTED.Updated_By,
+            INSERTED.Updated_Date
+          INTO @InsertedHeader
+          VALUES
+            (
+              :year,
+              :month,
+              :revisionNo,
+              'REQUESTED',
+              0,
+              :periodStart,
+              :periodEnd,
+              :bufferStart,
+              :bufferEnd,
+              :userId,
+              GETDATE(),
+              :remarks,
+              :userId,
+              GETDATE(),
+              :userId,
+              GETDATE()
+            );
+
+          SELECT
+            Schedule_Header_ID,
+            Period_Year,
+            Period_Month,
+            Revision_No,
+            [Status],
+            Is_Locked,
+            Period_Start,
+            Period_End,
+            Buffer_Start,
+            Buffer_End,
+            Requested_By,
+            Requested_Date,
+            Approved_By,
+            Approved_Date,
+            Rejected_By,
+            Rejected_Date,
+            Remarks,
+            Created_By,
+            Created_Date,
+            Updated_By,
+            Updated_Date
+          FROM @InsertedHeader;
+        `,
+        {
+          replacements: {
+            year: selectedYear,
+            month: selectedMonth,
+            revisionNo,
+            periodStart: window.periodStartISO,
+            periodEnd: window.periodEndISO,
+            bufferStart: window.bufferStartISO,
+            bufferEnd: window.bufferEndISO,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+
+      const header = headerRows[0];
+      await insertMonthlyScheduleDetails(header.Schedule_Header_ID, livePayload.rows, user_id, transaction);
+      return buildMonthlyScheduleSnapshotPayload(header, transaction);
+    });
+
+    return res.status(201).json({
+      ...snapshotPayload,
+      message: 'Monthly schedule revision has been submitted for approval.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error('Error in requestMasterJadwalBulananApproval:', error);
+    next(error);
+  }
+};
+
+const approveMasterJadwalBulanan = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Schedule header ID or valid year and month are required',
+      });
+    }
+
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      let header = null;
+      if (scheduleHeaderId) {
+        header = await getMonthlyScheduleHeaderById(scheduleHeaderId, transaction);
+      } else {
+        header = await getLatestRequestedMonthlyScheduleHeader(
+          selectedYear,
+          selectedMonth,
+          transaction
+        );
+      }
+
+      if (!header) {
+        const error = new Error('No monthly schedule revision is waiting for approval.');
+        error.status = 404;
+        throw error;
+      }
+
+      if (header.Status !== MONTHLY_SCHEDULE_STATUS.REQUESTED) {
+        const error = new Error('Only requested monthly schedule revisions can be approved.');
+        error.status = 400;
+        throw error;
+      }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_Header
+          SET
+            [Status] = 'SUPERSEDED',
+            Is_Locked = 1,
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Period_Year = :year
+            AND Period_Month = :month
+            AND [Status] = 'APPROVED'
+            AND Schedule_Header_ID <> :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            year: header.Period_Year,
+            month: header.Period_Month,
+            scheduleHeaderId: header.Schedule_Header_ID,
+            userId: user_id,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_Header
+          SET
+            [Status] = 'APPROVED',
+            Is_Locked = 1,
+            Approved_By = :userId,
+            Approved_Date = GETDATE(),
+            Remarks = COALESCE(:remarks, Remarks),
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_Header_ID = :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            scheduleHeaderId: header.Schedule_Header_ID,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      const approvedHeader = await getMonthlyScheduleHeaderById(
+        header.Schedule_Header_ID,
+        transaction
+      );
+      return buildMonthlyScheduleSnapshotPayload(approvedHeader, transaction);
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'Monthly schedule has been approved.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error('Error in approveMasterJadwalBulanan:', error);
+    next(error);
+  }
+};
+
+const rejectMasterJadwalBulanan = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Schedule header ID or valid year and month are required',
+      });
+    }
+
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      let header = null;
+      if (scheduleHeaderId) {
+        header = await getMonthlyScheduleHeaderById(scheduleHeaderId, transaction);
+      } else {
+        header = await getLatestRequestedMonthlyScheduleHeader(
+          selectedYear,
+          selectedMonth,
+          transaction
+        );
+      }
+
+      if (!header) {
+        const error = new Error('No monthly schedule revision is waiting for approval.');
+        error.status = 404;
+        throw error;
+      }
+
+      if (header.Status !== MONTHLY_SCHEDULE_STATUS.REQUESTED) {
+        const error = new Error('Only requested monthly schedule revisions can be rejected.');
+        error.status = 400;
+        throw error;
+      }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_Header
+          SET
+            [Status] = 'REJECTED',
+            Is_Locked = 0,
+            Rejected_By = :userId,
+            Rejected_Date = GETDATE(),
+            Remarks = COALESCE(:remarks, Remarks),
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_Header_ID = :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            scheduleHeaderId: header.Schedule_Header_ID,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
+        header.Period_Year,
+        header.Period_Month,
+        transaction
+      );
+      if (currentHeader) {
+        return buildMonthlyScheduleSnapshotPayload(currentHeader, transaction);
+      }
+
+      return buildMonthlyScheduleLivePayload(
+        header.Period_Year,
+        header.Period_Month,
+        transaction
+      );
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'Monthly schedule revision has been rejected.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    console.error('Error in rejectMasterJadwalBulanan:', error);
+    next(error);
+  }
 };
 
 const exportMasterJadwalBulanan = async (req, res, next) => {
   try {
     const yearParam = req.body?.year ?? req.query?.year;
     const monthParam = req.body?.month ?? req.query?.month;
+    const source = ['live', 'requested', 'snapshot'].includes(req.body?.source || req.query?.source)
+      ? (req.body?.source || req.query?.source)
+      : 'snapshot';
 
     const selectedYear = parseYear(yearParam);
     const selectedMonth = parseMonth(monthParam);
@@ -536,14 +1635,31 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
     }
 
     let rows = normalizeIncomingRows(req.body?.rows);
+    let snapshotHeader = null;
+
     if (!rows.length) {
-      const rawResults = await getMonthlyCalibrationData(
-        selectedYear,
-        selectedMonth,
-        CALIBRATION_SCOPE.INTERNAL
-      );
-      rows = mapMonthlyRows(rawResults);
+      if (source === 'requested') {
+        snapshotHeader = await getLatestRequestedMonthlyScheduleHeader(selectedYear, selectedMonth);
+      } else if (source !== 'live') {
+        snapshotHeader = await getLatestApprovedMonthlyScheduleHeader(selectedYear, selectedMonth);
+        if (!snapshotHeader) {
+          snapshotHeader = await getLatestRequestedMonthlyScheduleHeader(selectedYear, selectedMonth);
+        }
+      }
+
+      if (snapshotHeader) {
+        const details = await getMonthlyScheduleDetails(snapshotHeader.Schedule_Header_ID);
+        rows = mapMonthlyScheduleDetailRows(details);
+      } else {
+        const rawResults = await getMonthlyCalibrationData(
+          selectedYear,
+          selectedMonth,
+          CALIBRATION_SCOPE.INTERNAL
+        );
+        rows = mapMonthlyRows(rawResults, selectedYear, selectedMonth);
+      }
     }
+
     sortMappedRows(rows);
     rows = rows.map((row, idx) => ({ ...row, no: idx + 1 }));
 
@@ -554,18 +1670,21 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
       { width: 6 },  // No
       { width: 48 }, // Nama Alat
       { width: 14 }, // ID
-      { width: 10 }, // Bagian
-      { width: 38 }, // Lokasi
-      { width: 10 }, // PIC
-      { width: 16 }, // Plan/Due Date
-      { width: 16 }, // Realisasi Eksekusi
+      { width: 14 }, // Bagian
+      { width: 34 }, // Lokasi
+      { width: 14 }, // PIC
+      { width: 16 }, // Due Date
+      { width: 16 }, // Tgl Kalibrasi
+      { width: 16 }, // Source Date
       { width: 4 },  // S
       { width: 4 },  // D
       { width: 4 },  // M
     ];
 
-    worksheet.mergeCells('A1:K1');
-    worksheet.getCell('A1').value = `JADWAL BULANAN KALIBRASI - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear}`;
+    worksheet.mergeCells('A1:L1');
+    worksheet.getCell('A1').value = snapshotHeader
+      ? `JADWAL BULANAN KALIBRASI - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear} REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
+      : `JADWAL BULANAN KALIBRASI - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear}`;
     worksheet.getCell('A1').font = { bold: true, size: 14 };
     worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -573,20 +1692,20 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
     worksheet.views = [{ state: 'frozen', ySplit: 3 }];
 
     let currentRow = 4;
-    let numberCounter = 1;
     for (const rowItem of rows) {
       const row = worksheet.getRow(currentRow);
-      row.getCell(1).value = numberCounter;
+      row.getCell(1).value = rowItem.no;
       row.getCell(2).value = rowItem.assm_nama_instrumen || '';
       row.getCell(3).value = rowItem.assm_no_identitas_istrumen || '';
       row.getCell(4).value = rowItem.group_da_dept || '';
       row.getCell(5).value = rowItem.assm_lokasi || '';
       row.getCell(6).value = rowItem.pic || '';
       row.getCell(7).value = formatDateDisplay(rowItem.plan_due_date);
-      row.getCell(8).value = formatDateDisplay(rowItem.realisasi_eksekusi);
-      row.getCell(9).value = rowItem.ket === 'S' ? '√' : '';
-      row.getCell(10).value = rowItem.ket === 'D' ? '√' : '';
-      row.getCell(11).value = rowItem.ket === 'M' ? '√' : '';
+      row.getCell(8).value = formatDateDisplay(rowItem.tgl_kalibrasi);
+      row.getCell(9).value = formatDateDisplay(rowItem.source_date);
+      row.getCell(10).value = rowItem.checklist_s ? CHECKMARK_SYMBOL : '';
+      row.getCell(11).value = rowItem.checklist_d ? CHECKMARK_SYMBOL : '';
+      row.getCell(12).value = rowItem.checklist_m ? CHECKMARK_SYMBOL : '';
 
       row.height = 20;
       row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -594,11 +1713,10 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
       applyRowBorder(worksheet, currentRow);
       currentRow += 1;
-      numberCounter += 1;
     }
 
     const lastRow = Math.max(currentRow - 1, 3);
-    worksheet.autoFilter = `A2:H${lastRow}`;
+    worksheet.autoFilter = `A2:I${lastRow}`;
 
     const fileName = `Master-Jadwal-Bulanan-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
@@ -678,17 +1796,17 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     const worksheet = workbook.addWorksheet(`Jadwal-External-${selectedMonth}-${selectedYear}`);
 
     worksheet.columns = [
-      { width: 6 },  // No
-      { width: 48 }, // Nama Alat
-      { width: 14 }, // ID
-      { width: 10 }, // Bagian
-      { width: 34 }, // Lokasi
-      { width: 12 }, // Insitu
-      { width: 20 }, // Penyerahan
-      { width: 22 }, // Pengembalian
-      { width: 12 }, // Jatuh Tempo
-      { width: 12 }, // Realisasi
-      { width: 26 }, // Keterangan
+      { width: 6 },
+      { width: 48 },
+      { width: 14 },
+      { width: 10 },
+      { width: 34 },
+      { width: 12 },
+      { width: 20 },
+      { width: 22 },
+      { width: 12 },
+      { width: 12 },
+      { width: 26 },
     ];
 
     worksheet.mergeCells('A1:K1');
@@ -748,7 +1866,11 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
 
 module.exports = {
   getMasterJadwalBulananPreview,
+  saveMasterJadwalBulanan,
   exportMasterJadwalBulanan,
+  requestMasterJadwalBulananApproval,
+  approveMasterJadwalBulanan,
+  rejectMasterJadwalBulanan,
   getMasterJadwalBulananExternalPreview,
   exportMasterJadwalBulananExternal,
 };
