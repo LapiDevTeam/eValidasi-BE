@@ -18,7 +18,11 @@ const {
   approveMasterJadwalBulanan,
   rejectMasterJadwalBulanan,
   getMasterJadwalBulananExternalPreview,
+  saveMasterJadwalBulananExternal,
   exportMasterJadwalBulananExternal,
+  requestMasterJadwalBulananExternalApproval,
+  approveMasterJadwalBulananExternal,
+  rejectMasterJadwalBulananExternal,
 } = require('../../controllers/transactions/master-jadwal-bulanan.controller');
 
 // All routes require authentication
@@ -60,7 +64,19 @@ router.post('/jadwal-bulanan/reject', rejectMasterJadwalBulanan);
 // GET /master/jadwal-bulanan-external/preview?year=2026&month=5
 router.get('/jadwal-bulanan-external/preview', getMasterJadwalBulananExternalPreview);
 
+// POST /master/jadwal-bulanan-external/save
+router.post('/jadwal-bulanan-external/save', saveMasterJadwalBulananExternal);
+
 // POST /master/jadwal-bulanan-external/export
 router.post('/jadwal-bulanan-external/export', exportMasterJadwalBulananExternal);
+
+// POST /master/jadwal-bulanan-external/request-approve
+router.post('/jadwal-bulanan-external/request-approve', requestMasterJadwalBulananExternalApproval);
+
+// POST /master/jadwal-bulanan-external/approve
+router.post('/jadwal-bulanan-external/approve', approveMasterJadwalBulananExternal);
+
+// POST /master/jadwal-bulanan-external/reject
+router.post('/jadwal-bulanan-external/reject', rejectMasterJadwalBulananExternal);
 
 module.exports = router;

@@ -30,6 +30,7 @@ const MONTHLY_SCHEDULE_STATUS = {
   REJECTED: 'REJECTED',
   SUPERSEDED: 'SUPERSEDED',
 };
+const EXTERNAL_MONTHLY_SCHEDULE_STATUS = MONTHLY_SCHEDULE_STATUS;
 const BUFFER_DAYS = 0;
 const CHECKMARK_SYMBOL = 'X';
 
@@ -79,6 +80,16 @@ const formatDateISO = (value) => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const normalizePeriodYear = (value) => {
+  const parsed = parseYear(value);
+  return parsed ? String(parsed) : null;
+};
+
+const normalizePeriodMonth = (value) => {
+  const parsed = parseMonth(value);
+  return parsed ? String(parsed).padStart(2, '0') : null;
 };
 
 const getCategory = (identitas) => {
@@ -168,6 +179,51 @@ const sortExternalRows = (rows) => {
     );
   });
 };
+
+const getMonthlyScheduleRowMatchKey = (item = {}) =>
+  [
+    String(item?.source_key || item?.Source_Key || '').trim().toUpperCase(),
+    String(
+      item?.assm_no_identitas_istrumen || item?.Instrument_ID || item?.instrument_id || ''
+    )
+      .trim()
+      .toUpperCase(),
+  ].join('|');
+
+const createMonthlySchedulePreviousValueMap = (rows = []) => {
+  const map = new Map();
+  rows.forEach((item) => {
+    const key = getMonthlyScheduleRowMatchKey(item);
+    if (!key || key === '|') return;
+    map.set(key, {
+      pic: item?.pic || item?.PIC || '',
+      checklist_s: Boolean(item?.checklist_s ?? item?.Checklist_S),
+      checklist_d: Boolean(item?.checklist_d ?? item?.Checklist_D),
+      checklist_m: Boolean(item?.checklist_m ?? item?.Checklist_M),
+    });
+  });
+  return map;
+};
+
+const applyPreviousValuesToMonthlyRows = (rows = [], previousValueMap = new Map()) =>
+  rows.map((row) => {
+    const key = getMonthlyScheduleRowMatchKey(row);
+    const previous = previousValueMap.get(key);
+    const hasPrevious = Boolean(previous);
+
+    return {
+      ...row,
+      pic: hasPrevious ? previous.pic || '' : row.pic || '',
+      checklist_s: hasPrevious ? previous.checklist_s : Boolean(row.checklist_s),
+      checklist_d: hasPrevious ? previous.checklist_d : Boolean(row.checklist_d),
+      checklist_m: hasPrevious ? previous.checklist_m : Boolean(row.checklist_m),
+      previous_pic: hasPrevious ? previous.pic || '' : '',
+      previous_checklist_s: hasPrevious ? previous.checklist_s : false,
+      previous_checklist_d: hasPrevious ? previous.checklist_d : false,
+      previous_checklist_m: hasPrevious ? previous.checklist_m : false,
+      is_new_row: !hasPrevious,
+    };
+  });
 
 const getMonthlyCalibrationData = async (
   selectedYear,
@@ -645,8 +701,8 @@ const getLatestMonthlyScheduleHeaderByStatus = async (
     `,
     {
       replacements: {
-        year: selectedYear,
-        month: selectedMonth,
+        year: normalizePeriodYear(selectedYear),
+        month: normalizePeriodMonth(selectedMonth),
         status,
       },
       type: Sequelize.QueryTypes.SELECT,
@@ -821,6 +877,11 @@ const mapMonthlyScheduleDetailRows = (details) => {
     checklist_m: Boolean(item.Checklist_M),
     source_table: item.Source_Table || null,
     source_key: item.Source_Key || null,
+    previous_pic: '',
+    previous_checklist_s: false,
+    previous_checklist_d: false,
+    previous_checklist_m: false,
+    is_new_row: false,
   }));
 
   sortMappedRows(mapped);
@@ -834,12 +895,23 @@ const buildMonthlyScheduleSnapshotPayload = async (header, transaction = null) =
   if (!header?.Schedule_Header_ID) return null;
 
   const details = await getMonthlyScheduleDetails(header.Schedule_Header_ID, transaction);
-  const data = mapMonthlyScheduleDetailRows(details);
+  let data = mapMonthlyScheduleDetailRows(details);
   const { revisions } = await getMonthlyScheduleRevisionState(
     header.Period_Year,
     header.Period_Month,
     transaction
   );
+
+  if (header.Status === MONTHLY_SCHEDULE_STATUS.REQUESTED && revisions?.current?.schedule_header_id) {
+    const approvedDetails = await getMonthlyScheduleDetails(
+      revisions.current.schedule_header_id,
+      transaction
+    );
+    const previousValueMap = createMonthlySchedulePreviousValueMap(
+      mapMonthlyScheduleDetailRows(approvedDetails)
+    );
+    data = applyPreviousValuesToMonthlyRows(data, previousValueMap);
+  }
 
   return {
     success: true,
@@ -870,7 +942,7 @@ const buildMonthlyScheduleLivePayload = async (selectedYear, selectedMonth, tran
     CALIBRATION_SCOPE.INTERNAL,
     transaction
   );
-  const rows = mapMonthlyRows(rawResults, selectedYear, selectedMonth);
+  let rows = mapMonthlyRows(rawResults, selectedYear, selectedMonth);
   const grouped = getGroupedData(rows);
   const { revisions } = await getMonthlyScheduleRevisionState(
     selectedYear,
@@ -878,6 +950,17 @@ const buildMonthlyScheduleLivePayload = async (selectedYear, selectedMonth, tran
     transaction
   );
   const window = getMonthlyWindow(selectedYear, selectedMonth);
+
+  if (revisions?.current?.schedule_header_id) {
+    const approvedDetails = await getMonthlyScheduleDetails(
+      revisions.current.schedule_header_id,
+      transaction
+    );
+    const previousValueMap = createMonthlySchedulePreviousValueMap(
+      mapMonthlyScheduleDetailRows(approvedDetails)
+    );
+    rows = applyPreviousValuesToMonthlyRows(rows, previousValueMap);
+  }
 
   return {
     success: true,
@@ -1212,8 +1295,8 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
         `,
         {
           replacements: {
-            year: selectedYear,
-            month: selectedMonth,
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
           },
           type: Sequelize.QueryTypes.SELECT,
           transaction,
@@ -1226,17 +1309,35 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
         throw error;
       }
 
+      await sequelizeMSQL.query(
+        `
+          DELETE FROM T_Monthly_Schedule_Header
+          WHERE Period_Year = :year
+            AND Period_Month = :month
+            AND [Status] IN ('REJECTED', 'SUPERSEDED')
+        `,
+        {
+          replacements: {
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
+          },
+          type: Sequelize.QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
       const revisionRows = await sequelizeMSQL.query(
         `
           SELECT ISNULL(MAX(Revision_No), 0) + 1 AS NextRevision
           FROM T_Monthly_Schedule_Header WITH (UPDLOCK, HOLDLOCK)
           WHERE Period_Year = :year
             AND Period_Month = :month
+            AND [Status] = 'APPROVED'
         `,
         {
           replacements: {
-            year: selectedYear,
-            month: selectedMonth,
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
           },
           type: Sequelize.QueryTypes.SELECT,
           transaction,
@@ -1360,8 +1461,8 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
         `,
         {
           replacements: {
-            year: selectedYear,
-            month: selectedMonth,
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
             revisionNo,
             periodStart: window.periodStartISO,
             periodEnd: window.periodEndISO,
@@ -1584,6 +1685,20 @@ const rejectMasterJadwalBulanan = async (req, res, next) => {
         }
       );
 
+      await sequelizeMSQL.query(
+        `
+          DELETE FROM T_Monthly_Schedule_Header
+          WHERE Schedule_Header_ID = :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            scheduleHeaderId: header.Schedule_Header_ID,
+          },
+          type: Sequelize.QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
       const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
         header.Period_Year,
         header.Period_Month,
@@ -1730,10 +1845,344 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
   }
 };
 
+const getNextPeriodConfig = (selectedYear, selectedMonth) => {
+  const isDecember = Number(selectedMonth) === 12;
+  return {
+    year: isDecember ? Number(selectedYear) + 1 : Number(selectedYear),
+    month: isDecember ? 1 : Number(selectedMonth) + 1,
+  };
+};
+
+const getExternalPeriodKey = (year, month) =>
+  `${normalizePeriodYear(year)}-${normalizePeriodMonth(month)}`;
+
+const mapExternalLiveRowsForPeriod = (results, year, month, periodLabel) => {
+  const rows = mapMonthlyExternalRows(results);
+  return rows.map((row, index) => ({
+    ...row,
+    schedule_detail_id: null,
+    no: index + 1,
+    row_id: `${getExternalPeriodKey(year, month)}-${row.row_id || index + 1}`,
+    due_date: row.jatuh_tempo || null,
+    calibration_date: row.tgl_kalibrasi || null,
+    insitu_date: row.tgl_eksekusi_insitu || null,
+    user_equipment_handover_date: row.tgl_penyerahan_alat_oleh_user || null,
+    equipment_return_by_vendor_date: row.tgl_pengembalian_alat_oleh_vn || null,
+    realization_date: row.realisasi || null,
+    remarks: row.keterangan || '',
+    _period_key: getExternalPeriodKey(year, month),
+    _period_year: normalizePeriodYear(year),
+    _period_month: normalizePeriodMonth(month),
+    _period_label: periodLabel,
+  }));
+};
+
+const getLatestExternalHeaderByStatus = async (
+  selectedYear,
+  selectedMonth,
+  status,
+  transaction = null
+) => {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        Schedule_External_Header_ID,
+        Base_Period_Year,
+        Base_Period_Month,
+        Revision_No,
+        [Status],
+        Is_Locked,
+        Requested_By,
+        Requested_Date,
+        Approved_By,
+        Approved_Date,
+        Rejected_By,
+        Rejected_Date,
+        Remarks,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_External_Header
+      WHERE Base_Period_Year = :year
+        AND Base_Period_Month = :month
+        AND [Status] = :status
+      ORDER BY Revision_No DESC, Schedule_External_Header_ID DESC
+    `,
+    {
+      replacements: {
+        year: normalizePeriodYear(selectedYear),
+        month: normalizePeriodMonth(selectedMonth),
+        status,
+      },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  return rows[0] || null;
+};
+
+const getLatestApprovedExternalHeader = (selectedYear, selectedMonth, transaction = null) =>
+  getLatestExternalHeaderByStatus(
+    selectedYear,
+    selectedMonth,
+    EXTERNAL_MONTHLY_SCHEDULE_STATUS.APPROVED,
+    transaction
+  );
+
+const getLatestRequestedExternalHeader = (selectedYear, selectedMonth, transaction = null) =>
+  getLatestExternalHeaderByStatus(
+    selectedYear,
+    selectedMonth,
+    EXTERNAL_MONTHLY_SCHEDULE_STATUS.REQUESTED,
+    transaction
+  );
+
+const getExternalHeaderById = async (scheduleHeaderId, transaction = null) => {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT
+        Schedule_External_Header_ID,
+        Base_Period_Year,
+        Base_Period_Month,
+        Revision_No,
+        [Status],
+        Is_Locked,
+        Requested_By,
+        Requested_Date,
+        Approved_By,
+        Approved_Date,
+        Rejected_By,
+        Rejected_Date,
+        Remarks,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_External_Header
+      WHERE Schedule_External_Header_ID = :scheduleHeaderId
+    `,
+    {
+      replacements: { scheduleHeaderId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+  return rows[0] || null;
+};
+
+const getExternalDetails = async (scheduleHeaderId, transaction = null) =>
+  sequelizeMSQL.query(
+    `
+      SELECT
+        Schedule_External_Detail_ID,
+        Schedule_External_Header_ID,
+        Line_No,
+        Schedule_Period_Year,
+        Schedule_Period_Month,
+        QA_ID,
+        Instrument_Name,
+        Instrument_ID,
+        Department,
+        [Location],
+        Due_Date,
+        Calibration_Date,
+        Insitu_Date,
+        User_Equipment_Handover_Date,
+        Equipment_Return_By_Vendor_Date,
+        Realization_Date,
+        Remarks,
+        Source_Table,
+        Source_Key
+      FROM T_Monthly_Schedule_External_Detail
+      WHERE Schedule_External_Header_ID = :scheduleHeaderId
+      ORDER BY Schedule_Period_Year, Schedule_Period_Month, Line_No, Schedule_External_Detail_ID
+    `,
+    {
+      replacements: { scheduleHeaderId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+const mapExternalRevisionInfo = (header) => {
+  if (!header) return null;
+  return {
+    schedule_header_id: header.Schedule_External_Header_ID,
+    year: header.Base_Period_Year,
+    month: header.Base_Period_Month,
+    revision_no: header.Revision_No,
+    status: header.Status,
+    is_locked: Boolean(header.Is_Locked),
+    requested_by: header.Requested_By,
+    requested_date: header.Requested_Date,
+    approved_by: header.Approved_By,
+    approved_date: header.Approved_Date,
+    rejected_by: header.Rejected_By,
+    rejected_date: header.Rejected_Date,
+    remarks: header.Remarks,
+    created_by: header.Created_By,
+    created_date: header.Created_Date,
+    updated_by: header.Updated_By,
+    updated_date: header.Updated_Date,
+  };
+};
+
+const getExternalRevisionState = async (selectedYear, selectedMonth, transaction = null) => {
+  const currentHeader = await getLatestApprovedExternalHeader(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+  const requestedHeader = await getLatestRequestedExternalHeader(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+
+  return {
+    currentHeader,
+    requestedHeader,
+    revisions: {
+      current: mapExternalRevisionInfo(currentHeader),
+      requested: mapExternalRevisionInfo(requestedHeader),
+    },
+  };
+};
+
+const mapExternalSnapshotRows = (details = [], baseYear, baseMonth) => {
+  const baseKey = getExternalPeriodKey(baseYear, baseMonth);
+  const nextPeriod = getNextPeriodConfig(baseYear, Number(baseMonth));
+  const nextKey = getExternalPeriodKey(nextPeriod.year, nextPeriod.month);
+
+  return details.map((item, index) => {
+    const periodYear = item.Schedule_Period_Year || normalizePeriodYear(baseYear);
+    const periodMonth = item.Schedule_Period_Month || normalizePeriodMonth(baseMonth);
+    const periodKey = `${periodYear}-${periodMonth}`;
+    const periodLabel = `${MONTH_NAMES_ID[Number(periodMonth) - 1]} ${periodYear}`;
+
+    return {
+      row_id: `${periodKey}-DETAIL-${item.Schedule_External_Detail_ID || index + 1}`,
+      schedule_detail_id: item.Schedule_External_Detail_ID,
+      no: item.Line_No || index + 1,
+      qa_id: item.QA_ID || '',
+      assm_nama_instrumen: item.Instrument_Name || '',
+      assm_no_identitas_istrumen: item.Instrument_ID || '',
+      group_da_dept: item.Department || '',
+      assm_lokasi: item.Location || '',
+      due_date: item.Due_Date || null,
+      calibration_date: item.Calibration_Date || null,
+      insitu_date: item.Insitu_Date || null,
+      user_equipment_handover_date: item.User_Equipment_Handover_Date || null,
+      equipment_return_by_vendor_date: item.Equipment_Return_By_Vendor_Date || null,
+      realization_date: item.Realization_Date || null,
+      remarks: item.Remarks || '',
+      source_table: item.Source_Table || null,
+      source_key: item.Source_Key || null,
+      _period_key: periodKey,
+      _period_year: periodYear,
+      _period_month: periodMonth,
+      _period_label: periodLabel,
+      _is_current_period: periodKey === baseKey,
+      _is_next_period: periodKey === nextKey,
+    };
+  });
+};
+
+const buildExternalLivePayload = async (selectedYear, selectedMonth, transaction = null) => {
+  const nextPeriod = getNextPeriodConfig(selectedYear, selectedMonth);
+  const currentResults = await getMonthlyCalibrationData(
+    selectedYear,
+    selectedMonth,
+    CALIBRATION_SCOPE.EXTERNAL,
+    transaction
+  );
+  const nextResults = await getMonthlyCalibrationData(
+    nextPeriod.year,
+    nextPeriod.month,
+    CALIBRATION_SCOPE.EXTERNAL,
+    transaction
+  );
+
+  const currentLabel = `${MONTH_NAMES_ID[selectedMonth - 1]} ${selectedYear}`;
+  const nextLabel = `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`;
+  const currentRows = mapExternalLiveRowsForPeriod(
+    currentResults,
+    selectedYear,
+    selectedMonth,
+    currentLabel
+  );
+  const nextRows = mapExternalLiveRowsForPeriod(
+    nextResults,
+    nextPeriod.year,
+    nextPeriod.month,
+    nextLabel
+  );
+  const rows = [...currentRows, ...nextRows];
+  const { revisions } = await getExternalRevisionState(
+    selectedYear,
+    selectedMonth,
+    transaction
+  );
+
+  return {
+    success: true,
+    message: 'External monthly schedule data fetched successfully',
+    year: normalizePeriodYear(selectedYear),
+    month: normalizePeriodMonth(selectedMonth),
+    period_label: currentLabel,
+    next_period_label: nextLabel,
+    count: rows.length,
+    source: 'live',
+    editable: false,
+    snapshot: null,
+    revisions,
+    rows,
+  };
+};
+
+const buildExternalSnapshotPayload = async (header, transaction = null) => {
+  if (!header?.Schedule_External_Header_ID) return null;
+  const details = await getExternalDetails(header.Schedule_External_Header_ID, transaction);
+  const rows = mapExternalSnapshotRows(
+    details,
+    header.Base_Period_Year,
+    header.Base_Period_Month
+  );
+  const { revisions } = await getExternalRevisionState(
+    header.Base_Period_Year,
+    header.Base_Period_Month,
+    transaction
+  );
+  const nextPeriod = getNextPeriodConfig(
+    Number(header.Base_Period_Year),
+    Number(header.Base_Period_Month)
+  );
+
+  return {
+    success: true,
+    message: 'External monthly schedule revision fetched successfully',
+    year: header.Base_Period_Year,
+    month: header.Base_Period_Month,
+    period_label: `${MONTH_NAMES_ID[Number(header.Base_Period_Month) - 1]} ${header.Base_Period_Year}`,
+    next_period_label: `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`,
+    count: rows.length,
+    source: header.Status === 'REQUESTED' ? 'requested' : 'snapshot',
+    editable: header.Status === 'REQUESTED' && !header.Is_Locked,
+    snapshot: mapExternalRevisionInfo(header),
+    revisions,
+    rows,
+  };
+};
+
 const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const selectedMonth = parseMonth(req.query.month);
+    const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
+      ? req.query.source
+      : 'snapshot';
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -1742,24 +2191,656 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
       });
     }
 
-    const rawResults = await getMonthlyCalibrationData(
-      selectedYear,
-      selectedMonth,
-      CALIBRATION_SCOPE.EXTERNAL
-    );
-    const rows = mapMonthlyExternalRows(rawResults);
+    if (source === 'requested') {
+      const requestedHeader = await getLatestRequestedExternalHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (requestedHeader) {
+        return res.status(200).json(
+          await buildExternalSnapshotPayload(requestedHeader)
+        );
+      }
+    } else if (source !== 'live') {
+      const currentHeader = await getLatestApprovedExternalHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (currentHeader) {
+        return res.status(200).json(
+          await buildExternalSnapshotPayload(currentHeader)
+        );
+      }
 
-    return res.status(200).json({
-      success: true,
-      message: 'External data fetched successfully',
-      year: selectedYear,
-      month: selectedMonth,
-      period_label: `${MONTH_NAMES_ID[selectedMonth - 1]} ${selectedYear}`,
-      count: rows.length,
-      rows,
-    });
+      const requestedHeader = await getLatestRequestedExternalHeader(
+        selectedYear,
+        selectedMonth
+      );
+      if (requestedHeader) {
+        return res.status(200).json(
+          await buildExternalSnapshotPayload(requestedHeader)
+        );
+      }
+    }
+
+    return res
+      .status(200)
+      .json(await buildExternalLivePayload(selectedYear, selectedMonth));
   } catch (error) {
     console.error('Error in getMasterJadwalBulananExternalPreview:', error);
+    next(error);
+  }
+};
+
+const normalizeIncomingExternalWorkflowRows = (rows) => {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((item, index) => ({
+    row_id: item?.row_id || `ROW-EXTERNAL-${index + 1}`,
+    schedule_detail_id: Number(item?.schedule_detail_id) || null,
+    no: Number(item?.no) || index + 1,
+    qa_id: item?.qa_id || '',
+    assm_nama_instrumen: item?.assm_nama_instrumen || '',
+    assm_no_identitas_istrumen: item?.assm_no_identitas_istrumen || '',
+    group_da_dept: item?.group_da_dept || '',
+    assm_lokasi: item?.assm_lokasi || '',
+    due_date: formatDateISO(item?.due_date || item?.jatuh_tempo || item?.plan_due_date),
+    calibration_date: formatDateISO(item?.calibration_date || item?.tgl_kalibrasi),
+    insitu_date: formatDateISO(item?.insitu_date || item?.tgl_eksekusi_insitu),
+    user_equipment_handover_date: formatDateISO(
+      item?.user_equipment_handover_date || item?.tgl_penyerahan_alat_oleh_user
+    ),
+    equipment_return_by_vendor_date: formatDateISO(
+      item?.equipment_return_by_vendor_date || item?.tgl_pengembalian_alat_oleh_vn
+    ),
+    realization_date: formatDateISO(item?.realization_date || item?.realisasi),
+    remarks: String(item?.remarks ?? item?.keterangan ?? '').trim(),
+    source_table: item?.source_table || null,
+    source_key: item?.source_key || null,
+    _period_key: item?._period_key || null,
+    _period_year: item?._period_year || null,
+    _period_month: item?._period_month || null,
+    _period_label: item?._period_label || null,
+  }));
+};
+
+const saveMasterJadwalBulananExternal = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const incomingRows = normalizeIncomingExternalWorkflowRows(req.body?.rows);
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Schedule header ID or valid year and month are required',
+      });
+    }
+    if (!incomingRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No external schedule rows were provided.',
+      });
+    }
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      let header = null;
+      if (scheduleHeaderId) {
+        header = await getExternalHeaderById(scheduleHeaderId, transaction);
+      } else {
+        header = await getLatestRequestedExternalHeader(
+          selectedYear,
+          selectedMonth,
+          transaction
+        );
+      }
+      if (!header) {
+        const error = new Error('No requested external monthly schedule revision is available to save.');
+        error.status = 404;
+        throw error;
+      }
+      if (header.Status !== 'REQUESTED' || Boolean(header.Is_Locked)) {
+        const error = new Error('The selected external monthly schedule period is locked and cannot be edited.');
+        error.status = 409;
+        throw error;
+      }
+
+      for (const item of incomingRows) {
+        await sequelizeMSQL.query(
+          `
+            UPDATE T_Monthly_Schedule_External_Detail
+            SET
+              Insitu_Date = :insituDate,
+              User_Equipment_Handover_Date = :userEquipmentHandoverDate,
+              Equipment_Return_By_Vendor_Date = :equipmentReturnByVendorDate,
+              Remarks = :remarks,
+              Updated_By = :userId,
+              Updated_Date = GETDATE()
+            WHERE Schedule_External_Header_ID = :scheduleHeaderId
+              AND (
+                Schedule_External_Detail_ID = :scheduleDetailId
+                OR (
+                  :scheduleDetailId IS NULL
+                  AND ISNULL(Source_Key, '') = ISNULL(:sourceKey, '')
+                  AND ISNULL(Instrument_ID, '') = ISNULL(:instrumentId, '')
+                  AND ISNULL(Schedule_Period_Year, '') = ISNULL(:periodYear, '')
+                  AND ISNULL(Schedule_Period_Month, '') = ISNULL(:periodMonth, '')
+                )
+              )
+          `,
+          {
+            replacements: {
+              scheduleHeaderId: header.Schedule_External_Header_ID,
+              scheduleDetailId: item.schedule_detail_id,
+              sourceKey: item.source_key || null,
+              instrumentId: item.assm_no_identitas_istrumen || null,
+              periodYear: item._period_year || null,
+              periodMonth: item._period_month || null,
+              insituDate: item.insitu_date || null,
+              userEquipmentHandoverDate: item.user_equipment_handover_date || null,
+              equipmentReturnByVendorDate: item.equipment_return_by_vendor_date || null,
+              remarks: item.remarks || null,
+              userId: user_id,
+            },
+            type: Sequelize.QueryTypes.UPDATE,
+            transaction,
+          }
+        );
+      }
+
+      const refreshedHeader = await getExternalHeaderById(
+        header.Schedule_External_Header_ID,
+        transaction
+      );
+      return buildExternalSnapshotPayload(refreshedHeader, transaction);
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'External monthly schedule draft has been saved.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
+    console.error('Error in saveMasterJadwalBulananExternal:', error);
+    next(error);
+  }
+};
+
+const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
+  try {
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!selectedYear || !selectedMonth) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid year and month are required',
+      });
+    }
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User is not authenticated',
+      });
+    }
+
+    const livePayload = await buildExternalLivePayload(selectedYear, selectedMonth);
+    if (!livePayload.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No external monthly schedule data is available to request approval.',
+      });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      const existingRequested = await sequelizeMSQL.query(
+        `
+          SELECT TOP 1 Schedule_External_Header_ID
+          FROM T_Monthly_Schedule_External_Header WITH (UPDLOCK, HOLDLOCK)
+          WHERE Base_Period_Year = :year
+            AND Base_Period_Month = :month
+            AND [Status] = 'REQUESTED'
+        `,
+        {
+          replacements: {
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+      if (existingRequested.length) {
+        const error = new Error('An external monthly schedule revision is already waiting for approval.');
+        error.status = 409;
+        throw error;
+      }
+
+      await sequelizeMSQL.query(
+        `
+          DELETE FROM T_Monthly_Schedule_External_Header
+          WHERE Base_Period_Year = :year
+            AND Base_Period_Month = :month
+            AND [Status] IN ('REJECTED', 'SUPERSEDED')
+        `,
+        {
+          replacements: {
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
+          },
+          type: Sequelize.QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      const revisionRows = await sequelizeMSQL.query(
+        `
+          SELECT ISNULL(MAX(Revision_No), 0) + 1 AS NextRevision
+          FROM T_Monthly_Schedule_External_Header WITH (UPDLOCK, HOLDLOCK)
+          WHERE Base_Period_Year = :year
+            AND Base_Period_Month = :month
+            AND [Status] = 'APPROVED'
+        `,
+        {
+          replacements: {
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+      const revisionNo = revisionRows[0]?.NextRevision || 1;
+      const headerRows = await sequelizeMSQL.query(
+        `
+          DECLARE @InsertedHeader TABLE
+          (
+            Schedule_External_Header_ID INT,
+            Base_Period_Year NVARCHAR(10),
+            Base_Period_Month NVARCHAR(10),
+            Revision_No INT,
+            [Status] VARCHAR(20),
+            Is_Locked BIT,
+            Requested_By NVARCHAR(50),
+            Requested_Date DATETIME2(0),
+            Approved_By NVARCHAR(50),
+            Approved_Date DATETIME2(0),
+            Rejected_By NVARCHAR(50),
+            Rejected_Date DATETIME2(0),
+            Remarks NVARCHAR(MAX),
+            Created_By NVARCHAR(50),
+            Created_Date DATETIME2(0),
+            Updated_By NVARCHAR(50),
+            Updated_Date DATETIME2(0)
+          );
+
+          INSERT INTO T_Monthly_Schedule_External_Header
+            (
+              Base_Period_Year,
+              Base_Period_Month,
+              Revision_No,
+              [Status],
+              Is_Locked,
+              Requested_By,
+              Requested_Date,
+              Remarks,
+              Created_By,
+              Created_Date,
+              Updated_By,
+              Updated_Date
+            )
+          OUTPUT
+            INSERTED.Schedule_External_Header_ID,
+            INSERTED.Base_Period_Year,
+            INSERTED.Base_Period_Month,
+            INSERTED.Revision_No,
+            INSERTED.[Status],
+            INSERTED.Is_Locked,
+            INSERTED.Requested_By,
+            INSERTED.Requested_Date,
+            INSERTED.Approved_By,
+            INSERTED.Approved_Date,
+            INSERTED.Rejected_By,
+            INSERTED.Rejected_Date,
+            INSERTED.Remarks,
+            INSERTED.Created_By,
+            INSERTED.Created_Date,
+            INSERTED.Updated_By,
+            INSERTED.Updated_Date
+          INTO @InsertedHeader
+          VALUES
+            (
+              :year,
+              :month,
+              :revisionNo,
+              'REQUESTED',
+              0,
+              :userId,
+              GETDATE(),
+              :remarks,
+              :userId,
+              GETDATE(),
+              :userId,
+              GETDATE()
+            );
+
+          SELECT * FROM @InsertedHeader;
+        `,
+        {
+          replacements: {
+            year: normalizePeriodYear(selectedYear),
+            month: normalizePeriodMonth(selectedMonth),
+            revisionNo,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.SELECT,
+          transaction,
+        }
+      );
+      const header = headerRows[0];
+
+      for (const item of livePayload.rows) {
+        await sequelizeMSQL.query(
+          `
+            INSERT INTO T_Monthly_Schedule_External_Detail
+              (
+                Schedule_External_Header_ID,
+                Line_No,
+                Schedule_Period_Year,
+                Schedule_Period_Month,
+                QA_ID,
+                Instrument_Name,
+                Instrument_ID,
+                Department,
+                [Location],
+                Due_Date,
+                Calibration_Date,
+                Insitu_Date,
+                User_Equipment_Handover_Date,
+                Equipment_Return_By_Vendor_Date,
+                Realization_Date,
+                Remarks,
+                Source_Table,
+                Source_Key,
+                Created_By,
+                Created_Date,
+                Updated_By,
+                Updated_Date
+              )
+            VALUES
+              (
+                :headerId,
+                :lineNo,
+                :periodYear,
+                :periodMonth,
+                :qaId,
+                :instrumentName,
+                :instrumentId,
+                :department,
+                :location,
+                :dueDate,
+                :calibrationDate,
+                :insituDate,
+                :userEquipmentHandoverDate,
+                :equipmentReturnByVendorDate,
+                :realizationDate,
+                :remarks,
+                :sourceTable,
+                :sourceKey,
+                :userId,
+                GETDATE(),
+                :userId,
+                GETDATE()
+              )
+          `,
+          {
+            replacements: {
+              headerId: header.Schedule_External_Header_ID,
+              lineNo: item.no,
+              periodYear: item._period_year,
+              periodMonth: item._period_month,
+              qaId: item.qa_id || null,
+              instrumentName: item.assm_nama_instrumen || null,
+              instrumentId: item.assm_no_identitas_istrumen || null,
+              department: item.group_da_dept || null,
+              location: item.assm_lokasi || null,
+              dueDate: item.due_date || null,
+              calibrationDate: item.calibration_date || null,
+              insituDate: item.insitu_date || null,
+              userEquipmentHandoverDate: item.user_equipment_handover_date || null,
+              equipmentReturnByVendorDate: item.equipment_return_by_vendor_date || null,
+              realizationDate: item.realization_date || null,
+              remarks: item.remarks || null,
+              sourceTable: item.source_table || null,
+              sourceKey: item.source_key || null,
+              userId: user_id,
+            },
+            type: Sequelize.QueryTypes.INSERT,
+            transaction,
+          }
+        );
+      }
+
+      return buildExternalSnapshotPayload(header, transaction);
+    });
+
+    return res.status(201).json({
+      ...payload,
+      message: 'External monthly schedule revision has been submitted for approval.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
+    console.error('Error in requestMasterJadwalBulananExternalApproval:', error);
+    next(error);
+  }
+};
+
+const approveMasterJadwalBulananExternal = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({ success: false, message: 'Schedule header ID or valid year and month are required' });
+    }
+    if (!user_id) {
+      return res.status(401).json({ success: false, message: 'User is not authenticated' });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      const header = scheduleHeaderId
+        ? await getExternalHeaderById(scheduleHeaderId, transaction)
+        : await getLatestRequestedExternalHeader(selectedYear, selectedMonth, transaction);
+      if (!header) {
+        const error = new Error('No external monthly schedule revision is waiting for approval.');
+        error.status = 404;
+        throw error;
+      }
+      if (header.Status !== 'REQUESTED') {
+        const error = new Error('Only requested external monthly schedule revisions can be approved.');
+        error.status = 400;
+        throw error;
+      }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_External_Header
+          SET
+            [Status] = 'SUPERSEDED',
+            Is_Locked = 1,
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Base_Period_Year = :year
+            AND Base_Period_Month = :month
+            AND [Status] = 'APPROVED'
+            AND Schedule_External_Header_ID <> :headerId
+        `,
+        {
+          replacements: {
+            year: header.Base_Period_Year,
+            month: header.Base_Period_Month,
+            headerId: header.Schedule_External_Header_ID,
+            userId: user_id,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_External_Header
+          SET
+            [Status] = 'APPROVED',
+            Is_Locked = 1,
+            Approved_By = :userId,
+            Approved_Date = GETDATE(),
+            Remarks = COALESCE(:remarks, Remarks),
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_External_Header_ID = :headerId
+        `,
+        {
+          replacements: {
+            headerId: header.Schedule_External_Header_ID,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      const approvedHeader = await getExternalHeaderById(
+        header.Schedule_External_Header_ID,
+        transaction
+      );
+      return buildExternalSnapshotPayload(approvedHeader, transaction);
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'External monthly schedule has been approved.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
+    console.error('Error in approveMasterJadwalBulananExternal:', error);
+    next(error);
+  }
+};
+
+const rejectMasterJadwalBulananExternal = async (req, res, next) => {
+  try {
+    const scheduleHeaderId = Number(req.body?.schedule_header_id || req.query?.schedule_header_id);
+    const selectedYear = parseYear(req.body?.year || req.query?.year);
+    const selectedMonth = parseMonth(req.body?.month || req.query?.month);
+    const remarks = req.body?.remarks || null;
+    const { user_id } = req.user || {};
+
+    if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
+      return res.status(400).json({ success: false, message: 'Schedule header ID or valid year and month are required' });
+    }
+    if (!user_id) {
+      return res.status(401).json({ success: false, message: 'User is not authenticated' });
+    }
+
+    const payload = await sequelizeMSQL.transaction(async (transaction) => {
+      const header = scheduleHeaderId
+        ? await getExternalHeaderById(scheduleHeaderId, transaction)
+        : await getLatestRequestedExternalHeader(selectedYear, selectedMonth, transaction);
+      if (!header) {
+        const error = new Error('No external monthly schedule revision is waiting for approval.');
+        error.status = 404;
+        throw error;
+      }
+      if (header.Status !== 'REQUESTED') {
+        const error = new Error('Only requested external monthly schedule revisions can be rejected.');
+        error.status = 400;
+        throw error;
+      }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_External_Header
+          SET
+            [Status] = 'REJECTED',
+            Is_Locked = 0,
+            Rejected_By = :userId,
+            Rejected_Date = GETDATE(),
+            Remarks = COALESCE(:remarks, Remarks),
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_External_Header_ID = :headerId
+        `,
+        {
+          replacements: {
+            headerId: header.Schedule_External_Header_ID,
+            userId: user_id,
+            remarks,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+
+      await sequelizeMSQL.query(
+        `
+          DELETE FROM T_Monthly_Schedule_External_Header
+          WHERE Schedule_External_Header_ID = :headerId
+        `,
+        {
+          replacements: {
+            headerId: header.Schedule_External_Header_ID,
+          },
+          type: Sequelize.QueryTypes.DELETE,
+          transaction,
+        }
+      );
+
+      const currentHeader = await getLatestApprovedExternalHeader(
+        header.Base_Period_Year,
+        header.Base_Period_Month,
+        transaction
+      );
+      if (currentHeader) {
+        return buildExternalSnapshotPayload(currentHeader, transaction);
+      }
+
+      return buildExternalLivePayload(
+        Number(header.Base_Period_Year),
+        Number(header.Base_Period_Month),
+        transaction
+      );
+    });
+
+    return res.status(200).json({
+      ...payload,
+      message: 'External monthly schedule revision has been rejected.',
+    });
+  } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
+    console.error('Error in rejectMasterJadwalBulananExternal:', error);
     next(error);
   }
 };
@@ -1768,6 +2849,9 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
   try {
     const yearParam = req.body?.year ?? req.query?.year;
     const monthParam = req.body?.month ?? req.query?.month;
+    const source = ['live', 'requested', 'snapshot'].includes(req.body?.source || req.query?.source)
+      ? (req.body?.source || req.query?.source)
+      : 'snapshot';
 
     const selectedYear = parseYear(yearParam);
     const selectedMonth = parseMonth(monthParam);
@@ -1779,22 +2863,29 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
       });
     }
 
-    let rows = normalizeIncomingExternalRows(req.body?.rows);
+    let rows = normalizeIncomingExternalWorkflowRows(req.body?.rows);
+    let snapshotHeader = null;
     if (!rows.length) {
-      const rawResults = await getMonthlyCalibrationData(
-        selectedYear,
-        selectedMonth,
-        CALIBRATION_SCOPE.EXTERNAL
-      );
-      rows = mapMonthlyExternalRows(rawResults);
+      if (source === 'requested') {
+        snapshotHeader = await getLatestRequestedExternalHeader(selectedYear, selectedMonth);
+      } else if (source !== 'live') {
+        snapshotHeader = await getLatestApprovedExternalHeader(selectedYear, selectedMonth);
+        if (!snapshotHeader) {
+          snapshotHeader = await getLatestRequestedExternalHeader(selectedYear, selectedMonth);
+        }
+      }
+
+      if (snapshotHeader) {
+        const details = await getExternalDetails(snapshotHeader.Schedule_External_Header_ID);
+        rows = mapExternalSnapshotRows(details, snapshotHeader.Base_Period_Year, snapshotHeader.Base_Period_Month);
+      } else {
+        const livePayload = await buildExternalLivePayload(selectedYear, selectedMonth);
+        rows = livePayload.rows;
+      }
     }
 
-    sortExternalRows(rows);
-    rows = rows.map((row, idx) => ({ ...row, no: idx + 1 }));
-
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(`Jadwal-External-${selectedMonth}-${selectedYear}`);
-
+    const worksheet = workbook.addWorksheet(`External-${selectedMonth}-${selectedYear}`);
     worksheet.columns = [
       { width: 6 },
       { width: 48 },
@@ -1810,8 +2901,9 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     ];
 
     worksheet.mergeCells('A1:K1');
-    worksheet.getCell('A1').value =
-      `JADWAL BULANAN KALIBRASI EXTERNAL - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear}`;
+    worksheet.getCell('A1').value = snapshotHeader
+      ? `EXTERNAL MONTHLY CALIBRATION SCHEDULE - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear} REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
+      : `EXTERNAL MONTHLY CALIBRATION SCHEDULE - ${MONTH_NAMES_ID[selectedMonth - 1].toUpperCase()} ${selectedYear}`;
     worksheet.getCell('A1').font = { bold: true, size: 14 };
     worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -1819,42 +2911,42 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     worksheet.views = [{ state: 'frozen', ySplit: 3 }];
 
     let currentRow = 4;
-    for (const rowItem of rows) {
-      const row = worksheet.getRow(currentRow);
-      row.getCell(1).value = rowItem.no;
-      row.getCell(2).value = rowItem.assm_nama_instrumen || '';
-      row.getCell(3).value = rowItem.assm_no_identitas_istrumen || '';
-      row.getCell(4).value = rowItem.group_da_dept || '';
-      row.getCell(5).value = rowItem.assm_lokasi || '';
-      row.getCell(6).value = formatDateDisplay(rowItem.tgl_eksekusi_insitu);
-      row.getCell(7).value = formatDateDisplay(rowItem.tgl_penyerahan_alat_oleh_user);
-      row.getCell(8).value = formatDateDisplay(rowItem.tgl_pengembalian_alat_oleh_vn);
-      row.getCell(9).value = formatDateDisplay(rowItem.jatuh_tempo);
-      row.getCell(10).value = formatDateDisplay(rowItem.realisasi);
-      row.getCell(11).value = rowItem.keterangan || '';
+    const groupedByPeriod = rows.reduce((acc, row) => {
+      const key = row._period_key || `${normalizePeriodYear(selectedYear)}-${normalizePeriodMonth(selectedMonth)}`;
+      if (!acc[key]) acc[key] = { label: row._period_label || key, rows: [] };
+      acc[key].rows.push(row);
+      return acc;
+    }, {});
 
-      row.height = 20;
-      row.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-      row.getCell(5).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    Object.values(groupedByPeriod).forEach((periodGroup) => {
+      worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+      worksheet.getCell(`A${currentRow}`).value = periodGroup.label;
       applyRowBorderRange(worksheet, currentRow, 1, 11);
       currentRow += 1;
-    }
 
-    if (!rows.length) {
-      worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-      worksheet.getCell(`A${currentRow}`).value = 'Tidak ada data external di periode ini.';
-      worksheet.getCell(`A${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-      applyRowBorderRange(worksheet, currentRow, 1, 11);
-    }
+      periodGroup.rows.forEach((rowItem, index) => {
+        const row = worksheet.getRow(currentRow);
+        row.getCell(1).value = index + 1;
+        row.getCell(2).value = rowItem.assm_nama_instrumen || '';
+        row.getCell(3).value = rowItem.assm_no_identitas_istrumen || '';
+        row.getCell(4).value = rowItem.group_da_dept || '';
+        row.getCell(5).value = rowItem.assm_lokasi || '';
+        row.getCell(6).value = formatDateDisplay(rowItem.insitu_date);
+        row.getCell(7).value = formatDateDisplay(rowItem.user_equipment_handover_date);
+        row.getCell(8).value = formatDateDisplay(rowItem.equipment_return_by_vendor_date);
+        row.getCell(9).value = formatDateDisplay(rowItem.due_date);
+        row.getCell(10).value = formatDateDisplay(rowItem.realization_date);
+        row.getCell(11).value = rowItem.remarks || '';
+        applyRowBorderRange(worksheet, currentRow, 1, 11);
+        currentRow += 1;
+      });
+    });
 
     const lastRow = Math.max(currentRow - 1, 3);
     worksheet.autoFilter = `A2:K${lastRow}`;
 
-    const fileName =
-      `Master-Jadwal-Bulanan-External-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
+    const fileName = `Master-Jadwal-Bulanan-External-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
-
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     return res.send(buffer);
@@ -1872,5 +2964,9 @@ module.exports = {
   approveMasterJadwalBulanan,
   rejectMasterJadwalBulanan,
   getMasterJadwalBulananExternalPreview,
+  saveMasterJadwalBulananExternal,
   exportMasterJadwalBulananExternal,
+  requestMasterJadwalBulananExternalApproval,
+  approveMasterJadwalBulananExternal,
+  rejectMasterJadwalBulananExternal,
 };

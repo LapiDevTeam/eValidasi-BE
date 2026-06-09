@@ -30,6 +30,220 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NULL
+BEGIN
+  CREATE TABLE dbo.T_Monthly_Schedule_External_Header_Hist
+  (
+    Hist_ID BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_T_Monthly_Schedule_External_Header_Hist PRIMARY KEY,
+    Action_Type VARCHAR(10) NOT NULL,
+    Action_At DATETIME2(0) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Hist_Action_At DEFAULT (SYSDATETIME()),
+    Schedule_External_Header_ID INT NOT NULL,
+    Base_Period_Year NVARCHAR(50) NOT NULL,
+    Base_Period_Month NVARCHAR(50) NOT NULL,
+    Revision_No INT NOT NULL,
+    [Status] VARCHAR(20) NOT NULL,
+    Is_Locked BIT NOT NULL,
+    Requested_By NVARCHAR(50) NULL,
+    Requested_Date DATETIME2(0) NULL,
+    Approved_By NVARCHAR(50) NULL,
+    Approved_Date DATETIME2(0) NULL,
+    Rejected_By NVARCHAR(50) NULL,
+    Rejected_Date DATETIME2(0) NULL,
+    Remarks NVARCHAR(MAX) NULL,
+    Created_By NVARCHAR(50) NULL,
+    Created_Date DATETIME2(0) NOT NULL,
+    Updated_By NVARCHAR(50) NULL,
+    Updated_Date DATETIME2(0) NULL
+  );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Detail_Hist', 'U') IS NULL
+BEGIN
+  CREATE TABLE dbo.T_Monthly_Schedule_External_Detail_Hist
+  (
+    Hist_ID BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_T_Monthly_Schedule_External_Detail_Hist PRIMARY KEY,
+    Action_Type VARCHAR(10) NOT NULL,
+    Action_At DATETIME2(0) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Detail_Hist_Action_At DEFAULT (SYSDATETIME()),
+    Schedule_External_Detail_ID INT NOT NULL,
+    Schedule_External_Header_ID INT NOT NULL,
+    Line_No INT NOT NULL,
+    Schedule_Period_Year NVARCHAR(50) NOT NULL,
+    Schedule_Period_Month NVARCHAR(50) NOT NULL,
+    QA_ID NVARCHAR(100) NULL,
+    Instrument_Name NVARCHAR(255) NULL,
+    Instrument_ID NVARCHAR(100) NULL,
+    Department NVARCHAR(100) NULL,
+    [Location] NVARCHAR(255) NULL,
+    Due_Date DATE NULL,
+    Calibration_Date DATE NULL,
+    Insitu_Date DATE NULL,
+    User_Equipment_Handover_Date DATE NULL,
+    Equipment_Return_By_Vendor_Date DATE NULL,
+    Realization_Date DATE NULL,
+    Remarks NVARCHAR(500) NULL,
+    Source_Table NVARCHAR(128) NULL,
+    Source_Key NVARCHAR(100) NULL,
+    Created_By NVARCHAR(50) NULL,
+    Created_Date DATETIME2(0) NOT NULL,
+    Updated_By NVARCHAR(50) NULL,
+    Updated_Date DATETIME2(0) NULL
+  );
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_Monthly_Schedule_External_Header_Hist_Action'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist')
+)
+BEGIN
+  CREATE INDEX IX_T_Monthly_Schedule_External_Header_Hist_Action
+    ON dbo.T_Monthly_Schedule_External_Header_Hist (Schedule_External_Header_ID, Action_At DESC, Hist_ID DESC);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_Monthly_Schedule_External_Detail_Hist_Action'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Detail_Hist')
+)
+BEGIN
+  CREATE INDEX IX_T_Monthly_Schedule_External_Detail_Hist_Action
+    ON dbo.T_Monthly_Schedule_External_Detail_Hist (Schedule_External_Header_ID, Schedule_External_Detail_ID, Action_At DESC, Hist_ID DESC);
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_Monthly_Schedule_External_Header_Hist', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_Monthly_Schedule_External_Header_Hist;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_Monthly_Schedule_External_Header_Hist
+ON dbo.T_Monthly_Schedule_External_Header
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
+    (
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'UPDATE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM inserted;
+  END
+  ELSE IF EXISTS (SELECT 1 FROM inserted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
+    (
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'INSERT', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM inserted;
+  END
+  ELSE IF EXISTS (SELECT 1 FROM deleted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
+    (
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'DELETE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM deleted;
+  END;
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_Monthly_Schedule_External_Detail_Hist', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_Monthly_Schedule_External_Detail_Hist;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_Monthly_Schedule_External_Detail_Hist
+ON dbo.T_Monthly_Schedule_External_Detail
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF EXISTS (SELECT 1 FROM inserted) AND EXISTS (SELECT 1 FROM deleted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Detail_Hist
+    (
+      Action_Type, Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'UPDATE', Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM inserted;
+  END
+  ELSE IF EXISTS (SELECT 1 FROM inserted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Detail_Hist
+    (
+      Action_Type, Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'INSERT', Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM inserted;
+  END
+  ELSE IF EXISTS (SELECT 1 FROM deleted)
+  BEGIN
+    INSERT INTO dbo.T_Monthly_Schedule_External_Detail_Hist
+    (
+      Action_Type, Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    )
+    SELECT
+      'DELETE', Schedule_External_Detail_ID, Schedule_External_Header_ID, Line_No,
+      Schedule_Period_Year, Schedule_Period_Month, QA_ID, Instrument_Name, Instrument_ID,
+      Department, [Location], Due_Date, Calibration_Date, Insitu_Date,
+      User_Equipment_Handover_Date, Equipment_Return_By_Vendor_Date, Realization_Date,
+      Remarks, Source_Table, Source_Key, Created_By, Created_Date, Updated_By, Updated_Date
+    FROM deleted;
+  END;
+END;
+GO
+
 IF OBJECT_ID('dbo.T_Monthly_Schedule_Detail_Hist', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.T_Monthly_Schedule_Detail_Hist
