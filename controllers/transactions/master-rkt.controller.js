@@ -129,10 +129,10 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
   const query = `
     SELECT
       QA_ID,
-      Assm_nama_instrumen,
-      Assm_No_identitas_Istrumen,
-      Group_Da_Dept,
-      Assm_Lokasi,
+      MAX(Assm_nama_instrumen) AS Assm_nama_instrumen,
+      MAX(Assm_No_identitas_Istrumen) AS Assm_No_identitas_Istrumen,
+      MAX(Group_Da_Dept) AS Group_Da_Dept,
+      MAX(Assm_Lokasi) AS Assm_Lokasi,
       MAX(Tgl_kalibrasi) AS Tgl_kalibrasi,
       MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
       MAX(Parameter_Interval) AS Parameter_Interval,
@@ -234,28 +234,52 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
       WHERE IsDeleted = 0
     ) AS A
     GROUP BY
-      QA_ID,
-      Assm_nama_instrumen,
-      Assm_No_identitas_Istrumen,
-      Group_Da_Dept,
-      Assm_Lokasi
+      QA_ID
     HAVING
-      (
-        MAX(Kalibrasi_selanjutnya) IS NOT NULL
-        AND YEAR(MAX(Kalibrasi_selanjutnya)) = :year
-      )
-      OR (
-        MAX(Tgl_kalibrasi) IS NOT NULL
-        AND YEAR(MAX(Tgl_kalibrasi)) = :year
-      )
+      MAX(Kalibrasi_selanjutnya) IS NOT NULL
+      AND YEAR(MAX(Kalibrasi_selanjutnya)) = :year
     ORDER BY
-      CASE
-        WHEN MAX(Kalibrasi_selanjutnya) IS NOT NULL
-          AND YEAR(MAX(Kalibrasi_selanjutnya)) = :year
-          THEN MAX(Kalibrasi_selanjutnya)
-        ELSE MAX(Tgl_kalibrasi)
-      END,
-      Assm_nama_instrumen
+      MAX(Kalibrasi_selanjutnya),
+      MAX(Assm_nama_instrumen)
+  `;
+
+  return sequelizeMSQL.query(query, {
+    replacements: { year: selectedYear },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+};
+
+const getRKTRealizationDataByYear = async (selectedYear, transaction = null) => {
+  const query = `
+    SELECT
+      QA_ID,
+      Tgl_kalibrasi AS Real_Date
+    FROM (
+      SELECT DISTINCT QA_ID, Tgl_kalibrasi
+      FROM T_Kalibrasi_DA_Thermohygro
+      WHERE Tgl_kalibrasi IS NOT NULL
+
+      UNION ALL
+
+      SELECT DISTINCT QA_ID, Tgl_kalibrasi
+      FROM T_Kalibrasi_DA_Anak_Timbangan
+      WHERE Tgl_kalibrasi IS NOT NULL
+
+      UNION ALL
+
+      SELECT DISTINCT QA_ID, Tgl_kalibrasi
+      FROM T_Kalibrasi_DA_Timbangan
+      WHERE Tgl_kalibrasi IS NOT NULL
+
+      UNION ALL
+
+      SELECT DISTINCT QA_ID, Tgl_kalibrasi
+      FROM T_Kalibrasi_DA_Bagian
+      WHERE Tgl_kalibrasi IS NOT NULL
+    ) AS A
+    WHERE YEAR(Tgl_kalibrasi) = :year
+    ORDER BY QA_ID, Tgl_kalibrasi
   `;
 
   return sequelizeMSQL.query(query, {
@@ -300,11 +324,110 @@ const shiftDateByMonths = (value, monthOffset) => {
   return shiftedDate;
 };
 
+const formatDateKey = (value) => {
+  const date = toValidDate(value);
+  if (!date) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const createMonthFlags = () =>
   MONTH_HEADERS.reduce((acc, _, monthIndex) => {
     acc[monthIndex + 1] = false;
     return acc;
   }, {});
+
+const createChecklistDatesFromDueDate = (dueDateValue, intervalValue, selectedYear) => {
+  const dueDate = toValidDate(dueDateValue);
+  if (!dueDate || getDateYear(dueDate) !== selectedYear) return [];
+
+  const interval = Number(intervalValue);
+  if (!Number.isFinite(interval) || interval <= 0) {
+    return [dueDate];
+  }
+
+  const datesByKey = new Map();
+  const addDate = (value) => {
+    const date = toValidDate(value);
+    if (date && getDateYear(date) === selectedYear) {
+      datesByKey.set(formatDateKey(date), date);
+    }
+  };
+
+  addDate(dueDate);
+
+  let backwardDate = dueDate;
+  for (let index = 0; index < 12; index += 1) {
+    backwardDate = shiftDateByMonths(backwardDate, -interval);
+    if (!backwardDate || getDateYear(backwardDate) < selectedYear) break;
+    addDate(backwardDate);
+  }
+
+  let forwardDate = dueDate;
+  for (let index = 0; index < 12; index += 1) {
+    forwardDate = shiftDateByMonths(forwardDate, interval);
+    if (!forwardDate || getDateYear(forwardDate) > selectedYear) break;
+    addDate(forwardDate);
+  }
+
+  return [...datesByKey.values()].sort((left, right) => left - right);
+};
+
+const createMonthFlagsFromDates = (dates = [], selectedYear) => {
+  const months = createMonthFlags();
+
+  dates.forEach((value) => {
+    const date = toValidDate(value);
+    const month = getDateYear(date) === selectedYear ? getDateMonth(date) : null;
+    if (month >= 1 && month <= 12) {
+      months[month] = true;
+    }
+  });
+
+  return months;
+};
+
+const parseJsonArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const stringifyDateArray = (dates = []) =>
+  JSON.stringify(
+    dates
+      .map(formatDateKey)
+      .filter(Boolean)
+  );
+
+const stringifyMonthFlags = (flags = {}) =>
+  JSON.stringify(
+    Object.keys(flags)
+      .filter((month) => flags[month])
+      .map((month) => Number(month))
+      .filter((month) => month >= 1 && month <= 12)
+      .sort((left, right) => left - right)
+  );
+
+const createMonthsFromJson = (value) => {
+  const months = createMonthFlags();
+  parseJsonArray(value).forEach((month) => {
+    const monthNumber = Number(month);
+    if (monthNumber >= 1 && monthNumber <= 12) {
+      months[monthNumber] = true;
+    }
+  });
+  return months;
+};
 
 const mapPreviewData = (results) =>
   results.map((item, index) => {
@@ -333,25 +456,11 @@ const mapPreviewData = (results) =>
 
 const mapDoubleChecklistPreviewData = (results, selectedYear) =>
   results.map((item, index) => {
-    const planMonths = createMonthFlags();
-    const realMonths = createMonthFlags();
     const dueDate = toValidDate(item.Kalibrasi_selanjutnya);
-    const realDate = toValidDate(item.Tgl_kalibrasi);
     const interval = Number(item.Parameter_Interval ?? 0);
-    const currentDueYear = getDateYear(dueDate);
-    const realYear = getDateYear(realDate);
-
-    let planDate = currentDueYear === selectedYear ? dueDate : null;
-    if (!planDate && realYear === selectedYear && Number.isFinite(interval)) {
-      planDate = shiftDateByMonths(dueDate, -interval);
-    }
-
-    const planYear = getDateYear(planDate);
-    const planMonth = planYear === selectedYear ? getDateMonth(planDate) : null;
-    const realMonth = realYear === selectedYear ? getDateMonth(realDate) : null;
-
-    if (planMonth) planMonths[planMonth] = true;
-    if (realMonth) realMonths[realMonth] = true;
+    const planDates = createChecklistDatesFromDueDate(dueDate, interval, selectedYear);
+    const planMonths = createMonthFlagsFromDates(planDates, selectedYear);
+    const planMonth = getDateYear(dueDate) === selectedYear ? getDateMonth(dueDate) : null;
 
     return {
       no: index + 1,
@@ -360,28 +469,40 @@ const mapDoubleChecklistPreviewData = (results, selectedYear) =>
       assm_no_identitas_istrumen: item.Assm_No_identitas_Istrumen || '',
       group_da_dept: item.Group_Da_Dept || '',
       assm_lokasi: item.Assm_Lokasi || '',
-      tgl_kalibrasi: item.Tgl_kalibrasi || null,
-      kalibrasi_selanjutnya: item.Kalibrasi_selanjutnya || null,
+      tgl_kalibrasi: null,
+      kalibrasi_selanjutnya: dueDate || null,
       parameter_interval: Number.isFinite(interval) ? interval : 0,
-      plan_date: planDate || null,
+      plan_date: dueDate || null,
+      real_date: null,
+      plan_dates: planDates.map(formatDateKey).filter(Boolean),
+      real_dates: [],
       plan_month: planMonth,
-      real_month: realMonth,
+      real_month: null,
       plan_months: planMonths,
-      real_months: realMonths,
-      source_table: item.Source_Table || null,
-      source_key: item.Source_Key || null,
+      real_months: createMonthFlags(),
+      revision_status: item.revision_status || 'UNCHANGED',
+      source_table: item.Source_Table || item.source_table || null,
+      source_key: item.Source_Key || item.source_key || item.QA_ID || null,
     };
   });
 
 const mapSnapshotDetailData = (details) =>
   details.map((item, index) => {
-    const planMonths = createMonthFlags();
-    const realMonths = createMonthFlags();
+    const planDatesFromJson = parseJsonArray(item.Plan_Dates_JSON);
+    const realDatesFromJson = parseJsonArray(item.Real_Dates_JSON);
     const planMonth = Number(item.Plan_Month);
     const realMonth = Number(item.Real_Month);
 
-    if (planMonth >= 1 && planMonth <= 12) planMonths[planMonth] = true;
-    if (realMonth >= 1 && realMonth <= 12) realMonths[realMonth] = true;
+    let planMonths = createMonthsFromJson(item.Plan_Months_JSON);
+    let realMonths = createMonthsFromJson(item.Real_Months_JSON);
+
+    if (!parseJsonArray(item.Plan_Months_JSON).length && planMonth >= 1 && planMonth <= 12) {
+      planMonths[planMonth] = true;
+    }
+
+    if (!parseJsonArray(item.Real_Months_JSON).length && realMonth >= 1 && realMonth <= 12) {
+      realMonths[realMonth] = true;
+    }
 
     return {
       no: item.Line_No || index + 1,
@@ -394,12 +515,15 @@ const mapSnapshotDetailData = (details) =>
       tgl_kalibrasi: item.Tgl_Kalibrasi || null,
       kalibrasi_selanjutnya: item.Due_Date || null,
       parameter_interval: item.Parameter_Interval ?? 0,
-      plan_date: item.Plan_Date || null,
+      plan_date: item.Plan_Date || item.Due_Date || null,
       real_date: item.Real_Date || null,
+      plan_dates: planDatesFromJson,
+      real_dates: realDatesFromJson,
       plan_month: planMonth || null,
       real_month: realMonth || null,
       plan_months: planMonths,
       real_months: realMonths,
+      revision_status: item.Revision_Status || 'UNCHANGED',
       source_table: item.Source_Table || null,
       source_key: item.Source_Key || null,
     };
@@ -496,6 +620,11 @@ const getAWPSnapshotDetails = async (awpId, transaction = null) =>
         Real_Month,
         Plan_Date,
         Real_Date,
+        Plan_Dates_JSON,
+        Real_Dates_JSON,
+        Plan_Months_JSON,
+        Real_Months_JSON,
+        Revision_Status,
         Source_Table,
         Source_Key
       FROM T_AWP_Detail
@@ -543,11 +672,155 @@ const getAWPRevisionState = async (selectedYear, transaction = null) => {
   };
 };
 
-const buildSnapshotPayload = async (header, selectedYear, transaction = null) => {
+const getRowCompareKey = (row = {}) =>
+  String(row.qa_id || row.QA_ID || '').trim();
+
+const normalizeComparableText = (value) =>
+  String(value || '').trim().toUpperCase();
+
+const hasPlanningChange = (currentRow, liveRow) => {
+  if (!currentRow || !liveRow) return false;
+
+  const comparableFields = [
+    'assm_nama_instrumen',
+    'assm_no_identitas_istrumen',
+    'group_da_dept',
+    'assm_lokasi',
+  ];
+
+  const hasTextChange = comparableFields.some(
+    (field) => normalizeComparableText(currentRow[field]) !== normalizeComparableText(liveRow[field])
+  );
+
+  return (
+    hasTextChange ||
+    formatDateKey(currentRow.kalibrasi_selanjutnya) !== formatDateKey(liveRow.kalibrasi_selanjutnya) ||
+    Number(currentRow.parameter_interval || 0) !== Number(liveRow.parameter_interval || 0) ||
+    JSON.stringify(currentRow.plan_dates || []) !== JSON.stringify(liveRow.plan_dates || [])
+  );
+};
+
+const applyRevisionDiff = (liveData, currentData) => {
+  if (!currentData?.length) {
+    return liveData.map((row, index) => ({
+      ...row,
+      no: index + 1,
+      revision_status: 'UNCHANGED',
+    }));
+  }
+
+  const currentByQaId = new Map();
+  currentData.forEach((row) => {
+    const key = getRowCompareKey(row);
+    if (key) currentByQaId.set(key, row);
+  });
+
+  const seenQaIds = new Set();
+  const comparedLiveRows = liveData.map((row) => {
+    const key = getRowCompareKey(row);
+    if (key) seenQaIds.add(key);
+
+    const currentRow = currentByQaId.get(key);
+    if (!currentRow) {
+      return { ...row, revision_status: 'ADDED' };
+    }
+
+    return {
+      ...row,
+      revision_status: hasPlanningChange(currentRow, row) ? 'CHANGED' : 'UNCHANGED',
+    };
+  });
+
+  const removedRows = currentData
+    .filter((row) => {
+      const key = getRowCompareKey(row);
+      return key && !seenQaIds.has(key);
+    })
+    .map((row) => ({
+      ...row,
+      tgl_kalibrasi: null,
+      real_date: null,
+      real_dates: [],
+      real_month: null,
+      real_months: createMonthFlags(),
+      revision_status: 'REMOVED',
+    }));
+
+  return [...comparedLiveRows, ...removedRows].map((row, index) => ({
+    ...row,
+    no: index + 1,
+  }));
+};
+
+const stripRealizationData = (rows = []) =>
+  rows.map((row) => ({
+    ...row,
+    tgl_kalibrasi: null,
+    real_date: null,
+    real_dates: [],
+    real_month: null,
+    real_months: createMonthFlags(),
+  }));
+
+const getRealizationMapByQaId = async (selectedYear, transaction = null) => {
+  const rows = await getRKTRealizationDataByYear(selectedYear, transaction);
+  const realizationMap = new Map();
+
+  rows.forEach((row) => {
+    const qaId = String(row.QA_ID || '').trim();
+    const realDate = toValidDate(row.Real_Date);
+    if (!qaId || !realDate) return;
+
+    if (!realizationMap.has(qaId)) {
+      realizationMap.set(qaId, []);
+    }
+
+    realizationMap.get(qaId).push(realDate);
+  });
+
+  realizationMap.forEach((dates, qaId) => {
+    const uniqueDates = new Map();
+    dates.forEach((date) => uniqueDates.set(formatDateKey(date), date));
+    realizationMap.set(
+      qaId,
+      [...uniqueDates.values()].sort((left, right) => left - right)
+    );
+  });
+
+  return realizationMap;
+};
+
+const applyEndOfYearRealization = async (rows = [], selectedYear, transaction = null) => {
+  const realizationMap = await getRealizationMapByQaId(selectedYear, transaction);
+
+  return rows.map((row) => {
+    const qaId = getRowCompareKey(row);
+    const realDates = realizationMap.get(qaId) || [];
+    const latestRealDate = realDates[realDates.length - 1] || null;
+    const realMonths = createMonthFlagsFromDates(realDates, selectedYear);
+
+    return {
+      ...row,
+      tgl_kalibrasi: latestRealDate,
+      real_date: latestRealDate,
+      real_dates: realDates.map(formatDateKey).filter(Boolean),
+      real_month: latestRealDate ? getDateMonth(latestRealDate) : null,
+      real_months: realMonths,
+    };
+  });
+};
+
+const buildSnapshotPayload = async (header, selectedYear, viewOrTransaction = 'end', maybeTransaction = null) => {
   if (!header?.AWP_ID) return null;
 
+  const view = typeof viewOrTransaction === 'string' ? viewOrTransaction : 'end';
+  const transaction = typeof viewOrTransaction === 'string' ? maybeTransaction : viewOrTransaction;
   const details = await getAWPSnapshotDetails(header.AWP_ID, transaction);
-  const data = mapSnapshotDetailData(details);
+  const snapshotData = mapSnapshotDetailData(details);
+  const data =
+    view === 'end'
+      ? await applyEndOfYearRealization(snapshotData, selectedYear, transaction)
+      : stripRealizationData(snapshotData);
   const { revisions } = await getAWPRevisionState(selectedYear, transaction);
 
   return {
@@ -557,6 +830,7 @@ const buildSnapshotPayload = async (header, selectedYear, transaction = null) =>
     count: data.length,
     months: MONTH_HEADERS,
     mode: 'double-checklist',
+    view,
     source: header.Status === 'REQUESTED' ? 'requested' : 'snapshot',
     snapshot: mapAWPRevisionInfo(header),
     revisions,
@@ -564,10 +838,20 @@ const buildSnapshotPayload = async (header, selectedYear, transaction = null) =>
   };
 };
 
-const buildLiveDoubleChecklistPayload = async (selectedYear, transaction = null) => {
+const buildLiveDoubleChecklistPayload = async (selectedYear, viewOrTransaction = 'start', maybeTransaction = null) => {
+  const view = typeof viewOrTransaction === 'string' ? viewOrTransaction : 'start';
+  const transaction = typeof viewOrTransaction === 'string' ? maybeTransaction : viewOrTransaction;
   const results = await getRKTDoubleChecklistDataByYear(selectedYear, transaction);
-  const data = mapDoubleChecklistPreviewData(results, selectedYear);
-  const { revisions } = await getAWPRevisionState(selectedYear, transaction);
+  const liveData = mapDoubleChecklistPreviewData(results, selectedYear);
+  const { currentHeader, revisions } = await getAWPRevisionState(selectedYear, transaction);
+  let data = liveData;
+
+  if (view === 'start' && currentHeader?.AWP_ID) {
+    const currentDetails = await getAWPSnapshotDetails(currentHeader.AWP_ID, transaction);
+    data = applyRevisionDiff(liveData, mapSnapshotDetailData(currentDetails));
+  } else if (view === 'end') {
+    data = await applyEndOfYearRealization(liveData, selectedYear, transaction);
+  }
 
   return {
     success: true,
@@ -576,6 +860,7 @@ const buildLiveDoubleChecklistPayload = async (selectedYear, transaction = null)
     count: data.length,
     months: MONTH_HEADERS,
     mode: 'double-checklist',
+    view,
     source: 'live',
     snapshot: null,
     revisions,
@@ -590,6 +875,11 @@ const getMasterRKTPreview = async (req, res, next) => {
     const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
       ? req.query.source
       : 'snapshot';
+    const view = ['start', 'end'].includes(req.query.view)
+      ? req.query.view
+      : source === 'live'
+        ? 'start'
+        : 'end';
 
     if (!selectedYear) {
       return res.status(400).json({
@@ -602,24 +892,24 @@ const getMasterRKTPreview = async (req, res, next) => {
       if (source === 'requested') {
         const requestedHeader = await getLatestRequestedAWPHeader(selectedYear);
         if (requestedHeader) {
-          const requestedPayload = await buildSnapshotPayload(requestedHeader, selectedYear);
+          const requestedPayload = await buildSnapshotPayload(requestedHeader, selectedYear, view);
           return res.status(200).json(requestedPayload);
         }
       } else if (source !== 'live') {
         const currentHeader = await getLatestAWPSnapshotHeader(selectedYear);
         if (currentHeader) {
-          const currentPayload = await buildSnapshotPayload(currentHeader, selectedYear);
+          const currentPayload = await buildSnapshotPayload(currentHeader, selectedYear, view);
           return res.status(200).json(currentPayload);
         }
 
         const requestedHeader = await getLatestRequestedAWPHeader(selectedYear);
         if (requestedHeader) {
-          const requestedPayload = await buildSnapshotPayload(requestedHeader, selectedYear);
+          const requestedPayload = await buildSnapshotPayload(requestedHeader, selectedYear, view);
           return res.status(200).json(requestedPayload);
         }
       }
 
-      const livePayload = await buildLiveDoubleChecklistPayload(selectedYear);
+      const livePayload = await buildLiveDoubleChecklistPayload(selectedYear, view);
       return res.status(200).json(livePayload);
     }
 
@@ -640,7 +930,7 @@ const getMasterRKTPreview = async (req, res, next) => {
   }
 };
 
-const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snapshot') => {
+const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snapshot', view = 'end') => {
   let data = [];
   let snapshotHeader = null;
 
@@ -655,10 +945,18 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
 
   if (snapshotHeader) {
     const details = await getAWPSnapshotDetails(snapshotHeader.AWP_ID);
-    data = mapSnapshotDetailData(details);
+    const snapshotData = mapSnapshotDetailData(details);
+    data =
+      view === 'end'
+        ? await applyEndOfYearRealization(snapshotData, selectedYear)
+        : stripRealizationData(snapshotData);
   } else {
     const results = await getRKTDoubleChecklistDataByYear(selectedYear);
-    data = mapDoubleChecklistPreviewData(results, selectedYear);
+    const liveData = mapDoubleChecklistPreviewData(results, selectedYear);
+    data =
+      view === 'end'
+        ? await applyEndOfYearRealization(liveData, selectedYear)
+        : liveData;
   }
 
   const workbook = new ExcelJS.Workbook();
@@ -680,8 +978,8 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   const lastColumn = 8 + (MONTH_HEADERS.length * 2);
   worksheet.mergeCells(1, 1, 1, lastColumn);
   worksheet.getCell(1, 1).value = snapshotHeader
-    ? `CALIBRATION PLAN YEAR ${selectedYear} - REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
-    : `CALIBRATION PLAN YEAR ${selectedYear}`;
+    ? `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear} - REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
+    : `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear}`;
   worksheet.getCell(1, 1).font = { bold: true, size: 14 };
   worksheet.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -692,7 +990,7 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
     'Department',
     'Location',
     'Due Date',
-    'Calibration Date',
+    'Realization Date',
     'Interval (Months)',
   ];
 
@@ -743,14 +1041,14 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
       item.group_da_dept || '',
       item.assm_lokasi || '',
       formatExcelDate(item.kalibrasi_selanjutnya),
-      formatExcelDate(item.tgl_kalibrasi),
+      view === 'end' ? formatExcelDate(item.tgl_kalibrasi) : '',
       item.parameter_interval ?? '',
     ];
 
     MONTH_HEADERS.forEach((_, index) => {
       const monthNumber = index + 1;
       rowData.push(item.plan_months?.[monthNumber] ? '\u221A' : '');
-      rowData.push(item.real_months?.[monthNumber] ? '\u221A' : '');
+      rowData.push(view === 'end' && item.real_months?.[monthNumber] ? '\u221A' : '');
     });
 
     const row = worksheet.addRow(rowData);
@@ -805,8 +1103,8 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   worksheet.getCell(signatureNameRow, rightSignatureStart).font = { bold: true };
 
   const fileName = snapshotHeader
-    ? `Master-RKT-Double-Checklist-${selectedYear}-Rev-${snapshotHeader.Revision_No}.xlsx`
-    : `Master-RKT-Double-Checklist-${selectedYear}.xlsx`;
+    ? `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}-Rev-${snapshotHeader.Revision_No}.xlsx`
+    : `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
 
   res.setHeader(
@@ -828,6 +1126,11 @@ const exportMasterRKT = async (req, res, next) => {
     const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
       ? req.query.source
       : 'snapshot';
+    const view = ['start', 'end'].includes(req.query.view)
+      ? req.query.view
+      : source === 'live'
+        ? 'start'
+        : 'end';
 
     if (!selectedYear) {
       return res.status(400).json({
@@ -837,7 +1140,7 @@ const exportMasterRKT = async (req, res, next) => {
     }
 
     if (isDoubleChecklist) {
-      return exportMasterRKTDoubleChecklist(selectedYear, res, source);
+      return exportMasterRKTDoubleChecklist(selectedYear, res, source, view);
     }
 
     const results = await getRKTDataByYear(selectedYear);
@@ -1007,7 +1310,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
       });
     }
 
-    const livePayload = await buildLiveDoubleChecklistPayload(selectedYear);
+    const livePayload = await buildLiveDoubleChecklistPayload(selectedYear, 'start');
     if (!livePayload.data.length) {
       return res.status(400).json({
         success: false,
@@ -1167,6 +1470,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
                 Real_Month,
                 Plan_Date,
                 Real_Date,
+                Plan_Dates_JSON,
+                Real_Dates_JSON,
+                Plan_Months_JSON,
+                Real_Months_JSON,
+                Revision_Status,
                 Source_Table,
                 Source_Key
               )
@@ -1186,6 +1494,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
                 :realMonth,
                 :planDate,
                 :realDate,
+                :planDatesJson,
+                :realDatesJson,
+                :planMonthsJson,
+                :realMonthsJson,
+                :revisionStatus,
                 :sourceTable,
                 :sourceKey
               )
@@ -1200,12 +1513,17 @@ const requestMasterRKTApproval = async (req, res, next) => {
               department: item.group_da_dept || null,
               location: item.assm_lokasi || null,
               dueDate: toValidDate(item.kalibrasi_selanjutnya),
-              tglKalibrasi: toValidDate(item.tgl_kalibrasi),
+              tglKalibrasi: null,
               parameterInterval: item.parameter_interval ?? 0,
               planMonth: item.plan_month || null,
-              realMonth: item.real_month || null,
-              planDate: toValidDate(item.plan_date),
-              realDate: toValidDate(item.tgl_kalibrasi),
+              realMonth: null,
+              planDate: toValidDate(item.plan_date || item.kalibrasi_selanjutnya),
+              realDate: null,
+              planDatesJson: stringifyDateArray(item.plan_dates?.length ? item.plan_dates : [item.plan_date || item.kalibrasi_selanjutnya]),
+              realDatesJson: JSON.stringify([]),
+              planMonthsJson: stringifyMonthFlags(item.plan_months),
+              realMonthsJson: JSON.stringify([]),
+              revisionStatus: item.revision_status || 'UNCHANGED',
               sourceTable: item.source_table || null,
               sourceKey: item.source_key || null,
             },
@@ -1215,7 +1533,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
         );
       }
 
-      return buildSnapshotPayload(header, selectedYear, transaction);
+      return buildSnapshotPayload(header, selectedYear, 'start', transaction);
     });
 
     return res.status(201).json({
@@ -1350,24 +1668,8 @@ const approveMasterRKT = async (req, res, next) => {
         }
       );
 
-      await sequelizeMSQL.query(
-        `
-          DELETE FROM T_AWP_Header
-          WHERE [Year] = :year
-            AND AWP_ID <> :awpId
-        `,
-        {
-          replacements: {
-            year: header.Year,
-            awpId: header.AWP_ID,
-          },
-          type: Sequelize.QueryTypes.DELETE,
-          transaction,
-        }
-      );
-
       const approvedHeader = await getAWPSnapshotHeaderById(header.AWP_ID, transaction);
-      return buildSnapshotPayload(approvedHeader, approvedHeader.Year, transaction);
+      return buildSnapshotPayload(approvedHeader, approvedHeader.Year, 'start', transaction);
     });
 
     return res.status(200).json({
@@ -1448,24 +1750,12 @@ const rejectMasterRKT = async (req, res, next) => {
         }
       );
 
-      await sequelizeMSQL.query(
-        `
-          DELETE FROM T_AWP_Header
-          WHERE AWP_ID = :awpId
-        `,
-        {
-          replacements: { awpId: header.AWP_ID },
-          type: Sequelize.QueryTypes.DELETE,
-          transaction,
-        }
-      );
-
       const currentHeader = await getLatestAWPSnapshotHeader(header.Year, transaction);
       if (currentHeader) {
-        return buildSnapshotPayload(currentHeader, currentHeader.Year, transaction);
+        return buildSnapshotPayload(currentHeader, currentHeader.Year, 'start', transaction);
       }
 
-      return buildLiveDoubleChecklistPayload(header.Year, transaction);
+      return buildLiveDoubleChecklistPayload(header.Year, 'start', transaction);
     });
 
     return res.status(200).json({

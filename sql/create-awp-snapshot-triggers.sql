@@ -46,9 +46,44 @@ BEGIN
     Real_Month TINYINT NULL,
     Plan_Date DATE NULL,
     Real_Date DATE NULL,
+    Plan_Dates_JSON NVARCHAR(MAX) NULL,
+    Real_Dates_JSON NVARCHAR(MAX) NULL,
+    Plan_Months_JSON NVARCHAR(MAX) NULL,
+    Real_Months_JSON NVARCHAR(MAX) NULL,
+    Revision_Status VARCHAR(20) NULL,
     Source_Table NVARCHAR(128) NULL,
     Source_Key NVARCHAR(100) NULL
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Plan_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Plan_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Real_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Real_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Plan_Months_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Plan_Months_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Real_Months_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Real_Months_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Revision_Status') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Revision_Status VARCHAR(20) NULL;
 END;
 GO
 
@@ -245,6 +280,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     )
@@ -265,6 +305,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     FROM inserted;
@@ -289,6 +334,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     )
@@ -309,6 +359,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     FROM inserted;
@@ -333,6 +388,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     )
@@ -353,6 +413,11 @@ BEGIN
       Real_Month,
       Plan_Date,
       Real_Date,
+      Plan_Dates_JSON,
+      Real_Dates_JSON,
+      Plan_Months_JSON,
+      Real_Months_JSON,
+      Revision_Status,
       Source_Table,
       Source_Key
     FROM deleted;

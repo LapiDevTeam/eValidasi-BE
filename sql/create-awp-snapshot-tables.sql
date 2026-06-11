@@ -42,6 +42,11 @@ BEGIN
     Real_Month TINYINT NULL,
     Plan_Date DATE NULL,
     Real_Date DATE NULL,
+    Plan_Dates_JSON NVARCHAR(MAX) NULL,
+    Real_Dates_JSON NVARCHAR(MAX) NULL,
+    Plan_Months_JSON NVARCHAR(MAX) NULL,
+    Real_Months_JSON NVARCHAR(MAX) NULL,
+    Revision_Status VARCHAR(20) NOT NULL CONSTRAINT DF_T_AWP_Detail_Revision_Status DEFAULT ('UNCHANGED'),
     Source_Table NVARCHAR(128) NULL,
     Source_Key NVARCHAR(100) NULL,
     CONSTRAINT FK_T_AWP_Detail_Header
@@ -49,8 +54,55 @@ BEGIN
       REFERENCES dbo.T_AWP_Header (AWP_ID)
       ON DELETE CASCADE,
     CONSTRAINT CK_T_AWP_Detail_Plan_Month CHECK (Plan_Month IS NULL OR Plan_Month BETWEEN 1 AND 12),
-    CONSTRAINT CK_T_AWP_Detail_Real_Month CHECK (Real_Month IS NULL OR Real_Month BETWEEN 1 AND 12)
+    CONSTRAINT CK_T_AWP_Detail_Real_Month CHECK (Real_Month IS NULL OR Real_Month BETWEEN 1 AND 12),
+    CONSTRAINT CK_T_AWP_Detail_Revision_Status CHECK (Revision_Status IN ('UNCHANGED', 'ADDED', 'CHANGED', 'REMOVED'))
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Plan_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail ADD Plan_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Real_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail ADD Real_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Plan_Months_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail ADD Plan_Months_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Real_Months_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail ADD Real_Months_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Revision_Status') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail
+    ADD Revision_Status VARCHAR(20) NOT NULL
+      CONSTRAINT DF_T_AWP_Detail_Revision_Status DEFAULT ('UNCHANGED');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sys.check_constraints
+    WHERE name = 'CK_T_AWP_Detail_Revision_Status'
+      AND parent_object_id = OBJECT_ID('dbo.T_AWP_Detail')
+  )
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail
+    ADD CONSTRAINT CK_T_AWP_Detail_Revision_Status
+      CHECK (Revision_Status IN ('UNCHANGED', 'ADDED', 'CHANGED', 'REMOVED'));
 END;
 GO
 
@@ -75,5 +127,44 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX IX_T_AWP_Detail_AWP_Line
     ON dbo.T_AWP_Detail (AWP_ID, Line_No);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_T_AWP_Detail_AWP_QA_ID'
+    AND object_id = OBJECT_ID('dbo.T_AWP_Detail')
+)
+AND NOT EXISTS (
+  SELECT 1
+  FROM dbo.T_AWP_Detail
+  WHERE QA_ID IS NOT NULL
+  GROUP BY AWP_ID, QA_ID
+  HAVING COUNT(*) > 1
+)
+BEGIN
+  CREATE UNIQUE INDEX UX_T_AWP_Detail_AWP_QA_ID
+    ON dbo.T_AWP_Detail (AWP_ID, QA_ID)
+    WHERE QA_ID IS NOT NULL;
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_AWP_Detail_AWP_QA_ID'
+    AND object_id = OBJECT_ID('dbo.T_AWP_Detail')
+)
+AND NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_T_AWP_Detail_AWP_QA_ID'
+    AND object_id = OBJECT_ID('dbo.T_AWP_Detail')
+)
+BEGIN
+  CREATE INDEX IX_T_AWP_Detail_AWP_QA_ID
+    ON dbo.T_AWP_Detail (AWP_ID, QA_ID)
+    WHERE QA_ID IS NOT NULL;
 END;
 GO
