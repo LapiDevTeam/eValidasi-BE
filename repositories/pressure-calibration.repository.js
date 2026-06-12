@@ -46,63 +46,939 @@ async function createRequest(transaction) {
 
 /**
  * The canonical UNION subquery that combines all instrument sources.
- * Returns one row per unique QA_ID (takes the latest Kalibrasi_selanjutnya).
- * Output columns: qa_id, instrument_name, instrument_code, calibration_id,
- *                 department, capacity, parameter, location, next_calibration_date
+ * Returns one row per source instrument (takes the latest date fields when a
+ * source has duplicate QA_ID rows).
+ * Output columns: instrument_type, source_id, qa_id, jenis_kalibrasi_value,
+ *                 parameter_sertifikasi, instrument_name, instrument_code,
+ *                 calibration_id, department, capacity, parameter, location,
+ *                 calibration_date, parameter_interval, next_calibration_date,
+ *                 note, file_name, user_id, process_date
  */
 const INSTRUMENT_UNION_SQL = `
   SELECT
-    QA_ID                        AS qa_id,
-    Assm_nama_instrumen          AS instrument_name,
-    Assm_No_identitas_Istrumen   AS instrument_code,
-    Assm_No_identitas_kalibrasi  AS calibration_id,
-    Group_Da_Dept                AS department,
-    Assm_Kapasitas               AS capacity,
-    Parameter_Kalibrasi          AS parameter,
-    Assm_Lokasi                  AS location,
-    MAX(Kalibrasi_selanjutnya)   AS next_calibration_date
+    instrument_type,
+    source_id,
+    qa_id,
+    MAX(jenis_kalibrasi_value) AS jenis_kalibrasi_value,
+    parameter_sertifikasi,
+    instrument_name,
+    instrument_code,
+    calibration_id,
+    department,
+    capacity,
+    parameter,
+    location,
+    MAX(calibration_date) AS calibration_date,
+    MAX(parameter_interval) AS parameter_interval,
+    MAX(next_calibration_date) AS next_calibration_date,
+    MAX(note) AS note,
+    MAX(file_name) AS file_name,
+    MAX(user_id) AS user_id,
+    MAX(process_date) AS process_date
   FROM (
-    SELECT DISTINCT QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
-      Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-      Parameter_Kalibrasi, Assm_Lokasi, Kalibrasi_selanjutnya
+    SELECT DISTINCT
+      CAST('Thermohygro' AS VARCHAR(50)) AS instrument_type,
+      QA_ID AS source_id,
+      QA_ID AS qa_id,
+      COALESCE(NULLIF(LTRIM(RTRIM(Jenis_kalibrasi)), ''), '1') AS jenis_kalibrasi_value,
+      CAST('Thermohygrometer' AS NVARCHAR(100)) AS parameter_sertifikasi,
+      Assm_nama_instrumen AS instrument_name,
+      Assm_No_identitas_Istrumen AS instrument_code,
+      Assm_No_identitas_kalibrasi AS calibration_id,
+      Group_Da_Dept AS department,
+      Assm_Kapasitas AS capacity,
+      Parameter_Kalibrasi AS parameter,
+      Assm_Lokasi AS location,
+      Tgl_kalibrasi AS calibration_date,
+      Parameter_Interval AS parameter_interval,
+      Kalibrasi_selanjutnya AS next_calibration_date,
+      Catatan AS note,
+      f_fileName AS file_name,
+      UserID AS user_id,
+      Process_date AS process_date
     FROM T_Kalibrasi_DA_Thermohygro
     UNION ALL
-    SELECT DISTINCT QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
-      Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-      Parameter_Kalibrasi, Assm_Lokasi, Kalibrasi_selanjutnya
+    SELECT DISTINCT
+      CAST('Anak_Timbangan' AS VARCHAR(50)) AS instrument_type,
+      QA_ID AS source_id,
+      QA_ID AS qa_id,
+      COALESCE(NULLIF(LTRIM(RTRIM(Jenis_kalibrasi)), ''), '1') AS jenis_kalibrasi_value,
+      CAST('Anak Timbangan' AS NVARCHAR(100)) AS parameter_sertifikasi,
+      Assm_nama_instrumen AS instrument_name,
+      Assm_No_identitas_Istrumen AS instrument_code,
+      Assm_No_identitas_kalibrasi AS calibration_id,
+      Group_Da_Dept AS department,
+      Assm_Kapasitas AS capacity,
+      Parameter_Kalibrasi AS parameter,
+      Assm_Lokasi AS location,
+      Tgl_kalibrasi AS calibration_date,
+      Parameter_Interval AS parameter_interval,
+      Kalibrasi_selanjutnya AS next_calibration_date,
+      Catatan AS note,
+      f_fileName AS file_name,
+      UserID AS user_id,
+      Process_date AS process_date
     FROM T_Kalibrasi_DA_Anak_Timbangan
     UNION ALL
-    SELECT DISTINCT QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
-      Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-      Parameter_Kalibrasi, Assm_Lokasi, Kalibrasi_selanjutnya
+    SELECT DISTINCT
+      CAST('Timbangan' AS VARCHAR(50)) AS instrument_type,
+      QA_ID AS source_id,
+      QA_ID AS qa_id,
+      COALESCE(NULLIF(LTRIM(RTRIM(Jenis_kalibrasi)), ''), '1') AS jenis_kalibrasi_value,
+      CAST('Timbangan (Massa)' AS NVARCHAR(100)) AS parameter_sertifikasi,
+      Assm_nama_instrumen AS instrument_name,
+      Assm_No_identitas_Istrumen AS instrument_code,
+      Assm_No_identitas_kalibrasi AS calibration_id,
+      Group_Da_Dept AS department,
+      Assm_Kapasitas AS capacity,
+      Parameter_Kalibrasi AS parameter,
+      Assm_Lokasi AS location,
+      Tgl_kalibrasi AS calibration_date,
+      CAST(Interval AS NVARCHAR(20)) AS parameter_interval,
+      Kalibrasi_selanjutnya AS next_calibration_date,
+      Catatan AS note,
+      f_fileName AS file_name,
+      UserID AS user_id,
+      Process_date AS process_date
     FROM T_Kalibrasi_DA_Timbangan
     UNION ALL
-    SELECT DISTINCT QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
-      Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-      Parameter_Kalibrasi, Assm_Lokasi, Kalibrasi_selanjutnya
+    SELECT DISTINCT
+      CAST('Bagian' AS VARCHAR(50)) AS instrument_type,
+      QA_ID AS source_id,
+      QA_ID AS qa_id,
+      COALESCE(NULLIF(LTRIM(RTRIM(Jenis_kalibrasi)), ''), '1') AS jenis_kalibrasi_value,
+      Parameter_Sertifikasi AS parameter_sertifikasi,
+      Assm_nama_instrumen AS instrument_name,
+      Assm_No_identitas_Istrumen AS instrument_code,
+      Assm_No_identitas_kalibrasi AS calibration_id,
+      Group_Da_Dept AS department,
+      Assm_Kapasitas AS capacity,
+      Parameter_Kalibrasi AS parameter,
+      Assm_Lokasi AS location,
+      Tgl_kalibrasi AS calibration_date,
+      Parameter_Interval AS parameter_interval,
+      Kalibrasi_selanjutnya AS next_calibration_date,
+      Catatan AS note,
+      f_fileName AS file_name,
+      UserID AS user_id,
+      Process_date AS process_date
     FROM T_Kalibrasi_DA_Bagian
     UNION ALL
     SELECT DISTINCT
-      QA_ID,
-      InstrumentName         AS Assm_nama_instrumen,
-      InstrumentCode         AS Assm_No_identitas_Istrumen,
-      Assm_No_identitas_kalibrasi,
-      Group_Da_Dept,
-      Assm_Kapasitas,
-      Parameter_Kalibrasi,
-      Location               AS Assm_Lokasi,
-      NULL                   AS Kalibrasi_selanjutnya
+      CAST('Risk_Assessment' AS VARCHAR(50)) AS instrument_type,
+      CAST(AssessmentID AS NVARCHAR(50)) AS source_id,
+      QA_ID AS qa_id,
+      CAST('1' AS NVARCHAR(10)) AS jenis_kalibrasi_value,
+      CAST('Risk Assessment' AS NVARCHAR(100)) AS parameter_sertifikasi,
+      InstrumentName AS instrument_name,
+      InstrumentCode AS instrument_code,
+      Assm_No_identitas_kalibrasi AS calibration_id,
+      Group_Da_Dept AS department,
+      Assm_Kapasitas AS capacity,
+      Parameter_Kalibrasi AS parameter,
+      Location AS location,
+      CAST(NULL AS DATETIME) AS calibration_date,
+      CAST(NULL AS NVARCHAR(100)) AS parameter_interval,
+      CAST(NULL AS DATETIME) AS next_calibration_date,
+      DecisionReason AS note,
+      CAST(NULL AS NVARCHAR(255)) AS file_name,
+      CreatedBy AS user_id,
+      COALESCE(UpdatedAt, CreatedAt) AS process_date
     FROM RA_CalibrationAssessment
     WHERE IsDeleted = 0
   ) AS src
   GROUP BY
-    QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
-    Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-    Parameter_Kalibrasi, Assm_Lokasi
+    instrument_type, source_id, qa_id, parameter_sertifikasi, instrument_name,
+    instrument_code, calibration_id, department, capacity, parameter, location
 `;
 
+const DA_COMMON_FIELDS = [
+  {
+    column: 'Jenis_kalibrasi',
+    param: 'JenisKalibrasi',
+    type: sql.NVarChar(10),
+    aliases: ['jenis_kalibrasi', 'jenisKalibrasi', 'Jenis_Kalibrasi'],
+    defaultValue: '1',
+    normalize: normalizeJenisKalibrasiValue,
+  },
+  {
+    column: 'Assm_nama_instrumen',
+    param: 'InstrumentName',
+    type: sql.NVarChar(255),
+    aliases: ['instrument_name', 'instrumentName', 'assm_nama_instrumen', 'Assm_nama_instrumen'],
+    requiredOnCreate: true,
+    defaultValue: '',
+  },
+  {
+    column: 'Assm_No_identitas_Istrumen',
+    param: 'InstrumentCode',
+    type: sql.NVarChar(100),
+    aliases: [
+      'instrument_code',
+      'instrumentCode',
+      'assm_no_identitas_istrumen',
+      'assm_no_identitas_instrumen',
+      'Assm_No_identitas_Istrumen',
+    ],
+    defaultValue: '',
+  },
+  {
+    column: 'Assm_No_identitas_kalibrasi',
+    param: 'CalibrationId',
+    type: sql.NVarChar(100),
+    aliases: [
+      'calibration_id',
+      'calibrationId',
+      'assm_no_identitas_kalibrasi',
+      'Assm_No_identitas_kalibrasi',
+    ],
+    defaultValue: '',
+  },
+  {
+    column: 'Group_Da_Dept',
+    param: 'Department',
+    type: sql.NVarChar(50),
+    aliases: ['department', 'group_da_dept', 'groupDaDept', 'Group_Da_Dept'],
+    defaultValue: '',
+  },
+  {
+    column: 'Assm_Kapasitas',
+    param: 'Capacity',
+    type: sql.NVarChar(100),
+    aliases: ['capacity', 'assm_kapasitas', 'assmKapasitas', 'Assm_Kapasitas'],
+    defaultValue: '',
+  },
+  {
+    column: 'Parameter_Kalibrasi',
+    param: 'ParameterKalibrasi',
+    type: sql.NVarChar(100),
+    aliases: ['parameter', 'parameter_kalibrasi', 'parameterKalibrasi', 'Parameter_Kalibrasi'],
+    defaultValue: '',
+  },
+  {
+    column: 'Assm_Lokasi',
+    param: 'Location',
+    type: sql.NVarChar(255),
+    aliases: ['location', 'assm_lokasi', 'assmLokasi', 'Assm_Lokasi'],
+    defaultValue: '',
+  },
+  {
+    column: 'Tgl_kalibrasi',
+    param: 'TglKalibrasi',
+    type: sql.DateTime,
+    aliases: ['calibration_date', 'calibrationDate', 'tgl_kalibrasi', 'Tgl_kalibrasi'],
+    defaultValue: null,
+    normalize: normalizeDateValue,
+  },
+  {
+    column: 'Parameter_Interval',
+    param: 'ParameterInterval',
+    type: sql.NVarChar(100),
+    aliases: ['parameter_interval', 'parameterInterval', 'Parameter_Interval'],
+    defaultValue: null,
+    normalize: (v) => (v == null || v === '') ? null : String(v),
+  },
+  {
+    column: 'Catatan',
+    param: 'Catatan',
+    type: sql.NVarChar(sql.MAX),
+    aliases: ['note', 'catatan', 'Catatan'],
+    defaultValue: '',
+  },
+];
+
+const INSTRUMENT_TYPE_CONFIG = {
+  Thermohygro: {
+    instrumentType: 'Thermohygro',
+    table: 'T_Kalibrasi_DA_Thermohygro',
+    statusTable: 'T_Kalibrasi_DA_Thermohygro_status',
+    idFunction: 'dbo.fnGetKal_DA_TH_No_ID()',
+    keyColumn: 'QA_ID',
+    fields: DA_COMMON_FIELDS,
+    nextCalibrationIntervalColumn: 'Parameter_Interval',
+  },
+  Anak_Timbangan: {
+    instrumentType: 'Anak_Timbangan',
+    table: 'T_Kalibrasi_DA_Anak_Timbangan',
+    statusTable: 'T_Kalibrasi_DA_Anak_Timbangan_status',
+    idFunction: 'dbo.fnGetKal_DA_AT_No_ID()',
+    keyColumn: 'QA_ID',
+    fields: DA_COMMON_FIELDS,
+    nextCalibrationIntervalColumn: 'Parameter_Interval',
+  },
+  Timbangan: {
+    instrumentType: 'Timbangan',
+    table: 'T_Kalibrasi_DA_Timbangan',
+    statusTable: 'T_Kalibrasi_DA_Timbangan_status',
+    idFunction: 'dbo.fnGetKal_DA_TM_No_ID()',
+    keyColumn: 'QA_ID',
+    fields: [
+      DA_COMMON_FIELDS[0],
+      {
+        column: 'Program_verifikasi',
+        param: 'ProgramVerifikasi',
+        type: sql.NVarChar(10),
+        aliases: ['program_verifikasi', 'programVerifikasi', 'Program_verifikasi'],
+        defaultValue: '2',
+        normalize: normalizeProgramVerifikasiValue,
+      },
+      ...DA_COMMON_FIELDS.slice(1, 8),
+      {
+        column: 'Tgl_kalibrasi',
+        param: 'TglKalibrasi',
+        type: sql.DateTime,
+        aliases: ['calibration_date', 'calibrationDate', 'tgl_kalibrasi', 'Tgl_kalibrasi'],
+        defaultValue: null,
+        normalize: normalizeDateValue,
+      },
+      {
+        column: 'Interval',
+        param: 'Interval',
+        type: sql.Int,
+        aliases: ['interval', 'interval_bulan', 'calibrationIntervalMonths', 'Interval'],
+        defaultValue: null,
+        normalize: normalizeIntegerValue,
+      },
+      DA_COMMON_FIELDS[10],
+      {
+        column: 'Parameter_No_id_anak_timbang',
+        param: 'ParameterNoIdAnakTimbang',
+        type: sql.NVarChar(100),
+        aliases: [
+          'parameter_no_id_anak_timbang',
+          'parameterNoIdAnakTimbang',
+          'Parameter_No_id_anak_timbang',
+        ],
+        defaultValue: '',
+      },
+      {
+        column: 'Parameter_Interval',
+        param: 'ParameterInterval',
+        type: sql.NVarChar(100),
+        aliases: ['parameter_interval', 'parameterInterval', 'Parameter_Interval'],
+        defaultValue: '',
+      },
+      {
+        column: 'Parameter_kriteria',
+        param: 'ParameterKriteria',
+        type: sql.NVarChar(100),
+        aliases: ['parameter_kriteria', 'parameterKriteria', 'Parameter_kriteria'],
+        defaultValue: '',
+      },
+      {
+        column: 'Pelaksana_Verifikasi',
+        param: 'PelaksanaVerifikasi',
+        type: sql.NVarChar(100),
+        aliases: ['pelaksana_verifikasi', 'pelaksanaVerifikasi', 'Pelaksana_Verifikasi'],
+        defaultValue: '',
+      },
+      {
+        column: 'Titik_verifikasi',
+        param: 'TitikVerifikasi',
+        type: sql.NVarChar(255),
+        aliases: ['titik_verifikasi', 'titikVerifikasi', 'Titik_verifikasi'],
+        defaultValue: '',
+      },
+    ],
+    nextCalibrationIntervalColumn: 'Interval',
+  },
+  Bagian: {
+    instrumentType: 'Bagian',
+    table: 'T_Kalibrasi_DA_Bagian',
+    statusTable: 'T_Kalibrasi_DA_Bagian_status',
+    idFunction: 'dbo.fnGetKal_DA_BA_No_ID()',
+    keyColumn: 'QA_ID',
+    fields: [
+      DA_COMMON_FIELDS[0],
+      {
+        column: 'Parameter_Sertifikasi',
+        param: 'ParameterSertifikasi',
+        type: sql.NVarChar(100),
+        aliases: [
+          'parameter_sertifikasi',
+          'parameterSertifikasi',
+          'Parameter_Sertifikasi',
+          'calibrationType',
+        ],
+        requiredOnCreate: true,
+        defaultValue: '',
+      },
+      ...DA_COMMON_FIELDS.slice(1),
+    ],
+    nextCalibrationIntervalColumn: 'Parameter_Interval',
+  },
+  Risk_Assessment: {
+    instrumentType: 'Risk_Assessment',
+    table: 'RA_CalibrationAssessment',
+    keyColumn: 'AssessmentID',
+    softDelete: true,
+    fields: [
+      {
+        column: 'InstrumentName',
+        param: 'InstrumentName',
+        type: sql.NVarChar(255),
+        aliases: ['instrument_name', 'instrumentName', 'InstrumentName'],
+        requiredOnCreate: true,
+      },
+      {
+        column: 'InstrumentCode',
+        param: 'InstrumentCode',
+        type: sql.NVarChar(100),
+        aliases: ['instrument_code', 'instrumentCode', 'InstrumentCode'],
+      },
+      {
+        column: 'Location',
+        param: 'Location',
+        type: sql.NVarChar(255),
+        aliases: ['location', 'Location'],
+      },
+      {
+        column: 'FunctionDescription',
+        param: 'FunctionDescription',
+        type: sql.NVarChar(sql.MAX),
+        aliases: ['functionDescription', 'function_description', 'FunctionDescription'],
+      },
+      {
+        column: 'Area',
+        param: 'Area',
+        type: sql.NVarChar(255),
+        aliases: ['area', 'Area'],
+      },
+      {
+        column: 'ImpactsProductQualityCQA',
+        param: 'ImpactsProductQualityCQA',
+        type: sql.Bit,
+        aliases: [
+          'impactsProductQualityCQA',
+          'impactAssessment.impactsProductQualityCQA',
+          'ImpactsProductQualityCQA',
+        ],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'UsedForCPP',
+        param: 'UsedForCPP',
+        type: sql.Bit,
+        aliases: ['usedForCPP', 'impactAssessment.usedForCPP', 'UsedForCPP'],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'UsedForGxPEnvironment',
+        param: 'UsedForGxPEnvironment',
+        type: sql.Bit,
+        aliases: ['usedForGxPEnvironment', 'impactAssessment.usedForGxPEnvironment', 'UsedForGxPEnvironment'],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'UsedForBatchRelease',
+        param: 'UsedForBatchRelease',
+        type: sql.Bit,
+        aliases: ['usedForBatchRelease', 'impactAssessment.usedForBatchRelease', 'UsedForBatchRelease'],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'ImpactsSafety',
+        param: 'ImpactsSafety',
+        type: sql.Bit,
+        aliases: ['impactsSafety', 'impactAssessment.impactsSafety', 'ImpactsSafety'],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'IsImpactCritical',
+        param: 'IsImpactCritical',
+        type: sql.Bit,
+        aliases: ['isImpactCritical', 'IsImpactCritical'],
+        defaultValue: false,
+        normalize: normalizeBitValue,
+      },
+      {
+        column: 'Severity',
+        param: 'Severity',
+        type: sql.Int,
+        aliases: ['severity', 'Severity'],
+        normalize: normalizeIntegerValue,
+      },
+      {
+        column: 'Probability',
+        param: 'Probability',
+        type: sql.Int,
+        aliases: ['probability', 'Probability'],
+        normalize: normalizeIntegerValue,
+      },
+      {
+        column: 'Detectability',
+        param: 'Detectability',
+        type: sql.Int,
+        aliases: ['detectability', 'Detectability'],
+        normalize: normalizeIntegerValue,
+      },
+      {
+        column: 'RPN',
+        param: 'RPN',
+        type: sql.Int,
+        aliases: ['rpn', 'RPN'],
+        normalize: normalizeIntegerValue,
+      },
+      {
+        column: 'RiskCategory',
+        param: 'RiskCategory',
+        type: sql.NVarChar(50),
+        aliases: ['riskCategory', 'risk_category', 'RiskCategory'],
+      },
+      {
+        column: 'SeverityNote',
+        param: 'SeverityNote',
+        type: sql.NVarChar(sql.MAX),
+        aliases: ['severityNote', 'severity_note', 'SeverityNote'],
+      },
+      {
+        column: 'ProbabilityNote',
+        param: 'ProbabilityNote',
+        type: sql.NVarChar(sql.MAX),
+        aliases: ['probabilityNote', 'probability_note', 'ProbabilityNote'],
+      },
+      {
+        column: 'DetectabilityNote',
+        param: 'DetectabilityNote',
+        type: sql.NVarChar(sql.MAX),
+        aliases: ['detectabilityNote', 'detectability_note', 'DetectabilityNote'],
+      },
+      {
+        column: 'CalibrationDecision',
+        param: 'CalibrationDecision',
+        type: sql.NVarChar(255),
+        aliases: ['calibrationDecision', 'calibration_decision', 'CalibrationDecision'],
+      },
+      {
+        column: 'DecisionReason',
+        param: 'DecisionReason',
+        type: sql.NVarChar(sql.MAX),
+        aliases: ['decisionReason', 'decision_reason', 'note', 'DecisionReason'],
+      },
+      {
+        column: 'Status',
+        param: 'Status',
+        type: sql.NVarChar(50),
+        aliases: ['status', 'Status'],
+        defaultValue: 'Draft',
+      },
+      {
+        column: 'QA_ID',
+        param: 'QaId',
+        type: sql.NVarChar(50),
+        aliases: ['qa_id', 'qaId', 'QA_ID'],
+      },
+      {
+        column: 'Assm_No_identitas_kalibrasi',
+        param: 'CalibrationId',
+        type: sql.NVarChar(100),
+        aliases: ['calibration_id', 'calibrationId', 'assm_no_identitas_kalibrasi'],
+      },
+      {
+        column: 'Group_Da_Dept',
+        param: 'Department',
+        type: sql.NVarChar(50),
+        aliases: ['department', 'group_da_dept', 'groupDaDept'],
+      },
+      {
+        column: 'Assm_Kapasitas',
+        param: 'Capacity',
+        type: sql.NVarChar(100),
+        aliases: ['capacity', 'assm_kapasitas', 'assmKapasitas'],
+      },
+      {
+        column: 'Parameter_Kalibrasi',
+        param: 'ParameterKalibrasi',
+        type: sql.NVarChar(100),
+        aliases: ['parameter', 'parameter_kalibrasi', 'parameterKalibrasi'],
+      },
+    ],
+  },
+};
+
+const INSTRUMENT_TYPE_ALIASES = {
+  thermohygro: 'Thermohygro',
+  thermohygrometer: 'Thermohygro',
+  th: 'Thermohygro',
+  anak_timbangan: 'Anak_Timbangan',
+  anak_timbang: 'Anak_Timbangan',
+  anaktimbangan: 'Anak_Timbangan',
+  'anak timbangan': 'Anak_Timbangan',
+  at: 'Anak_Timbangan',
+  timbangan: 'Timbangan',
+  timbangan_massa: 'Timbangan',
+  'timbangan massa': 'Timbangan',
+  tm: 'Timbangan',
+  bagian: 'Bagian',
+  ba: 'Bagian',
+  risk_assessment: 'Risk_Assessment',
+  riskassessment: 'Risk_Assessment',
+  'risk assessment': 'Risk_Assessment',
+  ra_calibrationassessment: 'Risk_Assessment',
+  ra: 'Risk_Assessment',
+};
+
+function createRepositoryError(message, statusCode = 400) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  return err;
+}
+
+function normalizeInstrumentType(instrumentType) {
+  if (!instrumentType) return null;
+  const raw = String(instrumentType).trim();
+  if (INSTRUMENT_TYPE_CONFIG[raw]) return raw;
+
+  const key = raw
+    .replace(/-/g, '_')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  return INSTRUMENT_TYPE_ALIASES[key] || null;
+}
+
+function resolveInstrumentConfig(instrumentType) {
+  const normalizedType = normalizeInstrumentType(instrumentType);
+  if (!normalizedType) {
+    throw createRepositoryError(
+      `instrument_type must be one of: ${Object.keys(INSTRUMENT_TYPE_CONFIG).join(', ')}.`
+    );
+  }
+  return INSTRUMENT_TYPE_CONFIG[normalizedType];
+}
+
+function isBlank(value) {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function getFieldMessageName(field) {
+  const rawName = field?.aliases?.[0] || field?.column || 'field';
+  return String(rawName).split('.').pop();
+}
+
+function getFieldSqlTypeName(field) {
+  return field?.type?.type?.name || field?.type?.name || null;
+}
+
+function getFieldMaxLength(field) {
+  const sqlTypeName = getFieldSqlTypeName(field);
+  if (!['VarChar', 'NVarChar', 'Char', 'NChar'].includes(sqlTypeName)) {
+    return null;
+  }
+
+  const length = field?.type?.length;
+  if (!Number.isFinite(length) || length <= 0 || length === sql.MAX) {
+    return null;
+  }
+
+  return length;
+}
+
+function readPath(obj, path) {
+  const parts = path.split('.');
+  let current = obj;
+
+  for (const part of parts) {
+    if (!current || typeof current !== 'object' || !hasOwn(current, part)) {
+      return { found: false, value: undefined };
+    }
+    current = current[part];
+  }
+
+  return { found: true, value: current };
+}
+
+function readPayloadValue(payload, aliases) {
+  for (const alias of aliases) {
+    const result = alias.includes('.')
+      ? readPath(payload, alias)
+      : {
+          found: payload && typeof payload === 'object' && hasOwn(payload, alias),
+          value: payload ? payload[alias] : undefined,
+        };
+
+    if (result.found) {
+      return result;
+    }
+  }
+
+  return { found: false, value: undefined };
+}
+
+function normalizeDateValue(value, field = null) {
+  if (isBlank(value)) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    throw createRepositoryError(`${getFieldMessageName(field)} must be a valid date.`);
+  }
+  return d;
+}
+
+function normalizeIntegerValue(value, field = null) {
+  if (isBlank(value)) return null;
+  const n = Number(value);
+  if (!Number.isInteger(n)) {
+    throw createRepositoryError(`${getFieldMessageName(field)} must contain a whole number.`);
+  }
+  return n;
+}
+
+function normalizeBitValue(value, field = null) {
+  if (value === true || value === 1 || value === '1') return 1;
+  if (value === false || value === 0 || value === '0') return 0;
+
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['true', 'yes', 'on', 'ya'].includes(normalized)) return 1;
+  if (['false', 'no', 'off', 'tidak', ''].includes(normalized)) return 0;
+
+  throw createRepositoryError(`${getFieldMessageName(field)} must be true or false.`);
+}
+
+function normalizeJenisKalibrasiValue(value, field = null) {
+  if (isBlank(value)) return '1';
+  if (value === 1 || value === true) return '1';
+  if (value === 2 || value === false) return '2';
+
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === '1' || normalized === 'internal') return '1';
+  if (normalized === '2' || normalized === 'external') return '2';
+
+  throw createRepositoryError(`${getFieldMessageName(field)} must be Internal or External.`);
+}
+
+function normalizeProgramVerifikasiValue(value, field = null) {
+  if (isBlank(value)) return '2';
+  if (value === 1 || value === true) return '1';
+  if (value === 2 || value === false) return '2';
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'ya', 'yes', 'true', 'on'].includes(normalized)) return '1';
+  if (['2', 'tidak', 'no', 'false', 'off'].includes(normalized)) return '2';
+
+  throw createRepositoryError(`${getFieldMessageName(field)} must be Ya/Tidak or 1/2.`);
+}
+
+function normalizeFieldValue(field, value) {
+  if (field.normalize) return field.normalize(value, field);
+  if (isBlank(value)) return null;
+  return value;
+}
+
+function validateFieldValue(field, value) {
+  if (value === undefined || value === null) return value;
+
+  const maxLength = getFieldMaxLength(field);
+  if (maxLength == null) return value;
+
+  const stringValue = String(value);
+  if (stringValue.length > maxLength) {
+    throw createRepositoryError(
+      `${getFieldMessageName(field)} cannot exceed ${maxLength} characters.`
+    );
+  }
+
+  return value;
+}
+
+function defaultFieldValue(field) {
+  return typeof field.defaultValue === 'function'
+    ? field.defaultValue()
+    : field.defaultValue;
+}
+
+function buildFieldInput(request, payload, fields, { isCreate }) {
+  const columns = [];
+  const params = [];
+  const assignments = [];
+  const valuesByColumn = {};
+  let hasChanges = false;
+
+  for (const field of fields) {
+    const { found, value } = readPayloadValue(payload, field.aliases);
+
+    if (!found && !isCreate) continue;
+
+    let normalizedValue;
+    if (found) {
+      normalizedValue = normalizeFieldValue(field, value);
+    } else if (field.requiredOnCreate) {
+      throw createRepositoryError(`${getFieldMessageName(field)} is required.`);
+    } else {
+      normalizedValue = defaultFieldValue(field);
+      if (normalizedValue === undefined) normalizedValue = null;
+      normalizedValue = normalizeFieldValue(field, normalizedValue);
+    }
+
+    if (field.requiredOnCreate && isBlank(normalizedValue)) {
+      throw createRepositoryError(`${getFieldMessageName(field)} is required.`);
+    }
+
+    validateFieldValue(field, normalizedValue);
+    request.input(field.param, field.type, normalizedValue);
+    columns.push(field.column);
+    params.push(`@${field.param}`);
+    assignments.push(`${field.column} = @${field.param}`);
+    valuesByColumn[field.column] = normalizedValue;
+    hasChanges = true;
+  }
+
+  return { columns, params, assignments, valuesByColumn, hasChanges };
+}
+
+function addMonths(dateValue, monthValue) {
+  if (isBlank(dateValue) || isBlank(monthValue)) return null;
+
+  const months = Number(monthValue);
+  if (!Number.isInteger(months)) return null;
+
+  const d = dateValue instanceof Date ? new Date(dateValue.getTime()) : new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return null;
+
+  const originalDay = d.getDate();
+  d.setMonth(d.getMonth() + months);
+
+  if (d.getDate() !== originalDay) {
+    d.setDate(0);
+  }
+
+  return d;
+}
+
+function resolveNextCalibrationDate(config, payload, valuesByColumn, existing = null) {
+  const explicit = readPayloadValue(payload, [
+    'next_calibration_date',
+    'nextCalibrationDate',
+    'kalibrasi_selanjutnya',
+    'Kalibrasi_selanjutnya',
+  ]);
+
+  if (explicit.found) {
+    return normalizeDateValue(explicit.value, { aliases: ['nextCalibrationDate'] });
+  }
+
+  const calibrationDate = valuesByColumn.Tgl_kalibrasi !== undefined
+    ? valuesByColumn.Tgl_kalibrasi
+    : existing?.Tgl_kalibrasi;
+
+  const interval = valuesByColumn[config.nextCalibrationIntervalColumn] !== undefined
+    ? valuesByColumn[config.nextCalibrationIntervalColumn]
+    : existing?.[config.nextCalibrationIntervalColumn];
+
+  return addMonths(calibrationDate, interval);
+}
+
+function shouldTouchNextCalibration(config, payload, valuesByColumn) {
+  const explicit = readPayloadValue(payload, [
+    'next_calibration_date',
+    'nextCalibrationDate',
+    'kalibrasi_selanjutnya',
+    'Kalibrasi_selanjutnya',
+  ]);
+
+  return explicit.found
+    || valuesByColumn.Tgl_kalibrasi !== undefined
+    || valuesByColumn[config.nextCalibrationIntervalColumn] !== undefined;
+}
+
+function getPayloadQaId(payload) {
+  const { found, value } = readPayloadValue(payload, ['qa_id', 'qaId', 'QA_ID']);
+  if (!found || isBlank(value)) return null;
+
+  const normalizedValue = String(value).trim();
+  if (normalizedValue.length > 50) {
+    throw createRepositoryError('qa_id cannot exceed 50 characters.');
+  }
+
+  return normalizedValue;
+}
+
+function getMetaUserId(meta = {}, payload = {}) {
+  const fromPayload = readPayloadValue(payload, ['user_id', 'userId', 'UserID']);
+  const rawValue = meta.userId || (fromPayload.found ? fromPayload.value : null) || null;
+  if (isBlank(rawValue)) return null;
+
+  const normalizedValue = String(rawValue).trim();
+  if (normalizedValue.length > 100) {
+    throw createRepositoryError('user_id cannot exceed 100 characters.');
+  }
+
+  return normalizedValue;
+}
+
+function getMetaDelegatedTo(meta = {}, payload = {}) {
+  const fromPayload = readPayloadValue(payload, ['delegated_to', 'delegatedTo', 'Delegated_To']);
+  const rawValue = meta.delegatedTo || (fromPayload.found ? fromPayload.value : null) || null;
+  if (isBlank(rawValue)) return null;
+
+  const normalizedValue = String(rawValue).trim();
+  if (normalizedValue.length > 100) {
+    throw createRepositoryError('delegated_to cannot exceed 100 characters.');
+  }
+
+  return normalizedValue;
+}
+
+async function getGeneratedQaId(request, idFunction) {
+  const result = await request.query(`SELECT ${idFunction} AS QA_ID`);
+  return result.recordset[0]?.QA_ID;
+}
+
+async function getDaRawByQaId(config, qaId, transaction = null) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.NVarChar(50), qaId)
+    .query(`
+      SELECT TOP 1 *
+      FROM ${config.table}
+      WHERE ${config.keyColumn} = @QaId
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function hasDaApproval(config, qaId, transaction = null) {
+  if (!config.statusTable) return false;
+
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.NVarChar(50), qaId)
+    .query(`
+      SELECT TOP 1 1 AS found
+      FROM ${config.statusTable}
+      WHERE QA_ID = @QaId
+        AND Approver_No = '1'
+    `);
+
+  return result.recordset.length > 0;
+}
+
+async function getDaBagianHistoryByQaId(qaId) {
+  const request = await createRequest();
+  const qaIdLike = `${String(qaId).trim()}%`;
+
+  const result = await request
+    .input('QaIdLike', sql.NVarChar(100), qaIdLike)
+    .query(`
+      SELECT TOP 2 tkdbh.*
+      FROM lapifactory.dbo.T_Kalibrasi_DA_Bagian_Hist AS tkdbh
+      WHERE tkdbh.QA_ID LIKE @QaIdLike
+      ORDER BY tkdbh.deleteDate DESC
+    `);
+
+  return result.recordset;
+}
+
 /**
- * List pressure instruments with DA Bagian detail shape.
+ * List instruments with a unified shape across all instrument sources.
  *
  * @param {object|string} [filters] - filter object or backward-compatible search string
  * @param {string} [filters.search] - text search across key instrument fields
@@ -110,7 +986,7 @@ const INSTRUMENT_UNION_SQL = `
  * @param {string} [filters.parameter] - optional calibration parameter filter
  * @param {string} [filters.location] - optional location filter
  * @param {'Internal'|'External'} [filters.jenisKalibrasi] - optional exact calibration type filter
- * @param {boolean} [filters.includeExternal=false] - include External rows in default listing
+ * @param {boolean} [filters.includeExternal=true] - include External rows in default listing
  *
  * @returns {Promise<Array>}
  */
@@ -125,8 +1001,12 @@ async function listInstruments(filters = {}) {
   const parameter = normalized.parameter || null;
   const location = normalized.location || null;
   const jenisKalibrasi = normalized.jenisKalibrasi || null;
-  const includeExternal = normalized.includeExternal === true
-    || ['1', 'true', 'yes', 'on'].includes(String(normalized.includeExternal || '').trim().toLowerCase());
+  const includeExternal = normalized.includeExternal === undefined
+    || normalized.includeExternal === null
+    || normalized.includeExternal === ''
+    ? true
+    : normalized.includeExternal === true
+      || ['1', 'true', 'yes', 'on'].includes(String(normalized.includeExternal).trim().toLowerCase());
 
   const request = pool.request();
   const whereClauses = [];
@@ -135,93 +1015,444 @@ async function listInstruments(filters = {}) {
     request.input('Search', sql.NVarChar(100), `%${search}%`);
     whereClauses.push(`
       (
-        A.QA_ID LIKE @Search
-        OR A.Assm_nama_instrumen LIKE @Search
-        OR A.Assm_No_identitas_Istrumen LIKE @Search
-        OR A.Assm_No_identitas_kalibrasi LIKE @Search
-        OR A.Group_Da_Dept LIKE @Search
-        OR A.Parameter_Kalibrasi LIKE @Search
-        OR A.Assm_Lokasi LIKE @Search
+        A.source_id LIKE @Search
+        OR A.qa_id LIKE @Search
+        OR A.instrument_type LIKE @Search
+        OR A.parameter_sertifikasi LIKE @Search
+        OR A.instrument_name LIKE @Search
+        OR A.instrument_code LIKE @Search
+        OR A.calibration_id LIKE @Search
+        OR A.department LIKE @Search
+        OR A.parameter LIKE @Search
+        OR A.location LIKE @Search
       )
     `);
   }
 
   if (department) {
     request.input('Department', sql.NVarChar(100), `%${department}%`);
-    whereClauses.push('A.Group_Da_Dept LIKE @Department');
+    whereClauses.push('A.department LIKE @Department');
   }
 
   if (parameter) {
     request.input('ParameterFilter', sql.NVarChar(100), `%${parameter}%`);
-    whereClauses.push('A.Parameter_Kalibrasi LIKE @ParameterFilter');
+    whereClauses.push('A.parameter LIKE @ParameterFilter');
   }
 
   if (location) {
     request.input('LocationFilter', sql.NVarChar(100), `%${location}%`);
-    whereClauses.push('A.Assm_Lokasi LIKE @LocationFilter');
+    whereClauses.push('A.location LIKE @LocationFilter');
   }
 
   if (jenisKalibrasi === 'Internal') {
-    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) = 1');
+    whereClauses.push("COALESCE(NULLIF(LTRIM(RTRIM(A.jenis_kalibrasi_value)), ''), '1') = '1'");
   } else if (jenisKalibrasi === 'External') {
-    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) <> 1');
+    whereClauses.push("COALESCE(NULLIF(LTRIM(RTRIM(A.jenis_kalibrasi_value)), ''), '1') <> '1'");
   } else if (!includeExternal) {
-    // Default behavior for the instrument picker checkbox: hide External rows.
-    whereClauses.push('ISNULL(A.Jenis_Kalibrasi, 1) = 1');
+    // Backward-compatible instrument picker behavior when explicitly requested.
+    whereClauses.push("COALESCE(NULLIF(LTRIM(RTRIM(A.jenis_kalibrasi_value)), ''), '1') = '1'");
   }
 
   let query = `
     SELECT
-      A.QA_ID,
-      CASE WHEN ISNULL(A.Jenis_Kalibrasi, 1) = 1 THEN 'Internal' ELSE 'External' END AS Jenis_Kalibrasi,
-      A.Parameter_Sertifikasi,
-      A.Assm_nama_instrumen,
-      A.Assm_No_identitas_Istrumen,
-      A.Assm_No_identitas_kalibrasi,
-      A.Group_Da_Dept,
-      A.Assm_Kapasitas,
-      A.Parameter_Kalibrasi,
-      A.Assm_Lokasi,
-      REPLACE(CONVERT(CHAR(11), A.Tgl_kalibrasi, 106), ' ', '-') AS Tgl_kalibrasi,
-      CAST(A.Parameter_Interval AS VARCHAR(20)) + ' Bulan' AS Parameter_Interval,
-      REPLACE(CONVERT(CHAR(11), A.Kalibrasi_selanjutnya, 106), ' ', '-') AS Kalibrasi_selanjutnya,
-      A.Catatan,
-      B.user_ID,
-      CONVERT(VARCHAR(20), B.Process_date, 13) AS Process_date,
-      ISNULL(A.f_fileName, '') AS f_fileName,
+      A.qa_id AS QA_ID,
+      A.instrument_type,
+      A.source_id,
       CASE
-        WHEN A.Kalibrasi_selanjutnya IS NULL THEN 'Unknown'
-        WHEN A.Kalibrasi_selanjutnya < GETDATE() THEN 'Overdue'
-        WHEN A.Kalibrasi_selanjutnya <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
+        WHEN COALESCE(NULLIF(LTRIM(RTRIM(A.jenis_kalibrasi_value)), ''), '1') = '1' THEN 'Internal'
+        ELSE 'External'
+      END AS Jenis_Kalibrasi,
+      A.parameter_sertifikasi AS Parameter_Sertifikasi,
+      A.instrument_name AS Assm_nama_instrumen,
+      A.instrument_code AS Assm_No_identitas_Istrumen,
+      A.calibration_id AS Assm_No_identitas_kalibrasi,
+      A.department AS Group_Da_Dept,
+      A.capacity AS Assm_Kapasitas,
+      A.parameter AS Parameter_Kalibrasi,
+      A.location AS Assm_Lokasi,
+      REPLACE(CONVERT(CHAR(11), A.calibration_date, 106), ' ', '-') AS Tgl_kalibrasi,
+      CASE
+        WHEN A.parameter_interval IS NULL THEN NULL
+        WHEN LTRIM(RTRIM(CAST(A.parameter_interval AS NVARCHAR(50)))) = '' THEN NULL
+        ELSE CAST(A.parameter_interval AS VARCHAR(50)) + ' Bulan'
+      END AS Parameter_Interval,
+      REPLACE(CONVERT(CHAR(11), A.next_calibration_date, 106), ' ', '-') AS Kalibrasi_selanjutnya,
+      A.note AS Catatan,
+      A.user_id AS user_ID,
+      CONVERT(VARCHAR(20), A.process_date, 13) AS Process_date,
+      ISNULL(A.file_name, '') AS f_fileName,
+      CASE
+        WHEN A.next_calibration_date IS NULL THEN 'Unknown'
+        WHEN A.next_calibration_date < GETDATE() THEN 'Overdue'
+        WHEN A.next_calibration_date <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
         ELSE 'Compliant'
       END AS status,
 
       -- backward-compatible aliases used by pressure-calibration consumers
-      A.QA_ID AS qa_id,
-      A.Assm_nama_instrumen AS instrument_name,
-      A.Assm_No_identitas_Istrumen AS instrument_code,
-      A.Assm_No_identitas_kalibrasi AS calibration_id,
-      A.Group_Da_Dept AS department,
-      A.Assm_Kapasitas AS capacity,
-      A.Parameter_Kalibrasi AS parameter,
-      A.Assm_Lokasi AS location,
-      A.Kalibrasi_selanjutnya AS next_calibration_date
-    FROM T_Kalibrasi_DA_Bagian AS A
-    LEFT JOIN (
-      SELECT QA_id, user_ID, Process_date
-      FROM T_Kalibrasi_DA_Bagian_status
-      WHERE approver_no = 1
-    ) AS B ON A.QA_ID = B.QA_id
+      A.qa_id,
+      A.instrument_name,
+      A.instrument_code,
+      A.calibration_id,
+      A.department,
+      A.capacity,
+      A.parameter,
+      A.location,
+      A.next_calibration_date
+    FROM (${INSTRUMENT_UNION_SQL}) AS A
   `;
 
   if (whereClauses.length > 0) {
     query += `\n WHERE ${whereClauses.join('\n   AND ')}`;
   }
 
-  query += `\n ORDER BY A.QA_ID ASC`;
+  query += `\n ORDER BY A.instrument_type ASC, A.qa_id ASC`;
 
   const result = await request.query(query);
   return result.recordset;
+}
+
+async function getInstrumentByTypeAndId(instrumentType, sourceId) {
+  const config = resolveInstrumentConfig(instrumentType);
+  const pool = await getPool();
+
+  const result = await pool.request()
+    .input('InstrumentType', sql.VarChar(50), config.instrumentType)
+    .input('SourceId', sql.NVarChar(50), String(sourceId))
+    .query(`
+      SELECT *
+      FROM (${INSTRUMENT_UNION_SQL}) AS instruments
+      WHERE instrument_type = @InstrumentType
+        AND source_id = @SourceId
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function createInstrument(instrumentType, payload = {}, meta = {}) {
+  const config = resolveInstrumentConfig(instrumentType);
+
+  if (config.softDelete) {
+    return createRiskAssessmentInstrument(config, payload, meta);
+  }
+
+  return createDaInstrument(config, payload, meta);
+}
+
+async function createDaInstrument(config, payload, meta) {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const idRequest = new sql.Request(transaction);
+    const suppliedQaId = getPayloadQaId(payload);
+    const qaId = suppliedQaId || await getGeneratedQaId(idRequest, config.idFunction);
+
+    if (isBlank(qaId)) {
+      throw createRepositoryError(`Unable to generate QA_ID for ${config.instrumentType}.`, 500);
+    }
+
+    const existing = await getDaRawByQaId(config, qaId, transaction);
+    if (existing) {
+      throw createRepositoryError(`${config.instrumentType} ${qaId} already exists.`, 409);
+    }
+
+    const request = new sql.Request(transaction);
+    const fieldInput = buildFieldInput(request, payload, config.fields, { isCreate: true });
+    const nextCalibrationDate = resolveNextCalibrationDate(
+      config,
+      payload,
+      fieldInput.valuesByColumn
+    );
+
+    request.input('QaId', sql.NVarChar(50), qaId);
+    request.input('NextCalibrationDate', sql.DateTime, nextCalibrationDate);
+    request.input('UserId', sql.NVarChar(100), getMetaUserId(meta, payload));
+    request.input('DelegatedTo', sql.NVarChar(100), getMetaDelegatedTo(meta, payload));
+
+    const columns = [
+      config.keyColumn,
+      ...fieldInput.columns,
+      'Kalibrasi_selanjutnya',
+      'UserID',
+      'Delegated_To',
+      'Process_date',
+    ];
+
+    const params = [
+      '@QaId',
+      ...fieldInput.params,
+      '@NextCalibrationDate',
+      '@UserId',
+      '@DelegatedTo',
+      'GETDATE()',
+    ];
+
+    await request.query(`
+      INSERT INTO ${config.table} (${columns.join(', ')})
+      VALUES (${params.join(', ')})
+    `);
+
+    await transaction.commit();
+    return getInstrumentByTypeAndId(config.instrumentType, qaId);
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
+async function updateInstrument(instrumentType, sourceId, payload = {}, meta = {}) {
+  const config = resolveInstrumentConfig(instrumentType);
+
+  if (config.softDelete) {
+    return updateRiskAssessmentInstrument(config, sourceId, payload, meta);
+  }
+
+  return updateDaInstrument(config, sourceId, payload, meta);
+}
+
+async function updateDaInstrument(config, qaId, payload, meta) {
+  if (isBlank(qaId)) {
+    throw createRepositoryError('Instrument id is required.');
+  }
+
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const existing = await getDaRawByQaId(config, qaId, transaction);
+    if (!existing) {
+      await transaction.commit();
+      return null;
+    }
+
+    if (await hasDaApproval(config, qaId, transaction)) {
+      throw createRepositoryError('Tidak bisa simpan, karena data sudah approve!');
+    }
+
+    const request = new sql.Request(transaction);
+    const fieldInput = buildFieldInput(request, payload, config.fields, { isCreate: false });
+    const assignments = [...fieldInput.assignments];
+
+    if (shouldTouchNextCalibration(config, payload, fieldInput.valuesByColumn)) {
+      request.input(
+        'NextCalibrationDate',
+        sql.DateTime,
+        resolveNextCalibrationDate(config, payload, fieldInput.valuesByColumn, existing)
+      );
+      assignments.push('Kalibrasi_selanjutnya = @NextCalibrationDate');
+    }
+
+    const userId = getMetaUserId(meta, payload);
+    const delegatedTo = getMetaDelegatedTo(meta, payload);
+
+    if (!isBlank(userId)) {
+      request.input('UserId', sql.NVarChar(100), userId);
+      assignments.push('UserID = @UserId');
+    }
+
+    if (!isBlank(delegatedTo)) {
+      request.input('DelegatedTo', sql.NVarChar(100), delegatedTo);
+      assignments.push('Delegated_To = @DelegatedTo');
+    }
+
+    if (assignments.length === 0) {
+      await transaction.commit();
+      return getInstrumentByTypeAndId(config.instrumentType, qaId);
+    }
+
+    assignments.push('Process_date = GETDATE()');
+    request.input('QaId', sql.NVarChar(50), qaId);
+
+    await request.query(`
+      UPDATE ${config.table}
+      SET ${assignments.join(',\n          ')}
+      WHERE ${config.keyColumn} = @QaId
+    `);
+
+    await transaction.commit();
+    return getInstrumentByTypeAndId(config.instrumentType, qaId);
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
+function normalizeRiskAssessmentId(sourceId) {
+  const id = normalizeIntegerValue(sourceId);
+  if (!id) {
+    throw createRepositoryError('Risk_Assessment update/delete requires AssessmentID as source_id.');
+  }
+  return id;
+}
+
+async function getRiskAssessmentRawById(config, sourceId, transaction = null) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('SourceId', sql.Int, normalizeRiskAssessmentId(sourceId))
+    .query(`
+      SELECT TOP 1 *
+      FROM ${config.table}
+      WHERE ${config.keyColumn} = @SourceId
+        AND IsDeleted = 0
+    `);
+
+  return result.recordset[0] || null;
+}
+
+async function createRiskAssessmentInstrument(config, payload, meta) {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const request = new sql.Request(transaction);
+    const fieldInput = buildFieldInput(request, payload, config.fields, { isCreate: true });
+    request.input('CreatedBy', sql.NVarChar(100), getMetaUserId(meta, payload));
+
+    const columns = [
+      ...fieldInput.columns,
+      'IsDeleted',
+      'CreatedBy',
+      'CreatedAt',
+    ];
+
+    const params = [
+      ...fieldInput.params,
+      '0',
+      '@CreatedBy',
+      'GETDATE()',
+    ];
+
+    const result = await request.query(`
+      INSERT INTO ${config.table} (${columns.join(', ')})
+      VALUES (${params.join(', ')});
+      SELECT SCOPE_IDENTITY() AS source_id;
+    `);
+
+    const sourceId = result.recordset[0]?.source_id;
+    await transaction.commit();
+    return getInstrumentByTypeAndId(config.instrumentType, sourceId);
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
+async function updateRiskAssessmentInstrument(config, sourceId, payload, meta) {
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const normalizedSourceId = normalizeRiskAssessmentId(sourceId);
+    const existing = await getRiskAssessmentRawById(config, normalizedSourceId, transaction);
+    if (!existing) {
+      await transaction.commit();
+      return null;
+    }
+
+    const request = new sql.Request(transaction);
+    const fieldInput = buildFieldInput(request, payload, config.fields, { isCreate: false });
+    const assignments = [...fieldInput.assignments];
+    const userId = getMetaUserId(meta, payload);
+
+    if (!isBlank(userId)) {
+      request.input('UpdatedBy', sql.NVarChar(100), userId);
+      assignments.push('UpdatedBy = @UpdatedBy');
+    }
+
+    if (assignments.length === 0) {
+      await transaction.commit();
+      return getInstrumentByTypeAndId(config.instrumentType, normalizedSourceId);
+    }
+
+    assignments.push('UpdatedAt = GETDATE()');
+    request.input('SourceId', sql.Int, normalizedSourceId);
+
+    await request.query(`
+      UPDATE ${config.table}
+      SET ${assignments.join(',\n          ')}
+      WHERE ${config.keyColumn} = @SourceId
+        AND IsDeleted = 0
+    `);
+
+    await transaction.commit();
+    return getInstrumentByTypeAndId(config.instrumentType, normalizedSourceId);
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
+async function deleteInstrument(instrumentType, sourceId, meta = {}) {
+  const config = resolveInstrumentConfig(instrumentType);
+
+  if (config.softDelete) {
+    return deleteRiskAssessmentInstrument(config, sourceId, meta);
+  }
+
+  return deleteDaInstrument(config, sourceId);
+}
+
+async function deleteDaInstrument(config, qaId) {
+  if (isBlank(qaId)) {
+    throw createRepositoryError('Instrument id is required.');
+  }
+
+  const pool = await getPool();
+  const transaction = new sql.Transaction(pool);
+
+  await transaction.begin();
+
+  try {
+    const existing = await getDaRawByQaId(config, qaId, transaction);
+    if (!existing) {
+      await transaction.commit();
+      return false;
+    }
+
+    const statusRequest = new sql.Request(transaction);
+    await statusRequest
+      .input('QaId', sql.NVarChar(50), qaId)
+      .query(`DELETE FROM ${config.statusTable} WHERE QA_ID = @QaId`);
+
+    const request = new sql.Request(transaction);
+    const result = await request
+      .input('QaId', sql.NVarChar(50), qaId)
+      .query(`DELETE FROM ${config.table} WHERE ${config.keyColumn} = @QaId`);
+
+    await transaction.commit();
+    return result.rowsAffected[0] > 0;
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+}
+
+async function deleteRiskAssessmentInstrument(config, sourceId, meta) {
+  const normalizedSourceId = normalizeRiskAssessmentId(sourceId);
+  const pool = await getPool();
+  const request = pool.request()
+    .input('SourceId', sql.Int, normalizedSourceId)
+    .input('UpdatedBy', sql.NVarChar(100), getMetaUserId(meta));
+
+  const result = await request.query(`
+    UPDATE ${config.table}
+    SET
+      IsDeleted = 1,
+      UpdatedBy = @UpdatedBy,
+      UpdatedAt = GETDATE()
+    WHERE ${config.keyColumn} = @SourceId
+      AND IsDeleted = 0
+  `);
+
+  return result.rowsAffected[0] > 0;
 }
 
 /**
@@ -739,9 +1970,14 @@ async function getResultsBySession(sessionId) {
 }
 
 module.exports = {
-  // instruments (read-only)
+  // instruments
   listInstruments,
+  getDaBagianHistoryByQaId,
   getInstrumentById,
+  getInstrumentByTypeAndId,
+  createInstrument,
+  updateInstrument,
+  deleteInstrument,
   // standards
   listStandards,
   getStandardById,

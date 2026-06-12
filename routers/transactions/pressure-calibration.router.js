@@ -6,23 +6,30 @@
  * All routes for the pressure calibration module.
  * Mounted at: /pressure-calibration  (see routers/index.js)
  *
- * TODO: Uncomment `router.use(authentication)` to protect routes once
- *       authentication middleware has been verified for this module.
  */
 
 const express = require('express');
 const router  = express.Router();
 
-// const { authentication } = require('../../middlewares/authentication');
-// router.use(authentication);
+const { authentication } = require('../../middlewares/authentication');
 
 const ctrl = require('../../controllers/transactions/pressure-calibration.controller');
+
+// GET /pressure-calibration/da-bagian-history?qa_id=QA-BA-000004
+router.get('/da-bagian-history', authentication, ctrl.getDaBagianHistory);
 
 // ── Instruments (read-only) ──────────────────────────────────────────────────
 // GET  /api/pressure-calibration/instruments          – List instruments
 // GET  /api/pressure-calibration/instruments/:id      – Get one instrument
-router.get('/instruments',     ctrl.listInstruments);
-router.get('/instruments/:id', ctrl.getInstrument);
+router.get('/instruments',        ctrl.listInstruments);
+router.get('/instruments/export', ctrl.exportInstruments);
+router.get('/instruments/:instrumentType/:id', ctrl.getInstrumentByType);
+router.get('/instruments/:id',    ctrl.getInstrument);
+router.post('/instruments',    ctrl.createInstrument);
+router.put('/instruments/:instrumentType/:id',    ctrl.updateInstrument);
+router.put('/instruments/:id',                    ctrl.updateInstrument);
+router.delete('/instruments/:instrumentType/:id', ctrl.deleteInstrument);
+router.delete('/instruments/:id',                 ctrl.deleteInstrument);
 
 // ── Calibration Standards ────────────────────────────────────────────────────
 // GET  /api/pressure-calibration/standards            – List standards

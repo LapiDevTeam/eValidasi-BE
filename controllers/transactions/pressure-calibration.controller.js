@@ -8,12 +8,26 @@
  * Delegates all MSSQL I/O to pressure-calibration.repository.js.
  */
 
-const repo   = require('../../repositories/pressure-calibration.repository');
-const calSvc = require('../../services/pressure-calibration/calibration.service');
+const repo    = require('../../repositories/pressure-calibration.repository');
+const calSvc  = require('../../services/pressure-calibration/calibration.service');
+const ExcelJS = require('exceljs');
 
 function createBadRequestError(message) {
   const err = new Error(message);
   err.statusCode = 400;
+  return err;
+}
+
+function normalizeInstrumentWriteError(err) {
+  if (err?.statusCode) return err;
+
+  const message = String(err?.message || '');
+  if (/String or binary data would be truncated/i.test(message)) {
+    return createBadRequestError(
+      'One or more fields are too long. Please shorten the input and try again.'
+    );
+  }
+
   return err;
 }
 
@@ -66,6 +80,36 @@ function normalizeJenisKalibrasi(value) {
   if (/^external$/i.test(normalized)) return 'External';
 
   throw createBadRequestError('jenisKalibrasi must be Internal or External.');
+}
+
+function resolveInstrumentType(req) {
+  return normalizeString(req.params.instrumentType)
+    || normalizeString(req.body?.instrument_type)
+    || normalizeString(req.body?.instrumentType)
+    || normalizeString(req.query.instrument_type)
+    || normalizeString(req.query.instrumentType);
+}
+
+function resolveInstrumentSourceId(req) {
+  return normalizeString(req.params.id)
+    || normalizeString(req.body?.source_id)
+    || normalizeString(req.body?.sourceId)
+    || normalizeString(req.body?.qa_id)
+    || normalizeString(req.body?.qaId)
+    || normalizeString(req.query.source_id)
+    || normalizeString(req.query.sourceId)
+    || normalizeString(req.query.qa_id)
+    || normalizeString(req.query.qaId);
+}
+
+function buildInstrumentMeta(req) {
+  return {
+    userId: req.user?.user_id || req.user?.UserID || normalizeString(req.body?.user_id) || normalizeString(req.body?.userId),
+    delegatedTo: req.user?.delegated_to
+      || req.user?.delegatedTo
+      || normalizeString(req.body?.delegated_to)
+      || normalizeString(req.body?.delegatedTo),
+  };
 }
 
 function resolveIncludeWorkbookFormatted(req) {
@@ -140,7 +184,7 @@ function buildPointsPayload(points, fallbackUnit) {
 }
 
 // =============================================================================
-// INSTRUMENTS  (read-only, references existing master table)
+// INSTRUMENTS  (read-only, unified across existing instrument sources)
 // =============================================================================
 
 /**
@@ -151,7 +195,7 @@ function buildPointsPayload(points, fallbackUnit) {
  *   ?parameter=<text>
  *   ?location=<text>
  *   ?jenisKalibrasi=Internal|External
- *   ?includeExternal=true|false (default: false)
+ *   ?includeExternal=true|false (default: true)
  */
 const listInstruments = async (req, res, next) => {
   try {
@@ -161,10 +205,29 @@ const listInstruments = async (req, res, next) => {
       parameter:       normalizeString(req.query.parameter),
       location:        normalizeString(req.query.location),
       jenisKalibrasi:  normalizeJenisKalibrasi(req.query.jenisKalibrasi),
-      includeExternal: parseBooleanQuery(req.query.includeExternal, 'includeExternal', false),
+      includeExternal: parseBooleanQuery(req.query.includeExternal, 'includeExternal', true),
     };
 
     const data = await repo.listInstruments(filters);
+    res.status(200).json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * GET /pressure-calibration/da-bagian-history?qa_id=QA-BA-000004
+ */
+const getDaBagianHistory = async (req, res, next) => {
+  try {
+    const qaId = normalizeString(req.query.qa_id)
+      || normalizeString(req.query.qaId)
+      || normalizeString(req.query.QA_ID);
+
+    if (!qaId) throw createBadRequestError('qa_id is required.');
+
+    const data = await repo.getDaBagianHistoryByQaId(qaId);
     res.status(200).json(data);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
@@ -186,6 +249,178 @@ const getInstrument = async (req, res, next) => {
 
     res.status(200).json(data);
   } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /pressure-calibration/instruments/export
+ * Same query filters as listInstruments. Returns an xlsx file.
+ */
+const exportInstruments = async (req, res, next) => {
+  try {
+    const filters = {
+      search:          normalizeString(req.query.search),
+      department:      normalizeString(req.query.department),
+      parameter:       normalizeString(req.query.parameter),
+      location:        normalizeString(req.query.location),
+      jenisKalibrasi:  normalizeJenisKalibrasi(req.query.jenisKalibrasi),
+      includeExternal: parseBooleanQuery(req.query.includeExternal, 'includeExternal', true),
+    };
+
+    const rows = await repo.listInstruments(filters);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator  = 'eValidasi';
+    workbook.created  = new Date();
+
+    const sheet = workbook.addWorksheet('Master Instrumen');
+
+    sheet.columns = [
+      { header: 'QA ID',                 key: 'QA_ID',                      width: 18 },
+      { header: 'Jenis Instrumen',        key: 'instrument_type',             width: 22 },
+      { header: 'Jenis Kalibrasi',        key: 'Jenis_Kalibrasi',             width: 16 },
+      { header: 'Nama Instrumen',         key: 'Assm_nama_instrumen',         width: 32 },
+      { header: 'No Identitas Instrumen', key: 'Assm_No_identitas_Istrumen',  width: 24 },
+      { header: 'No Identitas Kalibrasi', key: 'Assm_No_identitas_kalibrasi', width: 24 },
+      { header: 'Bagian',                 key: 'Group_Da_Dept',               width: 14 },
+      { header: 'Kapasitas / Resolusi',   key: 'Assm_Kapasitas',              width: 22 },
+      { header: 'Parameter Kalibrasi',    key: 'Parameter_Kalibrasi',         width: 22 },
+      { header: 'Lokasi',                 key: 'Assm_Lokasi',                 width: 20 },
+      { header: 'Tanggal Kalibrasi',      key: 'Tgl_kalibrasi',               width: 18 },
+      { header: 'Interval (Bulan)',        key: 'Parameter_Interval',          width: 16 },
+      { header: 'Kalibrasi Selanjutnya',  key: 'Kalibrasi_selanjutnya',       width: 22 },
+      { header: 'Status',                 key: 'status',                      width: 14 },
+      { header: 'Keterangan',             key: 'Catatan',                     width: 30 },
+    ];
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0EA5E9' } };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height    = 20;
+
+    rows.forEach((row) => sheet.addRow(row));
+
+    sheet.autoFilter = {
+      from: { row: 1, column: 1 },
+      to:   { row: 1, column: sheet.columns.length },
+    };
+
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Master-Instrumen-${timestamp}.xlsx"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * GET /api/pressure-calibration/instruments/:instrumentType/:id
+ * For Risk_Assessment, :id is source_id/AssessmentID. For DA types, :id is QA_ID.
+ */
+const getInstrumentByType = async (req, res, next) => {
+  try {
+    const instrumentType = resolveInstrumentType(req);
+    const sourceId = resolveInstrumentSourceId(req);
+
+    if (!instrumentType) throw createBadRequestError('instrument_type is required.');
+    if (!sourceId) throw createBadRequestError('Instrument id is required.');
+
+    const data = await repo.getInstrumentByTypeAndId(instrumentType, sourceId);
+    if (!data) return res.status(404).json({ message: `Instrument ${sourceId} not found.` });
+
+    res.status(200).json(data);
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
+    next(err);
+  }
+};
+
+/**
+ * POST /api/pressure-calibration/instruments
+ * Body must include instrument_type.
+ */
+const createInstrument = async (req, res, next) => {
+  try {
+    const instrumentType = resolveInstrumentType(req);
+    if (!instrumentType) throw createBadRequestError('instrument_type is required.');
+
+    const data = await repo.createInstrument(instrumentType, req.body || {}, buildInstrumentMeta(req));
+    res.status(201).json(data);
+  } catch (err) {
+    const normalizedErr = normalizeInstrumentWriteError(err);
+    if (normalizedErr.statusCode) {
+      return res.status(normalizedErr.statusCode).json({ message: normalizedErr.message });
+    }
+    next(normalizedErr);
+  }
+};
+
+/**
+ * PUT /api/pressure-calibration/instruments/:instrumentType/:id
+ * For Risk_Assessment, :id is source_id/AssessmentID. For DA types, :id is QA_ID.
+ */
+const updateInstrument = async (req, res, next) => {
+  try {
+    const instrumentType = resolveInstrumentType(req);
+    const sourceId = resolveInstrumentSourceId(req);
+
+    if (!instrumentType) throw createBadRequestError('instrument_type is required.');
+    if (!sourceId) throw createBadRequestError('Instrument id is required.');
+
+    const data = await repo.updateInstrument(
+      instrumentType,
+      sourceId,
+      req.body || {},
+      buildInstrumentMeta(req)
+    );
+
+    if (!data) {
+      return res.status(404).json({ message: `Instrument ${sourceId} not found.` });
+    }
+
+    res.status(200).json(data);
+  } catch (err) {
+    const normalizedErr = normalizeInstrumentWriteError(err);
+    if (normalizedErr.statusCode) {
+      return res.status(normalizedErr.statusCode).json({ message: normalizedErr.message });
+    }
+    next(normalizedErr);
+  }
+};
+
+/**
+ * DELETE /api/pressure-calibration/instruments/:instrumentType/:id
+ * For Risk_Assessment, :id is source_id/AssessmentID. For DA types, :id is QA_ID.
+ */
+const deleteInstrument = async (req, res, next) => {
+  try {
+    const instrumentType = resolveInstrumentType(req);
+    const sourceId = resolveInstrumentSourceId(req);
+
+    if (!instrumentType) throw createBadRequestError('instrument_type is required.');
+    if (!sourceId) throw createBadRequestError('Instrument id is required.');
+
+    const deleted = await repo.deleteInstrument(instrumentType, sourceId, buildInstrumentMeta(req));
+    if (!deleted) {
+      return res.status(404).json({ message: `Instrument ${sourceId} not found.` });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Instrument deleted successfully.',
+      data: {
+        instrument_type: instrumentType,
+        source_id: sourceId,
+      },
+    });
+  } catch (err) {
+    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
     next(err);
   }
 };
@@ -452,7 +687,13 @@ const getResult = async (req, res, next) => {
 
 module.exports = {
   listInstruments,
+  getDaBagianHistory,
+  exportInstruments,
   getInstrument,
+  getInstrumentByType,
+  createInstrument,
+  updateInstrument,
+  deleteInstrument,
   listStandards,
   createStandard,
   updateStandard,

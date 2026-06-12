@@ -7,11 +7,12 @@ const handleError = async (err, req, res, _next) => {
     return res.status(err.code).json(err);
   }
 
-  let statusCode = 500;
-  let message = "Internal server error";
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({ message: err.message });
+  }
 
-  res.status(statusCode).json({
-    message,
+  res.status(500).json({
+    message: err.message || "Internal server error",
   });
 };
 
