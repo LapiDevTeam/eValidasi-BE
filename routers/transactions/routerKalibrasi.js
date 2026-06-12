@@ -6,6 +6,8 @@ const {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
   searchInstrumen,
+  countInstrumen,
+  getDashboardSummary,
   checkApproveButton,
   checkIsApproved,
   getFileDownload,
@@ -151,6 +153,8 @@ const {
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
 router.get("/permohonan/detail", authentication, getPermohonanDetail);
 router.get("/instrumen/search", authentication, searchInstrumen);
+router.get("/instrumen/count", authentication, countInstrumen);
+router.get("/dashboard/summary", authentication, getDashboardSummary);
 router.get("/permohonan/check-approve", authentication, checkApproveButton);
 router.get("/permohonan/is-approved", authentication, checkIsApproved);
 router.get("/permohonan/file", authentication, getFileDownload);

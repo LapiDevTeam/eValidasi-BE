@@ -32,6 +32,7 @@ const getPermohonanKalibrasiList = async (req, res, next) => {
         Lokasi,
         tgl_butuh,
         no_sertifikat_terakhir,
+        ISNULL(A.reject_remark, '') as reject_remark,
         dbo.fnGetNamaKaryawan(B.USER_ID) as Approver_Identity,
         CONVERT(varchar(20), B.Process_Date, 13) as Process_Date,
         dbo.fnGetNamaKaryawan(C.USER_ID) as Approver_MgrQA,
@@ -123,7 +124,8 @@ const getPermohonanDetail = async (req, res, next) => {
         Titik_pengukuran,
         Lokasi,
         tgl_butuh,
-        no_sertifikat_terakhir
+        no_sertifikat_terakhir,
+        ISNULL(reject_remark, '') as reject_remark
       FROM T_Kalibrasi_Permohonan
       WHERE No_Permohonan = :no_permohonan
     `;
@@ -179,7 +181,27 @@ const searchInstrumen = async (req, res, next) => {
     }
 
     const query = `
-      SELECT * FROM (
+      SELECT
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
+        CASE
+          WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
+          ELSE 'External'
+        END AS Jenis_Kalibrasi,
+        CASE
+          WHEN MAX(Kalibrasi_selanjutnya) IS NULL THEN 'Unknown'
+          WHEN MAX(Kalibrasi_selanjutnya) < GETDATE() THEN 'Overdue'
+          WHEN MAX(Kalibrasi_selanjutnya) <= DATEADD(DAY, 30, GETDATE()) THEN 'Due Soon'
+          ELSE 'Compliant'
+        END AS status
+      FROM (
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -188,9 +210,13 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Thermohygro
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -199,9 +225,13 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Anak_Timbangan
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -210,9 +240,13 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Timbangan
+
         UNION ALL
+
         SELECT DISTINCT
           QA_ID,
           Assm_nama_instrumen,
@@ -221,8 +255,26 @@ const searchInstrumen = async (req, res, next) => {
           Group_Da_Dept,
           Assm_Kapasitas,
           Parameter_Kalibrasi,
-          Assm_Lokasi
+          Assm_Lokasi,
+          ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Bagian
+
+        UNION ALL
+
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName AS Assm_nama_instrumen,
+          InstrumentCode AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi,
+          Group_Da_Dept,
+          Assm_Kapasitas,
+          Parameter_Kalibrasi,
+          Location AS Assm_Lokasi,
+          CAST(1 AS INT) AS Jenis_Kalibrasi,
+          NULL AS Kalibrasi_selanjutnya
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
       ) AS A
       WHERE (
         QA_ID LIKE :search OR
@@ -230,8 +282,18 @@ const searchInstrumen = async (req, res, next) => {
         Assm_No_identitas_Istrumen LIKE :search OR
         Assm_No_identitas_kalibrasi LIKE :search
       )
+      GROUP BY
+        QA_ID,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi
       ORDER BY 1
     `;
+
 
     const results = await sequelizeMSQL.query(query, {
       replacements: { search: `%${search}%` },
@@ -247,6 +309,177 @@ const searchInstrumen = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in searchInstrumen:', error);
+    next(error);
+  }
+};
+
+/**
+ * Dashboard Summary
+ * Returns Total Alat, Due Soon, Overdue, and Compliant counts
+ */
+const getDashboardSummary = async (req, res, next) => {
+  try {
+    let { month, year } = req.query;
+
+    // Normalize input
+    month = month ? month.toString().padStart(2, "0") : null;
+    year = year || null;
+
+    const replacements = {};
+
+    // Only apply filter if BOTH month & year exist
+    let dateFilter = "";
+
+    if (month && year) {
+      month = month.toString().padStart(2, "0");
+
+      replacements.month = parseInt(month, 10);
+      replacements.year = parseInt(year, 10);
+
+      dateFilter = `
+        WHERE YEAR(latest_date) = :year
+        AND MONTH(latest_date) = :month
+      `;
+    }
+    const totalQuery = `
+      SELECT COUNT(*) as total FROM (
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Thermohygro
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Anak_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Bagian
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName AS Assm_nama_instrumen,
+          InstrumentCode AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
+      ) AS A
+    `;
+
+    const statusQuery = `
+      SELECT
+        SUM(CASE WHEN latest_date < GETDATE() THEN 1 ELSE 0 END) AS overdue,
+        SUM(CASE WHEN latest_date >= GETDATE() AND latest_date <= DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS due_soon,
+        SUM(CASE WHEN latest_date > DATEADD(DAY, 30, GETDATE()) THEN 1 ELSE 0 END) AS compliant
+      FROM (
+        SELECT *
+        FROM (
+          SELECT QA_ID, MAX(Kalibrasi_selanjutnya) AS latest_date
+          FROM (
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Thermohygro WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Anak_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Bagian WHERE Kalibrasi_selanjutnya IS NOT NULL
+          ) AS all_dates
+          GROUP BY QA_ID
+        ) AS latest_per_instrument
+        ${dateFilter}   -- ← optional filter here
+      ) AS filtered_latest
+    `;
+
+    const [totalResults, statusResults] = await Promise.all([
+      sequelizeMSQL.query(totalQuery, {
+        type: Sequelize.QueryTypes.SELECT,
+      }),
+      sequelizeMSQL.query(statusQuery, {
+        type: Sequelize.QueryTypes.SELECT,
+        replacements,
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Data fetched successfully",
+      data: {
+        total_alat: totalResults[0]?.total || 0,
+        due_soon: statusResults[0]?.due_soon || 0,
+        overdue: statusResults[0]?.overdue || 0,
+        compliant: statusResults[0]?.compliant || 0,
+      },
+    });
+
+  } catch (error) {
+    console.error("Error in getDashboardSummary:", error);
+    next(error);
+  }
+};
+
+/**
+ * Count Instrumen
+ * Returns total count of instruments across all kalibrasi tables
+ */
+const countInstrumen = async (req, res, next) => {
+  try {
+    const query = `
+      SELECT COUNT(*) as total FROM (
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Thermohygro
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Anak_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Timbangan
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          Assm_nama_instrumen,
+          Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM T_Kalibrasi_DA_Bagian
+        UNION ALL
+        SELECT DISTINCT
+          QA_ID,
+          InstrumentName          AS Assm_nama_instrumen,
+          InstrumentCode          AS Assm_No_identitas_Istrumen,
+          Assm_No_identitas_kalibrasi
+        FROM RA_CalibrationAssessment
+        WHERE IsDeleted = 0
+      ) AS A
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        total: results[0].total
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in countInstrumen:', error);
     next(error);
   }
 };
@@ -749,6 +982,7 @@ const savePermohonanKalibrasi = async (req, res, next) => {
           Assm_Kapasitas = :kapasitas,
           Assm_Lokasi = :lokasi,
           Titik_pengukuran_kalibrasi = :titik_pengukuran${fileNameClause},
+          reject_remark = NULL,
           UserID = :user_id,
           Delegated_To = :delegated_to,
           Process_date = GETDATE()
@@ -1165,6 +1399,8 @@ module.exports = {
   getPermohonanKalibrasiList,
   getPermohonanDetail,
   searchInstrumen,
+  countInstrumen,
+  getDashboardSummary,
   checkApproveButton,
   checkIsApproved,
   getFileDownload,

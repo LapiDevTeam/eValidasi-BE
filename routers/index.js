@@ -9,8 +9,11 @@ const routerSertifikasiKalibrasiBAGIAN = require("../routers/transactions/sertif
 const routerSertifikasiKalibrasiBAGIAN_DA = require("../routers/transactions/sertifikasi-Kalibrasi-Bagian-DA.router");
 const routerPenghapusanAlat = require("../routers/transactions/penghapusan-alat.router");
 const routerAuditTrail = require("../routers/transactions/auditTrail.router");
+const routerCalibrationRiskAssessment = require("../routers/transactions/calibration-risk-assessment.router");
+const routerPressureCalibration = require("../routers/transactions/pressure-calibration.router");
+const routerCalibrationWorkbook = require("../routers/transactions/calibration-workbook.router");
 const { authentication } = require("../middlewares/authentication");
-
+const masterRouter = require("../routers/transactions/master-router");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -38,5 +41,9 @@ router.use("/transactions/kalibrasi/sertifikat-bagian", routerSertifikasiKalibra
 router.use("/transactions/da-bagian", routerSertifikasiKalibrasiBAGIAN_DA);
 router.use("/transactions/penghapusan-alat", routerPenghapusanAlat);
 router.use("/audit-trail", routerAuditTrail);
+router.use("/api/calibration-risk-assessments", routerCalibrationRiskAssessment);
+router.use("/pressure-calibration", routerPressureCalibration);
+router.use("/api", routerCalibrationWorkbook);
+router.use("/master", masterRouter);
 
 module.exports = router;
