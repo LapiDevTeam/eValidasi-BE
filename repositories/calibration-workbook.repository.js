@@ -116,38 +116,38 @@ async function createSession(payload, transaction) {
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by))
     .query(`
-      INSERT INTO [dbo].[calibration_sessions]
-      (
-        session_code,
-        instrument_id,
-        instrument_code,
-        instrument_name,
-        calibration_date,
-        unit_mode,
-        status,
-        pic,
-        temperature,
-        humidity,
-        notes,
-        created_by
-      )
-      OUTPUT INSERTED.session_id
-      VALUES
-      (
-        @SessionCode,
-        @InstrumentId,
-        @InstrumentCode,
-        @InstrumentName,
-        @CalibrationDate,
-        @UnitMode,
-        @Status,
-        @Pic,
-        @Temperature,
-        @Humidity,
-        @Notes,
-        @CreatedBy
-      )
-    `);
+    INSERT INTO [dbo].[calibration_sessions]
+    (
+      session_code,
+      instrument_id,
+      instrument_code,
+      instrument_name,
+      calibration_date,
+      unit_mode,
+      status,
+      pic,
+      temperature,
+      humidity,
+      notes,
+      created_by
+    )
+    OUTPUT INSERTED.session_id
+    VALUES
+    (
+      @SessionCode,
+      @InstrumentId,
+      @InstrumentCode,
+      @InstrumentName,
+      @CalibrationDate,
+      @UnitMode,
+      @Status,
+      @Pic,
+      @Temperature,
+      @Humidity,
+      @Notes,
+      @CreatedBy
+    )
+  `);
 
   return result.recordset[0].session_id;
 }
@@ -169,23 +169,23 @@ async function updateSession(sessionId, payload, transaction) {
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
     .input('UpdatedBy', sql.VarChar(100), toDbNull(payload.updated_by))
     .query(`
-      UPDATE [dbo].[calibration_sessions]
-      SET
-        session_code     = @SessionCode,
-        instrument_id    = @InstrumentId,
-        instrument_code  = @InstrumentCode,
-        instrument_name  = @InstrumentName,
-        calibration_date = @CalibrationDate,
-        unit_mode        = @UnitMode,
-        status           = @Status,
-        pic              = @Pic,
-        temperature      = @Temperature,
-        humidity         = @Humidity,
-        notes            = @Notes,
-        updated_by       = @UpdatedBy,
-        updated_at       = GETDATE()
-      WHERE session_id = @SessionId
-    `);
+    UPDATE [dbo].[calibration_sessions]
+    SET
+      session_code     = @SessionCode,
+      instrument_id    = @InstrumentId,
+      instrument_code  = @InstrumentCode,
+      instrument_name  = @InstrumentName,
+      calibration_date = @CalibrationDate,
+      unit_mode        = @UnitMode,
+      status           = @Status,
+      pic              = @Pic,
+      temperature      = @Temperature,
+      humidity         = @Humidity,
+      notes            = @Notes,
+      updated_by       = @UpdatedBy,
+      updated_at       = GETDATE()
+    WHERE session_id = @SessionId
+  `);
 
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
@@ -1683,7 +1683,6 @@ async function createSertifikatBagianDraftFromDa(
           Assm_nama_instrumen,
           Assm_No_identitas_Istrumen,
           Assm_No_identitas_kalibrasi,
-          Assm_Merk,
           Assm_Kapasitas,
           Assm_Lokasi,
           Group_Da_Dept,
@@ -1702,7 +1701,6 @@ async function createSertifikatBagianDraftFromDa(
         Assm_nama_instrumen,
         Assm_No_identitas_Istrumen,
         Assm_No_identitas_kalibrasi,
-        '' AS Assm_Merk,
         Assm_Kapasitas,
         Assm_Lokasi,
         Group_Da_Dept,
@@ -1725,8 +1723,6 @@ async function updateSertifikatBagianHeader(payload, transaction) {
     .input('IdNoSertifikat', sql.VarChar(50), payload.id_no_sertifikat)
     .input('AssmNamaInstrumen', sql.VarChar(255), toDbNull(payload.assm_nama_instrumen))
     .input('AssmNoIdentitasKalibrasi', sql.VarChar(255), toDbNull(payload.assm_no_identitas_kalibrasi))
-    .input('AssmMerk', sql.VarChar(255), toDbNull(payload.assm_merk))
-    .input('SerialNumber', sql.VarChar(255), toDbNull(payload.serial_number))
     .input('AssmKapasitas', sql.VarChar(255), toDbNull(payload.assm_kapasitas))
     .input('AssmLokasi', sql.VarChar(255), toDbNull(payload.assm_lokasi))
     .input('Nama', sql.VarChar(255), toDbNull(payload.nama))
@@ -1746,8 +1742,6 @@ async function updateSertifikatBagianHeader(payload, transaction) {
       SET
         Assm_nama_instrumen = @AssmNamaInstrumen,
         Assm_No_identitas_kalibrasi = @AssmNoIdentitasKalibrasi,
-        Assm_Merk = @AssmMerk,
-        SERIAL_NUMBER = @SerialNumber,
         Assm_Kapasitas = @AssmKapasitas,
         Assm_Lokasi = @AssmLokasi,
         Nama = @Nama,
