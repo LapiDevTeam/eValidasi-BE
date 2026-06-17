@@ -643,6 +643,8 @@ const saveSession = async (req, res, next) => {
     } else {
       const inserted = await sequelizeMSQL.query(
         `
+          DECLARE @InsertedSession TABLE (Session_ID BIGINT);
+
           INSERT INTO ${SESSION_TABLE}
           (
             QA_ID,
@@ -661,7 +663,7 @@ const saveSession = async (req, res, next) => {
             Delegated_To,
             Process_Date
           )
-          OUTPUT INSERTED.Session_ID
+          OUTPUT INSERTED.Session_ID INTO @InsertedSession
           VALUES
           (
             :qaId,
@@ -680,6 +682,8 @@ const saveSession = async (req, res, next) => {
             :delegatedTo,
             GETDATE()
           )
+
+          SELECT Session_ID FROM @InsertedSession
         `,
         {
           replacements,
@@ -706,14 +710,9 @@ const saveSession = async (req, res, next) => {
 const listSessions = async (req, res, next) => {
   try {
     const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } = req.query;
+    const searchText = String(req.query.search || '').trim();
+    const search = normalizeSearch(searchText);
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
-
-    if (!qaId || !idNoSertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'QA_ID and ID_No_Sertifikat are required',
-      });
-    }
 
     if (!(await sessionTableExists())) {
       return res.status(200).json({
@@ -724,31 +723,72 @@ const listSessions = async (req, res, next) => {
       });
     }
 
+    const whereParts = [];
+    const replacements = {};
+
+    if (qaId) {
+      whereParts.push('S.QA_ID = :qaId');
+      replacements.qaId = qaId;
+    }
+
+    if (idNoSertifikat) {
+      whereParts.push('S.ID_No_Sertifikat = :idNoSertifikat');
+      replacements.idNoSertifikat = idNoSertifikat;
+    }
+
+    if (searchText) {
+      whereParts.push(`
+        (
+          CAST(S.Session_ID AS NVARCHAR(30)) LIKE :search
+          OR S.QA_ID LIKE :search
+          OR S.ID_No_Sertifikat LIKE :search
+          OR S.Status LIKE :search
+          OR S.UserID LIKE :search
+          OR C.Assm_nama_instrumen LIKE :search
+          OR C.Assm_No_identitas_kalibrasi LIKE :search
+          OR C.No_Sertifikat LIKE :search
+          OR C.Assm_Lokasi LIKE :search
+        )
+      `);
+      replacements.search = search;
+    }
+
+    const whereClause = whereParts.length
+      ? `WHERE ${whereParts.join(' AND ')}`
+      : '';
+
     const rows = await sequelizeMSQL.query(
       `
         SELECT TOP ${limit}
-          Session_ID,
-          QA_ID,
-          ID_No_Sertifikat,
-          Include_RH,
-          Suhu_Repeat_Count,
-          RH_Repeat_Count,
-          Suhu_Unit,
-          RH_Unit,
-          Suhu_Coefficient_Mode,
-          RH_Coefficient_Mode,
-          Status,
-          UserID,
-          Delegated_To,
-          Process_Date,
-          Update_Date
-        FROM ${SESSION_TABLE}
-        WHERE QA_ID = :qaId
-          AND ID_No_Sertifikat = :idNoSertifikat
-        ORDER BY ISNULL(Update_Date, Process_Date) DESC, Session_ID DESC
+          S.Session_ID,
+          S.QA_ID,
+          S.ID_No_Sertifikat,
+          S.Include_RH,
+          S.Suhu_Repeat_Count,
+          S.RH_Repeat_Count,
+          S.Suhu_Unit,
+          S.RH_Unit,
+          S.Suhu_Coefficient_Mode,
+          S.RH_Coefficient_Mode,
+          S.Status,
+          S.UserID,
+          S.Delegated_To,
+          S.Process_Date,
+          S.Update_Date,
+          C.Assm_nama_instrumen,
+          C.Assm_No_identitas_kalibrasi,
+          C.Assm_Lokasi,
+          C.No_Sertifikat,
+          C.Tgl_kalibrasi
+        FROM ${SESSION_TABLE} AS S
+        LEFT JOIN T_Kalibrasi_Sertifikat_Thermohygro AS C
+          ON C.QA_ID = S.QA_ID
+         AND C.ID_No_Sertifikat = S.ID_No_Sertifikat
+        ${whereClause}
+        ORDER BY ISNULL(S.Update_Date, S.Process_Date) DESC, S.Session_ID DESC
       `,
       {
-        replacements: { qaId, idNoSertifikat },
+        replacements,
         type: Sequelize.QueryTypes.SELECT,
       }
     );

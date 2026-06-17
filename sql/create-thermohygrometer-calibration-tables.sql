@@ -19,29 +19,36 @@ BEGIN
     Delegated_To NVARCHAR(100) NULL,
     Process_Date DATETIME NOT NULL CONSTRAINT DF_ThermoWorkbook_ProcessDate DEFAULT (GETDATE()),
     Update_Date DATETIME NULL
-  );
-END;
+  )
+END
 GO
 
 IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session', 'U') IS NOT NULL
 BEGIN
-  DECLARE @SuhuUnitDefaultName SYSNAME;
-
-  SELECT @SuhuUnitDefaultName = dc.name
-  FROM sys.default_constraints AS dc
-  INNER JOIN sys.columns AS c
-    ON c.object_id = dc.parent_object_id
-   AND c.column_id = dc.parent_column_id
-  WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
-    AND c.name = 'Suhu_Unit';
-
-  IF @SuhuUnitDefaultName IS NOT NULL
+  IF EXISTS (
+    SELECT 1
+    FROM sys.default_constraints
+    WHERE name = 'DF_ThermoWorkbook_Suhu_Unit'
+      AND parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
+  )
   BEGIN
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session DROP CONSTRAINT ' + QUOTENAME(@SuhuUnitDefaultName));
-  END;
+    ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
+    DROP CONSTRAINT DF_ThermoWorkbook_Suhu_Unit
+  END
 
-  ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
-  ADD CONSTRAINT DF_ThermoWorkbook_Suhu_Unit DEFAULT (NCHAR(176) + N'C') FOR Suhu_Unit;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM sys.default_constraints AS dc
+    INNER JOIN sys.columns AS c
+      ON c.object_id = dc.parent_object_id
+     AND c.column_id = dc.parent_column_id
+    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
+      AND c.name = 'Suhu_Unit'
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
+    ADD CONSTRAINT DF_ThermoWorkbook_Suhu_Unit DEFAULT (NCHAR(176) + N'C') FOR Suhu_Unit
+  END
 
   IF NOT EXISTS (
     SELECT 1
@@ -55,8 +62,8 @@ BEGIN
     CHECK (
       Suhu_Repeat_Count BETWEEN 1 AND 12
       AND (RH_Repeat_Count IS NULL OR RH_Repeat_Count BETWEEN 1 AND 12)
-    );
-  END;
+    )
+  END
 
   IF NOT EXISTS (
     SELECT 1
@@ -70,9 +77,9 @@ BEGIN
     CHECK (
       Suhu_Coefficient_Mode IN (N'global', N'per-row')
       AND (RH_Coefficient_Mode IS NULL OR RH_Coefficient_Mode IN (N'global', N'per-row'))
-    );
-  END;
-END;
+    )
+  END
+END
 GO
 
 IF NOT EXISTS (
@@ -88,8 +95,8 @@ BEGIN
     QA_ID,
     ID_No_Sertifikat,
     Session_ID DESC
-  );
-END;
+  )
+END
 GO
 
 IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist', 'U') IS NULL
@@ -116,12 +123,14 @@ BEGIN
     Update_Date DATETIME NULL,
     Flag_Update CHAR(1) NOT NULL,
     Change_Date DATETIME NOT NULL CONSTRAINT DF_ThermoWorkbookHist_ChangeDate DEFAULT (GETDATE())
-  );
-END;
+  )
+END
 GO
 
 IF OBJECT_ID('dbo.TR_T_Kalibrasi_Thermohygro_Workbook_Session_Hist', 'TR') IS NOT NULL
-  DROP TRIGGER dbo.TR_T_Kalibrasi_Thermohygro_Workbook_Session_Hist;
+BEGIN
+  DROP TRIGGER dbo.TR_T_Kalibrasi_Thermohygro_Workbook_Session_Hist
+END
 GO
 
 CREATE TRIGGER dbo.TR_T_Kalibrasi_Thermohygro_Workbook_Session_Hist
@@ -129,7 +138,7 @@ ON dbo.T_Kalibrasi_Thermohygro_Workbook_Session
 AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   INSERT INTO dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist
   (
@@ -172,7 +181,7 @@ BEGIN
     i.Update_Date,
     CASE WHEN d.Session_ID IS NULL THEN 'I' ELSE 'U' END
   FROM inserted AS i
-  LEFT JOIN deleted AS d ON d.Session_ID = i.Session_ID;
+  LEFT JOIN deleted AS d ON d.Session_ID = i.Session_ID
 
   INSERT INTO dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist
   (
@@ -216,6 +225,6 @@ BEGIN
     'D'
   FROM deleted AS d
   LEFT JOIN inserted AS i ON i.Session_ID = d.Session_ID
-  WHERE i.Session_ID IS NULL;
-END;
+  WHERE i.Session_ID IS NULL
+END
 GO
