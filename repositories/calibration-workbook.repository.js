@@ -2,6 +2,7 @@
 
 const sql = require('mssql');
 const { configMssql } = require('../config/configMssql');
+const { hasCertificateGenerator } = require('../src/constants/certificateTypeCodes');
 
 let _pool = null;
 
@@ -1651,9 +1652,36 @@ async function getSertifikatBagianHeader(qaId, idNoSertifikat, transaction) {
 }
 
 async function getNextTekananCertificateNumber(transaction) {
+  // Dipertahankan untuk pemanggil lama (modul Tekanan). Setara getNextCertificateNumberByCode('P').
+  return getNextCertificateNumberByCode('P', transaction);
+}
+
+/**
+ * Generate nomor sertifikat berikutnya sesuai KODE parameter kalibrasi.
+ * Memanggil fungsi SQL dbo.fnGetKal_Ser_<KODE>_No_ID() yang sesuai
+ * (mis. 'R' utk Timer, 'M' utk Timbangan, 'P' utk Tekanan).
+ *
+ * Acuan kode: src/constants/certificateTypeCodes.js
+ *
+ * @param {string} code - kode huruf parameter (mis. 'R', 'M', 'P')
+ * @param {object} [transaction]
+ * @returns {Promise<string|null>}
+ */
+async function getNextCertificateNumberByCode(code, transaction) {
+  const normalized = String(code || '').toUpperCase().trim();
+  if (!hasCertificateGenerator(normalized)) {
+    const err = new Error(
+      `Belum tersedia generator nomor sertifikat untuk kode "${normalized || '(kosong)'}". ` +
+        'Hubungi tim DB untuk menambahkan fungsi dbo.fnGetKal_Ser_' +
+        `${normalized || 'X'}_No_ID().`
+    );
+    err.statusCode = 500;
+    throw err;
+  }
+  // `normalized` sudah ter-whitelist (hanya A-Z dari daftar kode), aman diinterpolasi.
   const request = await createRequest(transaction);
   const result = await request.query(`
-    SELECT dbo.fnGetKal_Ser_P_No_ID() AS id_no_sertifikat
+    SELECT dbo.fnGetKal_Ser_${normalized}_No_ID() AS id_no_sertifikat
   `);
   return result.recordset[0]?.id_no_sertifikat || null;
 }
@@ -1882,6 +1910,7 @@ module.exports = {
   insertDaBagianStatus,
   getSertifikatBagianHeader,
   getNextTekananCertificateNumber,
+  getNextCertificateNumberByCode,
   createSertifikatBagianDraftFromDa,
   updateSertifikatBagianHeader,
   replaceSertifikatBagianHasilKalRows,

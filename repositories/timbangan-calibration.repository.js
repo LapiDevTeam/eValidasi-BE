@@ -692,6 +692,7 @@ module.exports = {
   createSertifikatBagianDraftFromTimbanganDa,
   getDaBagianByQaId: workbookRepo.getDaBagianByQaId,
   getNextTekananCertificateNumber: workbookRepo.getNextTekananCertificateNumber,
+  getNextCertificateNumberByCode: workbookRepo.getNextCertificateNumberByCode,
   getSertifikatBagianHeader: workbookRepo.getSertifikatBagianHeader,
   updateSertifikatBagianHeader: workbookRepo.updateSertifikatBagianHeader,
   replaceSertifikatBagianHasilKalRows: workbookRepo.replaceSertifikatBagianHasilKalRows,
