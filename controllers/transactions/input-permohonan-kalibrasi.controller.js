@@ -4,6 +4,399 @@ const moment = require('moment');
 const { uploadFileToFTP, downloadFileFromFTP, deleteFileFromFTP, formatFileName, getFileExtension } = require('../../helpers/ftp.helper');
 const fs = require('fs');
 const path = require('path');
+const { validateAssessmentBody } = require('../../validators/calibration-risk-assessment.validator');
+const { calculateDecision } = require('../../services/calibration-risk-assessment.service');
+
+const riskAssessmentSelectColumns = `
+  AssessmentID, InstrumentName, InstrumentCode, Location,
+  FunctionDescription, Area,
+  ImpactsProductQualityCQA, UsedForCPP, UsedForGxPEnvironment,
+  UsedForBatchRelease, ImpactsSafety, IsImpactCritical,
+  Severity, Probability, Detectability, RPN,
+  RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
+  CalibrationDecision, DecisionReason,
+  Status, IsDeleted, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt,
+  QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+  Parameter_Kalibrasi, No_Permohonan
+`;
+
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function validatePermohonanPayload(body) {
+  const { kategori_permohonan, ket_rekalibrasi, tgl_butuh } = body;
+
+  if (!kategori_permohonan || kategori_permohonan.trim() === '') {
+    throw createHttpError(400, 'Kategori Permohonan harus di isi');
+  }
+
+  if (!tgl_butuh || String(tgl_butuh).trim() === '') {
+    throw createHttpError(400, 'Tanggal butuh harus diisi');
+  }
+
+  if (kategori_permohonan === 'Re-Kalibrasi' && (!ket_rekalibrasi || ket_rekalibrasi.trim() === '')) {
+    throw createHttpError(400, 'Keterangan Re-Kalibrasi harus di isi!');
+  }
+}
+
+async function savePermohonanRecord(user, body, transaction) {
+  const { user_id, delegated_to, bagian_user } = user;
+  const {
+    no_permohonan,
+    kategori_permohonan,
+    qa_id_rekalibrasi,
+    ket_rekalibrasi,
+    nama_instrumen,
+    no_identitas_istrumen,
+    no_identitas_kalibrasi,
+    alat_ukur_kalibrasi,
+    merk,
+    kapasitas,
+    jumlah,
+    fungsi,
+    titik_pengukuran,
+    lokasi,
+    tgl_butuh,
+    no_sertifikat_terakhir,
+    file_name
+  } = body;
+
+  validatePermohonanPayload(body);
+
+  const formattedTglButuh = moment(tgl_butuh).format('YYYY/MM/DD');
+  const isNew = !no_permohonan || no_permohonan === 'Auto' || no_permohonan === '';
+
+  if (isNew) {
+    const autoNumResults = await sequelizeMSQL.query(
+      `SELECT dbo.fnGet_NO_Kal_mohon(:bagian_user) as autoNum`,
+      {
+        replacements: { bagian_user },
+        type: Sequelize.QueryTypes.SELECT,
+        transaction,
+      }
+    );
+
+    const autoNum = autoNumResults[0].autoNum;
+    let v_file_name = '';
+    if (file_name && file_name.trim() !== '') {
+      const fileNameCleaned = autoNum.replace(/\//g, '_');
+      v_file_name = file_name.includes('.') ? file_name : `${fileNameCleaned}.${file_name}`;
+    }
+
+    await sequelizeMSQL.query(`
+      INSERT INTO T_Kalibrasi_Permohonan(
+        No_Permohonan, tanggal, kategori_permohonan, QA_ID_rekalibrasi,
+        Ket_Rekalibrasi, pemohon, bagian, nama_instrumen,
+        No_identitas_Istrumen, No_identitas_kalibrasi, Alat_ukur_kalibrasi,
+        Merk, Kapasitas, Jumlah, fungsi, Titik_pengukuran, Lokasi,
+        tgl_butuh, no_sertifikat_terakhir, Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi,
+        Assm_Alat_ukur_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi,
+        Titik_pengukuran_kalibrasi, Group_Da_Dept, FILE_NAME, UserID,
+        Delegated_To, Process_date
+      )
+      VALUES(
+        :no_permohonan, GETDATE(), :kategori_permohonan, :qa_id_rekalibrasi,
+        :ket_rekalibrasi, :user_id, :bagian_user, :nama_instrumen,
+        :no_identitas_istrumen, :no_identitas_kalibrasi, :alat_ukur_kalibrasi,
+        :merk, :kapasitas, :jumlah, :fungsi, :titik_pengukuran, :lokasi,
+        :tgl_butuh, :no_sertifikat_terakhir, :nama_instrumen,
+        :no_identitas_istrumen, :no_identitas_kalibrasi,
+        :alat_ukur_kalibrasi, :merk, :kapasitas, :lokasi,
+        :titik_pengukuran, :bagian_user, :file_name, :user_id,
+        :delegated_to, GETDATE()
+      )
+    `, {
+      replacements: {
+        no_permohonan: autoNum,
+        kategori_permohonan: kategori_permohonan || '',
+        qa_id_rekalibrasi: qa_id_rekalibrasi || '',
+        ket_rekalibrasi: ket_rekalibrasi || '',
+        user_id,
+        bagian_user,
+        nama_instrumen: nama_instrumen || '',
+        no_identitas_istrumen: no_identitas_istrumen || '',
+        no_identitas_kalibrasi: no_identitas_kalibrasi || '',
+        alat_ukur_kalibrasi: alat_ukur_kalibrasi || '',
+        merk: merk || '',
+        kapasitas: kapasitas || '',
+        jumlah: jumlah || '',
+        fungsi: fungsi || '',
+        titik_pengukuran: titik_pengukuran || '',
+        lokasi: lokasi || '',
+        tgl_butuh: formattedTglButuh,
+        no_sertifikat_terakhir: no_sertifikat_terakhir || '',
+        file_name: v_file_name,
+        delegated_to
+      },
+      type: Sequelize.QueryTypes.INSERT,
+      transaction,
+    });
+
+    return { no_permohonan: autoNum, isNew: true };
+  }
+
+  const approvedResults = await sequelizeMSQL.query(`
+    SELECT *
+    FROM t_Kalibrasi_Status
+    WHERE No_Permohonan = :no_permohonan
+      AND Approver_No = 1
+  `, {
+    replacements: { no_permohonan },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+
+  if (approvedResults.length > 0) {
+    throw createHttpError(400, 'Data sudah approve, tidak bisa diupdate!');
+  }
+
+  let fileNameClause = '';
+  let v_file_name = '';
+  if (file_name && file_name.trim() !== '') {
+    const fileNameCleaned = no_permohonan.replace(/\//g, '_');
+    v_file_name = file_name.includes('.') ? file_name : `${fileNameCleaned}.${file_name}`;
+    fileNameClause = `, FILE_NAME = :file_name`;
+  }
+
+  await sequelizeMSQL.query(`
+    UPDATE T_Kalibrasi_Permohonan
+    SET
+      QA_ID_rekalibrasi = :qa_id_rekalibrasi,
+      Ket_Rekalibrasi = :ket_rekalibrasi,
+      nama_instrumen = :nama_instrumen,
+      No_identitas_Istrumen = :no_identitas_istrumen,
+      No_identitas_kalibrasi = :no_identitas_kalibrasi,
+      Alat_ukur_kalibrasi = :alat_ukur_kalibrasi,
+      Merk = :merk,
+      Kapasitas = :kapasitas,
+      Jumlah = :jumlah,
+      fungsi = :fungsi,
+      Titik_pengukuran = :titik_pengukuran,
+      Lokasi = :lokasi,
+      tgl_butuh = :tgl_butuh,
+      no_sertifikat_terakhir = :no_sertifikat_terakhir,
+      Assm_nama_instrumen = :nama_instrumen,
+      Assm_No_identitas_Istrumen = :no_identitas_istrumen,
+      Assm_No_identitas_kalibrasi = :no_identitas_kalibrasi,
+      Assm_Alat_ukur_kalibrasi = :alat_ukur_kalibrasi,
+      Assm_Merk = :merk,
+      Assm_Kapasitas = :kapasitas,
+      Assm_Lokasi = :lokasi,
+      Titik_pengukuran_kalibrasi = :titik_pengukuran${fileNameClause},
+      reject_remark = NULL,
+      UserID = :user_id,
+      Delegated_To = :delegated_to,
+      Process_date = GETDATE()
+    WHERE No_Permohonan = :no_permohonan
+  `, {
+    replacements: {
+      no_permohonan,
+      qa_id_rekalibrasi: qa_id_rekalibrasi || '',
+      ket_rekalibrasi: ket_rekalibrasi || '',
+      nama_instrumen: nama_instrumen || '',
+      no_identitas_istrumen: no_identitas_istrumen || '',
+      no_identitas_kalibrasi: no_identitas_kalibrasi || '',
+      alat_ukur_kalibrasi: alat_ukur_kalibrasi || '',
+      merk: merk || '',
+      kapasitas: kapasitas || '',
+      jumlah: jumlah || '',
+      fungsi: fungsi || '',
+      titik_pengukuran: titik_pengukuran || '',
+      lokasi: lokasi || '',
+      tgl_butuh: formattedTglButuh,
+      no_sertifikat_terakhir: no_sertifikat_terakhir || '',
+      file_name: v_file_name,
+      user_id,
+      delegated_to
+    },
+    type: Sequelize.QueryTypes.UPDATE,
+    transaction,
+  });
+
+  return { no_permohonan, isNew: false };
+}
+
+function buildRiskAssessmentPayload(body, decision, noPermohonan, userId) {
+  return {
+    instrumentName: body.instrumentName,
+    instrumentCode: body.instrumentCode || null,
+    location: body.location || null,
+    functionDescription: body.functionDescription || null,
+    area: body.area || null,
+    impactsProductQualityCQA: body.impactAssessment.impactsProductQualityCQA ? 1 : 0,
+    usedForCPP: body.impactAssessment.usedForCPP ? 1 : 0,
+    usedForGxPEnvironment: body.impactAssessment.usedForGxPEnvironment ? 1 : 0,
+    usedForBatchRelease: body.impactAssessment.usedForBatchRelease ? 1 : 0,
+    impactsSafety: body.impactAssessment.impactsSafety ? 1 : 0,
+    isImpactCritical: decision.isImpactCritical ? 1 : 0,
+    severity: decision.isImpactCritical ? null : Number(body.severity),
+    probability: decision.isImpactCritical ? null : Number(body.probability),
+    detectability: decision.isImpactCritical ? null : Number(body.detectability),
+    severityNote: decision.isImpactCritical ? null : (body.severityNote || null),
+    probabilityNote: decision.isImpactCritical ? null : (body.probabilityNote || null),
+    detectabilityNote: decision.isImpactCritical ? null : (body.detectabilityNote || null),
+    rpn: decision.rpn,
+    riskCategory: decision.riskCategory,
+    calibrationDecision: decision.calibrationDecision,
+    decisionReason: decision.decisionReason,
+    status: body.status || 'Draft',
+    userId,
+    qaId: body.qaId || null,
+    assmNoIdentitasKalibrasi: body.assmNoIdentitasKalibrasi || null,
+    groupDaDept: body.groupDaDept || null,
+    assmKapasitas: body.assmKapasitas || null,
+    parameterKalibrasi: body.parameterKalibrasi || null,
+    noPermohonan,
+  };
+}
+
+async function getRiskAssessmentById(assessmentId, transaction) {
+  const rows = await sequelizeMSQL.query(`
+    SELECT ${riskAssessmentSelectColumns}
+    FROM RA_CalibrationAssessment
+    WHERE AssessmentID = :assessmentId
+      AND IsDeleted = 0
+  `, {
+    replacements: { assessmentId },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+
+  return rows[0] || null;
+}
+
+async function saveRiskAssessmentRecord(user, body, noPermohonan, transaction) {
+  const assessmentId = Number(body.assessmentId || body.AssessmentID || 0);
+  const errors = validateAssessmentBody(body);
+  if (errors.length > 0) {
+    throw createHttpError(400, errors.join(' '));
+  }
+
+  const decision = calculateDecision({
+    impactAssessment: body.impactAssessment,
+    severity: body.severity,
+    probability: body.probability,
+    detectability: body.detectability,
+  });
+
+  const payload = buildRiskAssessmentPayload(body, decision, noPermohonan, user.user_id);
+  const replacements = {
+    InstrumentName: payload.instrumentName,
+    InstrumentCode: payload.instrumentCode,
+    Location: payload.location,
+    FunctionDescription: payload.functionDescription,
+    Area: payload.area,
+    ImpactsProductQualityCQA: payload.impactsProductQualityCQA,
+    UsedForCPP: payload.usedForCPP,
+    UsedForGxPEnvironment: payload.usedForGxPEnvironment,
+    UsedForBatchRelease: payload.usedForBatchRelease,
+    ImpactsSafety: payload.impactsSafety,
+    IsImpactCritical: payload.isImpactCritical,
+    Severity: payload.severity,
+    Probability: payload.probability,
+    Detectability: payload.detectability,
+    RPN: payload.rpn,
+    RiskCategory: payload.riskCategory,
+    SeverityNote: payload.severityNote,
+    ProbabilityNote: payload.probabilityNote,
+    DetectabilityNote: payload.detectabilityNote,
+    CalibrationDecision: payload.calibrationDecision,
+    DecisionReason: payload.decisionReason,
+    Status: payload.status,
+    UserId: payload.userId,
+    QA_ID: payload.qaId,
+    Assm_No_identitas_kalibrasi: payload.assmNoIdentitasKalibrasi,
+    Group_Da_Dept: payload.groupDaDept,
+    Assm_Kapasitas: payload.assmKapasitas,
+    Parameter_Kalibrasi: payload.parameterKalibrasi,
+    No_Permohonan: payload.noPermohonan,
+  };
+
+  if (assessmentId > 0) {
+    const existing = await getRiskAssessmentById(assessmentId, transaction);
+    if (!existing) {
+      throw createHttpError(404, 'Assessment not found.');
+    }
+
+    await sequelizeMSQL.query(`
+      UPDATE RA_CalibrationAssessment
+      SET
+        InstrumentName = :InstrumentName,
+        InstrumentCode = :InstrumentCode,
+        Location = :Location,
+        FunctionDescription = :FunctionDescription,
+        Area = :Area,
+        ImpactsProductQualityCQA = :ImpactsProductQualityCQA,
+        UsedForCPP = :UsedForCPP,
+        UsedForGxPEnvironment = :UsedForGxPEnvironment,
+        UsedForBatchRelease = :UsedForBatchRelease,
+        ImpactsSafety = :ImpactsSafety,
+        IsImpactCritical = :IsImpactCritical,
+        Severity = :Severity,
+        Probability = :Probability,
+        Detectability = :Detectability,
+        RPN = :RPN,
+        RiskCategory = :RiskCategory,
+        SeverityNote = :SeverityNote,
+        ProbabilityNote = :ProbabilityNote,
+        DetectabilityNote = :DetectabilityNote,
+        CalibrationDecision = :CalibrationDecision,
+        DecisionReason = :DecisionReason,
+        QA_ID = :QA_ID,
+        Assm_No_identitas_kalibrasi = :Assm_No_identitas_kalibrasi,
+        Group_Da_Dept = :Group_Da_Dept,
+        Assm_Kapasitas = :Assm_Kapasitas,
+        Parameter_Kalibrasi = :Parameter_Kalibrasi,
+        No_Permohonan = :No_Permohonan,
+        UpdatedBy = :UserId,
+        UpdatedAt = GETDATE()
+      WHERE AssessmentID = :AssessmentID
+        AND IsDeleted = 0
+    `, {
+      replacements: { ...replacements, AssessmentID: assessmentId },
+      type: Sequelize.QueryTypes.UPDATE,
+      transaction,
+    });
+
+    return getRiskAssessmentById(assessmentId, transaction);
+  }
+
+  const insertResult = await sequelizeMSQL.query(`
+    INSERT INTO RA_CalibrationAssessment (
+      InstrumentName, InstrumentCode, Location, FunctionDescription, Area,
+      ImpactsProductQualityCQA, UsedForCPP, UsedForGxPEnvironment,
+      UsedForBatchRelease, ImpactsSafety, IsImpactCritical,
+      Severity, Probability, Detectability, RPN,
+      RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
+      CalibrationDecision, DecisionReason,
+      Status, IsDeleted, CreatedBy, CreatedAt,
+      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
+      Parameter_Kalibrasi, No_Permohonan
+    )
+    VALUES (
+      :InstrumentName, :InstrumentCode, :Location, :FunctionDescription, :Area,
+      :ImpactsProductQualityCQA, :UsedForCPP, :UsedForGxPEnvironment,
+      :UsedForBatchRelease, :ImpactsSafety, :IsImpactCritical,
+      :Severity, :Probability, :Detectability, :RPN,
+      :RiskCategory, :SeverityNote, :ProbabilityNote, :DetectabilityNote,
+      :CalibrationDecision, :DecisionReason,
+      :Status, 0, :UserId, GETDATE(),
+      :QA_ID, :Assm_No_identitas_kalibrasi, :Group_Da_Dept, :Assm_Kapasitas,
+      :Parameter_Kalibrasi, :No_Permohonan
+    );
+    SELECT CAST(SCOPE_IDENTITY() AS INT) AS AssessmentID;
+  `, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+
+  return getRiskAssessmentById(insertResult[0].AssessmentID, transaction);
+}
 
 
 const getPermohonanKalibrasiList = async (req, res, next) => {
@@ -107,27 +500,58 @@ const getPermohonanDetail = async (req, res, next) => {
 
     const query = `
       SELECT
-        pemohon,
-        bagian,
-        tanggal,
-        kategori_permohonan,
-        QA_ID_rekalibrasi,
-        Ket_Rekalibrasi,
-        nama_instrumen,
-        No_identitas_Istrumen,
-        No_identitas_kalibrasi,
-        Alat_ukur_kalibrasi,
-        Merk,
-        Kapasitas,
-        Jumlah,
-        fungsi,
-        Titik_pengukuran,
-        Lokasi,
-        tgl_butuh,
-        no_sertifikat_terakhir,
-        ISNULL(reject_remark, '') as reject_remark
-      FROM T_Kalibrasi_Permohonan
-      WHERE No_Permohonan = :no_permohonan
+        A.pemohon,
+        A.bagian,
+        A.tanggal,
+        A.kategori_permohonan,
+        A.QA_ID_rekalibrasi,
+        A.Ket_Rekalibrasi,
+        A.nama_instrumen,
+        A.No_identitas_Istrumen,
+        A.No_identitas_kalibrasi,
+        A.Alat_ukur_kalibrasi,
+        A.Merk,
+        A.Kapasitas,
+        A.Jumlah,
+        A.fungsi,
+        A.Titik_pengukuran,
+        A.Lokasi,
+        A.tgl_butuh,
+        A.no_sertifikat_terakhir,
+        ISNULL(A.reject_remark, '') as reject_remark,
+        RA.AssessmentID as RiskAssessmentID,
+        RA.InstrumentName as RiskInstrumentName,
+        RA.InstrumentCode as RiskInstrumentCode,
+        RA.Location as RiskLocation,
+        RA.FunctionDescription as RiskFunctionDescription,
+        RA.Area as RiskArea,
+        RA.ImpactsProductQualityCQA,
+        RA.UsedForCPP,
+        RA.UsedForGxPEnvironment,
+        RA.UsedForBatchRelease,
+        RA.ImpactsSafety,
+        RA.IsImpactCritical,
+        RA.Severity,
+        RA.Probability,
+        RA.Detectability,
+        RA.RPN,
+        RA.RiskCategory,
+        RA.SeverityNote,
+        RA.ProbabilityNote,
+        RA.DetectabilityNote,
+        RA.CalibrationDecision,
+        RA.DecisionReason,
+        RA.Status as RiskStatus,
+        RA.QA_ID as RiskQA_ID,
+        RA.Assm_No_identitas_kalibrasi as RiskAssm_No_identitas_kalibrasi,
+        RA.Group_Da_Dept as RiskGroup_Da_Dept,
+        RA.Assm_Kapasitas as RiskAssm_Kapasitas,
+        RA.Parameter_Kalibrasi as RiskParameter_Kalibrasi
+      FROM T_Kalibrasi_Permohonan A
+      LEFT JOIN RA_CalibrationAssessment RA
+        ON RA.No_Permohonan = A.No_Permohonan
+       AND RA.IsDeleted = 0
+      WHERE A.No_Permohonan = :no_permohonan
     `;
 
     const results = await sequelizeMSQL.query(query, {
@@ -1028,6 +1452,57 @@ const savePermohonanKalibrasi = async (req, res, next) => {
   }
 };
 
+const savePermohonanKalibrasiWithRiskAssessment = async (req, res, next) => {
+  try {
+    const { permohonan, riskAssessment } = req.body;
+
+    if (!permohonan || typeof permohonan !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'permohonan payload is required'
+      });
+    }
+
+    if (!riskAssessment || typeof riskAssessment !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'riskAssessment payload is required'
+      });
+    }
+
+    const result = await sequelizeMSQL.transaction(async (transaction) => {
+      const savedPermohonan = await savePermohonanRecord(req.user, permohonan, transaction);
+      const savedRiskAssessment = await saveRiskAssessmentRecord(
+        req.user,
+        riskAssessment,
+        savedPermohonan.no_permohonan,
+        transaction
+      );
+
+      return {
+        no_permohonan: savedPermohonan.no_permohonan,
+        risk_assessment: savedRiskAssessment,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Permohonan kalibrasi and risk assessment have been saved',
+      data: result
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    console.error('Error in savePermohonanKalibrasiWithRiskAssessment:', error);
+    next(error);
+  }
+};
+
 /**
  * Delete Permohonan Kalibrasi (cmd_Del_Click)
  * Deletes calibration request if not approved
@@ -1406,6 +1881,7 @@ module.exports = {
   getFileDownload,
   downloadFileKalibrasi,
   savePermohonanKalibrasi,
+  savePermohonanKalibrasiWithRiskAssessment,
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,
   getApproverIdentity,

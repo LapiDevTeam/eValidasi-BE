@@ -13,6 +13,7 @@ const {
   getFileDownload,
   downloadFileKalibrasi,
   savePermohonanKalibrasi,
+  savePermohonanKalibrasiWithRiskAssessment,
   deletePermohonanKalibrasi,
   approvePermohonanKalibrasi,
   getApproverIdentity,
@@ -161,6 +162,7 @@ router.get("/permohonan/file", authentication, getFileDownload);
 router.get("/permohonan/download", authentication, downloadFileKalibrasi);
 router.get("/approver/identity", authentication, getApproverIdentity);
 router.post("/permohonan/save", authentication, savePermohonanKalibrasi);
+router.post("/permohonan/save-with-risk-assessment", authentication, savePermohonanKalibrasiWithRiskAssessment);
 router.post("/permohonan/approve", authentication, approvePermohonanKalibrasi);
 router.post("/permohonan/upload", authentication, checkFileSizePublic, uploadFileKalibrasi);
 router.delete("/permohonan/delete", authentication, deletePermohonanKalibrasi);
