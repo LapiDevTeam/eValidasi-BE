@@ -58,6 +58,7 @@ async function create(data) {
   request.input('Group_Da_Dept',               sql.NVarChar(50),        data.groupDaDept                 || null);
   request.input('Assm_Kapasitas',              sql.NVarChar(100),       data.assmKapasitas               || null);
   request.input('Parameter_Kalibrasi',         sql.NVarChar(100),       data.parameterKalibrasi          || null);
+  request.input('No_Permohonan',               sql.NVarChar(50),        data.noPermohonan                || null);
 
   const result = await request.query(`
     INSERT INTO RA_CalibrationAssessment (
@@ -68,7 +69,8 @@ async function create(data) {
       RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
       CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt,
-      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
+      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi,
+      No_Permohonan
     )
     VALUES (
       @InstrumentName, @InstrumentCode, @Location, @FunctionDescription, @Area,
@@ -78,7 +80,8 @@ async function create(data) {
       @RiskCategory, @SeverityNote, @ProbabilityNote, @DetectabilityNote,
       @CalibrationDecision, @DecisionReason,
       @Status, 0, @CreatedBy, GETDATE(),
-      @QA_ID, @Assm_No_identitas_kalibrasi, @Group_Da_Dept, @Assm_Kapasitas, @Parameter_Kalibrasi
+      @QA_ID, @Assm_No_identitas_kalibrasi, @Group_Da_Dept, @Assm_Kapasitas, @Parameter_Kalibrasi,
+      @No_Permohonan
     );
     SELECT SCOPE_IDENTITY() AS AssessmentID;
   `);
@@ -132,7 +135,8 @@ async function findAll({ decision, category, instrumentCode, status, keyword } =
       RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
       CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt,
-      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
+      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi,
+      No_Permohonan
     FROM RA_CalibrationAssessment
     ${whereClause}
     ORDER BY CreatedAt DESC
@@ -160,7 +164,8 @@ async function findById(id) {
       RiskCategory, SeverityNote, ProbabilityNote, DetectabilityNote,
       CalibrationDecision, DecisionReason,
       Status, IsDeleted, CreatedBy, CreatedAt, UpdatedBy, UpdatedAt,
-      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi
+      QA_ID, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi,
+      No_Permohonan
     FROM RA_CalibrationAssessment
     WHERE AssessmentID = @AssessmentID
       AND IsDeleted = 0
@@ -204,6 +209,7 @@ async function update(id, data) {
   request.input('Group_Da_Dept',                sql.NVarChar(50),        data.groupDaDept                  || null);
   request.input('Assm_Kapasitas',               sql.NVarChar(100),       data.assmKapasitas                || null);
   request.input('Parameter_Kalibrasi',          sql.NVarChar(100),       data.parameterKalibrasi           || null);
+  request.input('No_Permohonan',                sql.NVarChar(50),        data.noPermohonan                 || null);
 
   await request.query(`
     UPDATE RA_CalibrationAssessment
@@ -234,6 +240,7 @@ async function update(id, data) {
       Group_Da_Dept            = @Group_Da_Dept,
       Assm_Kapasitas           = @Assm_Kapasitas,
       Parameter_Kalibrasi      = @Parameter_Kalibrasi,
+      No_Permohonan            = @No_Permohonan,
       UpdatedBy                = @UpdatedBy,
       UpdatedAt                = GETDATE()
     WHERE AssessmentID = @AssessmentID

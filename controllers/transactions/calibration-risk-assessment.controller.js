@@ -26,6 +26,7 @@ function buildPayload(body, decision) {
     groupDaDept,
     assmKapasitas,
     parameterKalibrasi,
+    noPermohonan,
   } = body;
 
   return {
@@ -57,6 +58,7 @@ function buildPayload(body, decision) {
     groupDaDept:             groupDaDept             || null,
     assmKapasitas:           assmKapasitas           || null,
     parameterKalibrasi:      parameterKalibrasi      || null,
+    noPermohonan:            noPermohonan            || null,
   };
 }
 
@@ -159,6 +161,9 @@ const updateAssessment = async (req, res, next) => {
     });
 
     const payload = buildPayload(req.body, decision);
+    if (req.body.noPermohonan === undefined) {
+      payload.noPermohonan = existing.No_Permohonan || null;
+    }
     payload.updatedBy = user_id;
 
     await repo.update(id, payload);

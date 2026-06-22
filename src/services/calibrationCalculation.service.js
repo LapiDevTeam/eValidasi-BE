@@ -22,6 +22,116 @@ function buildValidationError(errors) {
   return err;
 }
 
+const SQL_INT_MAX = 2147483647;
+const PUBLISH_FIELD_LABELS = {
+  qa_id: 'QA ID',
+  id_no_sertifikat: 'Certificate number',
+  jenis_kalibrasi: 'Calibration type',
+  assm_nama_instrumen: 'Instrument name',
+  assm_no_identitas_istrumen: 'Instrument ID',
+  assm_no_identitas_kalibrasi: 'Calibration ID',
+  assm_merk: 'Brand / Type',
+  serial_number: 'Serial number',
+  group_da_dept: 'Department',
+  assm_kapasitas: 'Capacity / Resolution',
+  parameter_kalibrasi: 'Calibration parameter',
+  assm_lokasi: 'Location',
+  nama: 'Standard name',
+  no_ident_no_batch: 'Standard identity / batch number',
+  no_sertifikat: 'Standard certificate number',
+  tertelusur_melalui: 'Traceability reference',
+  rekalibrasi: 'Recalibration note',
+  metode_kalibrasi: 'Calibration method',
+  suhu_kelembaban: 'Temperature / humidity note',
+  catatan: 'Notes',
+  user_id: 'User ID',
+  delegated_to: 'Delegated to',
+  approver_identity: 'Approver identity',
+  interval: 'Interval',
+};
+
+function getPublishFieldLabel(field) {
+  return PUBLISH_FIELD_LABELS[field] || field;
+}
+
+function pushMaxLengthError(errors, field, value, maxLength) {
+  if (value === undefined || value === null) return;
+  const normalized = String(value).trim();
+  if (!normalized) return;
+  if (normalized.length > maxLength) {
+    errors.push({
+      field,
+      message: `${getPublishFieldLabel(field)} cannot exceed ${maxLength} characters.`,
+    });
+  }
+}
+
+function pushPositiveIntegerError(errors, field, value) {
+  if (value === undefined || value === null || value === '') return;
+  if (!Number.isInteger(value) || value < 1 || value > SQL_INT_MAX) {
+    errors.push({
+      field,
+      message: `${getPublishFieldLabel(field)} must be a whole number between 1 and ${SQL_INT_MAX}.`,
+    });
+  }
+}
+
+function validatePublishLengths({ daPayload, headerPayload, actor, delegatedActor, approverIdentity }) {
+  const errors = [];
+
+  const draftSafeLimits = {
+    qa_id: 50,
+    jenis_kalibrasi: 1,
+    assm_nama_instrumen: 1000,
+    assm_no_identitas_istrumen: 50,
+    assm_no_identitas_kalibrasi: 50,
+    assm_merk: 50,
+    serial_number: 50,
+    group_da_dept: 50,
+    assm_kapasitas: 50,
+    parameter_kalibrasi: 50,
+    assm_lokasi: 1000,
+    catatan: 500,
+  };
+
+  const headerLimits = {
+    qa_id: 50,
+    id_no_sertifikat: 50,
+    assm_nama_instrumen: 1000,
+    assm_no_identitas_kalibrasi: 50,
+    assm_merk: 50,
+    serial_number: 50,
+    assm_kapasitas: 50,
+    assm_lokasi: 1000,
+    nama: 2000,
+    no_ident_no_batch: 50,
+    no_sertifikat: 50,
+    tertelusur_melalui: 50,
+    rekalibrasi: 50,
+    metode_kalibrasi: 50,
+    suhu_kelembaban: 50,
+    catatan: 500,
+    user_id: 50,
+    delegated_to: 50,
+  };
+
+  Object.entries(draftSafeLimits).forEach(([field, maxLength]) => {
+    pushMaxLengthError(errors, field, daPayload?.[field], maxLength);
+  });
+  Object.entries(headerLimits).forEach(([field, maxLength]) => {
+    pushMaxLengthError(errors, field, headerPayload?.[field], maxLength);
+  });
+
+  pushMaxLengthError(errors, 'user_id', actor, 10);
+  pushMaxLengthError(errors, 'delegated_to', delegatedActor, 10);
+  pushMaxLengthError(errors, 'approver_identity', approverIdentity, 50);
+  pushPositiveIntegerError(errors, 'interval', headerPayload?.interval);
+
+  if (errors.length) {
+    throw buildValidationError(errors);
+  }
+}
+
 function getPointLabel(point) {
   const nominal = point?.nominal_value;
   const unit = point?.unit || '';
@@ -434,72 +544,79 @@ async function publishSessionToSertifikatBagian(
     const existingDaTgl = toDateOrNull(existingDa?.Tgl_kalibrasi);
     const finalTglKalibrasi = requestedTgl || sessionCalDate || existingDaTgl || new Date();
 
-    await repo.upsertDaBagian(
-      {
-        qa_id: qaId,
-        jenis_kalibrasi:
-          publishOptions.jenis_kalibrasi
-          ?? existingDa?.Jenis_kalibrasi
-          ?? qaCandidate?.Jenis_kalibrasi
-          ?? '1',
-        parameter_sertifikasi: 'Tekanan',
-        assm_nama_instrumen:
-          publishOptions.assm_nama_instrumen
-          ?? publishOptions.instrument_name
-          ?? session.instrument_name
-          ?? existingDa?.Assm_nama_instrumen
-          ?? qaCandidate?.Assm_nama_instrumen
-          ?? '',
-        assm_no_identitas_istrumen:
-          publishOptions.assm_no_identitas_istrumen
-          ?? session.instrument_code
-          ?? existingDa?.Assm_No_identitas_Istrumen
-          ?? qaCandidate?.Assm_No_identitas_Istrumen
-          ?? '',
-        assm_no_identitas_kalibrasi:
-          publishOptions.assm_no_identitas_kalibrasi
-          ?? session.instrument_code
-          ?? existingDa?.Assm_No_identitas_kalibrasi
-          ?? qaCandidate?.Assm_No_identitas_kalibrasi
-          ?? '',
-        group_da_dept:
-          publishOptions.group_da_dept
-          ?? existingDa?.Group_Da_Dept
-          ?? qaCandidate?.Group_Da_Dept
-          ?? '',
-        assm_kapasitas:
-          publishOptions.assm_kapasitas
-          ?? existingDa?.Assm_Kapasitas
-          ?? qaCandidate?.Assm_Kapasitas
-          ?? '',
-        parameter_kalibrasi:
-          publishOptions.parameter_kalibrasi
-          ?? existingDa?.Parameter_Kalibrasi
-          ?? qaCandidate?.Parameter_Kalibrasi
-          ?? 'Pressure Calibration',
-        assm_lokasi:
-          publishOptions.assm_lokasi
-          ?? existingDa?.Assm_Lokasi
-          ?? qaCandidate?.Assm_Lokasi
-          ?? '',
-        tgl_kalibrasi: finalTglKalibrasi,
-        parameter_interval_int: finalInterval,
-        parameter_interval_text: String(finalInterval),
-        catatan:
-          publishOptions.catatan
-          ?? session.notes
-          ?? existingDa?.Catatan
-          ?? qaCandidate?.Catatan
-          ?? '',
-        user_id: actor,
-        delegated_to: delegatedActor,
-      },
-      transaction
-    );
+    const daPayload = {
+      qa_id: qaId,
+      jenis_kalibrasi:
+        publishOptions.jenis_kalibrasi
+        ?? existingDa?.Jenis_kalibrasi
+        ?? qaCandidate?.Jenis_kalibrasi
+        ?? '1',
+      parameter_sertifikasi: 'Tekanan',
+      assm_nama_instrumen:
+        publishOptions.assm_nama_instrumen
+        ?? publishOptions.instrument_name
+        ?? session.instrument_name
+        ?? existingDa?.Assm_nama_instrumen
+        ?? qaCandidate?.Assm_nama_instrumen
+        ?? '',
+      assm_no_identitas_istrumen:
+        publishOptions.assm_no_identitas_istrumen
+        ?? session.instrument_code
+        ?? existingDa?.Assm_No_identitas_Istrumen
+        ?? qaCandidate?.Assm_No_identitas_Istrumen
+        ?? '',
+      assm_no_identitas_kalibrasi:
+        publishOptions.assm_no_identitas_kalibrasi
+        ?? session.instrument_code
+        ?? existingDa?.Assm_No_identitas_kalibrasi
+        ?? qaCandidate?.Assm_No_identitas_kalibrasi
+        ?? '',
+      group_da_dept:
+        publishOptions.group_da_dept
+        ?? existingDa?.Group_Da_Dept
+        ?? qaCandidate?.Group_Da_Dept
+        ?? '',
+      assm_kapasitas:
+        publishOptions.assm_kapasitas
+        ?? existingDa?.Assm_Kapasitas
+        ?? qaCandidate?.Assm_Kapasitas
+        ?? '',
+      parameter_kalibrasi:
+        publishOptions.parameter_kalibrasi
+        ?? existingDa?.Parameter_Kalibrasi
+        ?? qaCandidate?.Parameter_Kalibrasi
+        ?? 'Pressure Calibration',
+      assm_lokasi:
+        publishOptions.assm_lokasi
+        ?? existingDa?.Assm_Lokasi
+        ?? qaCandidate?.Assm_Lokasi
+        ?? '',
+      tgl_kalibrasi: finalTglKalibrasi,
+      parameter_interval_int: finalInterval,
+      parameter_interval_text: String(finalInterval),
+      catatan:
+        publishOptions.catatan
+        ?? session.notes
+        ?? existingDa?.Catatan
+        ?? qaCandidate?.Catatan
+        ?? '',
+      user_id: actor,
+      delegated_to: delegatedActor,
+    };
 
     const daApproverIdentity =
       (await repo.getApproverIdentity('KAL_DA_Bagian', 1, actor, transaction))
       || '0';
+
+    validatePublishLengths({
+      daPayload,
+      actor,
+      delegatedActor,
+      approverIdentity: daApproverIdentity,
+    });
+
+    await repo.upsertDaBagian(daPayload, transaction);
+
     await repo.deleteDaBagianStatusByQaId(qaId, transaction);
     await repo.insertDaBagianStatus(
       {
@@ -571,8 +688,6 @@ async function publishSessionToSertifikatBagian(
         publishOptions.assm_no_identitas_kalibrasi
         ?? header.Assm_No_identitas_kalibrasi
         ?? '',
-      assm_merk: publishOptions.assm_merk ?? header.Assm_Merk ?? '',
-      serial_number: publishOptions.serial_number ?? header.SERIAL_NUMBER ?? '',
       assm_kapasitas: publishOptions.assm_kapasitas ?? header.Assm_Kapasitas ?? '',
       assm_lokasi: publishOptions.assm_lokasi ?? header.Assm_Lokasi ?? '',
       nama: publishOptions.nama ?? header.Nama ?? '',
@@ -595,6 +710,14 @@ async function publishSessionToSertifikatBagian(
       user_id: actor,
       delegated_to: delegatedActor,
     };
+
+    validatePublishLengths({
+      daPayload,
+      headerPayload: updateHeaderPayload,
+      actor,
+      delegatedActor,
+      approverIdentity: daApproverIdentity,
+    });
 
     const updatedHeader = await repo.updateSertifikatBagianHeader(
       updateHeaderPayload,
