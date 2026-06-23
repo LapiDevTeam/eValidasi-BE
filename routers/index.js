@@ -15,6 +15,7 @@ const routerThermohygrometerCalibration = require("../routers/transactions/therm
 const routerCalibrationWorkbook = require("../routers/transactions/calibration-workbook.router");
 const routerTimerCalibration = require("../routers/transactions/timer-calibration.router");
 const routerTimbanganCalibration = require("../routers/transactions/timbangan-calibration.router");
+const routerTorqueMeterCalibration = require("../routers/transactions/torque-meter-calibration.router");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
 
@@ -48,6 +49,7 @@ router.use("/api/calibration-risk-assessments", routerCalibrationRiskAssessment)
 router.use("/pressure-calibration", routerPressureCalibration);
 router.use("/thermohygrometer-calibration", routerThermohygrometerCalibration);
 router.use("/api", routerCalibrationWorkbook);
+router.use("/torque-meter-calibration", routerTorqueMeterCalibration);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
 router.use("/master", masterRouter);

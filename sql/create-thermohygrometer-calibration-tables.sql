@@ -1,10 +1,10 @@
-IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session', 'U') IS NULL
+﻿IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
   (
     Session_ID BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-    QA_ID NVARCHAR(50) NOT NULL,
-    ID_No_Sertifikat NVARCHAR(50) NOT NULL,
+    QA_ID NVARCHAR(50) NULL,
+    ID_No_Sertifikat NVARCHAR(50) NULL,
     Include_RH BIT NOT NULL CONSTRAINT DF_ThermoWorkbook_Include_RH DEFAULT (0),
     Suhu_Repeat_Count INT NOT NULL CONSTRAINT DF_ThermoWorkbook_Suhu_Repeat DEFAULT (3),
     RH_Repeat_Count INT NULL,
@@ -25,6 +25,67 @@ GO
 
 IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session', 'U') IS NOT NULL
 BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = 'IX_ThermoWorkbook_QA_Sertifikat'
+      AND object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
+  )
+  BEGIN
+    DROP INDEX IX_ThermoWorkbook_QA_Sertifikat
+    ON dbo.T_Kalibrasi_Thermohygro_Workbook_Session
+  END
+
+  IF EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
+      AND name = 'QA_ID'
+      AND is_nullable = 0
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
+    ALTER COLUMN QA_ID NVARCHAR(50) NULL
+  END
+
+  IF EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session')
+      AND name = 'ID_No_Sertifikat'
+      AND is_nullable = 0
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session
+    ALTER COLUMN ID_No_Sertifikat NVARCHAR(50) NULL
+  END
+
+  IF OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist', 'U') IS NOT NULL
+  BEGIN
+    IF EXISTS (
+      SELECT 1
+      FROM sys.columns
+      WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist')
+        AND name = 'QA_ID'
+        AND is_nullable = 0
+    )
+    BEGIN
+      ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist
+      ALTER COLUMN QA_ID NVARCHAR(50) NULL
+    END
+
+    IF EXISTS (
+      SELECT 1
+      FROM sys.columns
+      WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist')
+        AND name = 'ID_No_Sertifikat'
+        AND is_nullable = 0
+    )
+    BEGIN
+      ALTER TABLE dbo.T_Kalibrasi_Thermohygro_Workbook_Session_Hist
+      ALTER COLUMN ID_No_Sertifikat NVARCHAR(50) NULL
+    END
+  END
   IF EXISTS (
     SELECT 1
     FROM sys.default_constraints
@@ -105,8 +166,8 @@ BEGIN
   (
     Hist_ID BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     Session_ID BIGINT NOT NULL,
-    QA_ID NVARCHAR(50) NOT NULL,
-    ID_No_Sertifikat NVARCHAR(50) NOT NULL,
+    QA_ID NVARCHAR(50) NULL,
+    ID_No_Sertifikat NVARCHAR(50) NULL,
     Include_RH BIT NOT NULL,
     Suhu_Repeat_Count INT NOT NULL,
     RH_Repeat_Count INT NULL,
@@ -228,3 +289,5 @@ BEGIN
   WHERE i.Session_ID IS NULL
 END
 GO
+
+

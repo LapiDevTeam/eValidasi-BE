@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
@@ -213,7 +213,17 @@ function textValue(value) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+function parseNumberValue(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = typeof value === 'string'
+    ? value.replace(',', '.').trim()
+    : value;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
 function parseCalibrationDate(value) {
+  if (!value) return null;
   const parsed = moment(
     value,
     ['YYYY-MM-DD', 'DD-MMM-YYYY', 'DD-MMM-YYYY HH:mm:ss', moment.ISO_8601],
@@ -283,6 +293,234 @@ function normalizeStatus(value, hasResult) {
     .trim()
     .toUpperCase();
   return (status || 'DRAFT').slice(0, 20);
+}
+
+function buildThermoResultRows(channelResult = {}) {
+  const points = Array.isArray(channelResult?.points) ? channelResult.points : [];
+  return points.map((point, index) => ({
+    seqId: index + 1,
+    pembacaanAlat: parseNumberValue(point.uutAverage),
+    pembacaanStandar: parseNumberValue(point.actualStd),
+    error: parseNumberValue(point.error),
+    ketidakpastian: parseNumberValue(point.u95),
+  }));
+}
+
+async function getNextThermoCertificateNumber(transaction) {
+  const rows = await sequelizeMSQL.query(
+    'SELECT dbo.fnGetKal_Ser_L_No_ID() as ID_No_sertifikat',
+    {
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+  return rows[0]?.ID_No_sertifikat || '';
+}
+
+async function thermoCertificateHeaderExists(qaId, idNoSertifikat, transaction) {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1 QA_ID, ID_No_Sertifikat
+      FROM T_Kalibrasi_Sertifikat_Thermohygro
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+  return Boolean(rows.length);
+}
+
+async function ensureThermoCertificateHeader({ qaId, idNoSertifikat, userId, delegatedTo, transaction }) {
+  if (await thermoCertificateHeaderExists(qaId, idNoSertifikat, transaction)) return true;
+
+  await sequelizeMSQL.query(
+    `
+      INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro
+      (
+        QA_ID,
+        ID_no_sertifikat,
+        Jenis_kalibrasi,
+        isSert_manual,
+        tgl,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        Tgl_kalibrasi,
+        Interval,
+        Catatan,
+        UserID,
+        Delegated_To,
+        Process_date
+      )
+      SELECT
+        QA_ID,
+        :idNoSertifikat AS ID_no_sertifikat,
+        Jenis_kalibrasi,
+        1 AS isSert_manual,
+        GETDATE() AS Tgl,
+        Assm_nama_instrumen,
+        Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi,
+        Group_Da_Dept,
+        Assm_Kapasitas,
+        Parameter_Kalibrasi,
+        Assm_Lokasi,
+        Tgl_kalibrasi,
+        Parameter_Interval,
+        Catatan,
+        :userId AS UserID,
+        :delegatedTo AS Delegated_To,
+        GETDATE() AS Process_date
+      FROM T_Kalibrasi_DA_Thermohygro
+      WHERE QA_ID = :qaId
+    `,
+    {
+      replacements: { qaId, idNoSertifikat, userId, delegatedTo },
+      type: Sequelize.QueryTypes.INSERT,
+      transaction,
+    }
+  );
+
+  return thermoCertificateHeaderExists(qaId, idNoSertifikat, transaction);
+}
+
+async function updateThermoCertificateHeader({ qaId, idNoSertifikat, header, userId, delegatedTo, transaction }) {
+  const normalized = normalizeHeaderPayload({
+    ...header,
+    QA_ID: qaId,
+    ID_No_Sertifikat: idNoSertifikat,
+  });
+  const parsedDate = parseCalibrationDate(normalized.tglKalibrasi);
+  const sqlDate = parsedDate ? parsedDate.utcOffset(7).format('YYYY-MM-DD') : null;
+
+  await sequelizeMSQL.query(
+    `
+      UPDATE T_Kalibrasi_Sertifikat_Thermohygro
+      SET
+        Assm_nama_instrumen = COALESCE(NULLIF(:assm_nama_instrumen, ''), Assm_nama_instrumen),
+        Assm_No_identitas_kalibrasi = COALESCE(NULLIF(:assm_no_identitas_kalibrasi, ''), Assm_No_identitas_kalibrasi),
+        Assm_Merk = COALESCE(NULLIF(:assm_merk, ''), Assm_Merk),
+        SERIAL_NUMBER = COALESCE(NULLIF(:serial_number, ''), SERIAL_NUMBER),
+        Assm_Kapasitas = COALESCE(NULLIF(:assm_kapasitas, ''), Assm_Kapasitas),
+        Assm_Lokasi = COALESCE(NULLIF(:assm_lokasi, ''), Assm_Lokasi),
+        Nama = COALESCE(NULLIF(:nama, ''), Nama),
+        No_Ident_No_batch = COALESCE(NULLIF(:no_ident_no_batch, ''), No_Ident_No_batch),
+        No_Sertifikat = COALESCE(NULLIF(:no_sertifikat, ''), No_Sertifikat),
+        Tertelusur_melalui = COALESCE(NULLIF(:tertelusur_melalui, ''), Tertelusur_melalui),
+        Rekalibrasi = COALESCE(NULLIF(:rekalibrasi, ''), Rekalibrasi),
+        Tgl_kalibrasi = COALESCE(:tgl_kalibrasi, Tgl_kalibrasi),
+        Interval = COALESCE(NULLIF(:interval, ''), Interval),
+        Metode_kalibrasi = COALESCE(NULLIF(:metode_kalibrasi, ''), Metode_kalibrasi),
+        Suhu_Kelembaban = COALESCE(NULLIF(:suhu_kelembaban, ''), Suhu_Kelembaban),
+        Catatan = COALESCE(NULLIF(:catatan, ''), Catatan),
+        UserID = :user_id,
+        Delegated_To = :delegated_to,
+        Process_date = GETDATE()
+      WHERE QA_ID = :qa_id
+        AND ID_No_Sertifikat = :id_no_sertifikat
+    `,
+    {
+      replacements: {
+        qa_id: qaId,
+        id_no_sertifikat: idNoSertifikat,
+        assm_nama_instrumen: textValue(normalized.assmNamaInstrumen),
+        assm_no_identitas_kalibrasi: textValue(normalized.assmNoIdentitasKalibrasi),
+        assm_merk: textValue(normalized.assmMerk),
+        serial_number: textValue(normalized.serialNumber),
+        assm_kapasitas: textValue(normalized.assmKapasitas),
+        assm_lokasi: textValue(normalized.assmLokasi),
+        nama: textValue(normalized.nama),
+        no_ident_no_batch: textValue(normalized.noIdentNoBatch),
+        no_sertifikat: textValue(normalized.noSertifikat),
+        tertelusur_melalui: textValue(normalized.tertelusurMelalui),
+        rekalibrasi: textValue(normalized.rekalibrasi),
+        tgl_kalibrasi: sqlDate,
+        interval: textValue(normalized.interval),
+        metode_kalibrasi: textValue(normalized.metodeKalibrasi),
+        suhu_kelembaban: textValue(normalized.suhuKelembaban),
+        catatan: textValue(normalized.catatan),
+        user_id: userId,
+        delegated_to: delegatedTo,
+      },
+      type: Sequelize.QueryTypes.UPDATE,
+      transaction,
+    }
+  );
+}
+
+async function replaceThermoCertificateRows({ tableName, qaId, idNoSertifikat, rows, userId, delegatedTo, transaction }) {
+  const resolvedTable = tableName === 'rh'
+    ? 'T_Kalibrasi_Sertifikat_Thermohygro_Kelembaban'
+    : 'T_Kalibrasi_Sertifikat_Thermohygro_Suhu';
+
+  await sequelizeMSQL.query(
+    `
+      DELETE FROM ${resolvedTable}
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.DELETE,
+      transaction,
+    }
+  );
+
+  for (const row of rows) {
+    await sequelizeMSQL.query(
+      `
+        INSERT INTO ${resolvedTable}
+        (
+          QA_ID,
+          ID_No_Sertifikat,
+          Seq_ID,
+          Pembacaan_Alat,
+          Pembacaan_standar,
+          Error,
+          Ketidakpastian,
+          UserID,
+          Delegated_To,
+          Process_date
+        )
+        VALUES
+        (
+          :qaId,
+          :idNoSertifikat,
+          :seqId,
+          :pembacaanAlat,
+          :pembacaanStandar,
+          :error,
+          :ketidakpastian,
+          :userId,
+          :delegatedTo,
+          GETDATE()
+        )
+      `,
+      {
+        replacements: {
+          qaId,
+          idNoSertifikat,
+          seqId: row.seqId,
+          pembacaanAlat: row.pembacaanAlat,
+          pembacaanStandar: row.pembacaanStandar,
+          error: row.error,
+          ketidakpastian: row.ketidakpastian,
+          userId,
+          delegatedTo,
+        },
+        type: Sequelize.QueryTypes.INSERT,
+        transaction,
+      }
+    );
+  }
 }
 
 async function fetchSessionById(sessionId) {
@@ -528,20 +766,13 @@ const saveSession = async (req, res, next) => {
     const { user_id, delegated_to } = req.user;
     const body = req.body || {};
     const sessionId = Number(req.params.sessionId || body.sessionId || body.Session_ID || 0);
-    const qaId = pickValue(body, 'qa_id', 'qaId', 'QA_ID');
-    const idNoSertifikat = pickValue(
+    const qaId = textValue(pickValue(body, 'qa_id', 'qaId', 'QA_ID'));
+    const idNoSertifikat = textValue(pickValue(
       body,
       'id_no_sertifikat',
       'idNoSertifikat',
       'ID_No_Sertifikat'
-    );
-
-    if (!qaId || !idNoSertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'QA_ID and ID_No_Sertifikat are required',
-      });
-    }
+    ));
 
     if (sessionId && (!Number.isInteger(sessionId) || sessionId <= 0)) {
       return res.status(400).json({
@@ -557,20 +788,15 @@ const saveSession = async (req, res, next) => {
       });
     }
 
-    const current = await fetchWorkbookHeaderData(qaId, idNoSertifikat, user_id);
+    if (qaId && idNoSertifikat) {
+      const current = await fetchWorkbookHeaderData(qaId, idNoSertifikat, user_id);
 
-    if (!current) {
-      return res.status(404).json({
-        success: false,
-        message: 'Data not found',
-      });
-    }
-
-    if (!current.permissions?.canSaveSession) {
-      return res.status(403).json({
-        success: false,
-        message: 'Tidak bisa simpan workbook karena sudah approve atau user tidak memiliki akses input',
-      });
+      if (current && !current.permissions?.canSaveSession) {
+        return res.status(403).json({
+          success: false,
+          message: 'Tidak bisa simpan workbook karena sudah approve atau user tidak memiliki akses input',
+        });
+      }
     }
 
     const workbookPayload = body.workbookPayload || {
@@ -605,14 +831,10 @@ const saveSession = async (req, res, next) => {
 
     if (sessionId) {
       const existing = await fetchSessionById(sessionId);
-      if (
-        !existing ||
-        existing.QA_ID !== qaId ||
-        existing.ID_No_Sertifikat !== idNoSertifikat
-      ) {
+      if (!existing) {
         return res.status(404).json({
           success: false,
-          message: 'Session not found for this certificate',
+          message: 'Session not found',
         });
       }
 
@@ -620,6 +842,8 @@ const saveSession = async (req, res, next) => {
         `
           UPDATE ${SESSION_TABLE}
           SET
+            QA_ID = :qaId,
+            ID_No_Sertifikat = :idNoSertifikat,
             Include_RH = :includeRh,
             Suhu_Repeat_Count = :suhuRepeatCount,
             RH_Repeat_Count = :rhRepeatCount,
@@ -842,6 +1066,209 @@ const getSession = async (req, res, next) => {
   }
 };
 
+const generateSertifikatFromSession = async (req, res, next) => {
+  const transaction = await sequelizeMSQL.transaction();
+
+  try {
+    const { user_id, delegated_to } = req.user;
+    const body = req.body || {};
+    const sessionId = Number(req.params.sessionId || body.sessionId || 0);
+
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'sessionId must be a positive integer',
+      });
+    }
+
+    if (!(await sessionTableExists())) {
+      await transaction.rollback();
+      return res.status(500).json({
+        success: false,
+        message: 'Thermohygrometer session table has not been created. Run seeders/createThermohygrometerCalibrationTables.js first.',
+      });
+    }
+
+    const session = await fetchSessionById(sessionId);
+    if (!session) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found',
+      });
+    }
+
+    const sessionWorkbookPayload = session.workbookPayload || {};
+    const requestWorkbookPayload = body.workbookPayload || {};
+    const mergedHeader = {
+      ...(sessionWorkbookPayload.header || {}),
+      ...(requestWorkbookPayload.header || {}),
+      ...(body.header || {}),
+    };
+
+    const qaId = textValue(
+      pickValue(body, 'qa_id', 'qaId', 'QA_ID') ||
+        session.QA_ID ||
+        mergedHeader.QA_ID
+    ).trim();
+    let idNoSertifikat = textValue(
+      pickValue(body, 'id_no_sertifikat', 'idNoSertifikat', 'ID_No_Sertifikat') ||
+        session.ID_No_Sertifikat ||
+        mergedHeader.ID_No_Sertifikat
+    ).trim();
+
+    if (!qaId) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'QA_ID is required to generate Thermohygrometer certificate',
+      });
+    }
+
+    if (!idNoSertifikat) {
+      idNoSertifikat = await getNextThermoCertificateNumber(transaction);
+    }
+
+    if (!idNoSertifikat) {
+      await transaction.rollback();
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal mengambil nomor otomatis sertifikat Thermohygrometer',
+      });
+    }
+
+    const headerCreated = await ensureThermoCertificateHeader({
+      qaId,
+      idNoSertifikat,
+      userId: user_id,
+      delegatedTo: delegated_to,
+      transaction,
+    });
+
+    if (!headerCreated) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: `DA Thermohygrometer tidak ditemukan untuk QA_ID ${qaId}`,
+      });
+    }
+
+    const headerForSave = {
+      ...mergedHeader,
+      QA_ID: qaId,
+      ID_No_Sertifikat: idNoSertifikat,
+    };
+    await updateThermoCertificateHeader({
+      qaId,
+      idNoSertifikat,
+      header: headerForSave,
+      userId: user_id,
+      delegatedTo: delegated_to,
+      transaction,
+    });
+
+    const calculationResult = body.calculationResult || session.calculationResult || {};
+    const suhuRows = buildThermoResultRows(calculationResult.suhu);
+    const rhRows = buildThermoResultRows(calculationResult.rh);
+
+    await replaceThermoCertificateRows({
+      tableName: 'suhu',
+      qaId,
+      idNoSertifikat,
+      rows: suhuRows,
+      userId: user_id,
+      delegatedTo: delegated_to,
+      transaction,
+    });
+
+    await replaceThermoCertificateRows({
+      tableName: 'rh',
+      qaId,
+      idNoSertifikat,
+      rows: rhRows,
+      userId: user_id,
+      delegatedTo: delegated_to,
+      transaction,
+    });
+
+    const nextWorkbookPayload = {
+      ...sessionWorkbookPayload,
+      ...requestWorkbookPayload,
+      header: headerForSave,
+    };
+    const channels = nextWorkbookPayload.channels || {};
+    const suhuChannel = channels.suhu || {};
+    const rhChannel = channels.rh || {};
+    const includeRh = Boolean(nextWorkbookPayload.includeRh ?? session.Include_RH);
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${SESSION_TABLE}
+        SET
+          QA_ID = :qaId,
+          ID_No_Sertifikat = :idNoSertifikat,
+          Include_RH = :includeRh,
+          Suhu_Repeat_Count = :suhuRepeatCount,
+          RH_Repeat_Count = :rhRepeatCount,
+          Suhu_Unit = :suhuUnit,
+          RH_Unit = :rhUnit,
+          Suhu_Coefficient_Mode = :suhuCoefficientMode,
+          RH_Coefficient_Mode = :rhCoefficientMode,
+          Workbook_Payload_JSON = :workbookPayloadJson,
+          Calculation_Result_JSON = :calculationResultJson,
+          Status = :status,
+          UserID = :userId,
+          Delegated_To = :delegatedTo,
+          Update_Date = GETDATE()
+        WHERE Session_ID = :sessionId
+      `,
+      {
+        replacements: {
+          qaId,
+          idNoSertifikat,
+          includeRh: includeRh ? 1 : 0,
+          suhuRepeatCount: normalizeRepeatCount(suhuChannel.repeatCount, session.Suhu_Repeat_Count || 3),
+          rhRepeatCount: includeRh ? normalizeRepeatCount(rhChannel.repeatCount, session.RH_Repeat_Count || 3) : null,
+          suhuUnit: textValue(suhuChannel.unit || session.Suhu_Unit || `${String.fromCharCode(176)}C`),
+          rhUnit: includeRh ? textValue(rhChannel.unit || session.RH_Unit || '%rH') : null,
+          suhuCoefficientMode: normalizeMode(suhuChannel.coefficientMode || session.Suhu_Coefficient_Mode),
+          rhCoefficientMode: includeRh ? normalizeMode(rhChannel.coefficientMode || session.RH_Coefficient_Mode) : null,
+          workbookPayloadJson: JSON.stringify(nextWorkbookPayload),
+          calculationResultJson: calculationResult ? JSON.stringify(calculationResult) : null,
+          status: 'PUBLISHED',
+          userId: user_id,
+          delegatedTo: delegated_to,
+          sessionId,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Sukses Generate Data Sertifikat Thermohygrometer!',
+      data: {
+        qa_id: qaId,
+        id_no_sertifikat: idNoSertifikat,
+        session_id: sessionId,
+        suhu_rows: suhuRows.length,
+        rh_rows: rhRows.length,
+      },
+    });
+  } catch (error) {
+    try {
+      await transaction.rollback();
+    } catch (_) {
+      // Keep original error.
+    }
+    console.error('Error in generateSertifikatFromSession:', error);
+    next(error);
+  }
+};
 module.exports = {
   searchCertificates,
   getWorkbookHeader,
@@ -849,4 +1276,9 @@ module.exports = {
   listSessions,
   getSession,
   saveSession,
+  generateSertifikatFromSession,
 };
+
+
+
+
