@@ -26,6 +26,7 @@ const {
   getPermohonanAssesmentDetail,
   getAssesmentList,
   checkIsApproved: checkIsApprovedAssesment,
+  checkIsApprovedLevel1: checkIsApprovedLevel1Assesment,
   getApproverIdentity: getApproverIdentityAssesment,
   checkAllowInput,
   saveAssesmentKalibrasi,
@@ -175,6 +176,7 @@ router.get("/assesment/search", authentication, searchPermohonanAssesment);
 router.get("/assesment/detail", authentication, getPermohonanAssesmentDetail);
 router.get("/assesment/list", authentication, getAssesmentList);
 router.get("/assesment/isapproved", authentication, checkIsApprovedAssesment);
+router.get("/assesment/isapproved-l1", authentication, checkIsApprovedLevel1Assesment);
 router.get("/assesment/approver-identity", authentication, getApproverIdentityAssesment);
 router.get("/assesment/check-allow-input", authentication, checkAllowInput);
 router.post("/assesment/save", authentication, saveAssesmentKalibrasi);
