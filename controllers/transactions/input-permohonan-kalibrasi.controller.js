@@ -965,7 +965,10 @@ const checkApproveButton = async (req, res, next) => {
 
     const jumRow = statusResults[0].JumRow;
 
-    if (jumRow === 0 && isAllowed) {
+    // Gate departemen: Approve-1 Permohonan Kalibrasi hanya untuk departemen VN.
+    const isVN = (bagian || bagian_user) === 'VN';
+
+    if (jumRow === 0 && isAllowed && isVN) {
       canApprove = true;
     }
 
@@ -980,6 +983,7 @@ const checkApproveButton = async (req, res, next) => {
         can_approve: canApprove,
         can_print: canPrint,
         is_allowed_approver: isAllowed,
+        is_vn: isVN,
         approval_count: jumRow
       }
     });
@@ -1581,6 +1585,37 @@ const approvePermohonanKalibrasi = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Harap pilih data yang akan di Approve!'
+      });
+    }
+
+    // Gate otoritatif: Approve-1 hanya untuk departemen VN yang terdaftar sebagai
+    // Approver-1 di m_approver_lines. Mencegah bypass langsung ke endpoint.
+    if (bagian_user !== 'VN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Approve hanya dapat dilakukan oleh departemen VN!'
+      });
+    }
+
+    const approverCheckQuery = `
+      SELECT 1
+      FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode = 'Kal_permohonan'
+        AND Appr_No = 1
+        AND Appr_ID = :user_id
+        AND Appr_DeptID = :bagian_user
+    `;
+
+    const approverCheck = await sequelizeMSQL.query(approverCheckQuery, {
+      replacements: { user_id, bagian_user },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approverCheck.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anda tidak terdaftar sebagai Approver-1 untuk departemen VN!'
       });
     }
 

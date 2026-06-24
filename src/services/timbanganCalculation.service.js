@@ -17,6 +17,7 @@
 const sql = require('mssql');
 const repo = require('../../repositories/timbangan-calibration.repository');
 const formula = require('./timbanganFormula.service');
+const { getCertificateTypeCode } = require('../constants/certificateTypeCodes');
 
 function httpError(message, statusCode = 400, validation) {
   const err = new Error(message);
@@ -514,9 +515,12 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const actor = changedBy || 'SYSTEM';
     const delegatedActor = delegatedTo || actor;
 
+    // Nomor sertifikat — kode huruf mengikuti tabel acuan parameter kalibrasi
+    // (Timbangan = M -> dbo.fnGetKal_Ser_M_No_ID). Lihat src/constants/certificateTypeCodes.js
     let idNoSertifikat = String(options.id_no_sertifikat || options.idNoSertifikat || session.id_no_sertifikat || '').trim();
     if (!idNoSertifikat) {
-      const nextNo = await repo.getNextTekananCertificateNumber(transaction);
+      const certCode = getCertificateTypeCode(qaCandidate.Parameter_Sertifikasi) || 'M';
+      const nextNo = await repo.getNextCertificateNumberByCode(certCode, transaction);
       if (!nextNo) throw httpError('Failed to generate certificate number.', 500);
       idNoSertifikat = String(nextNo);
     }

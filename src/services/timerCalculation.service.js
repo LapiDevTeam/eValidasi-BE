@@ -16,6 +16,7 @@
 const sql = require('mssql');
 const repo = require('../../repositories/timer-calibration.repository');
 const formula = require('./timerFormula.service');
+const { getCertificateTypeCode } = require('../constants/certificateTypeCodes');
 
 function httpError(message, statusCode = 400, validation) {
   const err = new Error(message);
@@ -355,7 +356,14 @@ async function listDaCandidates(filters) {
 async function resolveQaCandidate(session, explicitQaId, transaction) {
   if (explicitQaId) {
     const matches = await repo.listTimerDaCandidates({ qa_id: explicitQaId }, transaction);
-    if (!matches.length) throw httpError(`QA_ID ${explicitQaId} not found in DA Bagian.`, 404);
+    if (!matches.length) {
+      throw httpError(
+        `Instrumen dengan QA_ID "${explicitQaId}" tidak ditemukan di data Asesmen DA Bagian. ` +
+          'Periksa kembali pilihan instrumen melalui "Browse Instrument".',
+        404,
+        [{ field: 'qa_id', message: `QA_ID ${explicitQaId} tidak ada di T_Kalibrasi_DA_Bagian.` }]
+      );
+    }
     return matches[0];
   }
   const sessionQaId = String(session?.qa_id || session?.instrument_id || '').trim();
@@ -368,14 +376,21 @@ async function resolveQaCandidate(session, explicitQaId, transaction) {
     const candidates = await repo.listTimerDaCandidates({ instrument_code: instrumentCode }, transaction);
     if (candidates.length === 1) return candidates[0];
     if (candidates.length > 1) {
-      throw httpError('Multiple DA candidates found. Please choose qa_id explicitly.', 422, [
-        { field: 'qa_id', message: `Candidates: ${candidates.map((c) => c.QA_ID).join(', ')}` },
-      ]);
+      throw httpError(
+        'Ditemukan lebih dari satu instrumen Asesmen DA yang cocok untuk sesi ini. ' +
+          'Pilih satu instrumen lewat "Browse Instrument" agar QA_ID spesifik sebelum menerbitkan sertifikat.',
+        422,
+        [{ field: 'qa_id', message: `Kandidat QA_ID: ${candidates.map((c) => c.QA_ID).join(', ')}.` }]
+      );
     }
   }
-  throw httpError('Cannot resolve QA_ID. Provide qa_id explicitly in publish request.', 422, [
-    { field: 'qa_id', message: 'No single DA Bagian match for this session.' },
-  ]);
+  throw httpError(
+    'Instrumen kalibrasi (QA_ID) tidak bisa ditentukan otomatis untuk sesi ini. ' +
+      'Pilih instrumen lewat "Browse Instrument" agar QA_ID terisi, atau pastikan instrumen ini sudah ' +
+      'memiliki data Asesmen DA Bagian terlebih dahulu.',
+    422,
+    [{ field: 'qa_id', message: 'Tidak ada satu pun record Asesmen DA Bagian yang cocok dengan sesi ini.' }]
+  );
 }
 
 function buildSuhuKelembabanText(session, explicit) {
@@ -397,28 +412,49 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
 
   try {
     const session = await repo.getSessionById(sessionId, transaction);
-    if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+    if (!session) {
+      throw httpError(
+        `Sesi kalibrasi #${sessionId} tidak ditemukan. Sesi mungkin sudah dihapus — muat ulang daftar sesi lalu pilih kembali.`,
+        404
+      );
+    }
 
     const status = String(session.status || '').toUpperCase();
     if (!['CALCULATED', 'FINALIZED', 'PUBLISHED'].includes(status)) {
-      throw httpError('Session must be CALCULATED before publish.', 422, [
-        { field: 'status', message: `Current status is ${status || 'UNKNOWN'}.` },
-      ]);
+      throw httpError(
+        'Sertifikat belum bisa diterbitkan karena sesi ini belum dihitung. ' +
+          'Jalankan "Hitung" sampai status menjadi CALCULATED, lalu terbitkan ulang.',
+        422,
+        [{ field: 'status', message: `Status sesi saat ini: ${status || 'TIDAK DIKETAHUI'}.` }]
+      );
     }
 
     const results = await repo.getResults(sessionId, transaction);
-    if (!results.length) throw httpError('No calculation results. Run calculate first.', 422);
+    if (!results.length) {
+      throw httpError(
+        'Belum ada hasil perhitungan untuk sesi ini. Jalankan "Hitung" terlebih dahulu sebelum menerbitkan sertifikat.',
+        422,
+        [{ field: 'status', message: 'Tabel hasil (timer_results) masih kosong.' }]
+      );
+    }
 
     const qaCandidate = await resolveQaCandidate(session, options.qa_id || options.qaId, transaction);
     const qaId = String(qaCandidate.QA_ID);
     const actor = changedBy || 'SYSTEM';
     const delegatedActor = delegatedTo || actor;
 
-    // Certificate number
+    // Nomor sertifikat — kode huruf mengikuti tabel acuan parameter kalibrasi
+    // (Timer = R -> dbo.fnGetKal_Ser_R_No_ID). Lihat src/constants/certificateTypeCodes.js
     let idNoSertifikat = String(options.id_no_sertifikat || options.idNoSertifikat || session.id_no_sertifikat || '').trim();
     if (!idNoSertifikat) {
-      const nextNo = await repo.getNextTekananCertificateNumber(transaction);
-      if (!nextNo) throw httpError('Failed to generate certificate number.', 500);
+      const certCode = getCertificateTypeCode(qaCandidate.Parameter_Sertifikasi) || 'R';
+      const nextNo = await repo.getNextCertificateNumberByCode(certCode, transaction);
+      if (!nextNo) {
+        throw httpError(
+          'Nomor sertifikat gagal dibuat otomatis. Coba lagi beberapa saat; bila tetap gagal, hubungi administrator sistem.',
+          500
+        );
+      }
       idNoSertifikat = String(nextNo);
     }
 
@@ -427,14 +463,23 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     if (!header) {
       const inserted = await repo.createSertifikatBagianDraftFromTimerDa(qaId, idNoSertifikat, actor, delegatedActor, transaction);
       if (!inserted) {
-        throw httpError(`Failed to create sertifikat draft from DA for QA_ID ${qaId}.`, 422, [
-          { field: 'qa_id', message: `DA Bagian record not found for QA_ID ${qaId}.` },
-        ]);
+        throw httpError(
+          `Gagal membuat draft sertifikat: belum ada data Asesmen DA untuk instrumen ini (QA_ID ${qaId}). ` +
+            'Lakukan Asesmen DA atas instrumen ini terlebih dahulu, baru terbitkan sertifikat.',
+          422,
+          [{ field: 'qa_id', message: `Tidak ada record Asesmen DA Bagian untuk QA_ID ${qaId}.` }]
+        );
       }
       createdDraft = true;
       header = await repo.getSertifikatBagianHeader(qaId, idNoSertifikat, transaction);
     }
-    if (!header) throw httpError(`Sertifikat header not found for QA_ID ${qaId} / ${idNoSertifikat}.`, 404);
+    if (!header) {
+      throw httpError(
+        `Header sertifikat tidak ditemukan untuk QA_ID ${qaId} (nomor ${idNoSertifikat}). ` +
+          'Coba ulangi penerbitan; bila tetap gagal, hubungi administrator sistem.',
+        404
+      );
+    }
 
     const finalInterval = toPositiveIntegerOrNull(options.interval) || toPositiveIntegerOrNull(header.Interval) || 12;
     const finalTglKalibrasi = toDateOrNull(options.tgl_kalibrasi) || toDateOrNull(session.calibration_date) || new Date();
@@ -460,7 +505,12 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       delegated_to: delegatedActor,
     };
     const updatedHeader = await repo.updateSertifikatBagianHeader(headerPayload, transaction);
-    if (!updatedHeader) throw httpError('Failed to update sertifikat header.', 500);
+    if (!updatedHeader) {
+      throw httpError(
+        'Gagal menyimpan data header sertifikat. Coba ulangi penerbitan; bila tetap gagal, hubungi administrator sistem.',
+        500
+      );
+    }
 
     // Hasil Kalibrasi rows: per point -> Pembacaan Alat / Standar / Error / Ketidakpastian
     const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));

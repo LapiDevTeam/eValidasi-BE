@@ -314,6 +314,51 @@ const checkIsApproved = async (req, res, next) => {
 };
 
 /**
+ * Check if permohonan has been approved by Approver_No = 1 (Approver-1).
+ * Dipakai sebagai gate bridge Tab 3: Calibration Plan hanya boleh diisi/disimpan
+ * setelah Permohonan di-approve Approver-1 (konsisten dengan filter search Tab 3).
+ * Uses req.query for no_permohonan parameter.
+ */
+const checkIsApprovedLevel1 = async (req, res, next) => {
+  try {
+    const { no_permohonan } = req.query;
+
+    if (!no_permohonan) {
+      return res.status(400).json({
+        success: false,
+        message: 'no_permohonan is required'
+      });
+    }
+
+    const query = `
+      SELECT TOP 1 1 AS ok
+      FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+        AND Approver_No = 1
+        AND (isReject = 0 OR isReject IS NULL)
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Check completed',
+      data: {
+        no_permohonan,
+        is_approved: results.length > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in checkIsApprovedLevel1:', error);
+    next(error);
+  }
+};
+
+/**
  * Get Approver Identity (fnApprIdentity)
  * Retrieve approver identity for a specific user and approver number
  * Uses req.query for approver_no parameter (defaults to 2 for assessment)
@@ -531,6 +576,29 @@ const saveAssesmentKalibrasi = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Harap pilih no Permohonan yang akan di assesment!'
+      });
+    }
+
+    // Validation 10b: Gate Approver-1 — Calibration Plan (Tab 3) hanya boleh
+    // disimpan setelah Permohonan di-approve Approver-1 (Approver_No = 1).
+    // Mencegah jalur bridge mem-bypass approval (konsisten dengan search Tab 3).
+    const checkApprover1Query = `
+      SELECT TOP 1 1 AS ok
+      FROM t_Kalibrasi_Status
+      WHERE No_Permohonan = :no_permohonan
+        AND Approver_No = 1
+        AND (isReject = 0 OR isReject IS NULL)
+    `;
+
+    const approver1Results = await sequelizeMSQL.query(checkApprover1Query, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (approver1Results.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Permohonan belum di-approve Approver-1, Calibration Plan belum bisa disimpan!'
       });
     }
 
@@ -2177,6 +2245,7 @@ module.exports = {
   getPermohonanAssesmentDetail,
   getAssesmentList,
   checkIsApproved,
+  checkIsApprovedLevel1,
   getApproverIdentity,
   checkAllowInput,
   saveAssesmentKalibrasi,
