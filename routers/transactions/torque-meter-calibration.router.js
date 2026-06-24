@@ -6,6 +6,7 @@ const router = express.Router();
 const { authentication } = require('../../middlewares/authentication');
 const ctrl = require('../../controllers/transactions/torque-meter-calibration.controller');
 
+router.get('/print-data', ctrl.getPrintData);
 router.get('/sessions', authentication, ctrl.listSessions);
 router.get('/sessions/:sessionId', authentication, ctrl.getSession);
 router.post('/sessions', authentication, ctrl.saveSession);

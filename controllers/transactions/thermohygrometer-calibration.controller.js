@@ -878,24 +878,6 @@ const saveSession = async (req, res, next) => {
       'Evaluation_Result'
     ));
 
-    if (!evaluationResult) {
-      return res.status(400).json({
-        success: false,
-        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
-      });
-    }
-
-    if (qaId && idNoSertifikat) {
-      const current = await fetchWorkbookHeaderData(qaId, idNoSertifikat, user_id);
-
-      if (current && !current.permissions?.canSaveSession) {
-        return res.status(403).json({
-          success: false,
-          message: 'Tidak bisa simpan workbook karena sudah approve atau user tidak memiliki akses input',
-        });
-      }
-    }
-
     const workbookPayload = body.workbookPayload || {
       header: body.header || null,
       includeRh: Boolean(body.includeRh),

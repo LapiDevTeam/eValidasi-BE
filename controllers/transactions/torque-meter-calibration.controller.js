@@ -201,6 +201,33 @@ async function fetchSessionById(sessionId) {
   };
 }
 
+async function fetchLatestSessionByCertificate(qaId, idNoSertifikat) {
+  if (!(await sessionTableExists())) return null;
+
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1 *
+      FROM ${SESSION_TABLE}
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+      ORDER BY ISNULL(Update_Date, Process_Date) DESC, Session_ID DESC
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if (!rows.length) return null;
+
+  const row = rows[0];
+  return {
+    ...row,
+    workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
+    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+  };
+}
+
 async function getNextTorqueCertificateNumber(transaction) {
   const rows = await sequelizeMSQL.query(
     'SELECT dbo.fnGetKal_Ser_TQ_No_ID() as ID_No_sertifikat',
@@ -577,6 +604,112 @@ const getSession = async (req, res, next) => {
   }
 };
 
+const getPrintData = async (req, res, next) => {
+  try {
+    const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } = req.query;
+
+    if (!qaId || !idNoSertifikat) {
+      return res.status(400).json({
+        success: false,
+        message: 'qa_id and id_no_sertifikat are required',
+      });
+    }
+
+    const headerQuery = `
+      SELECT
+        QA_ID,
+        ID_No_Sertifikat,
+        Assm_nama_instrumen,
+        Assm_No_identitas_kalibrasi,
+        Assm_Merk,
+        SERIAL_NUMBER,
+        Assm_Kapasitas,
+        Assm_Lokasi,
+        Nama,
+        No_Ident_No_batch,
+        No_Sertifikat,
+        Tertelusur_melalui,
+        Rekalibrasi,
+        REPLACE(CONVERT(CHAR(11), Tgl_kalibrasi, 106), ' ', '-') AS Tgl_kalibrasi,
+        Metode_kalibrasi,
+        Suhu_Kelembaban,
+        Catatan
+      FROM T_Kalibrasi_Sertifikat_Bagian
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `;
+
+    const hasilKalQuery = `
+      SELECT
+        Pembacaan_Alat,
+        Pembacaan_standar,
+        Error,
+        Ketidakpastian
+      FROM T_Kalibrasi_Sertifikat_Bagian_Hasil_Kal
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+      ORDER BY Seq_ID
+    `;
+
+    const approverQuery = `
+      SELECT
+        CASE
+          WHEN USER_ID = Delegated_To THEN 'Approved By :' + dbo.fnGetNamaKaryawan(USER_ID)
+          ELSE dbo.fnGetNamaKaryawan(Delegated_To)
+        END AS apprID,
+        CASE
+          WHEN USER_ID = Delegated_To THEN ''
+          ELSE 'Delegated as ' + dbo.fnGetNamaKaryawan(USER_ID)
+        END AS apprDelegated,
+        CONVERT(VARCHAR(20), Process_Date, 13) AS apprDate
+      FROM T_Kalibrasi_Sertifikat_Bagian_Status
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+        AND Approver_No = 1
+    `;
+
+    const [headerResults, hasilKalResults, approverResults, latestSession] =
+      await Promise.all([
+        sequelizeMSQL.query(headerQuery, {
+          replacements: { qaId, idNoSertifikat },
+          type: Sequelize.QueryTypes.SELECT,
+        }),
+        sequelizeMSQL.query(hasilKalQuery, {
+          replacements: { qaId, idNoSertifikat },
+          type: Sequelize.QueryTypes.SELECT,
+        }),
+        sequelizeMSQL.query(approverQuery, {
+          replacements: { qaId, idNoSertifikat },
+          type: Sequelize.QueryTypes.SELECT,
+        }),
+        fetchLatestSessionByCertificate(qaId, idNoSertifikat),
+      ]);
+
+    if (!headerResults.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torque Meter sertifikat data not found',
+      });
+    }
+
+    const workbookPayload = latestSession?.workbookPayload || {};
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        header: headerResults[0],
+        workbook: workbookPayload.workbook || null,
+        calculation: latestSession?.calculationResult || null,
+        hasil_kal: hasilKalResults,
+        approvalSignature: approverResults[0] || null,
+      },
+    });
+  } catch (error) {
+    console.error('Error in torque-meter getPrintData:', error);
+    next(error);
+  }
+};
+
 const saveSession = async (req, res, next) => {
   try {
     const { user_id, delegated_to } = req.user;
@@ -598,13 +731,6 @@ const saveSession = async (req, res, next) => {
     }
 
     const normalized = normalizeSessionPayload(body);
-
-    if (!normalized.evaluationResult) {
-      return res.status(400).json({
-        success: false,
-        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
-      });
-    }
 
     const replacements = {
       qaId: normalized.qaId || null,
@@ -988,6 +1114,7 @@ const generateTorqueSertifikat = async (req, res, next) => {
 module.exports = {
   listSessions,
   getSession,
+  getPrintData,
   saveSession,
   approveSession,
   generateTorqueSertifikat,
