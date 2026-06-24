@@ -7,12 +7,51 @@ BEGIN
     ID_No_Sertifikat NVARCHAR(50) NULL,
     Workbook_Payload_JSON NVARCHAR(MAX) NULL,
     Calculation_Result_JSON NVARCHAR(MAX) NULL,
+    Evaluation_Result NVARCHAR(100) NULL,
     Status NVARCHAR(20) NOT NULL CONSTRAINT DF_TorqueWorkbook_Status DEFAULT (N'DRAFT'),
+    ApprovedByAdmin NVARCHAR(100) NULL,
+    ApprovedByAdminDate DATETIME NULL,
+    ApprovedByOfficer NVARCHAR(100) NULL,
+    ApprovedByOfficerDate DATETIME NULL,
+    ApprovedByManager NVARCHAR(100) NULL,
+    ApprovedByManagerDate DATETIME NULL,
     UserID NVARCHAR(100) NULL,
     Delegated_To NVARCHAR(100) NULL,
     Process_Date DATETIME NOT NULL CONSTRAINT DF_TorqueWorkbook_ProcessDate DEFAULT (GETDATE()),
     Update_Date DATETIME NULL
   )
+END
+GO
+
+IF OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session', 'U') IS NOT NULL
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session')
+      AND name = 'Evaluation_Result'
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_TorqueMeter_Workbook_Session
+    ADD Evaluation_Result NVARCHAR(100) NULL
+  END
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session')
+      AND name = 'ApprovedByAdmin'
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_TorqueMeter_Workbook_Session
+    ADD
+      ApprovedByAdmin NVARCHAR(100) NULL,
+      ApprovedByAdminDate DATETIME NULL,
+      ApprovedByOfficer NVARCHAR(100) NULL,
+      ApprovedByOfficerDate DATETIME NULL,
+      ApprovedByManager NVARCHAR(100) NULL,
+      ApprovedByManagerDate DATETIME NULL
+  END
 END
 GO
 
@@ -43,7 +82,14 @@ BEGIN
     ID_No_Sertifikat NVARCHAR(50) NULL,
     Workbook_Payload_JSON NVARCHAR(MAX) NULL,
     Calculation_Result_JSON NVARCHAR(MAX) NULL,
+    Evaluation_Result NVARCHAR(100) NULL,
     Status NVARCHAR(20) NOT NULL,
+    ApprovedByAdmin NVARCHAR(100) NULL,
+    ApprovedByAdminDate DATETIME NULL,
+    ApprovedByOfficer NVARCHAR(100) NULL,
+    ApprovedByOfficerDate DATETIME NULL,
+    ApprovedByManager NVARCHAR(100) NULL,
+    ApprovedByManagerDate DATETIME NULL,
     UserID NVARCHAR(100) NULL,
     Delegated_To NVARCHAR(100) NULL,
     Process_Date DATETIME NULL,
@@ -51,6 +97,38 @@ BEGIN
     Flag_Update CHAR(1) NOT NULL,
     Change_Date DATETIME NOT NULL CONSTRAINT DF_TorqueWorkbookHist_ChangeDate DEFAULT (GETDATE())
   )
+END
+GO
+
+IF OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session_Hist', 'U') IS NOT NULL
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session_Hist')
+      AND name = 'Evaluation_Result'
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_TorqueMeter_Workbook_Session_Hist
+    ADD Evaluation_Result NVARCHAR(100) NULL
+  END
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_TorqueMeter_Workbook_Session_Hist')
+      AND name = 'ApprovedByAdmin'
+  )
+  BEGIN
+    ALTER TABLE dbo.T_Kalibrasi_TorqueMeter_Workbook_Session_Hist
+    ADD
+      ApprovedByAdmin NVARCHAR(100) NULL,
+      ApprovedByAdminDate DATETIME NULL,
+      ApprovedByOfficer NVARCHAR(100) NULL,
+      ApprovedByOfficerDate DATETIME NULL,
+      ApprovedByManager NVARCHAR(100) NULL,
+      ApprovedByManagerDate DATETIME NULL
+  END
 END
 GO
 
@@ -74,7 +152,14 @@ BEGIN
     ID_No_Sertifikat,
     Workbook_Payload_JSON,
     Calculation_Result_JSON,
+    Evaluation_Result,
     Status,
+    ApprovedByAdmin,
+    ApprovedByAdminDate,
+    ApprovedByOfficer,
+    ApprovedByOfficerDate,
+    ApprovedByManager,
+    ApprovedByManagerDate,
     UserID,
     Delegated_To,
     Process_Date,
@@ -87,7 +172,14 @@ BEGIN
     i.ID_No_Sertifikat,
     i.Workbook_Payload_JSON,
     i.Calculation_Result_JSON,
+    i.Evaluation_Result,
     i.Status,
+    i.ApprovedByAdmin,
+    i.ApprovedByAdminDate,
+    i.ApprovedByOfficer,
+    i.ApprovedByOfficerDate,
+    i.ApprovedByManager,
+    i.ApprovedByManagerDate,
     i.UserID,
     i.Delegated_To,
     i.Process_Date,
@@ -103,7 +195,14 @@ BEGIN
     ID_No_Sertifikat,
     Workbook_Payload_JSON,
     Calculation_Result_JSON,
+    Evaluation_Result,
     Status,
+    ApprovedByAdmin,
+    ApprovedByAdminDate,
+    ApprovedByOfficer,
+    ApprovedByOfficerDate,
+    ApprovedByManager,
+    ApprovedByManagerDate,
     UserID,
     Delegated_To,
     Process_Date,
@@ -116,7 +215,14 @@ BEGIN
     d.ID_No_Sertifikat,
     d.Workbook_Payload_JSON,
     d.Calculation_Result_JSON,
+    d.Evaluation_Result,
     d.Status,
+    d.ApprovedByAdmin,
+    d.ApprovedByAdminDate,
+    d.ApprovedByOfficer,
+    d.ApprovedByOfficerDate,
+    d.ApprovedByManager,
+    d.ApprovedByManagerDate,
     d.UserID,
     d.Delegated_To,
     d.Process_Date,

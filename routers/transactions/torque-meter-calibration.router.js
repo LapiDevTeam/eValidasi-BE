@@ -10,6 +10,7 @@ router.get('/sessions', authentication, ctrl.listSessions);
 router.get('/sessions/:sessionId', authentication, ctrl.getSession);
 router.post('/sessions', authentication, ctrl.saveSession);
 router.put('/sessions/:sessionId', authentication, ctrl.saveSession);
+router.post('/sessions/:sessionId/approve', authentication, ctrl.approveSession);
 
 // Dedicated Torque Meter certificate generator. This intentionally does not
 // modify or reuse the legacy assessment generateSertifikat controller.

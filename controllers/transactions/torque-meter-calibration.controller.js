@@ -60,6 +60,75 @@ function normalizeStatus(value, hasResult) {
   return (status || 'DRAFT').slice(0, 20);
 }
 
+function normalizeEvaluationResult(value) {
+  const text = textValue(value).trim();
+  const allowed = [
+    'Layak digunakan',
+    'Tidak layak digunakan',
+    'Penggunaan faktor koreksi',
+  ];
+  return allowed.includes(text) ? text : '';
+}
+
+function getWorkbookApprovalRole(req) {
+  const jobLevel = Number(
+    req?.user?.joblevel_id_user ??
+      req?.body?.job_level_id ??
+      req?.body?.jobLevelId ??
+      req?.body?.Job_LevelID
+  );
+
+  if (jobLevel > 6) {
+    return {
+      key: 'admin',
+      label: 'Admin',
+      column: 'ApprovedByAdmin',
+      dateColumn: 'ApprovedByAdminDate',
+      status: 'APPROVED_ADMIN',
+    };
+  }
+
+  if (jobLevel === 5 || jobLevel === 6) {
+    return {
+      key: 'officer',
+      label: 'Officer/Supervisor',
+      column: 'ApprovedByOfficer',
+      dateColumn: 'ApprovedByOfficerDate',
+      status: 'APPROVED_OFFICER',
+    };
+  }
+
+  if (jobLevel === 3) {
+    return {
+      key: 'manager',
+      label: 'Manager',
+      column: 'ApprovedByManager',
+      dateColumn: 'ApprovedByManagerDate',
+      status: 'APPROVED',
+    };
+  }
+
+  return null;
+}
+
+function assertWorkbookApprovalOrder(session, role) {
+  if (!role) return 'User tidak memiliki role approval workbook';
+  if (session?.[role.column]) return `Workbook sudah approve oleh ${role.label}`;
+
+  if (role.key === 'officer' && !session?.ApprovedByAdmin) {
+    return 'Admin harus approve workbook terlebih dahulu';
+  }
+
+  if (role.key === 'manager') {
+    if (!session?.ApprovedByAdmin) return 'Admin harus approve workbook terlebih dahulu';
+    if (!session?.ApprovedByOfficer) {
+      return 'Officer/Supervisor harus approve workbook terlebih dahulu';
+    }
+  }
+
+  return '';
+}
+
 function normalizeHeaderPayload(source = {}) {
   return {
     qaId: pickValue(source, 'qa_id', 'qaId', 'QA_ID'),
@@ -362,6 +431,12 @@ function normalizeSessionPayload(body) {
     idNoSertifikat: textValue(idNoSertifikat),
     workbookPayload,
     calculationResult,
+    evaluationResult: normalizeEvaluationResult(pickValue(
+      body,
+      'evaluation_result',
+      'evaluationResult',
+      'Evaluation_Result'
+    )),
     status: normalizeStatus(body.status, Boolean(calculationResult)),
   };
 }
@@ -402,6 +477,7 @@ const listSessions = async (req, res, next) => {
           OR S.QA_ID LIKE :search
           OR S.ID_No_Sertifikat LIKE :search
           OR S.Status LIKE :search
+          OR S.Evaluation_Result LIKE :search
           OR S.UserID LIKE :search
           OR C.Assm_nama_instrumen LIKE :search
           OR C.Assm_No_identitas_kalibrasi LIKE :search
@@ -422,7 +498,14 @@ const listSessions = async (req, res, next) => {
           S.Session_ID,
           S.QA_ID,
           S.ID_No_Sertifikat,
+          S.Evaluation_Result,
           S.Status,
+          S.ApprovedByAdmin,
+          S.ApprovedByAdminDate,
+          S.ApprovedByOfficer,
+          S.ApprovedByOfficerDate,
+          S.ApprovedByManager,
+          S.ApprovedByManagerDate,
           S.UserID,
           S.Delegated_To,
           S.Process_Date,
@@ -516,6 +599,13 @@ const saveSession = async (req, res, next) => {
 
     const normalized = normalizeSessionPayload(body);
 
+    if (!normalized.evaluationResult) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
+      });
+    }
+
     const replacements = {
       qaId: normalized.qaId || null,
       idNoSertifikat: normalized.idNoSertifikat || null,
@@ -523,6 +613,7 @@ const saveSession = async (req, res, next) => {
       calculationResultJson: normalized.calculationResult
         ? JSON.stringify(normalized.calculationResult)
         : null,
+      evaluationResult: normalized.evaluationResult,
       status: normalized.status,
       userId: user_id,
       delegatedTo: delegated_to,
@@ -539,6 +630,17 @@ const saveSession = async (req, res, next) => {
         });
       }
 
+      if (
+        existing.ApprovedByAdmin ||
+        existing.ApprovedByOfficer ||
+        existing.ApprovedByManager
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'Tidak bisa simpan workbook karena sudah approve',
+        });
+      }
+
       await sequelizeMSQL.query(
         `
           UPDATE ${SESSION_TABLE}
@@ -547,6 +649,7 @@ const saveSession = async (req, res, next) => {
             ID_No_Sertifikat = :idNoSertifikat,
             Workbook_Payload_JSON = :workbookPayloadJson,
             Calculation_Result_JSON = :calculationResultJson,
+            Evaluation_Result = :evaluationResult,
             Status = :status,
             UserID = :userId,
             Delegated_To = :delegatedTo,
@@ -569,6 +672,7 @@ const saveSession = async (req, res, next) => {
             ID_No_Sertifikat,
             Workbook_Payload_JSON,
             Calculation_Result_JSON,
+            Evaluation_Result,
             Status,
             UserID,
             Delegated_To,
@@ -581,6 +685,7 @@ const saveSession = async (req, res, next) => {
             :idNoSertifikat,
             :workbookPayloadJson,
             :calculationResultJson,
+            :evaluationResult,
             :status,
             :userId,
             :delegatedTo,
@@ -607,6 +712,88 @@ const saveSession = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in torque-meter saveSession:', error);
+    next(error);
+  }
+};
+
+const approveSession = async (req, res, next) => {
+  try {
+    const { user_id } = req.user;
+    const sessionId = Number(req.params.sessionId);
+
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'sessionId must be a positive integer',
+      });
+    }
+
+    if (!(await sessionTableExists())) {
+      return res.status(404).json({
+        success: false,
+        message: 'Torque meter session table has not been created',
+      });
+    }
+
+    const session = await fetchSessionById(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found',
+      });
+    }
+
+    if (!session.calculationResult) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lakukan perhitungan dan simpan workbook terlebih dahulu',
+      });
+    }
+
+    if (!normalizeEvaluationResult(session.Evaluation_Result)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
+      });
+    }
+
+    const role = getWorkbookApprovalRole(req);
+    const orderMessage = assertWorkbookApprovalOrder(session, role);
+    if (orderMessage) {
+      return res.status(403).json({
+        success: false,
+        message: orderMessage,
+      });
+    }
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${SESSION_TABLE}
+        SET
+          ${role.column} = :userId,
+          ${role.dateColumn} = GETDATE(),
+          Status = :status,
+          Update_Date = GETDATE()
+        WHERE Session_ID = :sessionId
+      `,
+      {
+        replacements: {
+          userId: user_id,
+          status: role.status,
+          sessionId,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+      }
+    );
+
+    const data = await fetchSessionById(sessionId);
+    return res.status(200).json({
+      success: true,
+      message: `Workbook approved by ${role.label}`,
+      data,
+    });
+  } catch (error) {
+    console.error('Error in torque-meter approveSession:', error);
     next(error);
   }
 };
@@ -714,6 +901,19 @@ const generateTorqueSertifikat = async (req, res, next) => {
     });
 
     const calculationResult = body.calculationResult || session.calculationResult || null;
+    const evaluationResult = normalizeEvaluationResult(
+      pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
+        session.Evaluation_Result
+    );
+
+    if (!evaluationResult) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
+      });
+    }
+
     const resultRows = buildTorqueResultRows(calculationResult);
     await replaceTorqueCertificateRows({
       qaId,
@@ -738,6 +938,7 @@ const generateTorqueSertifikat = async (req, res, next) => {
           ID_No_Sertifikat = :idNoSertifikat,
           Workbook_Payload_JSON = :workbookPayloadJson,
           Calculation_Result_JSON = :calculationResultJson,
+          Evaluation_Result = :evaluationResult,
           Status = :status,
           UserID = :userId,
           Delegated_To = :delegatedTo,
@@ -750,6 +951,7 @@ const generateTorqueSertifikat = async (req, res, next) => {
           idNoSertifikat,
           workbookPayloadJson: JSON.stringify(nextWorkbookPayload),
           calculationResultJson: calculationResult ? JSON.stringify(calculationResult) : null,
+          evaluationResult,
           status: 'PUBLISHED',
           userId: user_id,
           delegatedTo: delegated_to,
@@ -787,5 +989,6 @@ module.exports = {
   listSessions,
   getSession,
   saveSession,
+  approveSession,
   generateTorqueSertifikat,
 };
