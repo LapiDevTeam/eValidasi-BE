@@ -1,10 +1,10 @@
-'use strict';
+﻿'use strict';
 
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
 
-const SESSION_TABLE = 'dbo.T_Kalibrasi_DissolutionTester_Workbook_Session';
+const SESSION_TABLE = 'dbo.T_Kalibrasi_Friability_Workbook_Session';
 
 function textValue(value) {
   return value === undefined || value === null ? '' : String(value);
@@ -152,49 +152,37 @@ function normalizeHeaderPayload(source = {}) {
   };
 }
 
-function buildDissolutionResultRows(calculationResult = {}, explicitRows = []) {
+function buildFriabilityResultRows(calculationResult = {}, explicitRows = []) {
   const rows = Array.isArray(explicitRows) && explicitRows.length
     ? explicitRows
-    : Array.isArray(calculationResult?.vesselRows)
-      ? calculationResult.vesselRows
+    : Array.isArray(calculationResult?.rows)
+      ? calculationResult.rows
       : [];
+  const nominal = 25;
+  const min = 24;
+  const max = 26;
 
   return rows.map((row, index) => {
-    const tempVessel = parseNumberValue(
-      row.tempVessel ?? row.temperatureVessel ?? row.Pembacaan_Alat
+    const time = parseNumberValue(
+      row.time ?? row.tOneRotation ?? row.t_one_rotation ?? row.Pembacaan_Alat
     );
-    const standard = 37;
+    const rpm = parseNumberValue(row.rpm ?? row.pembacaanAlat ?? row.Pembacaan_standar) ??
+      (time !== null && time !== 0 ? 60 / time : null);
+    const passed = rpm === null ? null : rpm >= min && rpm <= max;
 
     return {
-      seqId: index + 1,
-      vessel: Number(row.vessel || index + 1),
-      shaftWobble: parseNumberValue(row.shaftWobble),
-      basketsWobble: parseNumberValue(row.basketsWobble ?? row.basketWobble),
-      paddleWobble: parseNumberValue(row.paddleWobble),
-      rotSpd1: parseNumberValue(row.rotSpd1),
-      rotSpd2: parseNumberValue(row.rotSpd2),
-      rotSpd3: parseNumberValue(row.rotSpd3),
-      rotationValues: row.rotationValues || {},
-      basket: parseNumberValue(row.basket ?? row.basketHeight),
-      paddle: parseNumberValue(row.paddle ?? row.paddleHeight),
-      tempVessel,
-      shaftWobbleKet: textValue(row.shaftWobbleKet || row.ketShaftWobble),
-      basketsWobbleKet: textValue(row.basketsWobbleKet || row.ketBasketsWobble),
-      paddleWobbleKet: textValue(row.paddleWobbleKet || row.ketPaddleWobble),
-      rotSpd1Ket: textValue(row.rotSpd1Ket || row.ketRotSpd1),
-      rotSpd2Ket: textValue(row.rotSpd2Ket || row.ketRotSpd2),
-      rotSpd3Ket: textValue(row.rotSpd3Ket || row.ketRotSpd3),
-      basketKet: textValue(row.basketKet || row.ketBasket),
-      paddleKet: textValue(row.paddleKet || row.ketPaddle),
-      tempVesselKet: textValue(row.tempVesselKet || row.ketTempVessel),
-      pembacaanAlat: tempVessel,
-      pembacaanStandar: standard,
-      error: tempVessel === null ? null : tempVessel - standard,
+      seqId: Number(row.seqId || row.Seq_ID || index + 1),
+      no: Number(row.no || row.seqId || index + 1),
+      time,
+      rpm,
+      ket: textValue(row.ket || (passed === null ? '' : passed ? 'MS' : 'TMS')),
+      pembacaanAlat: rpm,
+      pembacaanStandar: nominal,
+      error: rpm === null ? null : rpm - nominal,
       ketidakpastian: parseNumberValue(row.ketidakpastian),
     };
   });
 }
-
 async function sessionTableExists() {
   const result = await sequelizeMSQL.query(
     `SELECT OBJECT_ID(:tableName, 'U') AS object_id`,
@@ -257,9 +245,9 @@ async function fetchLatestSessionByCertificate(qaId, idNoSertifikat) {
   };
 }
 
-async function getNextDissolutionCertificateNumber(transaction) {
+async function getNextFriabilityCertificateNumber(transaction) {
   const rows = await sequelizeMSQL.query(
-    'SELECT dbo.fnGetKal_Ser_DT_No_ID() as ID_No_sertifikat',
+    'SELECT dbo.fnGetKal_Ser_FT_No_ID() as ID_No_sertifikat',
     {
       type: Sequelize.QueryTypes.SELECT,
       transaction,
@@ -286,7 +274,7 @@ async function certificateHeaderExists(qaId, idNoSertifikat, transaction) {
   return Boolean(rows.length);
 }
 
-async function ensureDissolutionCertificateHeader({ qaId, idNoSertifikat, userId, delegatedTo, transaction }) {
+async function ensureFriabilityCertificateHeader({ qaId, idNoSertifikat, userId, delegatedTo, transaction }) {
   if (await certificateHeaderExists(qaId, idNoSertifikat, transaction)) return true;
 
   await sequelizeMSQL.query(
@@ -315,7 +303,7 @@ async function ensureDissolutionCertificateHeader({ qaId, idNoSertifikat, userId
         QA_ID,
         :idNoSertifikat AS ID_No_sertifikat,
         Jenis_kalibrasi,
-        COALESCE(NULLIF(Parameter_Sertifikasi, ''), 'Dissolution Tester') AS parameter_sertifikasi,
+        COALESCE(NULLIF(Parameter_Sertifikasi, ''), 'Friability Tester') AS parameter_sertifikasi,
         1 AS isSert_Manual,
         GETDATE() AS Tgl,
         Assm_nama_instrumen,
@@ -342,7 +330,7 @@ async function ensureDissolutionCertificateHeader({ qaId, idNoSertifikat, userId
   return certificateHeaderExists(qaId, idNoSertifikat, transaction);
 }
 
-async function updateDissolutionCertificateHeader({ qaId, idNoSertifikat, header, userId, delegatedTo, transaction }) {
+async function updateFriabilityCertificateHeader({ qaId, idNoSertifikat, header, userId, delegatedTo, transaction }) {
   const normalized = normalizeHeaderPayload({
     ...header,
     QA_ID: qaId,
@@ -354,7 +342,7 @@ async function updateDissolutionCertificateHeader({ qaId, idNoSertifikat, header
     `
       UPDATE T_Kalibrasi_Sertifikat_Bagian
       SET
-        parameter_sertifikasi = COALESCE(NULLIF(parameter_sertifikasi, ''), 'Dissolution Tester'),
+        parameter_sertifikasi = COALESCE(NULLIF(parameter_sertifikasi, ''), 'Friability Tester'),
         Assm_nama_instrumen = COALESCE(NULLIF(:assmNamaInstrumen, ''), Assm_nama_instrumen),
         Assm_No_identitas_kalibrasi = COALESCE(NULLIF(:assmNoIdentitasKalibrasi, ''), Assm_No_identitas_kalibrasi),
         Assm_Merk = COALESCE(NULLIF(:assmMerk, ''), Assm_Merk),
@@ -406,7 +394,7 @@ async function updateDissolutionCertificateHeader({ qaId, idNoSertifikat, header
   );
 }
 
-async function replaceDissolutionCertificateRows({ qaId, idNoSertifikat, rows, userId, delegatedTo, transaction }) {
+async function replaceFriabilityCertificateRows({ qaId, idNoSertifikat, rows, userId, delegatedTo, transaction }) {
   await sequelizeMSQL.query(
     `
       DELETE FROM T_Kalibrasi_Sertifikat_Bagian_Hasil_Kal
@@ -592,7 +580,7 @@ const listSessions = async (req, res, next) => {
       tableReady: true,
     });
   } catch (error) {
-    console.error('Error in dissolution-tester listSessions:', error);
+    console.error('Error in friability listSessions:', error);
     next(error);
   }
 };
@@ -611,7 +599,7 @@ const getSession = async (req, res, next) => {
     if (!(await sessionTableExists())) {
       return res.status(404).json({
         success: false,
-        message: 'Dissolution Tester session table has not been created',
+        message: 'Friability Tester session table has not been created',
       });
     }
 
@@ -629,7 +617,7 @@ const getSession = async (req, res, next) => {
       data: session,
     });
   } catch (error) {
-    console.error('Error in dissolution-tester getSession:', error);
+    console.error('Error in friability getSession:', error);
     next(error);
   }
 };
@@ -702,12 +690,12 @@ const getPrintData = async (req, res, next) => {
     if (!headerResults.length) {
       return res.status(404).json({
         success: false,
-        message: 'Dissolution Tester sertifikat data not found',
+        message: 'Friability Tester sertifikat data not found',
       });
     }
 
     const workbookPayload = latestSession?.workbookPayload || {};
-    const rows = buildDissolutionResultRows(latestSession?.calculationResult || {});
+    const rows = buildFriabilityResultRows(latestSession?.calculationResult || {});
 
     return res.status(200).json({
       success: true,
@@ -720,7 +708,7 @@ const getPrintData = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('Error in dissolution-tester getPrintData:', error);
+    console.error('Error in friability getPrintData:', error);
     next(error);
   }
 };
@@ -741,7 +729,7 @@ const saveSession = async (req, res, next) => {
     if (!(await sessionTableExists())) {
       return res.status(500).json({
         success: false,
-        message: 'Dissolution Tester session table has not been created. Run sql/create-dissolution-tester-calibration-tables.sql first.',
+        message: 'Friability Tester session table has not been created. Run sql/create-friability-calibration-tables.sql first.',
       });
     }
 
@@ -848,11 +836,11 @@ const saveSession = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Dissolution Tester workbook session saved successfully',
+      message: 'Friability Tester workbook session saved successfully',
       data: session,
     });
   } catch (error) {
-    console.error('Error in dissolution-tester saveSession:', error);
+    console.error('Error in friability saveSession:', error);
     next(error);
   }
 };
@@ -872,7 +860,7 @@ const approveSession = async (req, res, next) => {
     if (!(await sessionTableExists())) {
       return res.status(404).json({
         success: false,
-        message: 'Dissolution Tester session table has not been created',
+        message: 'Friability Tester session table has not been created',
       });
     }
 
@@ -934,12 +922,12 @@ const approveSession = async (req, res, next) => {
       data,
     });
   } catch (error) {
-    console.error('Error in dissolution-tester approveSession:', error);
+    console.error('Error in friability approveSession:', error);
     next(error);
   }
 };
 
-const generateDissolutionSertifikat = async (req, res, next) => {
+const generateFriabilitySertifikat = async (req, res, next) => {
   const transaction = await sequelizeMSQL.transaction();
 
   try {
@@ -959,7 +947,7 @@ const generateDissolutionSertifikat = async (req, res, next) => {
       await transaction.rollback();
       return res.status(500).json({
         success: false,
-        message: 'Dissolution Tester session table has not been created. Run sql/create-dissolution-tester-calibration-tables.sql first.',
+        message: 'Friability Tester session table has not been created. Run sql/create-friability-calibration-tables.sql first.',
       });
     }
 
@@ -995,23 +983,23 @@ const generateDissolutionSertifikat = async (req, res, next) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: 'QA_ID is required to generate Dissolution Tester certificate',
+        message: 'QA_ID is required to generate Friability Tester certificate',
       });
     }
 
     if (!idNoSertifikat) {
-      idNoSertifikat = await getNextDissolutionCertificateNumber(transaction);
+      idNoSertifikat = await getNextFriabilityCertificateNumber(transaction);
     }
 
     if (!idNoSertifikat) {
       await transaction.rollback();
       return res.status(500).json({
         success: false,
-        message: 'Gagal mengambil nomor otomatis sertifikat Dissolution Tester',
+        message: 'Gagal mengambil nomor otomatis sertifikat Friability Tester',
       });
     }
 
-    const headerCreated = await ensureDissolutionCertificateHeader({
+    const headerCreated = await ensureFriabilityCertificateHeader({
       qaId,
       idNoSertifikat,
       userId: user_id,
@@ -1032,7 +1020,7 @@ const generateDissolutionSertifikat = async (req, res, next) => {
       QA_ID: qaId,
       ID_No_Sertifikat: idNoSertifikat,
     };
-    await updateDissolutionCertificateHeader({
+    await updateFriabilityCertificateHeader({
       qaId,
       idNoSertifikat,
       header: headerForSave,
@@ -1055,11 +1043,11 @@ const generateDissolutionSertifikat = async (req, res, next) => {
       });
     }
 
-    const resultRows = buildDissolutionResultRows(
+    const resultRows = buildFriabilityResultRows(
       calculationResult,
       body.certificateRows || []
     );
-    await replaceDissolutionCertificateRows({
+    await replaceFriabilityCertificateRows({
       qaId,
       idNoSertifikat,
       rows: resultRows,
@@ -1110,7 +1098,7 @@ const generateDissolutionSertifikat = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Sukses Generate Data Sertifikat Dissolution Tester!',
+      message: 'Sukses Generate Data Sertifikat Friability Tester!',
       data: {
         qa_id: qaId,
         id_no_sertifikat: idNoSertifikat,
@@ -1124,7 +1112,7 @@ const generateDissolutionSertifikat = async (req, res, next) => {
     } catch (_) {
       // Keep original error.
     }
-    console.error('Error in generateDissolutionSertifikat:', error);
+    console.error('Error in generateFriabilitySertifikat:', error);
     next(error);
   }
 };
@@ -1135,5 +1123,8 @@ module.exports = {
   getPrintData,
   saveSession,
   approveSession,
-  generateDissolutionSertifikat,
+  generateFriabilitySertifikat,
 };
+
+
+

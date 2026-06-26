@@ -1,6 +1,6 @@
-IF OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session', 'U') IS NULL
+﻿IF OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session', 'U') IS NULL
 BEGIN
-  CREATE TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+  CREATE TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
   (
     Session_ID BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     QA_ID NVARCHAR(50) NULL,
@@ -8,7 +8,7 @@ BEGIN
     Workbook_Payload_JSON NVARCHAR(MAX) NULL,
     Calculation_Result_JSON NVARCHAR(MAX) NULL,
     Evaluation_Result NVARCHAR(100) NULL,
-    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_DissolutionWorkbook_Status DEFAULT (N'DRAFT'),
+    Status NVARCHAR(20) NOT NULL CONSTRAINT DF_FriabilityWorkbook_Status DEFAULT (N'DRAFT'),
     ApprovedByAdmin NVARCHAR(100) NULL,
     ApprovedByAdminDate DATETIME NULL,
     ApprovedByOfficer NVARCHAR(100) NULL,
@@ -17,84 +17,84 @@ BEGIN
     ApprovedByManagerDate DATETIME NULL,
     UserID NVARCHAR(100) NULL,
     Delegated_To NVARCHAR(100) NULL,
-    Process_Date DATETIME NOT NULL CONSTRAINT DF_DissolutionWorkbook_ProcessDate DEFAULT (GETDATE()),
+    Process_Date DATETIME NOT NULL CONSTRAINT DF_FriabilityWorkbook_ProcessDate DEFAULT (GETDATE()),
     Update_Date DATETIME NULL
   )
 END
 GO
 
-IF OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session', 'U') IS NOT NULL
+IF OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session', 'U') IS NOT NULL
 BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'QA_ID'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD QA_ID NVARCHAR(50) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ID_No_Sertifikat'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ID_No_Sertifikat NVARCHAR(50) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Workbook_Payload_JSON'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Workbook_Payload_JSON NVARCHAR(MAX) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Calculation_Result_JSON'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Calculation_Result_JSON NVARCHAR(MAX) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Evaluation_Result'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Evaluation_Result NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Status'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Status NVARCHAR(20) NULL
 
-    EXEC(N'UPDATE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    EXEC(N'UPDATE dbo.T_Kalibrasi_Friability_Workbook_Session
     SET Status = N''DRAFT''
     WHERE Status IS NULL')
 
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ALTER COLUMN Status NVARCHAR(20) NOT NULL')
   END
 
@@ -104,117 +104,117 @@ BEGIN
     INNER JOIN sys.columns AS c
       ON c.object_id = dc.parent_object_id
      AND c.column_id = dc.parent_column_id
-    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND c.name = 'Status'
   )
   BEGIN
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
-    ADD CONSTRAINT DF_DissolutionWorkbook_Status DEFAULT (N''DRAFT'') FOR Status')
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
+    ADD CONSTRAINT DF_FriabilityWorkbook_Status DEFAULT (N''DRAFT'') FOR Status')
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByAdmin'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByAdmin NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByAdminDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByAdminDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByOfficer'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByOfficer NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByOfficerDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByOfficerDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByManager'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByManager NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'ApprovedByManagerDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD ApprovedByManagerDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'UserID'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD UserID NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Delegated_To'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Delegated_To NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Process_Date'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Process_Date DATETIME NULL
 
-    EXEC(N'UPDATE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    EXEC(N'UPDATE dbo.T_Kalibrasi_Friability_Workbook_Session
     SET Process_Date = GETDATE()
     WHERE Process_Date IS NULL')
 
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ALTER COLUMN Process_Date DATETIME NOT NULL')
   END
 
@@ -224,22 +224,22 @@ BEGIN
     INNER JOIN sys.columns AS c
       ON c.object_id = dc.parent_object_id
      AND c.column_id = dc.parent_column_id
-    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND c.name = 'Process_Date'
   )
   BEGIN
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
-    ADD CONSTRAINT DF_DissolutionWorkbook_ProcessDate DEFAULT (GETDATE()) FOR Process_Date')
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
+    ADD CONSTRAINT DF_FriabilityWorkbook_ProcessDate DEFAULT (GETDATE()) FOR Process_Date')
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
       AND name = 'Update_Date'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session
     ADD Update_Date DATETIME NULL
   END
 END
@@ -248,12 +248,12 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
-  WHERE name = 'IX_DissolutionWorkbook_QA_Sertifikat'
-    AND object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session')
+  WHERE name = 'IX_FriabilityWorkbook_QA_Sertifikat'
+    AND object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session')
 )
 BEGIN
-  CREATE INDEX IX_DissolutionWorkbook_QA_Sertifikat
-  ON dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+  CREATE INDEX IX_FriabilityWorkbook_QA_Sertifikat
+  ON dbo.T_Kalibrasi_Friability_Workbook_Session
   (
     QA_ID,
     ID_No_Sertifikat,
@@ -262,9 +262,9 @@ BEGIN
 END
 GO
 
-IF OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist', 'U') IS NULL
+IF OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist', 'U') IS NULL
 BEGIN
-  CREATE TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+  CREATE TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
   (
     Hist_ID BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     Session_ID BIGINT NOT NULL,
@@ -285,226 +285,226 @@ BEGIN
     Process_Date DATETIME NULL,
     Update_Date DATETIME NULL,
     Flag_Update CHAR(1) NOT NULL,
-    Change_Date DATETIME NOT NULL CONSTRAINT DF_DissolutionWorkbookHist_ChangeDate DEFAULT (GETDATE())
+    Change_Date DATETIME NOT NULL CONSTRAINT DF_FriabilityWorkbookHist_ChangeDate DEFAULT (GETDATE())
   )
 END
 GO
 
-IF OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist', 'U') IS NOT NULL
+IF OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist', 'U') IS NOT NULL
 BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Session_ID'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Session_ID BIGINT NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'QA_ID'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD QA_ID NVARCHAR(50) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ID_No_Sertifikat'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ID_No_Sertifikat NVARCHAR(50) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Workbook_Payload_JSON'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Workbook_Payload_JSON NVARCHAR(MAX) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Calculation_Result_JSON'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Calculation_Result_JSON NVARCHAR(MAX) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Evaluation_Result'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Evaluation_Result NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Status'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Status NVARCHAR(20) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByAdmin'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByAdmin NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByAdminDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByAdminDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByOfficer'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByOfficer NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByOfficerDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByOfficerDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByManager'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByManager NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'ApprovedByManagerDate'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD ApprovedByManagerDate DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'UserID'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD UserID NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Delegated_To'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Delegated_To NVARCHAR(100) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Process_Date'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Process_Date DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Update_Date'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Update_Date DATETIME NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Flag_Update'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Flag_Update CHAR(1) NULL
   END
 
   IF NOT EXISTS (
     SELECT 1
     FROM sys.columns
-    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND name = 'Change_Date'
   )
   BEGIN
-    ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ADD Change_Date DATETIME NULL
 
-    EXEC(N'UPDATE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    EXEC(N'UPDATE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     SET Change_Date = GETDATE()
     WHERE Change_Date IS NULL')
 
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
     ALTER COLUMN Change_Date DATETIME NOT NULL')
   END
 
@@ -514,30 +514,30 @@ BEGIN
     INNER JOIN sys.columns AS c
       ON c.object_id = dc.parent_object_id
      AND c.column_id = dc.parent_column_id
-    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist')
+    WHERE dc.parent_object_id = OBJECT_ID('dbo.T_Kalibrasi_Friability_Workbook_Session_Hist')
       AND c.name = 'Change_Date'
   )
   BEGIN
-    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
-    ADD CONSTRAINT DF_DissolutionWorkbookHist_ChangeDate DEFAULT (GETDATE()) FOR Change_Date')
+    EXEC(N'ALTER TABLE dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
+    ADD CONSTRAINT DF_FriabilityWorkbookHist_ChangeDate DEFAULT (GETDATE()) FOR Change_Date')
   END
 END
 GO
 
-IF OBJECT_ID('dbo.TR_T_Kalibrasi_DissolutionTester_Workbook_Session_Hist', 'TR') IS NOT NULL
+IF OBJECT_ID('dbo.TR_T_Kalibrasi_Friability_Workbook_Session_Hist', 'TR') IS NOT NULL
 BEGIN
-  DROP TRIGGER dbo.TR_T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+  DROP TRIGGER dbo.TR_T_Kalibrasi_Friability_Workbook_Session_Hist
 END
 GO
 
-CREATE TRIGGER dbo.TR_T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
-ON dbo.T_Kalibrasi_DissolutionTester_Workbook_Session
+CREATE TRIGGER dbo.TR_T_Kalibrasi_Friability_Workbook_Session_Hist
+ON dbo.T_Kalibrasi_Friability_Workbook_Session
 AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
   SET NOCOUNT ON
 
-  INSERT INTO dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+  INSERT INTO dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
   (
     Session_ID,
     QA_ID,
@@ -580,7 +580,7 @@ BEGIN
   FROM inserted AS i
   LEFT JOIN deleted AS d ON d.Session_ID = i.Session_ID
 
-  INSERT INTO dbo.T_Kalibrasi_DissolutionTester_Workbook_Session_Hist
+  INSERT INTO dbo.T_Kalibrasi_Friability_Workbook_Session_Hist
   (
     Session_ID,
     QA_ID,
@@ -625,3 +625,4 @@ BEGIN
   WHERE i.Session_ID IS NULL
 END
 GO
+

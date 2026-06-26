@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 
 const routerUpload = require("../routers/v2/routerUpload");
@@ -17,6 +17,8 @@ const routerTimerCalibration = require("../routers/transactions/timer-calibratio
 const routerTimbanganCalibration = require("../routers/transactions/timbangan-calibration.router");
 const routerTorqueMeterCalibration = require("../routers/transactions/torque-meter-calibration.router");
 const routerDissolutionTesterCalibration = require("../routers/transactions/dissolution-tester-calibration.router");
+const routerFriabilityCalibration = require("../routers/transactions/friability-calibration.router");
+const routerMoistureCalibration = require("../routers/transactions/moisture-calibration.router");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
 
@@ -52,8 +54,13 @@ router.use("/thermohygrometer-calibration", routerThermohygrometerCalibration);
 router.use("/api", routerCalibrationWorkbook);
 router.use("/torque-meter-calibration", routerTorqueMeterCalibration);
 router.use("/dissolution-tester-calibration", routerDissolutionTesterCalibration);
+router.use("/friability-calibration", routerFriabilityCalibration);
+router.use("/moisture-calibration", routerMoistureCalibration);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
 router.use("/master", masterRouter);
 
 module.exports = router;
+
+
+
