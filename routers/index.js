@@ -14,8 +14,14 @@ const routerPressureCalibration = require("../routers/transactions/pressure-cali
 const routerCalibrationWorkbook = require("../routers/transactions/calibration-workbook.router");
 const routerTimerCalibration = require("../routers/transactions/timer-calibration.router");
 const routerTimbanganCalibration = require("../routers/transactions/timbangan-calibration.router");
+const routerDisintegrationCalibration = require("../routers/transactions/disintegration-calibration.router");
+const routerRpmCalibration = require("../routers/transactions/rpm-calibration.router");
+const routerTemperatureCalibration = require("../routers/transactions/temperature-calibration.router");
+const routerTappedVolumeterCalibration = require("../routers/transactions/tapped-volumeter-calibration.router");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
+const routerMasterVendor = require("../routers/transactions/master-vendor.router");
+const routerKalibrasiEksternal = require("../routers/transactions/kalibrasi-eksternal.router");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -48,6 +54,12 @@ router.use("/pressure-calibration", routerPressureCalibration);
 router.use("/api", routerCalibrationWorkbook);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
+router.use("/api", routerDisintegrationCalibration);
+router.use("/api", routerRpmCalibration);
+router.use("/api", routerTemperatureCalibration);
+router.use("/api", routerTappedVolumeterCalibration);
 router.use("/master", masterRouter);
+router.use("/transactions/master-vendor", routerMasterVendor);
+router.use("/transactions/kalibrasi-eksternal", routerKalibrasiEksternal);
 
 module.exports = router;

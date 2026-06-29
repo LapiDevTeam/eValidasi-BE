@@ -41,7 +41,7 @@ const PARAMETER_TO_CODE = Object.freeze({
 
 // Kode yang BENAR-BENAR punya fungsi generator nomor di DB (dbo.fnGetKal_Ser_<KODE>_No_ID).
 // Tambahkan kode di sini hanya kalau fungsi SQL-nya sudah ada.
-const GENERATOR_AVAILABLE_CODES = Object.freeze(['D', 'L', 'M', 'P', 'R', 'T', 'V']);
+const GENERATOR_AVAILABLE_CODES = Object.freeze(['D', 'DS', 'DT', 'L', 'M', 'P', 'R', 'RP', 'T', 'TQ', 'TV', 'V']);
 
 /**
  * Ambil kode huruf untuk sebuah Parameter_Sertifikasi.
