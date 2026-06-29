@@ -19,6 +19,7 @@ const routerTorqueMeterCalibration = require("../routers/transactions/torque-met
 const routerDissolutionTesterCalibration = require("../routers/transactions/dissolution-tester-calibration.router");
 const routerFriabilityCalibration = require("../routers/transactions/friability-calibration.router");
 const routerMoistureCalibration = require("../routers/transactions/moisture-calibration.router");
+const routerLeakTestCalibration = require("../routers/transactions/leak-test-calibration.router");
 const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
 
@@ -56,11 +57,13 @@ router.use("/torque-meter-calibration", routerTorqueMeterCalibration);
 router.use("/dissolution-tester-calibration", routerDissolutionTesterCalibration);
 router.use("/friability-calibration", routerFriabilityCalibration);
 router.use("/moisture-calibration", routerMoistureCalibration);
+router.use("/leak-test-calibration", routerLeakTestCalibration);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
 router.use("/master", masterRouter);
 
 module.exports = router;
+
 
 
 
