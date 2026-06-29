@@ -27,6 +27,7 @@ function buildPayload(body, decision) {
     assmKapasitas,
     parameterKalibrasi,
     noPermohonan,
+    keteranganKhusus,
   } = body;
 
   return {
@@ -48,6 +49,7 @@ function buildPayload(body, decision) {
     severityNote:      decision.isImpactCritical ? null : (severityNote      || null),
     probabilityNote:   decision.isImpactCritical ? null : (probabilityNote   || null),
     detectabilityNote: decision.isImpactCritical ? null : (detectabilityNote || null),
+    keteranganKhusus:  decision.riskCategory === 'Sedang' ? (keteranganKhusus || null) : null,
     rpn:               decision.rpn,
     riskCategory:      decision.riskCategory,
     calibrationDecision: decision.calibrationDecision,

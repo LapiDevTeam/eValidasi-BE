@@ -3,6 +3,14 @@ const router = express.Router();
 const { authentication } = require('../../middlewares/authentication');
 
 const {
+  getTidakDapatStatus,
+  saveTidakDapat,
+  approveTidakDapatSPV,
+  approveTidakDapatMGR,
+  konfirmasiLabelTidakDapat,
+} = require('../../controllers/transactions/tidak-dapat-internal.controller');
+
+const {
   searchSertifikatBagian,
   searchByQAID,
   getSertifikatBagianDetail,
@@ -105,5 +113,14 @@ router.post('/resertifikasi', authentication, resertifikasiBagian);
 
 // Print label terkalibrasi — record first print date (PrintLabelTerkalibrasi)
 router.post('/print-label', authentication, printLabelTerkalibrasi);
+
+// ============================================================
+// TIDAK DAPAT DIKALIBRASI — sub-flow internal
+// ============================================================
+router.get('/tidak-dapat/status', authentication, getTidakDapatStatus);
+router.post('/tidak-dapat/save', authentication, saveTidakDapat);
+router.post('/tidak-dapat/approve-spv', authentication, approveTidakDapatSPV);
+router.post('/tidak-dapat/approve-mgr', authentication, approveTidakDapatMGR);
+router.post('/tidak-dapat/konfirmasi-label', authentication, konfirmasiLabelTidakDapat);
 
 module.exports = router;

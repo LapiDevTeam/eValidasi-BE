@@ -19,6 +19,11 @@ const IMPACT_FIELDS = [
   'impactsSafety',
 ];
 
+function isMediumRisk(severity, probability, detectability) {
+  const rpn = Number(severity) * Number(probability) * Number(detectability);
+  return rpn >= 20 && rpn < 40;
+}
+
 /**
  * Validate body for POST (create) and PUT (update) operations.
  * Returns an array of error strings. Empty array means valid.
@@ -26,7 +31,14 @@ const IMPACT_FIELDS = [
 function validateAssessmentBody(body) {
   const errors = [];
 
-  const { instrumentName, impactAssessment, severity, probability, detectability } = body;
+  const {
+    instrumentName,
+    impactAssessment,
+    severity,
+    probability,
+    detectability,
+    keteranganKhusus,
+  } = body;
 
   // --- A. Informasi Alat ---
   if (!instrumentName || String(instrumentName).trim() === '') {
@@ -72,6 +84,19 @@ function validateAssessmentBody(body) {
       errors.push('Detectability is required when all impact assessment answers are No.');
     } else if (!VALID_SCORES.includes(Number(detectability))) {
       errors.push('Detectability must be 1, 3, or 5.');
+    }
+
+    const hasValidScores =
+      VALID_SCORES.includes(Number(severity)) &&
+      VALID_SCORES.includes(Number(probability)) &&
+      VALID_SCORES.includes(Number(detectability));
+
+    if (
+      hasValidScores &&
+      isMediumRisk(severity, probability, detectability) &&
+      (!keteranganKhusus || String(keteranganKhusus).trim() === '')
+    ) {
+      errors.push('Keterangan Khusus is required when risk category is Sedang.');
     }
   }
 

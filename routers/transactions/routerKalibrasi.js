@@ -1,6 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const { authentication } = require("../../middlewares/authentication");
+const {
+  getTidakDapatStatus,
+  saveTidakDapat,
+  approveTidakDapatSPV,
+  approveTidakDapatMGR,
+  konfirmasiLabelTidakDapat,
+} = require('../../controllers/transactions/tidak-dapat-internal.controller');
 const { checkFileSizePublic } = require("../../middlewares/upload.middleware");
 const {
   getPermohonanKalibrasiList,
@@ -306,5 +313,19 @@ router.post("/da-anak-timbangan/reject", authentication, rejectDaAnakTimbangan);
 router.post("/da-anak-timbangan/upload", authentication, checkFileSizePublic, uploadFileDaAnakTimbangan);
 router.get("/da-anak-timbangan/download", authentication, downloadFileDaAnakTimbangan);
 router.post("/da-anak-timbangan/delete-file", authentication, deleteFileDaAnakTimbangan);
+
+// ============== TIDAK DAPAT DIKALIBRASI — THERMOHYGRO ==============
+router.get("/sertifikat/tidak-dapat/status", authentication, getTidakDapatStatus);
+router.post("/sertifikat/tidak-dapat/save", authentication, saveTidakDapat);
+router.post("/sertifikat/tidak-dapat/approve-spv", authentication, approveTidakDapatSPV);
+router.post("/sertifikat/tidak-dapat/approve-mgr", authentication, approveTidakDapatMGR);
+router.post("/sertifikat/tidak-dapat/konfirmasi-label", authentication, konfirmasiLabelTidakDapat);
+
+// ============== TIDAK DAPAT DIKALIBRASI — TIMBANGAN ==============
+router.get("/sertifikat-timbangan/tidak-dapat/status", authentication, getTidakDapatStatus);
+router.post("/sertifikat-timbangan/tidak-dapat/save", authentication, saveTidakDapat);
+router.post("/sertifikat-timbangan/tidak-dapat/approve-spv", authentication, approveTidakDapatSPV);
+router.post("/sertifikat-timbangan/tidak-dapat/approve-mgr", authentication, approveTidakDapatMGR);
+router.post("/sertifikat-timbangan/tidak-dapat/konfirmasi-label", authentication, konfirmasiLabelTidakDapat);
 
 module.exports = router;

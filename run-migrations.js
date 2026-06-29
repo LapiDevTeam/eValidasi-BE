@@ -27,6 +27,7 @@ const migrationOrder = [
   'add-reject-remark-to-kalibrasi-permohonan.sql',
   'drop-identitas-alat-from-calibration-sessions.sql',
   'add-justifikasi-to-calibration-risk-assessment.sql',
+  'add-keterangan-khusus-to-calibration-risk-assessment.sql',
   'add-da-columns-to-calibration-risk-assessment.sql',
   'add-manual-uncertainties-to-calibration-sessions.sql',
   'add-indicator-resolution-to-calibration-sessions.sql',
@@ -34,6 +35,8 @@ const migrationOrder = [
   'add-columns-to-calibration-standards.sql',
   'fix-sertifikat-bagian-history-triggers.sql',
   'full-calibration-risk-assessment.sql',
+  'gap3-tidak-dapat-label-tempel.sql',
+  'gap4-tidak-dapat-internal.sql',
 ];
 
 async function runMigrations() {
