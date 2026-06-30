@@ -5,6 +5,7 @@ const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 
 const MONTH_HEADERS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const PREVIEW_SOURCES = ['live', 'requested', 'snapshot', 'scan'];
 
 const parseYear = (year) => {
   const selectedYear = Number(year);
@@ -13,6 +14,40 @@ const parseYear = (year) => {
   }
   return selectedYear;
 };
+
+const getUserJobLevel = (user = {}) =>
+  Number(
+    user?.delegatedTo?.Job_LevelID ??
+      user?.delegatedTo?.emp_JobLevelID ??
+      user?.delegatedTo?.joblevel_id_user ??
+      user?.user?.Job_LevelID ??
+      user?.user?.emp_JobLevelID ??
+      user?.user?.joblevel_id_user ??
+      user?.Job_LevelID ??
+      user?.emp_JobLevelID ??
+      user?.joblevel_id_user ??
+      user?.jabatan_user ??
+      0
+  );
+
+const getUserDepartment = (user = {}) =>
+  String(
+    user?.delegatedTo?.emp_DeptID ??
+      user?.delegatedTo?.DeptID ??
+      user?.delegatedTo?.bagian_user ??
+      user?.user?.emp_DeptID ??
+      user?.user?.DeptID ??
+      user?.user?.bagian_user ??
+      user?.emp_DeptID ??
+      user?.DeptID ??
+      user?.bagian_user ??
+      ''
+  )
+    .trim()
+    .toUpperCase();
+
+const canApproveOrRejectAWP = (user = {}) =>
+  getUserJobLevel(user) === 3 && getUserDepartment(user) === 'VN';
 
 const getRKTDataByYear = async (selectedYear) => {
   const query = `
@@ -38,6 +73,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Thermohygro
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -54,6 +90,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Anak_Timbangan
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -70,6 +107,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Timbangan
+      WHERE CAST(ISNULL([Interval], 0) AS INT) > 0
 
       UNION ALL
 
@@ -86,6 +124,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Bagian
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -155,6 +194,7 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         CAST('T_Kalibrasi_DA_Thermohygro' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Thermohygro
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -174,6 +214,7 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         CAST('T_Kalibrasi_DA_Anak_Timbangan' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Anak_Timbangan
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -193,6 +234,7 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         CAST('T_Kalibrasi_DA_Timbangan' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Timbangan
+      WHERE CAST(ISNULL([Interval], 0) AS INT) > 0
 
       UNION ALL
 
@@ -212,6 +254,7 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         CAST('T_Kalibrasi_DA_Bagian' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Bagian
+      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
 
       UNION ALL
 
@@ -277,6 +320,12 @@ const getRKTRealizationDataByYear = async (selectedYear, transaction = null) => 
       SELECT DISTINCT QA_ID, Tgl_kalibrasi
       FROM T_Kalibrasi_DA_Bagian
       WHERE Tgl_kalibrasi IS NOT NULL
+
+      UNION ALL
+
+      SELECT DISTINCT QA_ID, Real_Date AS Tgl_kalibrasi
+      FROM T_AWP_Realization_History
+      WHERE Real_Date IS NOT NULL
     ) AS A
     WHERE YEAR(Tgl_kalibrasi) = :year
     ORDER BY QA_ID, Tgl_kalibrasi
@@ -471,6 +520,7 @@ const mapDoubleChecklistPreviewData = (results, selectedYear) =>
       assm_lokasi: item.Assm_Lokasi || '',
       tgl_kalibrasi: null,
       kalibrasi_selanjutnya: dueDate || null,
+      initial_due_date: dueDate || null,
       parameter_interval: Number.isFinite(interval) ? interval : 0,
       plan_date: dueDate || null,
       real_date: null,
@@ -513,9 +563,10 @@ const mapSnapshotDetailData = (details) =>
       group_da_dept: item.Department || '',
       assm_lokasi: item.Location || '',
       tgl_kalibrasi: item.Tgl_Kalibrasi || null,
-      kalibrasi_selanjutnya: item.Due_Date || null,
+      kalibrasi_selanjutnya: item.Initial_Due_Date || item.Due_Date || null,
+      initial_due_date: item.Initial_Due_Date || item.Due_Date || null,
       parameter_interval: item.Parameter_Interval ?? 0,
-      plan_date: item.Plan_Date || item.Due_Date || null,
+      plan_date: item.Plan_Date || item.Initial_Due_Date || item.Due_Date || null,
       real_date: item.Real_Date || null,
       plan_dates: planDatesFromJson,
       real_dates: realDatesFromJson,
@@ -538,8 +589,11 @@ const getLatestAWPHeaderByStatus = async (selectedYear, status, transaction = nu
         Revision_No,
         Status,
         Requested_By,
+        Prepared_By,
+        Prepared_By_Name,
         Requested_At,
         Approved_By,
+        Approved_By_Name,
         Approved_At,
         Rejected_By,
         Rejected_At,
@@ -569,6 +623,9 @@ const getLatestAWPSnapshotHeader = (selectedYear, transaction = null) =>
 const getLatestRequestedAWPHeader = (selectedYear, transaction = null) =>
   getLatestAWPHeaderByStatus(selectedYear, 'REQUESTED', transaction);
 
+const getLatestPreviousAWPHeader = (selectedYear, transaction = null) =>
+  getLatestAWPHeaderByStatus(selectedYear, 'SUPERSEDED', transaction);
+
 const getAWPSnapshotHeaderById = async (awpId, transaction = null) => {
   const rows = await sequelizeMSQL.query(
     `
@@ -578,8 +635,11 @@ const getAWPSnapshotHeaderById = async (awpId, transaction = null) => {
         Revision_No,
         Status,
         Requested_By,
+        Prepared_By,
+        Prepared_By_Name,
         Requested_At,
         Approved_By,
+        Approved_By_Name,
         Approved_At,
         Rejected_By,
         Rejected_At,
@@ -614,6 +674,7 @@ const getAWPSnapshotDetails = async (awpId, transaction = null) =>
         Department,
         Location,
         Due_Date,
+        Initial_Due_Date,
         Tgl_Kalibrasi,
         Parameter_Interval,
         Plan_Month,
@@ -647,8 +708,11 @@ const mapAWPRevisionInfo = (header) => {
     revision_no: header.Revision_No,
     status: header.Status,
     requested_by: header.Requested_By,
+    prepared_by: header.Prepared_By || header.Requested_By,
+    prepared_by_name: header.Prepared_By_Name || header.Prepared_By || header.Requested_By,
     requested_at: header.Requested_At,
     approved_by: header.Approved_By,
+    approved_by_name: header.Approved_By_Name || header.Approved_By,
     approved_at: header.Approved_At,
     notes: header.Notes,
     created_by: header.Created_By,
@@ -661,11 +725,14 @@ const mapAWPRevisionInfo = (header) => {
 const getAWPRevisionState = async (selectedYear, transaction = null) => {
   const currentHeader = await getLatestAWPSnapshotHeader(selectedYear, transaction);
   const requestedHeader = await getLatestRequestedAWPHeader(selectedYear, transaction);
+  const previousHeader = await getLatestPreviousAWPHeader(selectedYear, transaction);
 
   return {
     currentHeader,
     requestedHeader,
+    previousHeader,
     revisions: {
+      previous: mapAWPRevisionInfo(previousHeader),
       current: mapAWPRevisionInfo(currentHeader),
       requested: mapAWPRevisionInfo(requestedHeader),
     },
@@ -868,16 +935,105 @@ const buildLiveDoubleChecklistPayload = async (selectedYear, viewOrTransaction =
   };
 };
 
+const normalizeSelectedQaIds = (selectedQaIds) => {
+  if (!Array.isArray(selectedQaIds)) return null;
+
+  return new Set(
+    selectedQaIds
+      .map((qaId) => String(qaId || '').trim())
+      .filter(Boolean)
+  );
+};
+
+const buildScannedDoubleChecklistPayload = async (
+  selectedYear,
+  selectedNewQaIds = null,
+  transaction = null
+) => {
+  const results = await getRKTDoubleChecklistDataByYear(selectedYear, transaction);
+  const liveData = mapDoubleChecklistPreviewData(results, selectedYear);
+  const { currentHeader, revisions } = await getAWPRevisionState(selectedYear, transaction);
+  const selectedSet = normalizeSelectedQaIds(selectedNewQaIds);
+
+  let data = liveData.map((row, index) => ({
+    ...row,
+    no: index + 1,
+    revision_status: 'UNCHANGED',
+    include_in_revision: true,
+  }));
+  let newCount = 0;
+  let selectedNewCount = 0;
+
+  if (currentHeader?.AWP_ID) {
+    const currentDetails = await getAWPSnapshotDetails(currentHeader.AWP_ID, transaction);
+    const currentData = stripRealizationData(mapSnapshotDetailData(currentDetails)).map((row) => ({
+      ...row,
+      revision_status: 'UNCHANGED',
+      include_in_revision: true,
+    }));
+
+    const currentKeys = new Set(
+      currentData.map(getRowCompareKey).filter(Boolean)
+    );
+
+    const newRows = liveData
+      .filter((row) => {
+        const key = getRowCompareKey(row);
+        return key && !currentKeys.has(key);
+      })
+      .map((row) => {
+        const key = getRowCompareKey(row);
+        const isIncluded = selectedSet ? selectedSet.has(key) : true;
+        return {
+          ...row,
+          revision_status: 'ADDED',
+          include_in_revision: isIncluded,
+        };
+      });
+
+    newCount = newRows.length;
+    const includedNewRows = newRows.filter((row) => row.include_in_revision);
+    selectedNewCount = includedNewRows.length;
+    data = [...currentData, ...includedNewRows].map((row, index) => ({
+      ...row,
+      no: index + 1,
+    }));
+
+    if (!selectedSet) {
+      data = [...currentData, ...newRows].map((row, index) => ({
+        ...row,
+        no: index + 1,
+      }));
+    }
+  }
+
+  return {
+    success: true,
+    message: 'New instrument scan fetched successfully',
+    year: selectedYear,
+    count: data.length,
+    new_count: newCount,
+    selected_new_count: selectedSet ? selectedNewCount : newCount,
+    months: MONTH_HEADERS,
+    mode: 'double-checklist',
+    view: 'start',
+    source: 'scan',
+    snapshot: currentHeader ? mapAWPRevisionInfo(currentHeader) : null,
+    revisions,
+    data,
+  };
+};
+
 const getMasterRKTPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const isDoubleChecklist = req.query.mode === 'double-checklist';
-    const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
+    const source = PREVIEW_SOURCES.includes(req.query.source)
       ? req.query.source
       : 'snapshot';
     const view = ['start', 'end'].includes(req.query.view)
       ? req.query.view
-      : source === 'live'
+      : source === 'live' || source === 'scan'
         ? 'start'
         : 'end';
 
@@ -889,6 +1045,11 @@ const getMasterRKTPreview = async (req, res, next) => {
     }
 
     if (isDoubleChecklist) {
+      if (source === 'scan') {
+        const scanPayload = await buildScannedDoubleChecklistPayload(selectedYear);
+        return res.status(200).json(scanPayload);
+      }
+
       if (source === 'requested') {
         const requestedHeader = await getLatestRequestedAWPHeader(selectedYear);
         if (requestedHeader) {
@@ -934,7 +1095,11 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   let data = [];
   let snapshotHeader = null;
 
-  if (source === 'requested') {
+  if (source === 'scan') {
+    const scanPayload = await buildScannedDoubleChecklistPayload(selectedYear);
+    data = scanPayload.data;
+    snapshotHeader = await getLatestAWPSnapshotHeader(selectedYear);
+  } else if (source === 'requested') {
     snapshotHeader = await getLatestRequestedAWPHeader(selectedYear);
   } else if (source !== 'live') {
     snapshotHeader = await getLatestAWPSnapshotHeader(selectedYear);
@@ -943,7 +1108,9 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
     }
   }
 
-  if (snapshotHeader) {
+  if (source === 'scan') {
+    data = stripRealizationData(data);
+  } else if (snapshotHeader) {
     const details = await getAWPSnapshotDetails(snapshotHeader.AWP_ID);
     const snapshotData = mapSnapshotDetailData(details);
     data =
@@ -977,9 +1144,12 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
 
   const lastColumn = 8 + (MONTH_HEADERS.length * 2);
   worksheet.mergeCells(1, 1, 1, lastColumn);
-  worksheet.getCell(1, 1).value = snapshotHeader
-    ? `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear} - REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
-    : `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear}`;
+  worksheet.getCell(1, 1).value =
+    source === 'scan'
+      ? `AWP START OF YEAR ${selectedYear} - NEW INSTRUMENT SCAN`
+      : snapshotHeader
+        ? `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear} - REV ${snapshotHeader.Revision_No} (${snapshotHeader.Status})`
+        : `AWP ${view === 'end' ? 'END' : 'START'} OF YEAR ${selectedYear}`;
   worksheet.getCell(1, 1).font = { bold: true, size: 14 };
   worksheet.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -1033,7 +1203,16 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
     return `${day}/${month}/${year}`;
   };
 
+  const formatExcelDateList = (values = []) =>
+    values
+      .map(formatExcelDate)
+      .filter(Boolean)
+      .join('\n');
+
   data.forEach((item) => {
+    const realDateValues = item.real_dates?.length
+      ? item.real_dates
+      : [item.tgl_kalibrasi];
     const rowData = [
       item.no,
       item.assm_nama_instrumen || '',
@@ -1041,7 +1220,7 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
       item.group_da_dept || '',
       item.assm_lokasi || '',
       formatExcelDate(item.kalibrasi_selanjutnya),
-      view === 'end' ? formatExcelDate(item.tgl_kalibrasi) : '',
+      view === 'end' ? formatExcelDateList(realDateValues) : '',
       item.parameter_interval ?? '',
     ];
 
@@ -1084,6 +1263,15 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   const signatureNameRow = signatureLabelRow + 4;
   const leftSignatureEnd = Math.floor(lastColumn / 2);
   const rightSignatureStart = leftSignatureEnd + 2;
+  const preparedByName =
+    snapshotHeader?.Prepared_By_Name ||
+    snapshotHeader?.Prepared_By ||
+    snapshotHeader?.Requested_By ||
+    'Qualification & Calibration Officer';
+  const approvedByName =
+    snapshotHeader?.Approved_By_Name ||
+    snapshotHeader?.Approved_By ||
+    'VN Manager';
 
   worksheet.mergeCells(signatureLabelRow, 1, signatureLabelRow, leftSignatureEnd);
   worksheet.mergeCells(signatureLabelRow, rightSignatureStart, signatureLabelRow, lastColumn);
@@ -1092,8 +1280,8 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
 
   worksheet.mergeCells(signatureNameRow, 1, signatureNameRow, leftSignatureEnd);
   worksheet.mergeCells(signatureNameRow, rightSignatureStart, signatureNameRow, lastColumn);
-  worksheet.getCell(signatureNameRow, 1).value = 'Qualification & Calibration Officer';
-  worksheet.getCell(signatureNameRow, rightSignatureStart).value = 'VN Manager';
+  worksheet.getCell(signatureNameRow, 1).value = preparedByName;
+  worksheet.getCell(signatureNameRow, rightSignatureStart).value = approvedByName;
 
   worksheet.getCell(signatureLabelRow, 1).alignment = { horizontal: 'center' };
   worksheet.getCell(signatureLabelRow, rightSignatureStart).alignment = { horizontal: 'center' };
@@ -1102,9 +1290,12 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   worksheet.getCell(signatureNameRow, 1).font = { bold: true };
   worksheet.getCell(signatureNameRow, rightSignatureStart).font = { bold: true };
 
-  const fileName = snapshotHeader
-    ? `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}-Rev-${snapshotHeader.Revision_No}.xlsx`
-    : `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}.xlsx`;
+  const fileName =
+    source === 'scan'
+      ? `Master-AWP-Start-${selectedYear}-Scan.xlsx`
+      : snapshotHeader
+        ? `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}-Rev-${snapshotHeader.Revision_No}.xlsx`
+        : `Master-AWP-${view === 'end' ? 'End' : 'Start'}-${selectedYear}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
 
   res.setHeader(
@@ -1123,12 +1314,12 @@ const exportMasterRKT = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const isDoubleChecklist = req.query.mode === 'double-checklist';
-    const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
+    const source = PREVIEW_SOURCES.includes(req.query.source)
       ? req.query.source
       : 'snapshot';
     const view = ['start', 'end'].includes(req.query.view)
       ? req.query.view
-      : source === 'live'
+      : source === 'live' || source === 'scan'
         ? 'start'
         : 'end';
 
@@ -1294,7 +1485,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.body?.year || req.query?.year);
     const notes = req.body?.notes || null;
-    const { user_id } = req.user || {};
+    const selectedNewQaIds = Array.isArray(req.body?.selected_new_qa_ids)
+      ? req.body.selected_new_qa_ids
+      : null;
+    const { user_id, nama_user } = req.user || {};
+    const preparedByName = nama_user || user_id;
 
     if (!selectedYear) {
       return res.status(400).json({
@@ -1307,14 +1502,6 @@ const requestMasterRKTApproval = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'User is not authenticated',
-      });
-    }
-
-    const livePayload = await buildLiveDoubleChecklistPayload(selectedYear, 'start');
-    if (!livePayload.data.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'No AWP data is available to request approval.',
       });
     }
 
@@ -1340,11 +1527,38 @@ const requestMasterRKTApproval = async (req, res, next) => {
         throw error;
       }
 
+      const revisionPayload = await buildScannedDoubleChecklistPayload(
+        selectedYear,
+        selectedNewQaIds,
+        transaction
+      );
+
+      if (!revisionPayload.data.length) {
+        const error = new Error('No AWP data is available to request approval.');
+        error.status = 400;
+        throw error;
+      }
+
+      if (
+        revisionPayload.snapshot &&
+        Array.isArray(selectedNewQaIds) &&
+        revisionPayload.selected_new_count === 0
+      ) {
+        const error = new Error('No new instruments were selected for this AWP revision.');
+        error.status = 400;
+        throw error;
+      }
+
       const revisionRows = await sequelizeMSQL.query(
         `
-          SELECT ISNULL(MAX(Revision_No), 0) + 1 AS NextRevision
+          SELECT
+            CASE
+              WHEN COUNT(1) = 0 THEN 0
+              ELSE ISNULL(MAX(Revision_No), -1) + 1
+            END AS NextRevision
           FROM T_AWP_Header WITH (UPDLOCK, HOLDLOCK)
           WHERE [Year] = :year
+            AND Status IN ('APPROVED', 'SUPERSEDED')
         `,
         {
           replacements: { year: selectedYear },
@@ -1353,7 +1567,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
         }
       );
 
-      const revisionNo = revisionRows[0]?.NextRevision || 1;
+      const revisionNo = revisionRows[0]?.NextRevision ?? 0;
       const headerRows = await sequelizeMSQL.query(
         `
           DECLARE @InsertedHeader TABLE
@@ -1363,8 +1577,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             Revision_No INT,
             Status VARCHAR(20),
             Requested_By NVARCHAR(50),
+            Prepared_By NVARCHAR(50),
+            Prepared_By_Name NVARCHAR(255),
             Requested_At DATETIME2(0),
             Approved_By NVARCHAR(50),
+            Approved_By_Name NVARCHAR(255),
             Approved_At DATETIME2(0),
             Rejected_By NVARCHAR(50),
             Rejected_At DATETIME2(0),
@@ -1381,6 +1598,8 @@ const requestMasterRKTApproval = async (req, res, next) => {
               Revision_No,
               Status,
               Requested_By,
+              Prepared_By,
+              Prepared_By_Name,
               Requested_At,
               Notes,
               Created_By,
@@ -1394,8 +1613,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             INSERTED.Revision_No,
             INSERTED.Status,
             INSERTED.Requested_By,
+            INSERTED.Prepared_By,
+            INSERTED.Prepared_By_Name,
             INSERTED.Requested_At,
             INSERTED.Approved_By,
+            INSERTED.Approved_By_Name,
             INSERTED.Approved_At,
             INSERTED.Rejected_By,
             INSERTED.Rejected_At,
@@ -1411,6 +1633,8 @@ const requestMasterRKTApproval = async (req, res, next) => {
               :revisionNo,
               'REQUESTED',
               :userId,
+              :userId,
+              :preparedByName,
               GETDATE(),
               :notes,
               :userId,
@@ -1425,8 +1649,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             Revision_No,
             Status,
             Requested_By,
+            Prepared_By,
+            Prepared_By_Name,
             Requested_At,
             Approved_By,
+            Approved_By_Name,
             Approved_At,
             Rejected_By,
             Rejected_At,
@@ -1442,6 +1669,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
             year: selectedYear,
             revisionNo,
             userId: user_id,
+            preparedByName,
             notes,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -1451,7 +1679,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
 
       const header = headerRows[0];
 
-      for (const item of livePayload.data) {
+      for (const item of revisionPayload.data) {
         await sequelizeMSQL.query(
           `
             INSERT INTO T_AWP_Detail
@@ -1464,6 +1692,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
                 Department,
                 Location,
                 Due_Date,
+                Initial_Due_Date,
                 Tgl_Kalibrasi,
                 Parameter_Interval,
                 Plan_Month,
@@ -1488,6 +1717,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
                 :department,
                 :location,
                 :dueDate,
+                :initialDueDate,
                 :tglKalibrasi,
                 :parameterInterval,
                 :planMonth,
@@ -1513,6 +1743,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
               department: item.group_da_dept || null,
               location: item.assm_lokasi || null,
               dueDate: toValidDate(item.kalibrasi_selanjutnya),
+              initialDueDate: toValidDate(item.initial_due_date || item.kalibrasi_selanjutnya),
               tglKalibrasi: null,
               parameterInterval: item.parameter_interval ?? 0,
               planMonth: item.plan_month || null,
@@ -1557,7 +1788,8 @@ const approveMasterRKT = async (req, res, next) => {
     const awpId = Number(req.body?.awp_id || req.query?.awp_id);
     const selectedYear = parseYear(req.body?.year || req.query?.year);
     const notes = req.body?.notes || null;
-    const { user_id } = req.user || {};
+    const { user_id, nama_user } = req.user || {};
+    const approvedByName = nama_user || user_id;
 
     if (!awpId && !selectedYear) {
       return res.status(400).json({
@@ -1570,6 +1802,13 @@ const approveMasterRKT = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'User is not authenticated',
+      });
+    }
+
+    if (!canApproveOrRejectAWP(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only VN Manager can approve AWP revisions.',
       });
     }
 
@@ -1587,8 +1826,11 @@ const approveMasterRKT = async (req, res, next) => {
               Revision_No,
               Status,
               Requested_By,
+              Prepared_By,
+              Prepared_By_Name,
               Requested_At,
               Approved_By,
+              Approved_By_Name,
               Approved_At,
               Rejected_By,
               Rejected_At,
@@ -1651,6 +1893,7 @@ const approveMasterRKT = async (req, res, next) => {
           SET
             Status = 'APPROVED',
             Approved_By = :userId,
+            Approved_By_Name = :approvedByName,
             Approved_At = GETDATE(),
             Notes = COALESCE(:notes, Notes),
             Updated_By = :userId,
@@ -1661,6 +1904,7 @@ const approveMasterRKT = async (req, res, next) => {
           replacements: {
             awpId: header.AWP_ID,
             userId: user_id,
+            approvedByName,
             notes,
           },
           type: Sequelize.QueryTypes.UPDATE,
@@ -1705,6 +1949,13 @@ const rejectMasterRKT = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'User is not authenticated',
+      });
+    }
+
+    if (!canApproveOrRejectAWP(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only VN Manager can reject AWP revisions.',
       });
     }
 

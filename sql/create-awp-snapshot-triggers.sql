@@ -10,8 +10,11 @@ BEGIN
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL,
     Requested_By NVARCHAR(50) NULL,
+    Prepared_By NVARCHAR(50) NULL,
+    Prepared_By_Name NVARCHAR(255) NULL,
     Requested_At DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
+    Approved_By_Name NVARCHAR(255) NULL,
     Approved_At DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_At DATETIME2(0) NULL,
@@ -40,6 +43,7 @@ BEGIN
     Department NVARCHAR(100) NULL,
     [Location] NVARCHAR(255) NULL,
     Due_Date DATE NULL,
+    Initial_Due_Date DATE NULL,
     Tgl_Kalibrasi DATE NULL,
     Parameter_Interval INT NULL,
     Plan_Month TINYINT NULL,
@@ -54,6 +58,178 @@ BEGIN
     Source_Table NVARCHAR(128) NULL,
     Source_Key NVARCHAR(100) NULL
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_AWP_Realization_History_DA_Thermohygro', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_AWP_Realization_History_DA_Thermohygro;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_AWP_Realization_History_DA_Thermohygro
+ON dbo.T_Kalibrasi_DA_Thermohygro
+AFTER INSERT, UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF OBJECT_ID('dbo.T_AWP_Realization_History', 'U') IS NULL
+    RETURN;
+
+  INSERT INTO dbo.T_AWP_Realization_History
+    (QA_ID, Instrument_ID, Real_Date, Source_Table, Source_Key)
+  SELECT DISTINCT
+    I.QA_ID,
+    I.Assm_No_identitas_Istrumen,
+    CONVERT(DATE, I.Tgl_kalibrasi),
+    CAST('T_Kalibrasi_DA_Thermohygro' AS NVARCHAR(128)),
+    CAST(I.QA_ID AS NVARCHAR(100))
+  FROM inserted AS I
+  WHERE I.QA_ID IS NOT NULL
+    AND I.Tgl_kalibrasi IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.T_AWP_Realization_History AS H
+      WHERE H.Source_Table = 'T_Kalibrasi_DA_Thermohygro'
+        AND H.QA_ID = I.QA_ID
+        AND H.Real_Date = CONVERT(DATE, I.Tgl_kalibrasi)
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_AWP_Realization_History_DA_Anak_Timbangan', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_AWP_Realization_History_DA_Anak_Timbangan;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_AWP_Realization_History_DA_Anak_Timbangan
+ON dbo.T_Kalibrasi_DA_Anak_Timbangan
+AFTER INSERT, UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF OBJECT_ID('dbo.T_AWP_Realization_History', 'U') IS NULL
+    RETURN;
+
+  INSERT INTO dbo.T_AWP_Realization_History
+    (QA_ID, Instrument_ID, Real_Date, Source_Table, Source_Key)
+  SELECT DISTINCT
+    I.QA_ID,
+    I.Assm_No_identitas_Istrumen,
+    CONVERT(DATE, I.Tgl_kalibrasi),
+    CAST('T_Kalibrasi_DA_Anak_Timbangan' AS NVARCHAR(128)),
+    CAST(I.QA_ID AS NVARCHAR(100))
+  FROM inserted AS I
+  WHERE I.QA_ID IS NOT NULL
+    AND I.Tgl_kalibrasi IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.T_AWP_Realization_History AS H
+      WHERE H.Source_Table = 'T_Kalibrasi_DA_Anak_Timbangan'
+        AND H.QA_ID = I.QA_ID
+        AND H.Real_Date = CONVERT(DATE, I.Tgl_kalibrasi)
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_AWP_Realization_History_DA_Timbangan', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_AWP_Realization_History_DA_Timbangan;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_AWP_Realization_History_DA_Timbangan
+ON dbo.T_Kalibrasi_DA_Timbangan
+AFTER INSERT, UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF OBJECT_ID('dbo.T_AWP_Realization_History', 'U') IS NULL
+    RETURN;
+
+  INSERT INTO dbo.T_AWP_Realization_History
+    (QA_ID, Instrument_ID, Real_Date, Source_Table, Source_Key)
+  SELECT DISTINCT
+    I.QA_ID,
+    I.Assm_No_identitas_Istrumen,
+    CONVERT(DATE, I.Tgl_kalibrasi),
+    CAST('T_Kalibrasi_DA_Timbangan' AS NVARCHAR(128)),
+    CAST(I.QA_ID AS NVARCHAR(100))
+  FROM inserted AS I
+  WHERE I.QA_ID IS NOT NULL
+    AND I.Tgl_kalibrasi IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.T_AWP_Realization_History AS H
+      WHERE H.Source_Table = 'T_Kalibrasi_DA_Timbangan'
+        AND H.QA_ID = I.QA_ID
+        AND H.Real_Date = CONVERT(DATE, I.Tgl_kalibrasi)
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.TR_T_AWP_Realization_History_DA_Bagian', 'TR') IS NOT NULL
+BEGIN
+  DROP TRIGGER dbo.TR_T_AWP_Realization_History_DA_Bagian;
+END;
+GO
+
+CREATE TRIGGER dbo.TR_T_AWP_Realization_History_DA_Bagian
+ON dbo.T_Kalibrasi_DA_Bagian
+AFTER INSERT, UPDATE
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  IF OBJECT_ID('dbo.T_AWP_Realization_History', 'U') IS NULL
+    RETURN;
+
+  INSERT INTO dbo.T_AWP_Realization_History
+    (QA_ID, Instrument_ID, Real_Date, Source_Table, Source_Key)
+  SELECT DISTINCT
+    I.QA_ID,
+    I.Assm_No_identitas_Istrumen,
+    CONVERT(DATE, I.Tgl_kalibrasi),
+    CAST('T_Kalibrasi_DA_Bagian' AS NVARCHAR(128)),
+    CAST(I.QA_ID AS NVARCHAR(100))
+  FROM inserted AS I
+  WHERE I.QA_ID IS NOT NULL
+    AND I.Tgl_kalibrasi IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.T_AWP_Realization_History AS H
+      WHERE H.Source_Table = 'T_Kalibrasi_DA_Bagian'
+        AND H.QA_ID = I.QA_ID
+        AND H.Real_Date = CONVERT(DATE, I.Tgl_kalibrasi)
+    );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Prepared_By') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Prepared_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Prepared_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Approved_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Initial_Due_Date') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD Initial_Due_Date DATE NULL;
 END;
 GO
 
@@ -134,8 +310,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -152,8 +331,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -174,8 +356,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -192,8 +377,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -214,8 +402,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -232,8 +423,11 @@ BEGIN
       Revision_No,
       [Status],
       Requested_By,
+      Prepared_By,
+      Prepared_By_Name,
       Requested_At,
       Approved_By,
+      Approved_By_Name,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -274,6 +468,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
@@ -299,6 +494,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
@@ -328,6 +524,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
@@ -353,6 +550,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
@@ -382,6 +580,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
@@ -407,6 +606,7 @@ BEGIN
       Department,
       [Location],
       Due_Date,
+      Initial_Due_Date,
       Tgl_Kalibrasi,
       Parameter_Interval,
       Plan_Month,
