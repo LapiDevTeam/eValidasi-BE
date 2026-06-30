@@ -20,6 +20,9 @@ const routerDissolutionTesterCalibration = require("../routers/transactions/diss
 const routerFriabilityCalibration = require("../routers/transactions/friability-calibration.router");
 const routerMoistureCalibration = require("../routers/transactions/moisture-calibration.router");
 const routerLeakTestCalibration = require("../routers/transactions/leak-test-calibration.router");
+const routerHardnessTesterCalibration = require("../routers/transactions/hardness-tester-calibration.router");
+const routerTemperatureControlCalibration = require("../routers/transactions/temperature-control-calibration.router");
+const routerEnclosuresCalibration = require("../routers/transactions/enclosures-calibration.router");
 const routerDisintegrationCalibration = require("../routers/transactions/disintegration-calibration.router");
 const routerRpmCalibration = require("../routers/transactions/rpm-calibration.router");
 const routerTemperatureCalibration = require("../routers/transactions/temperature-calibration.router");
@@ -64,6 +67,9 @@ router.use("/dissolution-tester-calibration", routerDissolutionTesterCalibration
 router.use("/friability-calibration", routerFriabilityCalibration);
 router.use("/moisture-calibration", routerMoistureCalibration);
 router.use("/leak-test-calibration", routerLeakTestCalibration);
+router.use("/hardness-tester-calibration", routerHardnessTesterCalibration);
+router.use("/temperature-control-calibration", routerTemperatureControlCalibration);
+router.use("/enclosures-calibration", routerEnclosuresCalibration);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
 router.use("/api", routerDisintegrationCalibration);
@@ -75,6 +81,11 @@ router.use("/transactions/master-vendor", routerMasterVendor);
 router.use("/transactions/kalibrasi-eksternal", routerKalibrasiEksternal);
 
 module.exports = router;
+
+
+
+
+
 
 
 
