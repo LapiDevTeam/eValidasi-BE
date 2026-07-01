@@ -2184,6 +2184,27 @@ function getBase64Image(filePath) {
   return `data:image/jpeg;base64,${image.toString('base64')}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeCssColor(value, fallback = '#000000') {
+  const color = String(value || '').trim();
+  if (
+    /^#[0-9a-fA-F]{3,8}$/.test(color) ||
+    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(color) ||
+    /^[a-zA-Z]+$/.test(color)
+  ) {
+    return color;
+  }
+  return fallback;
+}
+
  const  printHeaderThermo = async (req, res, next) => {
   const { link, noDoc, tanggal, revisi, judul, landscape = "", font = false } = req.query;
 
@@ -2329,11 +2350,16 @@ border-left: 0; border-right:0;
 }
 
  const  printTerkalibrasi = async (req, res, next) => {
-  const { link, noDoc, tanggal, revisi, judul} = req.query;
+  const { link, noDoc, tanggal, revisi, judul } = req.query;
+  const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
+  const labelTitle = escapeHtml(judul || "TERKALIBRASI");
+  const escapedNoDoc = escapeHtml(noDoc || '');
+  const escapedTanggal = escapeHtml(tanggal || '');
+  const escapedRevisi = escapeHtml(revisi || '');
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
@@ -2347,6 +2373,18 @@ border-left: 0; border-right:0;
     // Wait for content to be loaded using a promise-based timeout
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    await page.evaluate(({ labelTitleText, labelTitleColor }) => {
+      document.documentElement.style.setProperty('--label-title-color', labelTitleColor);
+      const titleElement = document.querySelector('[data-print-label-title]');
+      if (titleElement) {
+        titleElement.textContent = labelTitleText;
+        titleElement.style.color = labelTitleColor;
+      }
+    }, {
+      labelTitleText: judul || "TERKALIBRASI",
+      labelTitleColor: judulColor,
+    });
+
     await page.addStyleTag({
       content: `
         * {
@@ -2357,6 +2395,7 @@ border-left: 0; border-right:0;
          h1 {
           font-size: 7px !important;
           font-family: Verdana, sans-serif;
+          color: ${judulColor} !important;
         }
 
          h4 {
@@ -2372,6 +2411,10 @@ border-left: 0; border-right:0;
         table table {
           margin-top: 0 !important;
         }
+
+        [data-print-label-title] {
+          color: ${judulColor} !important;
+        }
       `,
     });
     let headerLandscape = `
@@ -2384,8 +2427,8 @@ border-left: 0; border-right:0;
           </td>
           <td style="border:1px solid #6b7280; padding:0;">
             <div style="text-align:center; line-height:1;">
-              <span style="font-weight:bold; font-size:7px;">
-                ${judul || "TERKALIBRASI"}
+              <span style="font-weight:bold; font-size:7px; color:${judulColor};">
+                ${labelTitle}
               </span>
             </div>
           </td>
@@ -2397,11 +2440,11 @@ border-left: 0; border-right:0;
     <table style="width:95%; margin:0 auto; border:1px solid black; border-collapse:collapse; font-family:Verdana, sans-serif; font-size:6px;">
       <tr style="height:14px;">
         <td style="border:1px solid black; padding:1px; text-align:center;">Nomor</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${noDoc}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedNoDoc}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Tanggal</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${tanggal}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedTanggal}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Revisi</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${revisi}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedRevisi}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Halaman</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">
           <span class="pageNumber"></span>/<span class="totalPages"></span>
@@ -2428,6 +2471,7 @@ border-left: 0; border-right:0;
     });
 
     await browser.close();
+    res.setHeader('Content-Type', 'application/pdf');
     res.end(pdfBuffer);
   } catch (error) {
     console.error('Error during printBphp:', error);
