@@ -55,7 +55,8 @@ const getTidakDapatStatus = async (req, res, next) => {
         alasan_tidak_dapat,
         kondisi_alat,
         CONVERT(nvarchar, tgl_label_tempel, 120) AS tgl_label_tempel,
-        label_tempel_by
+        label_tempel_by,
+        CONVERT(nvarchar, tanggal_label_OOC, 120) AS tanggal_label_OOC
       FROM ${cfg.mainTable}
       WHERE QA_ID = :qa_id
         AND ID_No_Sertifikat = :id_no_sertifikat
@@ -151,7 +152,8 @@ const saveTidakDapat = async (req, res, next) => {
       SET
         is_tidak_dapat     = 1,
         alasan_tidak_dapat = :alasan_tidak_dapat,
-        kondisi_alat       = :kondisi_alat
+        kondisi_alat       = :kondisi_alat,
+        tanggal_label_OOC  = GETDATE()
       WHERE QA_ID = :qa_id
         AND ID_No_Sertifikat = :id_no_sertifikat
     `, {
@@ -364,7 +366,7 @@ const approveTidakDapatMGR = async (req, res, next) => {
       // Reset is_tidak_dapat agar FA bisa revisi dari awal
       await sequelizeMSQL.query(`
         UPDATE ${cfg.mainTable}
-        SET is_tidak_dapat = 0, alasan_tidak_dapat = NULL, kondisi_alat = NULL
+        SET is_tidak_dapat = 0, alasan_tidak_dapat = NULL, kondisi_alat = NULL, tanggal_label_OOC = NULL
         WHERE QA_ID = :qa_id AND ID_No_Sertifikat = :id_no_sertifikat
       `, {
         replacements: { qa_id, id_no_sertifikat },

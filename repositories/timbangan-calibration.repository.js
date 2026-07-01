@@ -37,7 +37,7 @@ async function listSessions(filters = {}) {
   let query = `
     SELECT
       s.session_id, s.session_code, s.instrument_id, s.instrument_code, s.instrument_name,
-      s.kapasitas_resolusi, s.calibration_date, s.status, s.pic, s.conclusion,
+      s.kapasitas_resolusi, s.calibration_date, s.status, s.pic, s.conclusion, s.evaluation_result,
       s.created_at, s.updated_at,
       (SELECT COUNT(1) FROM [dbo].[timbangan_points] p
          WHERE p.session_id = s.session_id AND p.is_active = 1) AS active_point_count
@@ -56,7 +56,7 @@ const SESSION_COLUMNS = `
   lokasi, calibration_date, interval_bulan, metode_kalibrasi, keterangan,
   temperature, humidity,
   std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
-  qa_id, id_no_sertifikat, status, pic, conclusion,
+  qa_id, id_no_sertifikat, status, pic, conclusion, evaluation_result,
   created_by, updated_by, created_at, updated_at
 `;
 
@@ -94,7 +94,8 @@ function bindSessionInputs(request, payload) {
     .input('StdTertelusur', sql.VarChar(500), toDbNull(payload.std_tertelusur))
     .input('StdRekalibrasi', sql.VarChar(500), toDbNull(payload.std_rekalibrasi))
     .input('QaId', sql.VarChar(50), toDbNull(payload.qa_id))
-    .input('Pic', sql.VarChar(100), toDbNull(payload.pic));
+    .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
+    .input('EvaluationResult', sql.VarChar(100), toDbNull(payload.evaluation_result));
 }
 
 async function createSession(payload, transaction) {
@@ -111,7 +112,7 @@ async function createSession(payload, transaction) {
       lokasi, calibration_date, interval_bulan, metode_kalibrasi, keterangan,
       temperature, humidity,
       std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
-      qa_id, status, pic, created_by
+      qa_id, status, pic, evaluation_result, created_by
     )
     OUTPUT INSERTED.session_id
     VALUES
@@ -121,7 +122,7 @@ async function createSession(payload, transaction) {
       @Lokasi, @CalibrationDate, @IntervalBulan, @MetodeKalibrasi, @Keterangan,
       @Temperature, @Humidity,
       @StdNama, @StdNoIdentitas, @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi,
-      @QaId, @Status, @Pic, @CreatedBy
+      @QaId, @Status, @Pic, @EvaluationResult, @CreatedBy
     )
   `);
   return result.recordset[0].session_id;
@@ -144,7 +145,8 @@ async function updateSession(sessionId, payload, transaction) {
       temperature = @Temperature, humidity = @Humidity,
       std_nama = @StdNama, std_no_identitas = @StdNoIdentitas, std_no_sertifikat = @StdNoSertifikat,
       std_tertelusur = @StdTertelusur, std_rekalibrasi = @StdRekalibrasi,
-      qa_id = @QaId, pic = @Pic, updated_by = @UpdatedBy, updated_at = GETDATE()
+      qa_id = @QaId, pic = @Pic, evaluation_result = @EvaluationResult,
+      updated_by = @UpdatedBy, updated_at = GETDATE()
     WHERE session_id = @SessionId
   `);
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;

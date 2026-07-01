@@ -1740,6 +1740,7 @@ async function listSessions({ limit = 50 } = {}) {
         cs.standard_uncertainty,
         cs.metal_rule_uncertainty,
         cs.status,
+        cs.evaluation_result,
         cs.created_by,
         cs.created_at,
         st.standard_code,
@@ -1763,7 +1764,7 @@ async function getSessionById(sessionId) {
         temperature, humidity, pic, uut_unit, standard_unit,
         indicator_type, resolution,
         standard_uncertainty, metal_rule_uncertainty,
-        delta_h, media_density, gravity, status, created_by, created_at
+        delta_h, media_density, gravity, status, evaluation_result, created_by, created_at
       FROM [dbo].[calibration_sessions]
       WHERE session_id = @SessionId AND is_deleted = 0
     `);
@@ -1799,6 +1800,20 @@ async function updateSessionStatus(sessionId, status) {
       SET status = @Status
       WHERE session_id = @SessionId
     `);
+}
+
+// Manual verdict (Kesimpulan) — picked by the technician on the Evaluation tab.
+async function updateSessionEvaluationResult(sessionId, evaluationResult) {
+  const pool = await getPool();
+  const result = await pool.request()
+    .input('SessionId', sql.Int, sessionId)
+    .input('EvaluationResult', sql.VarChar(100), evaluationResult || null)
+    .query(`
+      UPDATE [dbo].[calibration_sessions]
+      SET evaluation_result = @EvaluationResult
+      WHERE session_id = @SessionId AND is_deleted = 0
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
 
 // =============================================================================
@@ -1996,6 +2011,7 @@ module.exports = {
   getSessionById,
   updateSessionManualUncertainties,
   updateSessionStatus,
+  updateSessionEvaluationResult,
   // readings
   upsertReadings,
   getReadingsBySession,

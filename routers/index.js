@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 
 const routerUpload = require("../routers/v2/routerUpload");
@@ -31,6 +31,7 @@ const { authentication } = require("../middlewares/authentication");
 const masterRouter = require("../routers/transactions/master-router");
 const routerMasterVendor = require("../routers/transactions/master-vendor.router");
 const routerKalibrasiEksternal = require("../routers/transactions/kalibrasi-eksternal.router");
+const routerCmsDashboard = require("../routers/cms/dashboard.router");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -79,6 +80,7 @@ router.use("/api", routerTappedVolumeterCalibration);
 router.use("/master", masterRouter);
 router.use("/transactions/master-vendor", routerMasterVendor);
 router.use("/transactions/kalibrasi-eksternal", routerKalibrasiEksternal);
+router.use("/cms/dashboard", routerCmsDashboard);
 
 module.exports = router;
 

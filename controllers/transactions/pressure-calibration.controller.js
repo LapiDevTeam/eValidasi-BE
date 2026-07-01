@@ -606,6 +606,37 @@ const getSession = async (req, res, next) => {
   }
 };
 
+// Manual evaluation verdict — three canonical options (same wording as the
+// Thermohygrometer workbook). Picked manually by the technician.
+const EVALUATION_OPTIONS = [
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+];
+
+/**
+ * PUT /api/pressure-calibration/sessions/:sessionId/evaluation
+ * Body: { evaluation_result: <one of EVALUATION_OPTIONS> | '' }
+ */
+const updateEvaluationResult = async (req, res, next) => {
+  try {
+    const sessionId = parseInt(req.params.sessionId, 10);
+    if (Number.isNaN(sessionId)) return res.status(400).json({ message: 'Invalid session id.' });
+
+    const raw = String(
+      req.body?.evaluation_result ?? req.body?.evaluationResult ?? ''
+    ).trim();
+    const value = EVALUATION_OPTIONS.includes(raw) ? raw : '';
+
+    const ok = await repo.updateSessionEvaluationResult(sessionId, value || null);
+    if (!ok) return res.status(404).json({ message: `Session ${sessionId} not found.` });
+
+    res.status(200).json({ session_id: sessionId, evaluation_result: value });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // =============================================================================
 // READINGS
 // =============================================================================
@@ -708,4 +739,5 @@ module.exports = {
   getReadings,
   calculate,
   getResult,
+  updateEvaluationResult,
 };
