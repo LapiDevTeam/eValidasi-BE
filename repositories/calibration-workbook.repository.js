@@ -50,6 +50,7 @@ async function listSessions(filters = {}) {
       cs.temperature,
       cs.humidity,
       cs.notes,
+      cs.evaluation_result,
       cs.created_by,
       cs.updated_by,
       cs.created_at,
@@ -90,6 +91,7 @@ async function getSessionById(sessionId, transaction) {
         temperature,
         humidity,
         notes,
+        evaluation_result,
         created_by,
         updated_by,
         created_at,
@@ -201,6 +203,24 @@ async function updateSessionStatus(sessionId, status, updatedBy, transaction) {
       UPDATE [dbo].[calibration_sessions]
       SET
         status = @Status,
+        updated_by = @UpdatedBy,
+        updated_at = GETDATE()
+      WHERE session_id = @SessionId
+    `);
+
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function updateEvaluationResult(sessionId, evaluationResult, updatedBy, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('SessionId', sql.Int, sessionId)
+    .input('EvaluationResult', sql.VarChar(100), toDbNull(evaluationResult))
+    .input('UpdatedBy', sql.VarChar(100), toDbNull(updatedBy))
+    .query(`
+      UPDATE [dbo].[calibration_sessions]
+      SET
+        evaluation_result = @EvaluationResult,
         updated_by = @UpdatedBy,
         updated_at = GETDATE()
       WHERE session_id = @SessionId
@@ -1861,6 +1881,7 @@ module.exports = {
   createSession,
   updateSession,
   updateSessionStatus,
+  updateEvaluationResult,
   deleteSessionHard,
   deleteSessionGraph,
   listPoints,

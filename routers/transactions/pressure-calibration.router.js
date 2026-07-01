@@ -62,5 +62,6 @@ router.post('/sessions/:sessionId/readings',      ctrl.saveReadings);
 router.get('/sessions/:sessionId/readings',       ctrl.getReadings);
 router.post('/sessions/:sessionId/calculate',     ctrl.calculate);
 router.get('/sessions/:sessionId/result',         ctrl.getResult);
+router.put('/sessions/:sessionId/evaluation',     ctrl.updateEvaluationResult);
 
 module.exports = router;

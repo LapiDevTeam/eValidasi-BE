@@ -54,6 +54,7 @@ async function listSessions(filters = {}) {
       s.status,
       s.pic,
       s.conclusion,
+      s.evaluation_result,
       s.created_at,
       s.updated_at,
       (SELECT COUNT(1) FROM [dbo].[timer_points] p
@@ -73,7 +74,7 @@ const SESSION_COLUMNS = `
   metode_kalibrasi, keterangan, unit_mode, indicator_type, tolerance,
   digital_resolution, analog_resolution, temperature, humidity,
   std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
-  qa_id, id_no_sertifikat, status, pic, conclusion,
+  qa_id, id_no_sertifikat, status, pic, conclusion, evaluation_result,
   created_by, updated_by, created_at, updated_at
 `;
 
@@ -113,7 +114,8 @@ function bindSessionInputs(request, payload) {
     .input('StdTertelusur', sql.VarChar(255), toDbNull(payload.std_tertelusur))
     .input('StdRekalibrasi', sql.VarChar(255), toDbNull(payload.std_rekalibrasi))
     .input('QaId', sql.VarChar(50), toDbNull(payload.qa_id))
-    .input('Pic', sql.VarChar(100), toDbNull(payload.pic));
+    .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
+    .input('EvaluationResult', sql.VarChar(100), toDbNull(payload.evaluation_result));
 }
 
 async function createSession(payload, transaction) {
@@ -130,7 +132,7 @@ async function createSession(payload, transaction) {
       metode_kalibrasi, keterangan, unit_mode, indicator_type, tolerance,
       digital_resolution, analog_resolution, temperature, humidity,
       std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
-      qa_id, status, pic, created_by
+      qa_id, status, pic, evaluation_result, created_by
     )
     OUTPUT INSERTED.session_id
     VALUES
@@ -140,7 +142,7 @@ async function createSession(payload, transaction) {
       @MetodeKalibrasi, @Keterangan, @UnitMode, @IndicatorType, @Tolerance,
       @DigitalResolution, @AnalogResolution, @Temperature, @Humidity,
       @StdNama, @StdNoIdentitas, @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi,
-      @QaId, @Status, @Pic, @CreatedBy
+      @QaId, @Status, @Pic, @EvaluationResult, @CreatedBy
     )
   `);
   return result.recordset[0].session_id;
@@ -165,6 +167,7 @@ async function updateSession(sessionId, payload, transaction) {
       std_nama = @StdNama, std_no_identitas = @StdNoIdentitas,
       std_no_sertifikat = @StdNoSertifikat, std_tertelusur = @StdTertelusur,
       std_rekalibrasi = @StdRekalibrasi, qa_id = @QaId, pic = @Pic,
+      evaluation_result = @EvaluationResult,
       updated_by = @UpdatedBy, updated_at = GETDATE()
     WHERE session_id = @SessionId
   `);

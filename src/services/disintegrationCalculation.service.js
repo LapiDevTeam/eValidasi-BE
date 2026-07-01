@@ -35,10 +35,25 @@ function clampPaddleCount(value) {
   return Math.min(3, Math.max(1, n));
 }
 
+// Manual evaluation verdict — three canonical options, identical wording to the
+// Thermohygrometer / Friability / Timer workbook. Picked manually; the computed
+// `conclusion` is only a suggestion.
+const EVALUATION_OPTIONS = [
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+];
+
+function normalizeEvaluationResult(value) {
+  const text = String(value ?? '').trim();
+  return EVALUATION_OPTIONS.includes(text) ? text : '';
+}
+
 async function createSession(body, createdBy) {
   const sessionId = await repo.createSession({
     ...body,
     paddle_count: clampPaddleCount(body.paddle_count),
+    evaluation_result: normalizeEvaluationResult(body.evaluation_result) || null,
     status: 'DRAFT',
     created_by: createdBy || null,
   });
@@ -51,6 +66,10 @@ async function updateSession(sessionId, body, updatedBy) {
   const ok = await repo.updateSession(sessionId, {
     ...body,
     paddle_count: clampPaddleCount(body.paddle_count || existing.paddle_count),
+    evaluation_result:
+      body.evaluation_result !== undefined
+        ? normalizeEvaluationResult(body.evaluation_result) || null
+        : existing.evaluation_result || null,
     updated_by: updatedBy || null,
   });
   return { updated: ok };
@@ -412,6 +431,17 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const timerResults = results.filter((row) => row.result_type === 'TIMER');
     if (!timerResults.length) throw httpError('No timer calculation results. Run calculate first.', 422);
 
+    // Kesimpulan kelayakan dipilih manual oleh teknisi (bukan verdict otomatis).
+    // Wajib dipilih sebelum sertifikat diterbitkan — mengikuti pola workbook Thermohygrometer.
+    if (!normalizeEvaluationResult(session.evaluation_result)) {
+      throw httpError(
+        'Hasil evaluasi (kesimpulan) belum dipilih. Buka tab "Hasil & Evaluasi", pilih salah satu ' +
+          'kesimpulan (Layak digunakan / Tidak layak digunakan / Penggunaan faktor koreksi), lalu terbitkan ulang.',
+        422,
+        [{ field: 'evaluation_result', message: 'Hasil evaluasi manual belum dipilih.' }]
+      );
+    }
+
     const qaCandidate = await resolveQaCandidate(session, options.qa_id || options.qaId, transaction);
     const qaId = String(qaCandidate.QA_ID);
     const actor = changedBy || 'SYSTEM';
@@ -502,6 +532,8 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
 }
 
 module.exports = {
+  EVALUATION_OPTIONS,
+  normalizeEvaluationResult,
   createSession,
   updateSession,
   saveWorkbook,

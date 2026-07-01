@@ -191,8 +191,9 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
 /**
  * POST /save
  * Create or update an execution record.
- * Body: schedule_detail_id, ekst_id (null = create), vendor_id, terdaftar_pg,
- *       no_fo_pg, no_penawaran, tgl_penawaran, no_pp, tgl_pp,
+ * Vendor selection is no longer required or validated.
+ * Body: schedule_detail_id, ekst_id (null = create),
+ *       no_penawaran, tgl_penawaran, no_pp, tgl_pp,
  *       tgl_kirim_alat, tgl_terima_balik, tgl_pelaksanaan, hasil_kalibrasi, catatan
  */
 const saveKalibrasiEksternal = async (req, res, next) => {

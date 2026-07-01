@@ -42,6 +42,20 @@ function toPositiveIntegerOrNull(value) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+// Manual evaluation verdict — three canonical options, identical wording to the
+// Thermohygrometer / Friability workbook. The technician picks this manually;
+// the computed `conclusion` is only a suggestion. Anything else is coerced to ''.
+const EVALUATION_OPTIONS = [
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+];
+
+function normalizeEvaluationResult(value) {
+  const text = String(value ?? '').trim();
+  return EVALUATION_OPTIONS.includes(text) ? text : '';
+}
+
 // ---------------------------------------------------------------------------
 // SESSION CRUD passthroughs (with light validation)
 // ---------------------------------------------------------------------------
@@ -67,6 +81,7 @@ async function createSession(body, createdBy) {
     ...body,
     unit_mode: String(body.unit_mode || 'DETIK').toUpperCase(),
     indicator_type: String(body.indicator_type || 'DIGITAL').toUpperCase(),
+    evaluation_result: normalizeEvaluationResult(body.evaluation_result) || null,
     status: 'DRAFT',
     created_by: createdBy || null,
   });
@@ -84,6 +99,10 @@ async function updateSession(sessionId, body, updatedBy) {
     ...body,
     unit_mode: String(body.unit_mode || existing.unit_mode || 'DETIK').toUpperCase(),
     indicator_type: String(body.indicator_type || existing.indicator_type || 'DIGITAL').toUpperCase(),
+    evaluation_result:
+      body.evaluation_result !== undefined
+        ? normalizeEvaluationResult(body.evaluation_result) || null
+        : existing.evaluation_result || null,
     updated_by: updatedBy || null,
   });
   return { updated: ok };
@@ -438,6 +457,17 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       );
     }
 
+    // Kesimpulan kelayakan dipilih manual oleh teknisi (bukan verdict otomatis).
+    // Wajib dipilih sebelum sertifikat diterbitkan — mengikuti pola workbook Thermohygrometer.
+    if (!normalizeEvaluationResult(session.evaluation_result)) {
+      throw httpError(
+        'Hasil evaluasi (kesimpulan) belum dipilih. Buka tab "Hasil & Evaluasi", pilih salah satu ' +
+          'kesimpulan (Layak digunakan / Tidak layak digunakan / Penggunaan faktor koreksi), lalu terbitkan ulang.',
+        422,
+        [{ field: 'evaluation_result', message: 'Hasil evaluasi manual belum dipilih.' }]
+      );
+    }
+
     const qaCandidate = await resolveQaCandidate(session, options.qa_id || options.qaId, transaction);
     const qaId = String(qaCandidate.QA_ID);
     const actor = changedBy || 'SYSTEM';
@@ -559,6 +589,8 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
 }
 
 module.exports = {
+  EVALUATION_OPTIONS,
+  normalizeEvaluationResult,
   createSession,
   updateSession,
   saveWorkbook,

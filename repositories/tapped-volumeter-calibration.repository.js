@@ -15,7 +15,7 @@ const SESSION_COLUMNS = `
   interval_bulan, metode_kalibrasi, keterangan, nominal_target, lower_limit,
   upper_limit, tolerance_text, temperature, humidity, std_nama, std_no_identitas,
   std_no_sertifikat, std_tertelusur, std_rekalibrasi, qa_id, id_no_sertifikat,
-  status, pic, conclusion, created_by, updated_by, created_at, updated_at
+  status, pic, conclusion, evaluation_result, created_by, updated_by, created_at, updated_at
 `;
 
 async function listSessions(filters = {}) {
@@ -28,7 +28,7 @@ async function listSessions(filters = {}) {
   let query = `
     SELECT
       s.session_id, s.session_code, s.instrument_code, s.instrument_name,
-      s.calibration_date, s.status, s.pic, s.conclusion,
+      s.calibration_date, s.status, s.pic, s.conclusion, s.evaluation_result,
       s.qa_id, s.id_no_sertifikat, s.created_at, s.updated_at
     FROM [dbo].[tapped_volumeter_sessions] s
   `;
@@ -73,7 +73,8 @@ function bindSessionInputs(request, payload) {
     .input('StdTertelusur', sql.VarChar(255), toDbNull(payload.std_tertelusur))
     .input('StdRekalibrasi', sql.VarChar(255), toDbNull(payload.std_rekalibrasi))
     .input('QaId', sql.VarChar(50), toDbNull(payload.qa_id))
-    .input('Pic', sql.VarChar(100), toDbNull(payload.pic));
+    .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
+    .input('EvaluationResult', sql.VarChar(100), toDbNull(payload.evaluation_result));
 }
 
 async function createSession(payload, transaction) {
@@ -88,7 +89,7 @@ async function createSession(payload, transaction) {
       merk_tipe, no_seri, kapasitas, resolusi, lokasi, calibration_date,
       interval_bulan, metode_kalibrasi, keterangan, nominal_target, lower_limit,
       upper_limit, tolerance_text, temperature, humidity, std_nama, std_no_identitas,
-      std_no_sertifikat, std_tertelusur, std_rekalibrasi, qa_id, status, pic, created_by
+      std_no_sertifikat, std_tertelusur, std_rekalibrasi, qa_id, status, pic, evaluation_result, created_by
     )
     VALUES
     (
@@ -96,7 +97,7 @@ async function createSession(payload, transaction) {
       @MerkTipe, @NoSeri, @Kapasitas, @Resolusi, @Lokasi, @CalibrationDate,
       @IntervalBulan, @MetodeKalibrasi, @Keterangan, @NominalTarget, @LowerLimit,
       @UpperLimit, @ToleranceText, @Temperature, @Humidity, @StdNama, @StdNoIdentitas,
-      @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi, @QaId, @Status, @Pic, @CreatedBy
+      @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi, @QaId, @Status, @Pic, @EvaluationResult, @CreatedBy
     );
     SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
   `);
@@ -136,6 +137,7 @@ async function updateSession(sessionId, payload, transaction) {
       std_rekalibrasi = @StdRekalibrasi,
       qa_id = @QaId,
       pic = @Pic,
+      evaluation_result = @EvaluationResult,
       updated_by = @UpdatedBy,
       updated_at = GETDATE()
     WHERE session_id = @SessionId

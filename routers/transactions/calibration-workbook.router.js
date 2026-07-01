@@ -13,6 +13,10 @@ router.put('/calibration-sessions/:sessionId', controller.updateCalibrationSessi
 router.delete('/calibration-sessions/:sessionId', controller.deleteCalibrationSession);
 router.post('/calibration-sessions/:sessionId/finalize', controller.finalizeCalibrationSession);
 router.post(
+  '/calibration-sessions/:sessionId/evaluation-result',
+  controller.updateEvaluationResult
+);
+router.post(
   '/calibration-sessions/:sessionId/publish-sertifikat-bagian',
   controller.publishSertifikatBagian
 );
