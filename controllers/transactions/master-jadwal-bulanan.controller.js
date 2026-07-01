@@ -65,24 +65,32 @@ const getUserJobLevel = (user = {}) =>
       0
   );
 
-const getUserDepartment = (user = {}) =>
-  String(
-    user?.delegatedTo?.emp_DeptID ??
-      user?.delegatedTo?.DeptID ??
-      user?.delegatedTo?.bagian_user ??
-      user?.user?.emp_DeptID ??
-      user?.user?.DeptID ??
-      user?.user?.bagian_user ??
-      user?.emp_DeptID ??
-      user?.DeptID ??
-      user?.bagian_user ??
-      ''
-  )
-    .trim()
-    .toUpperCase();
+const getUserDepartmentCandidates = (user = {}) =>
+  [
+    user?.delegatedTo?.emp_DeptID,
+    user?.delegatedTo?.DeptID,
+    user?.delegatedTo?.emp_JobID,
+    user?.delegatedTo?.emp_JobId,
+    user?.delegatedTo?.emp_Job_id,
+    user?.delegatedTo?.bagian_user,
+    user?.user?.emp_DeptID,
+    user?.user?.DeptID,
+    user?.user?.emp_JobID,
+    user?.user?.emp_JobId,
+    user?.user?.emp_Job_id,
+    user?.user?.bagian_user,
+    user?.emp_DeptID,
+    user?.DeptID,
+    user?.emp_JobID,
+    user?.emp_JobId,
+    user?.emp_Job_id,
+    user?.bagian_user,
+  ]
+    .map((value) => String(value ?? '').trim().toUpperCase())
+    .filter(Boolean);
 
 const canApproveOrRejectMonthlySchedule = (user = {}) =>
-  getUserJobLevel(user) === 3 && getUserDepartment(user) === 'VN';
+  getUserJobLevel(user) === 3 && getUserDepartmentCandidates(user).includes('VN');
 
 const toDateObject = (value) => {
   if (!value) return null;
@@ -156,6 +164,14 @@ const isDateWithinRange = (value, startDate, endDate) => {
   const date = toDateOnly(value);
   if (!date || !startDate || !endDate) return false;
   return date >= startDate && date <= endDate;
+};
+
+const isDateOverdue = (value) => {
+  const date = toDateOnly(value);
+  if (!date) return false;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return date < today;
 };
 
 const getMonthlyWindow = (selectedYear, selectedMonth) => {
@@ -794,8 +810,8 @@ const mapMonthlyExternalRows = (results) => {
     tgl_eksekusi_insitu: null,
     tgl_penyerahan_alat_oleh_user: null,
     tgl_pengembalian_alat_oleh_vn: null,
-    realisasi: formatDateISO(item?.Tgl_kalibrasi),
-    keterangan: '',
+    realisasi: null,
+    keterangan: isDateOverdue(item?.Kalibrasi_selanjutnya) ? 'Overdue' : '',
   }));
 
   sortExternalRows(mapped);
@@ -886,7 +902,7 @@ const normalizeIncomingExternalRows = (rows) => {
     tgl_pengembalian_alat_oleh_vn: formatDateISO(item?.tgl_pengembalian_alat_oleh_vn),
     jatuh_tempo: formatDateISO(item?.jatuh_tempo || item?.plan_due_date),
     tgl_kalibrasi: formatDateISO(item?.tgl_kalibrasi),
-    realisasi: formatDateISO(item?.tgl_kalibrasi || item?.realisasi || item?.realisasi_eksekusi),
+    realisasi: null,
     keterangan: String(item?.keterangan ?? '').trim(),
   }));
 };
@@ -998,6 +1014,40 @@ const applyRowBorderRange = (worksheet, rowNumber, fromCol, toCol) => {
 
 const applyRowBorder = (worksheet, rowNumber) => {
   applyRowBorderRange(worksheet, rowNumber, 1, 12);
+};
+
+const getExternalPreparedBy = (header) =>
+  header?.Requested_By || header?.Updated_By || header?.Created_By || '';
+
+const writeExternalApprovalInfo = (worksheet, startRow, header) => {
+  const preparedBy = getExternalPreparedBy(header);
+  const approvedBy = header?.Approved_By || '';
+  const preparedDate = header?.Requested_Date || header?.Updated_Date || header?.Created_Date;
+  const approvedDate = header?.Approved_Date || null;
+
+  worksheet.mergeCells(`A${startRow}:E${startRow}`);
+  worksheet.mergeCells(`F${startRow}:K${startRow}`);
+  worksheet.mergeCells(`A${startRow + 1}:E${startRow + 1}`);
+  worksheet.mergeCells(`F${startRow + 1}:K${startRow + 1}`);
+
+  worksheet.getCell(`A${startRow}`).value = `Prepared by: ${preparedBy}`;
+  worksheet.getCell(`F${startRow}`).value = `Approved by: ${approvedBy}`;
+  worksheet.getCell(`A${startRow + 1}`).value = `Prepared date: ${formatDateDisplay(preparedDate)}`;
+  worksheet.getCell(`F${startRow + 1}`).value = `Approved date: ${formatDateDisplay(approvedDate)}`;
+
+  for (let rowNumber = startRow; rowNumber <= startRow + 1; rowNumber += 1) {
+    for (let col = 1; col <= 11; col += 1) {
+      const cell = worksheet.getCell(rowNumber, col);
+      cell.font = { bold: col === 1 || col === 6 };
+      cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' },
+        bottom: { style: 'thin' },
+      };
+    }
+  }
 };
 
 const getLatestMonthlyScheduleHeaderByStatus = async (
@@ -2434,7 +2484,7 @@ const mapExternalLiveRowsForPeriod = (results, year, month, periodLabel) => {
     insitu_date: row.tgl_eksekusi_insitu || null,
     user_equipment_handover_date: row.tgl_penyerahan_alat_oleh_user || null,
     equipment_return_by_vendor_date: row.tgl_pengembalian_alat_oleh_vn || null,
-    realization_date: row.realisasi || null,
+    realization_date: null,
     remarks: row.keterangan || '',
     _period_key: getExternalPeriodKey(year, month),
     _period_year: normalizePeriodYear(year),
@@ -2595,12 +2645,69 @@ const mapExternalRevisionInfo = (header) => {
   };
 };
 
+const getPreviousExternalHeader = async (
+  selectedYear,
+  selectedMonth,
+  currentRevisionNo,
+  transaction = null
+) => {
+  if (currentRevisionNo === null || currentRevisionNo === undefined) return null;
+
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        Schedule_External_Header_ID,
+        Base_Period_Year,
+        Base_Period_Month,
+        Revision_No,
+        [Status],
+        Is_Locked,
+        Requested_By,
+        Requested_Date,
+        Approved_By,
+        Approved_Date,
+        Rejected_By,
+        Rejected_Date,
+        Remarks,
+        Created_By,
+        Created_Date,
+        Updated_By,
+        Updated_Date
+      FROM T_Monthly_Schedule_External_Header
+      WHERE Base_Period_Year = :year
+        AND Base_Period_Month = :month
+        AND [Status] IN ('APPROVED', 'SUPERSEDED')
+        AND Revision_No < :currentRevisionNo
+      ORDER BY Revision_No DESC, Schedule_External_Header_ID DESC
+    `,
+    {
+      replacements: {
+        year: normalizePeriodYear(selectedYear),
+        month: normalizePeriodMonth(selectedMonth),
+        currentRevisionNo,
+      },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  return rows[0] || null;
+};
+
 const getExternalRevisionState = async (selectedYear, selectedMonth, transaction = null) => {
   const currentHeader = await getLatestApprovedExternalHeader(
     selectedYear,
     selectedMonth,
     transaction
   );
+  const previousHeader = currentHeader
+    ? await getPreviousExternalHeader(
+        selectedYear,
+        selectedMonth,
+        currentHeader.Revision_No,
+        transaction
+      )
+    : null;
   const requestedHeader = await getLatestRequestedExternalHeader(
     selectedYear,
     selectedMonth,
@@ -2609,8 +2716,10 @@ const getExternalRevisionState = async (selectedYear, selectedMonth, transaction
 
   return {
     currentHeader,
+    previousHeader,
     requestedHeader,
     revisions: {
+      previous: mapExternalRevisionInfo(previousHeader),
       current: mapExternalRevisionInfo(currentHeader),
       requested: mapExternalRevisionInfo(requestedHeader),
     },
@@ -2642,7 +2751,7 @@ const mapExternalSnapshotRows = (details = [], baseYear, baseMonth) => {
       insitu_date: item.Insitu_Date || null,
       user_equipment_handover_date: item.User_Equipment_Handover_Date || null,
       equipment_return_by_vendor_date: item.Equipment_Return_By_Vendor_Date || null,
-      realization_date: item.Realization_Date || null,
+      realization_date: null,
       remarks: item.Remarks || '',
       source_table: item.Source_Table || null,
       source_key: item.Source_Key || null,
@@ -2708,7 +2817,7 @@ const buildExternalLivePayload = async (selectedYear, selectedMonth, transaction
   };
 };
 
-const buildExternalSnapshotPayload = async (header, transaction = null) => {
+const buildExternalSnapshotPayload = async (header, transaction = null, sourceOverride = null) => {
   if (!header?.Schedule_External_Header_ID) return null;
   const details = await getExternalDetails(header.Schedule_External_Header_ID, transaction);
   const rows = mapExternalSnapshotRows(
@@ -2734,7 +2843,7 @@ const buildExternalSnapshotPayload = async (header, transaction = null) => {
     period_label: `${MONTH_NAMES_ID[Number(header.Base_Period_Month) - 1]} ${header.Base_Period_Year}`,
     next_period_label: `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`,
     count: rows.length,
-    source: header.Status === 'REQUESTED' ? 'requested' : 'snapshot',
+    source: sourceOverride || (header.Status === 'REQUESTED' ? 'requested' : 'snapshot'),
     editable: header.Status === 'REQUESTED' && !header.Is_Locked,
     snapshot: mapExternalRevisionInfo(header),
     revisions,
@@ -2746,7 +2855,7 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const selectedMonth = parseMonth(req.query.month);
-    const source = ['live', 'requested', 'snapshot'].includes(req.query.source)
+    const source = ['live', 'requested', 'snapshot', 'previous'].includes(req.query.source)
       ? req.query.source
       : 'snapshot';
 
@@ -2765,6 +2874,16 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
       if (requestedHeader) {
         return res.status(200).json(
           await buildExternalSnapshotPayload(requestedHeader)
+        );
+      }
+    } else if (source === 'previous') {
+      const { previousHeader } = await getExternalRevisionState(
+        selectedYear,
+        selectedMonth
+      );
+      if (previousHeader) {
+        return res.status(200).json(
+          await buildExternalSnapshotPayload(previousHeader, null, 'previous')
         );
       }
     } else if (source !== 'live') {
@@ -2818,7 +2937,7 @@ const normalizeIncomingExternalWorkflowRows = (rows) => {
     equipment_return_by_vendor_date: formatDateISO(
       item?.equipment_return_by_vendor_date || item?.tgl_pengembalian_alat_oleh_vn
     ),
-    realization_date: formatDateISO(item?.realization_date || item?.realisasi),
+    realization_date: null,
     remarks: String(item?.remarks ?? item?.keterangan ?? '').trim(),
     source_table: item?.source_table || null,
     source_key: item?.source_key || null,
@@ -2877,6 +2996,25 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
         error.status = 409;
         throw error;
       }
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE T_Monthly_Schedule_External_Header
+          SET
+            Requested_By = :userId,
+            Updated_By = :userId,
+            Updated_Date = GETDATE()
+          WHERE Schedule_External_Header_ID = :scheduleHeaderId
+        `,
+        {
+          replacements: {
+            scheduleHeaderId: header.Schedule_External_Header_ID,
+            userId: user_id,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
 
       for (const item of incomingRows) {
         await sequelizeMSQL.query(
@@ -2993,30 +3131,12 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
         throw error;
       }
 
-      await sequelizeMSQL.query(
-        `
-          DELETE FROM T_Monthly_Schedule_External_Header
-          WHERE Base_Period_Year = :year
-            AND Base_Period_Month = :month
-            AND [Status] IN ('REJECTED', 'SUPERSEDED')
-        `,
-        {
-          replacements: {
-            year: normalizePeriodYear(selectedYear),
-            month: normalizePeriodMonth(selectedMonth),
-          },
-          type: Sequelize.QueryTypes.DELETE,
-          transaction,
-        }
-      );
-
       const revisionRows = await sequelizeMSQL.query(
         `
           SELECT ISNULL(MAX(Revision_No), 0) + 1 AS NextRevision
           FROM T_Monthly_Schedule_External_Header WITH (UPDLOCK, HOLDLOCK)
           WHERE Base_Period_Year = :year
             AND Base_Period_Month = :month
-            AND [Status] = 'APPROVED'
         `,
         {
           replacements: {
@@ -3187,7 +3307,7 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
               insituDate: item.insitu_date || null,
               userEquipmentHandoverDate: item.user_equipment_handover_date || null,
               equipmentReturnByVendorDate: item.equipment_return_by_vendor_date || null,
-              realizationDate: item.realization_date || null,
+              realizationDate: null,
               remarks: item.remarks || null,
               sourceTable: item.source_table || null,
               sourceKey: item.source_key || null,
@@ -3228,6 +3348,12 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
     }
     if (!user_id) {
       return res.status(401).json({ success: false, message: 'User is not authenticated' });
+    }
+    if (!canApproveOrRejectMonthlySchedule(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only VN Manager can approve external monthly schedule revisions.',
+      });
     }
 
     const payload = await sequelizeMSQL.transaction(async (transaction) => {
@@ -3328,6 +3454,12 @@ const rejectMasterJadwalBulananExternal = async (req, res, next) => {
     if (!user_id) {
       return res.status(401).json({ success: false, message: 'User is not authenticated' });
     }
+    if (!canApproveOrRejectMonthlySchedule(req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only VN Manager can reject external monthly schedule revisions.',
+      });
+    }
 
     const payload = await sequelizeMSQL.transaction(async (transaction) => {
       const header = scheduleHeaderId
@@ -3368,20 +3500,6 @@ const rejectMasterJadwalBulananExternal = async (req, res, next) => {
         }
       );
 
-      await sequelizeMSQL.query(
-        `
-          DELETE FROM T_Monthly_Schedule_External_Header
-          WHERE Schedule_External_Header_ID = :headerId
-        `,
-        {
-          replacements: {
-            headerId: header.Schedule_External_Header_ID,
-          },
-          type: Sequelize.QueryTypes.DELETE,
-          transaction,
-        }
-      );
-
       const currentHeader = await getLatestApprovedExternalHeader(
         header.Base_Period_Year,
         header.Base_Period_Month,
@@ -3411,11 +3529,29 @@ const rejectMasterJadwalBulananExternal = async (req, res, next) => {
   }
 };
 
+const getExternalHeaderForExport = async (selectedYear, selectedMonth, source) => {
+  if (source === 'live') return null;
+
+  if (source === 'requested') {
+    return getLatestRequestedExternalHeader(selectedYear, selectedMonth);
+  }
+
+  if (source === 'previous') {
+    const { previousHeader } = await getExternalRevisionState(selectedYear, selectedMonth);
+    return previousHeader;
+  }
+
+  const approvedHeader = await getLatestApprovedExternalHeader(selectedYear, selectedMonth);
+  if (approvedHeader) return approvedHeader;
+
+  return getLatestRequestedExternalHeader(selectedYear, selectedMonth);
+};
+
 const exportMasterJadwalBulananExternal = async (req, res, next) => {
   try {
     const yearParam = req.body?.year ?? req.query?.year;
     const monthParam = req.body?.month ?? req.query?.month;
-    const source = ['live', 'requested', 'snapshot'].includes(req.body?.source || req.query?.source)
+    const source = ['live', 'requested', 'snapshot', 'previous'].includes(req.body?.source || req.query?.source)
       ? (req.body?.source || req.query?.source)
       : 'snapshot';
 
@@ -3430,17 +3566,12 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     }
 
     let rows = normalizeIncomingExternalWorkflowRows(req.body?.rows);
-    let snapshotHeader = null;
+    let snapshotHeader = await getExternalHeaderForExport(
+      selectedYear,
+      selectedMonth,
+      source
+    );
     if (!rows.length) {
-      if (source === 'requested') {
-        snapshotHeader = await getLatestRequestedExternalHeader(selectedYear, selectedMonth);
-      } else if (source !== 'live') {
-        snapshotHeader = await getLatestApprovedExternalHeader(selectedYear, selectedMonth);
-        if (!snapshotHeader) {
-          snapshotHeader = await getLatestRequestedExternalHeader(selectedYear, selectedMonth);
-        }
-      }
-
       if (snapshotHeader) {
         const details = await getExternalDetails(snapshotHeader.Schedule_External_Header_ID);
         rows = mapExternalSnapshotRows(details, snapshotHeader.Base_Period_Year, snapshotHeader.Base_Period_Month);
@@ -3455,7 +3586,7 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     worksheet.columns = [
       { width: 6 },
       { width: 48 },
-      { width: 14 },
+      { width: 22 },
       { width: 10 },
       { width: 34 },
       { width: 12 },
@@ -3473,10 +3604,11 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     worksheet.getCell('A1').font = { bold: true, size: 14 };
     worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
-    writeExternalTableHeader(worksheet, 2);
-    worksheet.views = [{ state: 'frozen', ySplit: 3 }];
+    writeExternalApprovalInfo(worksheet, 2, snapshotHeader);
+    writeExternalTableHeader(worksheet, 5);
+    worksheet.views = [{ state: 'frozen', ySplit: 6 }];
 
-    let currentRow = 4;
+    let currentRow = 7;
     const groupedByPeriod = rows.reduce((acc, row) => {
       const key = row._period_key || `${normalizePeriodYear(selectedYear)}-${normalizePeriodMonth(selectedMonth)}`;
       if (!acc[key]) acc[key] = { label: row._period_label || key, rows: [] };
@@ -3509,7 +3641,7 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     });
 
     const lastRow = Math.max(currentRow - 1, 3);
-    worksheet.autoFilter = `A2:K${lastRow}`;
+    worksheet.autoFilter = `A5:K${lastRow}`;
 
     const fileName = `Master-Jadwal-Bulanan-External-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
