@@ -736,6 +736,51 @@ async function finalizeCalibrationSession(req, res) {
   }
 }
 
+async function updateEvaluationResult(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const session = await ensureSessionExists(sessionId);
+    const evaluationResult = normalizeLimitedString(
+      req.body?.evaluation_result ?? req.body?.evaluationResult,
+      {
+        field: 'evaluation_result',
+        maxLength: 100,
+      }
+    );
+    const changedBy = getChangedBy(req);
+
+    const updated = await repo.updateEvaluationResult(
+      sessionId,
+      evaluationResult,
+      changedBy
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Session not found.' });
+    }
+
+    await writeAuditSafe({
+      session_id: sessionId,
+      entity_name: 'calibration_session',
+      entity_id: sessionId,
+      action_type: 'UPDATE_EVALUATION_RESULT',
+      old_value: JSON.stringify({ evaluation_result: session.evaluation_result || null }),
+      new_value: JSON.stringify({ evaluation_result: evaluationResult }),
+      changed_by: changedBy,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        evaluation_result: evaluationResult,
+      },
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
 async function publishSertifikatBagian(req, res) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
@@ -1467,6 +1512,7 @@ module.exports = {
   updateCalibrationSession,
   deleteCalibrationSession,
   finalizeCalibrationSession,
+  updateEvaluationResult,
   publishSertifikatBagian,
   listNominalPoints,
   createNominalPoint,
