@@ -21,9 +21,20 @@ const authentication = async (req, res, next) => {
         },
       });
 
-      // console.log(response, "response");
-
       const result = await response.json();
+
+      // Debug: log raw decode result when Job_LevelID is missing/malformed.
+      const rawJobLevel = result?.user?.Job_LevelID ?? result?.user?.joblevel_id_user ?? result?.user?.emp_JobLevelID;
+      if (!rawJobLevel || Number.isNaN(Number(rawJobLevel))) {
+        console.warn('[authentication] Job_LevelID missing or invalid. Raw result.user:', JSON.stringify(result?.user || {}));
+      }
+
+      const resolvedJobLevel = Number(
+        result?.user?.Job_LevelID ??
+        result?.user?.joblevel_id_user ??
+        result?.user?.emp_JobLevelID ??
+        0
+      );
 
       let auth;
       if (result?.delegatedTo) {
@@ -32,7 +43,7 @@ const authentication = async (req, res, next) => {
           nama_user: result?.user?.Nama || "",
           inisial_user: result?.user?.Inisial_Name || "",
           jabatan_user: result?.user?.emp_JobLevelID || "",
-          joblevel_id_user: +result?.user?.Job_LevelID,
+          joblevel_id_user: Number.isNaN(resolvedJobLevel) ? 0 : resolvedJobLevel,
           bagian_user: result?.user?.emp_DeptID || "",
           delegated_to: result?.delegatedTo?.log_NIK || "",
         };
@@ -45,7 +56,7 @@ const authentication = async (req, res, next) => {
           nama_user: result?.user?.Nama || "",
           inisial_user: result?.user?.Inisial_Name || "",
           jabatan_user: result?.user?.emp_JobLevelID || "",
-          joblevel_id_user: +result?.user?.Job_LevelID,
+          joblevel_id_user: Number.isNaN(resolvedJobLevel) ? 0 : resolvedJobLevel,
           bagian_user: result?.user?.emp_DeptID || "",
           delegated_to: result?.user?.log_NIK || this.user_id,
         };

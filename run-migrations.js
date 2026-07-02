@@ -23,6 +23,7 @@ const migrationOrder = [
   'create-calibration-risk-assessment.sql',
   'create-pressure-calibration-tables.sql',
   'create-calibration-workbook-tables.sql',
+  'add-evaluation-result-to-calibration-workbook.sql',
   'create-timer-calibration-tables.sql',
   'add-reject-remark-to-kalibrasi-permohonan.sql',
   'drop-identitas-alat-from-calibration-sessions.sql',

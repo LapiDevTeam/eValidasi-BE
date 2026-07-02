@@ -1,10 +1,13 @@
 'use strict';
 
 /**
- * timbanganFormula.service.js — Electronic Balance (Timbangan) math engine
+ * timbanganFormula.service.js - Electronic Balance (Timbangan) math engine
  *
  * Pure functions (no DB / no I/O) reproducing the "HASIL HITUNG" and
- * "HASIL EVALUASI" sheets of TIMBANGAN.xls.
+ * "HASIL EVALUASI" sheets of TIMBANGAN.xls and TIMBANGAN (gr).xls.
+ *
+ * Supported units: 'kg' (default), 'g' (gram), 'mg' (milligram - no reference workbook).
+ * AT master always stores konvensional_g in grams and uc_mg in milligrams regardless of unit.
  *
  * Section map (workbook -> function):
  *   I.   Pre-adjustment            -> computePreadjust
@@ -15,24 +18,36 @@
  *   Evaluasi                       -> evaluatePoint / deriveConclusion
  *
  * Uncertainty budget per measurement point (workbook HASIL HITUNG col L):
- *   u_repeatability = Sr / k          (k = √2 when Sr > Sres else 1)   [L37 = J37/K37]
- *   u_resolusi      = resolusi / (2√3)                                  [L38 = J38/K38]
- *   u_sertifikat    = (Σ AT UC mg / 1e6) / 2                            [L39 = J39/K39]
- *   u_combined      = √(u_rep² + u_res² + u_cert²)                      [L40]
- *   U_expanded      = u_combined × 2                                    [L41]
- *   tolerance       = resolusi × 5                                      [HASIL EVALUASI X = F2*5]
+ *   u_repeatability = Sr / k          (k = sqrt(2) when Sr > Sres else 1)
+ *   u_resolusi      = resolusi / (2*sqrt(3))
+ *   u_sertifikat    = (Sigma AT UC / unit_divisor) / 2
+ *   u_combined      = sqrt(u_rep^2 + u_res^2 + u_cert^2)
+ *   U_expanded      = u_combined * 2
+ *   tolerance       = resolusi * 5
+ *
+ * LOP CMAX source:
+ *   unit='kg' -> max|error| across measurement points   (TIMBANGAN.xls)
+ *   unit='g'  -> eccentricity maxDiff                   (TIMBANGAN (gr).xls)
+ *   unit='mg' -> eccentricity maxDiff (assumed; no reference workbook provided)
  */
 
-const COVERAGE_FACTOR = 2;                  // k, 95% confidence
-const REPEAT_K = Math.SQRT2;                // √2 when Sr > Sres
-const RES_DIVISOR = 2 * Math.sqrt(3);       // rectangular distribution
-const CERT_DIVISOR = 2;                     // certificate reported at k = 2
-const SRES_FACTOR = 0.5 * 0.82;            // Sres = 0.41 × resolusi
-const TOLERANCE_FACTOR = 5;                 // toleransi = 5 × resolusi
-const LOP_SR_FACTOR = 2.26;                 // LOP = 2.26·Sr(max) + |CMAX| + U(CMAX)
-const REPEAT_SOURCE_RATIO = 0.6;           // nominal > 0.6·maxLoad uses max-cap Sr
-const G_TO_KG = 1000;                        // gram -> kg
-const MG_TO_KG = 1e6;                        // mg -> kg
+const COVERAGE_FACTOR = 2;              // k, 95% confidence
+const REPEAT_K = Math.SQRT2;            // sqrt(2) when Sr > Sres
+const RES_DIVISOR = 2 * Math.sqrt(3);  // rectangular distribution
+const CERT_DIVISOR = 2;                 // certificate reported at k = 2
+const SRES_FACTOR = 0.5 * 0.82;        // Sres = 0.41 * resolusi
+const TOLERANCE_FACTOR = 5;             // toleransi = 5 * resolusi
+const LOP_SR_FACTOR = 2.26;             // LOP = 2.26*Sr(max) + |CMAX| + U(CMAX)
+const REPEAT_SOURCE_RATIO = 0.6;        // nominal > 0.6*maxLoad uses max-cap Sr
+
+// Conversion factors from AT master storage (konvensional_g in g, uc_mg in mg) to working unit.
+// gToUnit: multiply konvensional_g to get mass in target unit
+// mgToUnit: multiply uc_mg to get UC in target unit
+const UNIT_FACTORS = {
+  kg: { gToUnit: 1 / 1000, mgToUnit: 1 / 1e6  },
+  g:  { gToUnit: 1,         mgToUnit: 1 / 1000 },
+  mg: { gToUnit: 1000,      mgToUnit: 1        },
+};
 
 const CONCLUSION_PASS = 'LAYAK DIGUNAKAN';
 const CONCLUSION_FAIL = 'PENGGUNAAN FAKTOR KOREKSI';
@@ -64,7 +79,7 @@ function meanEntered(values) {
   return entered.length ? mean(entered) : 0;
 }
 
-/** Excel STDEV — sample standard deviation (n-1); 0 for fewer than 2 values. */
+/** Excel STDEV - sample standard deviation (n-1); 0 for fewer than 2 values. */
 function stdev(values) {
   const n = values.length;
   if (n < 2) return 0;
@@ -78,14 +93,16 @@ function stdev(values) {
 // ---------------------------------------------------------------------------
 
 /**
- * @param {Array} rows [{ konvensional_g, uut_reading, zero_reading }]
+ * @param {Array}  rows [{ konvensional_g, uut_reading, zero_reading }]
+ * @param {string} unit 'kg' | 'g' | 'mg'
  * @returns {{ mass:number, result:number, error:number }}
  */
-function computePreadjust(rows = []) {
+function computePreadjust(rows = [], unit = 'kg') {
   const active = rows.filter(
     (r) => isEntered(r.konvensional_g) || isEntered(r.uut_reading) || isEntered(r.at_no_id)
   );
-  const mass = active.reduce((acc, r) => acc + toNumber(r.konvensional_g), 0) / G_TO_KG;
+  const factors = UNIT_FACTORS[unit] || UNIT_FACTORS.kg;
+  const mass = active.reduce((acc, r) => acc + toNumber(r.konvensional_g), 0) * factors.gToUnit;
   const result = meanEntered(active.map((r) => r.uut_reading)) - meanEntered(active.map((r) => r.zero_reading));
   return { mass, result, error: result - mass };
 }
@@ -128,29 +145,31 @@ function computeRepeatability(rows = [], resolusi = 0) {
 
 /**
  * @param {object} point
- * @param {Array}  point.standards [{ konvensional_g, uc_mg, uut_reading, zero_reading, at_no_id }]
+ * @param {Array}  point.standards    [{ konvensional_g, uc_mg, uut_reading, zero_reading, at_no_id }]
  * @param {number} point.resolusi
  * @param {object} point.repeatability  result of computeRepeatability
- * @param {number} point.maxLoadRef      reference max load to pick half/max Sr
+ * @param {number} point.maxLoadRef   kapasitas_alat in working unit (threshold = 0.6 * maxLoadRef)
+ * @param {string} point.unit         'kg' | 'g' | 'mg'
  */
-function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoadRef = 0 }) {
+function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoadRef = 0, unit = 'kg' }) {
   const active = standards.filter(
     (s) => isEntered(s.konvensional_g) || isEntered(s.uut_reading) || isEntered(s.at_no_id)
   );
 
-  const konvMass = active.reduce((acc, s) => acc + toNumber(s.konvensional_g), 0) / G_TO_KG;
-  const ucKg = active.reduce((acc, s) => acc + toNumber(s.uc_mg), 0) / MG_TO_KG;
+  const factors = UNIT_FACTORS[unit] || UNIT_FACTORS.kg;
+  const konvMass = active.reduce((acc, s) => acc + toNumber(s.konvensional_g), 0) * factors.gToUnit;
+  const ucConverted = active.reduce((acc, s) => acc + toNumber(s.uc_mg), 0) * factors.mgToUnit;
   const reading = meanEntered(active.map((s) => s.uut_reading)) - meanEntered(active.map((s) => s.zero_reading));
   const error = reading - konvMass;
 
-  // Pick half- or max-capacity repeatability the way the workbook hardwires it.
+  // Pick half- or max-capacity repeatability based on 0.6 * kapasitas_alat (in working unit).
   const useMax = toNumber(maxLoadRef) > 0 && konvMass > REPEAT_SOURCE_RATIO * toNumber(maxLoadRef);
   const sr = useMax ? toNumber(repeatability.srMax) : toNumber(repeatability.srHalf);
   const k = useMax ? toNumber(repeatability.kMax) || 1 : toNumber(repeatability.kHalf) || 1;
 
   const uRepeatability = sr / k;
   const uResolusi = toNumber(resolusi) / RES_DIVISOR;
-  const uSertifikat = ucKg / CERT_DIVISOR;
+  const uSertifikat = ucConverted / CERT_DIVISOR;
   const uCombined = Math.sqrt(uRepeatability ** 2 + uResolusi ** 2 + uSertifikat ** 2);
   const uExpanded = uCombined * COVERAGE_FACTOR;
 
@@ -159,7 +178,7 @@ function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoa
 
   return {
     konvMass,
-    ucKg,
+    ucConverted,
     reading,
     error,
     repeatabilitySource: useMax ? 'MAX' : 'HALF',
@@ -174,7 +193,7 @@ function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoa
 }
 
 /**
- * Evaluate a point: error band [error−U, error+U] must lie within [−tol, +tol].
+ * Evaluate a point: error band [error-U, error+U] must lie within [-tol, +tol].
  */
 function evaluatePoint(error, uExpanded, tolerance) {
   const tol = toNumber(tolerance);
@@ -216,7 +235,7 @@ function computeEccentricity(rows = []) {
 // ---------------------------------------------------------------------------
 
 /**
- * Hysteresis = (Σ col1[M] − Σ col2[M]) / 4 over rows labelled 'M' (workbook E151).
+ * Hysteresis = (Sum col1[M] - Sum col2[M]) / 4 over rows labelled 'M' (workbook E151).
  * @param {Array} rows [{ label, col1, col2 }]
  */
 function computeHysteresis(rows = []) {
@@ -231,9 +250,25 @@ function computeHysteresis(rows = []) {
 // LIMIT OF PERFORMANCE (LOP)
 // ---------------------------------------------------------------------------
 
-function computeLop({ srHalf = 0, srMax = 0, results = [] }) {
+/**
+ * @param {object} opts
+ * @param {number} opts.srHalf
+ * @param {number} opts.srMax
+ * @param {Array}  opts.results              [{ error, uExpanded }] - used for CMAX when unit='kg'
+ * @param {string} opts.unit                 'kg' | 'g' | 'mg'
+ * @param {number} opts.eccentricityMaxDiff  used as CMAX when unit='g' or 'mg'
+ */
+function computeLop({ srHalf = 0, srMax = 0, results = [], unit = 'kg', eccentricityMaxDiff = 0 }) {
   const srMaxUsed = Math.abs(Math.max(toNumber(srHalf), toNumber(srMax)));
-  const cmax = results.length ? Math.max(...results.map((r) => Math.abs(toNumber(r.error)))) : 0;
+
+  let cmax;
+  if (unit === 'g' || unit === 'mg') {
+    // Grams workbook (TIMBANGAN (gr).xls): CMAX = eccentricity maxDiff, not max|error|.
+    cmax = Math.abs(toNumber(eccentricityMaxDiff));
+  } else {
+    cmax = results.length ? Math.max(...results.map((r) => Math.abs(toNumber(r.error)))) : 0;
+  }
+
   const uCmax = results.length ? Math.max(...results.map((r) => toNumber(r.uExpanded))) : 0;
   return {
     srMaxUsed,
@@ -259,6 +294,7 @@ module.exports = {
   TOLERANCE_FACTOR,
   CONCLUSION_PASS,
   CONCLUSION_FAIL,
+  UNIT_FACTORS,
   toNumber,
   mean,
   stdev,
