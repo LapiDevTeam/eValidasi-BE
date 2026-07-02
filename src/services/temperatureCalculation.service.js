@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const sql = require('mssql');
 const repo = require('../../repositories/temperature-calibration.repository');
@@ -41,6 +41,68 @@ const EVALUATION_OPTIONS = [
 function normalizeEvaluationResult(value) {
   const text = String(value ?? '').trim();
   return EVALUATION_OPTIONS.includes(text) ? text : '';
+}
+
+// ---------------------------------------------------------------------------
+// ROLE-BASED APPROVAL (Thermohygrometer-style)
+// ---------------------------------------------------------------------------
+
+const APPROVAL_ROLES = {
+  admin: {
+    key: 'admin',
+    label: 'Admin',
+    column: 'approved_by_admin',
+    dateColumn: 'approved_by_admin_date',
+    rank: 1,
+  },
+  officer: {
+    key: 'officer',
+    label: 'Officer/Supervisor',
+    column: 'approved_by_officer',
+    dateColumn: 'approved_by_officer_date',
+    rank: 2,
+  },
+  manager: {
+    key: 'manager',
+    label: 'Manager',
+    column: 'approved_by_manager',
+    dateColumn: 'approved_by_manager_date',
+    rank: 3,
+  },
+};
+
+function getWorkbookApprovalRole(jobLevel) {
+  const level = Number(jobLevel);
+  if (Number.isNaN(level)) return null;
+  if (level > 6) return APPROVAL_ROLES.admin;
+  if (level === 5 || level === 6) return APPROVAL_ROLES.officer;
+  if (level === 3) return APPROVAL_ROLES.manager;
+  return null;
+}
+
+function getPendingRole(session) {
+  if (!session?.approved_by_admin) return APPROVAL_ROLES.admin;
+  if (!session?.approved_by_officer) return APPROVAL_ROLES.officer;
+  if (!session?.approved_by_manager) return APPROVAL_ROLES.manager;
+  return null;
+}
+
+function canApproveRole(userRole, pendingRole) {
+  if (!userRole || !pendingRole) return false;
+  return userRole.rank >= pendingRole.rank;
+}
+
+function assertApprovalOrder(session, role) {
+  if (!role) return 'User tidak memiliki role approval workbook';
+
+  const pending = getPendingRole(session);
+  if (!pending) return 'Workbook sudah fully approved';
+
+  if (!canApproveRole(role, pending)) {
+    return `Role ${role.label} tidak bisa melakukan approval ${pending.label}`;
+  }
+
+  return '';
 }
 
 async function createSession(body, createdBy) {
@@ -153,6 +215,8 @@ async function calculate(sessionId, changedBy = null) {
     }
     await repo.upsertSummary(sessionId, computed, transaction);
     await repo.updateSessionConclusion(sessionId, computed.conclusion, transaction);
+    // Reset approvals on recalculation so the workbook must be re-approved.
+    await repo.resetSessionApprovals(sessionId, changedBy, transaction);
     await repo.updateSessionStatus(sessionId, 'CALCULATED', changedBy, transaction);
     await repo.insertAuditLog({
       session_id: sessionId,
@@ -191,14 +255,60 @@ async function getResults(sessionId) {
   return { sessionId, results: await repo.getResults(sessionId), summary: await repo.getSummary(sessionId) };
 }
 
+// finalize is deprecated: approval is now role-based (Admin -> Officer -> Manager).
 async function finalize(sessionId, changedBy = null) {
   const session = await repo.getSessionById(sessionId);
   if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
   if (String(session.status).toUpperCase() !== 'CALCULATED') {
-    throw httpError('Session must be CALCULATED before finalize.', 422);
+    throw httpError('Session must be CALCULATED before approval.', 422);
   }
-  await repo.updateSessionStatus(sessionId, 'FINALIZED', changedBy);
-  return { sessionId, status: 'FINALIZED' };
+  return { sessionId, status: session.status, note: 'Use role-based approve endpoint' };
+}
+
+async function approveSession(sessionId, user) {
+  const jobLevel = Number(
+    user?.joblevel_id_user ?? user?.job_level_id ?? user?.Job_LevelID
+  );
+  const userId = user?.user_id || user?.log_NIK || '';
+  const role = getWorkbookApprovalRole(jobLevel);
+
+  if (!role) {
+    throw httpError(`User tidak memiliki role approval workbook (job level terdeteksi: ${jobLevel || '-'}).`, 403);
+  }
+
+  const session = await repo.getSessionById(sessionId);
+  if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+
+  const orderMessage = assertApprovalOrder(session, role);
+  if (orderMessage) {
+    throw httpError(orderMessage, 403);
+  }
+
+  const pendingRole = getPendingRole(session);
+  await repo.updateSessionApproval(sessionId, { roleKey: pendingRole.key, userId });
+
+  return {
+    sessionId,
+    approvedBy: pendingRole.key,
+    approvedByLabel: pendingRole.label,
+  };
+}
+
+async function rejectSession(sessionId, user, reason = '') {
+  const userId = user?.user_id || user?.log_NIK || '';
+  const session = await repo.getSessionById(sessionId);
+  if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+
+  await repo.clearSessionApprovals(sessionId, {
+    rejectedBy: userId,
+    rejectedReason: reason,
+  });
+
+  return {
+    sessionId,
+    rejectedBy: userId,
+    rejectedReason: reason,
+  };
 }
 
 async function listDaCandidates(filters) {
@@ -241,9 +351,23 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const session = await repo.getSessionById(sessionId, transaction);
     if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
     const status = String(session.status || '').toUpperCase();
-    if (!['CALCULATED', 'FINALIZED', 'PUBLISHED'].includes(status)) {
-      throw httpError('Session must be CALCULATED before publish.', 422);
+    if (!['CALCULATED', 'PUBLISHED'].includes(status)) {
+      throw httpError(
+        'Sertifikat belum bisa diterbitkan karena sesi ini belum dihitung. ' +
+          'Jalankan "Hitung" sampai status menjadi CALCULATED, lalu terbitkan ulang.',
+        422,
+        [{ field: 'status', message: `Status sesi saat ini: ${status || 'TIDAK DIKETAHUI'}.` }]
+      );
     }
+
+    if (!session.approved_by_admin || !session.approved_by_officer || !session.approved_by_manager) {
+      throw httpError(
+        'Sertifikat belum bisa diterbitkan. Workbook harus di-approve oleh Admin, Officer/Supervisor, dan Manager.',
+        403,
+        [{ field: 'approval', message: 'Approval belum lengkap.' }]
+      );
+    }
+
     const results = await repo.getResults(sessionId, transaction);
     if (!results.length) throw httpError('No temperature calculation results. Run calculate first.', 422);
 
@@ -354,6 +478,8 @@ module.exports = {
   calculate,
   getSessionBundle,
   getResults,
+  approveSession,
+  rejectSession,
   finalize,
   listDaCandidates,
   publishToSertifikat,

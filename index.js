@@ -38,6 +38,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 app.use(timeout('6000s')); // Set timeout to 100 minutes (6000 seconds)
+
+// Simple request logger for development debugging.
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} | user: ${req.user?.user_id || '-'}`);
+  next();
+});
+
 app.use(routers);
 app.use(error);
 

@@ -1,9 +1,13 @@
 'use strict';
 
 const express = require('express');
+const { authentication } = require('../../middlewares/authentication');
 const controller = require('../../controllers/transactions/calibration-workbook.controller');
 
 const router = express.Router();
+
+// All routes require authentication.
+router.use(authentication);
 
 // Sessions
 router.get('/calibration-sessions', controller.listCalibrationSessions);
@@ -12,6 +16,8 @@ router.post('/calibration-sessions', controller.createCalibrationSession);
 router.put('/calibration-sessions/:sessionId', controller.updateCalibrationSession);
 router.delete('/calibration-sessions/:sessionId', controller.deleteCalibrationSession);
 router.post('/calibration-sessions/:sessionId/finalize', controller.finalizeCalibrationSession);
+router.post('/calibration-sessions/:sessionId/approve', controller.approveSession);
+router.post('/calibration-sessions/:sessionId/reject', controller.rejectSession);
 router.post(
   '/calibration-sessions/:sessionId/evaluation-result',
   controller.updateEvaluationResult

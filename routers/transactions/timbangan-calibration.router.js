@@ -1,9 +1,13 @@
 'use strict';
 
 const express = require('express');
+const { authentication } = require('../../middlewares/authentication');
 const controller = require('../../controllers/transactions/timbangan-calibration.controller');
 
 const router = express.Router();
+
+// All routes require authentication.
+router.use(authentication);
 
 // Sessions
 router.get('/timbangan-sessions', controller.listSessions);
@@ -15,10 +19,12 @@ router.delete('/timbangan-sessions/:sessionId', controller.deleteSession);
 // Workbook data (all sub-tests, replace-all)
 router.put('/timbangan-sessions/:sessionId/workbook', controller.saveWorkbook);
 
-// Calculation / results / finalize
+// Calculation / results / approval
 router.post('/timbangan-sessions/:sessionId/calculate', controller.calculate);
 router.get('/timbangan-sessions/:sessionId/results', controller.getResults);
 router.post('/timbangan-sessions/:sessionId/finalize', controller.finalize);
+router.post('/timbangan-sessions/:sessionId/approve', controller.approveSession);
+router.post('/timbangan-sessions/:sessionId/reject', controller.rejectSession);
 
 // Anak Timbangan (AT) master
 router.get('/timbangan-at-standards', controller.listAtStandards);
