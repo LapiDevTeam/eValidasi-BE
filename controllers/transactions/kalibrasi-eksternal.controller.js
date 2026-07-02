@@ -10,12 +10,48 @@ const PROGRAM_NAME = 'KalibrasiEksternal';
 const APP_CODE = 'KAL_Eksternal';
 
 /**
+ * Resolves the owning department for a Kalibrasi Eksternal record.
+ * Accepts either a schedule_detail_id (T_Monthly_Schedule_External_Detail)
+ * or an ekst_id (T_Kalibrasi_Eksternal).
+ * Returns the department string, or null if not found or if user is VN/no dept filter.
+ */
+const getOwningDepartment = async (identifier, bagian_user) => {
+  if (!bagian_user || bagian_user === 'VN') {
+    return null;
+  }
+
+  // Try schedule_detail_id first
+  let result = await sequelizeMSQL.query(
+    `SELECT Department FROM T_Monthly_Schedule_External_Detail
+     WHERE Schedule_External_Detail_ID = :identifier`,
+    { replacements: { identifier }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  if (result.length) {
+    return result[0].Department;
+  }
+
+  // Try ekst_id via join
+  result = await sequelizeMSQL.query(
+    `SELECT d.Department
+     FROM T_Kalibrasi_Eksternal e
+     INNER JOIN T_Monthly_Schedule_External_Detail d
+       ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+     WHERE e.ekst_id = :identifier`,
+    { replacements: { identifier }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  return result[0]?.Department || null;
+};
+
+/**
  * GET /list
  * Lists instruments from APPROVED external schedules, joined with execution status.
  * Query params: tahun, bulan (optional), status (optional: DRAFT|UPLOADED|APPROVED|REJECTED|PENDING)
  */
 const getKalibrasiEksternalList = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { tahun, bulan, status } = req.query;
 
     const yearFilter = tahun || moment().utcOffset(7).year().toString();
@@ -68,6 +104,11 @@ const getKalibrasiEksternalList = async (req, res, next) => {
 
     const replacements = { tahun: yearFilter };
 
+    if (bagian_user && bagian_user !== 'VN') {
+      query += ` AND d.Department = :bagian_user`;
+      replacements.bagian_user = bagian_user;
+    }
+
     if (bulan) {
       query += ` AND d.Schedule_Period_Month = :bulan`;
       replacements.bulan = bulan;
@@ -108,6 +149,7 @@ const getKalibrasiEksternalList = async (req, res, next) => {
  */
 const getKalibrasiEksternalDetail = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { schedule_detail_id } = req.query;
 
     if (!schedule_detail_id) {
@@ -177,6 +219,13 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
     }
 
+    if (bagian_user && bagian_user !== 'VN' && results[0].departemen !== bagian_user) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anda tidak memiliki akses ke data departemen lain',
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Data fetched successfully',
@@ -198,7 +247,7 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
  */
 const saveKalibrasiEksternal = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const {
       schedule_detail_id,
       ekst_id,
@@ -218,6 +267,12 @@ const saveKalibrasiEksternal = async (req, res, next) => {
 
     if (!schedule_detail_id) {
       return res.status(400).json({ success: false, message: 'schedule_detail_id wajib diisi' });
+    }
+
+    // Ownership guard: create uses schedule_detail_id, update uses ekst_id
+    const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     if (!ekst_id) {
@@ -335,10 +390,17 @@ const saveKalibrasiEksternal = async (req, res, next) => {
  */
 const deleteKalibrasiEksternal = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
       return res.status(400).json({ success: false, message: 'ekst_id is required' });
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     const statusCheck = await sequelizeMSQL.query(
@@ -376,11 +438,17 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
  */
 const uploadSertifikatVendor = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
       return res.status(400).json({ success: false, message: 'ekst_id is required' });
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     if (!req.file) {
@@ -556,6 +624,12 @@ const approveKalibrasiEksternal = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
     }
 
+    // Ownership guard (additional to existing approver auth check)
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+    }
+
     // Verify record status allows approval
     const ekstRecord = await sequelizeMSQL.query(
       `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
@@ -647,10 +721,17 @@ const approveKalibrasiEksternal = async (req, res, next) => {
  */
 const downloadSertifikatVendor = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
       return res.status(400).json({ success: false, message: 'ekst_id is required' });
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     const result = await sequelizeMSQL.query(
@@ -680,7 +761,7 @@ const downloadSertifikatVendor = async (req, res, next) => {
  */
 const saveTidakDapat = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { schedule_detail_id, ekst_id, alasan_tidak_dapat, kondisi_alat } = req.body;
 
     if (!schedule_detail_id) {
@@ -688,6 +769,12 @@ const saveTidakDapat = async (req, res, next) => {
     }
     if (!alasan_tidak_dapat?.trim()) {
       return res.status(400).json({ success: false, message: 'Alasan tidak dapat dikalibrasi wajib diisi' });
+    }
+
+    // Ownership guard: create uses schedule_detail_id, update uses ekst_id
+    const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     if (!ekst_id) {
@@ -771,6 +858,12 @@ const approveTidakDapat = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
     }
 
+    // Ownership guard (additional to existing approver auth check)
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+    }
+
     const ekstRecord = await sequelizeMSQL.query(
       `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
@@ -848,11 +941,17 @@ const approveTidakDapat = async (req, res, next) => {
  */
 const konfirmasiLabel = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
       return res.status(400).json({ success: false, message: 'ekst_id wajib diisi' });
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
     }
 
     const statusCheck = await sequelizeMSQL.query(
