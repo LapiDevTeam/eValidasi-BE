@@ -41,7 +41,7 @@ const ROLES = {
 
 const ROLE_ORDER = ['admin', 'officer', 'manager'];
 
-const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian']);
+const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian', 'kalibrasi-eksternal']);
 
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
@@ -1071,9 +1071,292 @@ async function rejectSertifikatBagianFromPending(qaId, idNoSertifikat, user) {
   };
 }
 
+// =============================================================================
+// KALIBRASI EKSTERNAL
+// =============================================================================
+
+function normalizeKalibrasiEksternalRow(raw) {
+  const qaId = normalizeValue(raw.QA_ID);
+  const ekstId = normalizeValue(raw.ekst_id);
+  const scheduleDetailId = normalizeValue(raw.schedule_detail_id);
+  return {
+    module: 'kalibrasi-eksternal',
+    moduleDisplayName: 'Kalibrasi Eksternal',
+    sessionId: ekstId,
+    scheduleDetailId,
+    qaId,
+    idNoSertifikat: '',
+    instrumentName: normalizeValue(raw.Instrument_Name),
+    calibrationDate: normalizeDate(raw.Due_Date),
+    requester: normalizeValue(raw.created_by),
+    updatedAt: normalizeDate(raw.updated_date || raw.created_date),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: '',
+    approvedByOfficerDate: '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel: 'approver',
+    pendingRole: 'Approver',
+    deepLink: `/kalibrasi-eksternal?schedule_detail_id=${encodeURIComponent(scheduleDetailId)}`,
+  };
+}
+
+async function scanKalibrasiEksternalPending(rawSearch, bagianUser) {
+  const search = buildLikeSearch(rawSearch);
+  const replacements = {};
+  let where = `
+    WHERE e.status IN ('UPLOADED', 'TIDAK_DAPAT')
+      AND NOT EXISTS (
+        SELECT 1 FROM T_Kalibrasi_Eksternal_Status AS s
+        WHERE s.ekst_id = e.ekst_id AND s.approver_no = 1
+      )
+  `;
+
+  const bagian = String(bagianUser || '').trim();
+  if (bagian && bagian.toUpperCase() !== 'VN') {
+    where += ' AND d.Department = :bagianUser';
+    replacements.bagianUser = bagian;
+  }
+
+  if (search) {
+    where += `
+      AND (
+        d.QA_ID LIKE :search
+        OR d.Instrument_Name LIKE :search
+        OR CAST(e.ekst_id AS NVARCHAR(50)) LIKE :search
+      )
+    `;
+    replacements.search = search;
+  }
+
+  const query = `
+    SELECT TOP 200
+      e.ekst_id,
+      e.schedule_detail_id,
+      d.QA_ID,
+      d.Instrument_Name,
+      d.Due_Date,
+      e.created_by,
+      e.created_date,
+      e.updated_date
+    FROM T_Kalibrasi_Eksternal AS e
+    INNER JOIN T_Monthly_Schedule_External_Detail AS d
+      ON d.Schedule_External_Detail_ID = e.schedule_detail_id
+    ${where}
+    ORDER BY e.updated_date DESC, e.created_date DESC
+  `;
+
+  const rows = await sequelizeMSQL.query(query, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map((raw) => normalizeKalibrasiEksternalRow(raw));
+}
+
+async function isKalibrasiEksternalApproverLevel1(userId) {
+  const query = `
+    SELECT COUNT(*) AS jumRow
+    FROM m_approver_lines
+    WHERE isactive = 1
+      AND Appr_ApplicationCode = 'KAL_Eksternal'
+      AND Appr_No = 1
+      AND Appr_ID = :userId
+  `;
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { userId },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  return Number(results[0].jumRow) > 0;
+}
+
+async function approveKalibrasiEksternalFromPending(ekstId, user) {
+  const userId = user?.user_id || user?.log_NIK || '';
+  const namaUser = user?.nama_user || userId;
+
+  if (!ekstId || ekstId === '') {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isKalibrasiEksternalApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_Eksternal level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const statusResults = await sequelizeMSQL.query(
+    `
+      SELECT status
+      FROM T_Kalibrasi_Eksternal
+      WHERE ekst_id = :ekstId
+    `,
+    {
+      replacements: { ekstId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if (statusResults.length === 0) {
+    const err = new Error('Data Kalibrasi Eksternal tidak ditemukan');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const currentStatus = statusResults[0].status;
+  if (!['UPLOADED', 'TIDAK_DAPAT'].includes(currentStatus)) {
+    const err = new Error('Data tidak dalam status yang dapat di-approve');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const newMainStatus = currentStatus === 'UPLOADED' ? 'APPROVED' : 'TIDAK_DAPAT_APPROVED';
+
+  await sequelizeMSQL.query(
+    `
+      DELETE FROM T_Kalibrasi_Eksternal_Status
+      WHERE ekst_id = :ekstId AND approver_no = 1
+    `,
+    {
+      replacements: { ekstId },
+      type: Sequelize.QueryTypes.DELETE,
+    }
+  );
+
+  await sequelizeMSQL.query(
+    `
+      INSERT INTO T_Kalibrasi_Eksternal_Status (
+        ekst_id,
+        approver_no,
+        USER_ID,
+        nama_approver,
+        status,
+        process_date,
+        created_by,
+        created_date
+      )
+      VALUES (
+        :ekstId,
+        1,
+        :userId,
+        :namaUser,
+        'APPROVE',
+        GETDATE(),
+        :userId,
+        GETDATE()
+      )
+    `,
+    {
+      replacements: { ekstId, userId, namaUser },
+      type: Sequelize.QueryTypes.INSERT,
+    }
+  );
+
+  await sequelizeMSQL.query(
+    `
+      UPDATE T_Kalibrasi_Eksternal
+      SET status = :newStatus,
+          updated_by = :userId,
+          updated_date = GETDATE()
+      WHERE ekst_id = :ekstId
+    `,
+    {
+      replacements: { ekstId, newStatus: newMainStatus, userId },
+      type: Sequelize.QueryTypes.UPDATE,
+    }
+  );
+
+  return {
+    module: 'kalibrasi-eksternal',
+    sessionId: ekstId,
+    approvedBy: 'approver',
+    approvedByLabel: 'Approver',
+  };
+}
+
+async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
+  const userId = user?.user_id || user?.log_NIK || '';
+
+  if (!ekstId || ekstId === '') {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isKalibrasiEksternalApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_Eksternal level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const statusResults = await sequelizeMSQL.query(
+    `
+      SELECT status
+      FROM T_Kalibrasi_Eksternal
+      WHERE ekst_id = :ekstId
+    `,
+    {
+      replacements: { ekstId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if (statusResults.length === 0) {
+    const err = new Error('Data Kalibrasi Eksternal tidak ditemukan');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const currentStatus = statusResults[0].status;
+  if (!['UPLOADED', 'TIDAK_DAPAT'].includes(currentStatus)) {
+    const err = new Error('Data tidak dalam status yang dapat di-reject');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await sequelizeMSQL.query(
+    `
+      DELETE FROM T_Kalibrasi_Eksternal_Status
+      WHERE ekst_id = :ekstId AND approver_no = 1
+    `,
+    {
+      replacements: { ekstId },
+      type: Sequelize.QueryTypes.DELETE,
+    }
+  );
+
+  if (currentStatus === 'UPLOADED') {
+    await sequelizeMSQL.query(
+      `
+        UPDATE T_Kalibrasi_Eksternal
+        SET status = 'REJECTED',
+            updated_by = :userId,
+            updated_date = GETDATE()
+        WHERE ekst_id = :ekstId
+      `,
+      {
+        replacements: { ekstId, userId },
+        type: Sequelize.QueryTypes.UPDATE,
+      }
+    );
+  }
+
+  return {
+    module: 'kalibrasi-eksternal',
+    sessionId: ekstId,
+    rejectedBy: userId,
+    rejectedReason: reason || '',
+  };
+}
+
 async function listPendingApprovals(options = {}) {
   const {
     userJobLevel,
+    bagian_user,
     moduleFilter,
     search,
     limit = 200,
@@ -1086,8 +1369,9 @@ async function listPendingApprovals(options = {}) {
   const includeWorkbook = !moduleFilter || MODULE_REGISTRY[moduleKey];
   const includeDaBagian = !moduleFilter || moduleKey === 'da-bagian';
   const includeSertifikatBagian = !moduleFilter || moduleKey === 'sertifikat-bagian';
+  const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
 
-  if (moduleFilter && !includeWorkbook && !includeDaBagian && !includeSertifikatBagian) {
+  if (moduleFilter && !includeWorkbook && !includeDaBagian && !includeSertifikatBagian && !includeKalibrasiEksternal) {
     const error = new Error(`Unknown calibration module: ${moduleFilter}`);
     error.statusCode = 400;
     throw error;
@@ -1137,6 +1421,16 @@ async function listPendingApprovals(options = {}) {
     }
   }
 
+  if (includeKalibrasiEksternal) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const rows = await scanKalibrasiEksternalPending(search, bagian_user);
+      results.push(...rows);
+    } catch (err) {
+      console.error('[pendingCalibrationApprovals] scan failed for kalibrasi-eksternal:', err.message);
+    }
+  }
+
   results.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
   return results.slice(0, limit);
 }
@@ -1167,8 +1461,12 @@ async function getSessionById(config, sessionId) {
 
 async function approveSession(module, sessionId, user) {
   if (isBagianModule(module)) {
-    if (String(module).toLowerCase() === 'da-bagian') {
+    const moduleKey = String(module).toLowerCase();
+    if (moduleKey === 'da-bagian') {
       return approveDaBagianFromPending(sessionId, user);
+    }
+    if (moduleKey === 'kalibrasi-eksternal') {
+      return approveKalibrasiEksternalFromPending(sessionId, user);
     }
     const [qaId, idNoSertifikat] = String(sessionId).split('~');
     return approveSertifikatBagianFromPending(qaId, idNoSertifikat, user);
@@ -1232,8 +1530,12 @@ async function approveSession(module, sessionId, user) {
 
 async function rejectSession(module, sessionId, user, reason) {
   if (isBagianModule(module)) {
-    if (String(module).toLowerCase() === 'da-bagian') {
+    const moduleKey = String(module).toLowerCase();
+    if (moduleKey === 'da-bagian') {
       return rejectDaBagianFromPending(sessionId, user);
+    }
+    if (moduleKey === 'kalibrasi-eksternal') {
+      return rejectKalibrasiEksternalFromPending(sessionId, user, reason);
     }
     const [qaId, idNoSertifikat] = String(sessionId).split('~');
     return rejectSertifikatBagianFromPending(qaId, idNoSertifikat, user);
