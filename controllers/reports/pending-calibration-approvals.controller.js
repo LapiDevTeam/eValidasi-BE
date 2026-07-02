@@ -18,7 +18,7 @@ function getUser(req) {
   return req?.user || {};
 }
 
-const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian']);
+const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian', 'kalibrasi-eksternal']);
 
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
@@ -43,6 +43,7 @@ const listPendingApprovals = async (req, res, next) => {
 
     const data = await service.listPendingApprovals({
       userJobLevel: user.joblevel_id_user,
+      bagian_user: user.bagian_user,
       moduleFilter,
       search,
       limit,
