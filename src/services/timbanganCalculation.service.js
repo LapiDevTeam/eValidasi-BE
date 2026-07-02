@@ -62,6 +62,68 @@ function normalizeEvaluationResult(value) {
 }
 
 // ---------------------------------------------------------------------------
+// ROLE-BASED APPROVAL (Thermohygrometer-style)
+// ---------------------------------------------------------------------------
+
+const APPROVAL_ROLES = {
+  admin: {
+    key: 'admin',
+    label: 'Admin',
+    column: 'approved_by_admin',
+    dateColumn: 'approved_by_admin_date',
+    rank: 1,
+  },
+  officer: {
+    key: 'officer',
+    label: 'Officer/Supervisor',
+    column: 'approved_by_officer',
+    dateColumn: 'approved_by_officer_date',
+    rank: 2,
+  },
+  manager: {
+    key: 'manager',
+    label: 'Manager',
+    column: 'approved_by_manager',
+    dateColumn: 'approved_by_manager_date',
+    rank: 3,
+  },
+};
+
+function getWorkbookApprovalRole(jobLevel) {
+  const level = Number(jobLevel);
+  if (Number.isNaN(level)) return null;
+  if (level > 6) return APPROVAL_ROLES.admin;
+  if (level === 5 || level === 6) return APPROVAL_ROLES.officer;
+  if (level === 3) return APPROVAL_ROLES.manager;
+  return null;
+}
+
+function getPendingRole(session) {
+  if (!session?.approved_by_admin) return APPROVAL_ROLES.admin;
+  if (!session?.approved_by_officer) return APPROVAL_ROLES.officer;
+  if (!session?.approved_by_manager) return APPROVAL_ROLES.manager;
+  return null;
+}
+
+function canApproveRole(userRole, pendingRole) {
+  if (!userRole || !pendingRole) return false;
+  return userRole.rank >= pendingRole.rank;
+}
+
+function assertApprovalOrder(session, role) {
+  if (!role) return 'User tidak memiliki role approval workbook';
+
+  const pending = getPendingRole(session);
+  if (!pending) return 'Workbook sudah fully approved';
+
+  if (!canApproveRole(role, pending)) {
+    return `Role ${role.label} tidak bisa melakukan approval ${pending.label}`;
+  }
+
+  return '';
+}
+
+// ---------------------------------------------------------------------------
 // SESSION CRUD
 // ---------------------------------------------------------------------------
 
@@ -278,9 +340,14 @@ async function calculate(sessionId, changedBy = null) {
     }
 
     const rep = formula.computeRepeatability(repeatabilityRows, resolusi);
-    const maxLoadRef = rep.avgMaxReading
-      || toNumberOrNull(session.kapasitas_alat)
+    const unit = String(session.unit || 'kg').toLowerCase();
+    // kapasitas_alat is stored in the session's working unit (entered by technician in native unit).
+    // Use it as the Sr half/max switchover base (threshold = 0.6 * kapasitas_alat).
+    // avgMaxReading from repeatability is a fallback only — using it caused wrong Sr selection
+    // in the grams workbook where kapasitas_alat (220g) differs from avgMaxReading (200g).
+    const maxLoadRef = toNumberOrNull(session.kapasitas_alat)
       || toNumberOrNull(session.kapasitas_ukur)
+      || rep.avgMaxReading
       || 0;
 
     await repo.deleteResultsBySession(sessionId, transaction);
@@ -291,7 +358,7 @@ async function calculate(sessionId, changedBy = null) {
 
     for (const point of points) {
       const standards = standardsByPoint.get(point.point_id) || [];
-      const c = formula.computePoint({ standards, resolusi, repeatability: rep, maxLoadRef });
+      const c = formula.computePoint({ standards, resolusi, repeatability: rep, maxLoadRef, unit });
       maxExpanded = Math.max(maxExpanded, c.uExpanded);
       computedForLop.push({ error: c.error, uExpanded: c.uExpanded });
 
@@ -315,10 +382,16 @@ async function calculate(sessionId, changedBy = null) {
       resultRows.push(row);
     }
 
-    const preadjust = formula.computePreadjust(preadjustRows);
+    const preadjust = formula.computePreadjust(preadjustRows, unit);
     const eccentricity = formula.computeEccentricity(eccentricityRows);
     const hysteresis = formula.computeHysteresis(hysteresisRows);
-    const lop = formula.computeLop({ srHalf: rep.srHalf, srMax: rep.srMax, results: computedForLop });
+    const lop = formula.computeLop({
+      srHalf: rep.srHalf,
+      srMax: rep.srMax,
+      results: computedForLop,
+      unit,
+      eccentricityMaxDiff: eccentricity.maxDiff,
+    });
     const conclusion = formula.deriveConclusion(resultRows.map((r) => ({ passFlag: r.pass_flag })));
 
     await repo.upsertSummary(sessionId, {
@@ -345,6 +418,8 @@ async function calculate(sessionId, changedBy = null) {
     }, transaction);
 
     await repo.updateSessionConclusion(sessionId, conclusion, transaction);
+    // Reset approvals on recalculation so the workbook must be re-approved.
+    await repo.resetSessionApprovals(sessionId, changedBy, transaction);
     await repo.updateSessionStatus(sessionId, 'CALCULATED', changedBy, transaction);
 
     // Auto-derive II. IDENTITAS STANDAR and pre-fill only empty fields.
@@ -439,19 +514,65 @@ async function getResults(sessionId) {
 }
 
 // ---------------------------------------------------------------------------
-// FINALIZE
+// APPROVAL
 // ---------------------------------------------------------------------------
 
+async function approveSession(sessionId, user) {
+  const jobLevel = Number(
+    user?.joblevel_id_user ?? user?.job_level_id ?? user?.Job_LevelID
+  );
+  const userId = user?.user_id || user?.log_NIK || '';
+  const role = getWorkbookApprovalRole(jobLevel);
+
+  if (!role) {
+    throw httpError(`User tidak memiliki role approval workbook (job level terdeteksi: ${jobLevel || '-'}).`, 403);
+  }
+
+  const session = await repo.getSessionById(sessionId);
+  if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+
+  const orderMessage = assertApprovalOrder(session, role);
+  if (orderMessage) {
+    throw httpError(orderMessage, 403);
+  }
+
+  const pendingRole = getPendingRole(session);
+  await repo.updateSessionApproval(sessionId, { roleKey: pendingRole.key, userId });
+
+  return {
+    sessionId,
+    approvedBy: pendingRole.key,
+    approvedByLabel: pendingRole.label,
+  };
+}
+
+async function rejectSession(sessionId, user, reason = '') {
+  const userId = user?.user_id || user?.log_NIK || '';
+  const session = await repo.getSessionById(sessionId);
+  if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+
+  await repo.clearSessionApprovals(sessionId, {
+    rejectedBy: userId,
+    rejectedReason: reason,
+  });
+
+  return {
+    sessionId,
+    rejectedBy: userId,
+    rejectedReason: reason,
+  };
+}
+
+// finalize is deprecated: approval is now role-based (Admin -> Officer -> Manager).
 async function finalize(sessionId, changedBy = null) {
   const session = await repo.getSessionById(sessionId);
   if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
   if (String(session.status).toUpperCase() !== 'CALCULATED') {
-    throw httpError('Session must be CALCULATED before finalize.', 422, [
+    throw httpError('Session must be CALCULATED before approval.', 422, [
       { field: 'status', message: `Current status is ${session.status}.` },
     ]);
   }
-  await repo.updateSessionStatus(sessionId, 'FINALIZED', changedBy);
-  return { sessionId, status: 'FINALIZED' };
+  return { sessionId, status: session.status, note: 'Use role-based approve endpoint' };
 }
 
 // ---------------------------------------------------------------------------
@@ -520,14 +641,31 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
 
     const status = String(session.status || '').toUpperCase();
-    if (!['CALCULATED', 'FINALIZED', 'PUBLISHED'].includes(status)) {
-      throw httpError('Session must be CALCULATED before publish.', 422, [
-        { field: 'status', message: `Current status is ${status || 'UNKNOWN'}.` },
-      ]);
+    if (!['CALCULATED', 'PUBLISHED'].includes(status)) {
+      throw httpError(
+        'Sertifikat belum bisa diterbitkan karena sesi ini belum dihitung. ' +
+          'Jalankan "Hitung" sampai status menjadi CALCULATED, lalu terbitkan ulang.',
+        422,
+        [{ field: 'status', message: `Status sesi saat ini: ${status || 'TIDAK DIKETAHUI'}.` }]
+      );
+    }
+
+    if (!session.approved_by_admin || !session.approved_by_officer || !session.approved_by_manager) {
+      throw httpError(
+        'Sertifikat belum bisa diterbitkan. Workbook harus di-approve oleh Admin, Officer/Supervisor, dan Manager.',
+        403,
+        [{ field: 'approval', message: 'Approval belum lengkap.' }]
+      );
     }
 
     const results = await repo.getResults(sessionId, transaction);
-    if (!results.length) throw httpError('No calculation results. Run calculate first.', 422);
+    if (!results.length) {
+      throw httpError(
+        'Belum ada hasil perhitungan untuk sesi ini. Jalankan "Hitung" terlebih dahulu sebelum menerbitkan sertifikat.',
+        422,
+        [{ field: 'status', message: 'Tabel hasil (timbangan_results) masih kosong.' }]
+      );
+    }
 
     // Kesimpulan kelayakan dipilih manual oleh teknisi (bukan verdict otomatis).
     // Wajib dipilih sebelum sertifikat diterbitkan — mengikuti pola workbook Thermohygrometer.
@@ -653,6 +791,8 @@ module.exports = {
   calculate,
   getSessionBundle,
   getResults,
+  approveSession,
+  rejectSession,
   finalize,
   listAtStandards,
   lookupAt,

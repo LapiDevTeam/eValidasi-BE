@@ -238,6 +238,21 @@ function normalizeStatus(value) {
   return status;
 }
 
+const EVALUATION_OPTIONS = new Set([
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+]);
+
+function normalizeEvaluationResult(value) {
+  const text = normalizeString(value);
+  if (!text) return null;
+  if (!EVALUATION_OPTIONS.has(text)) {
+    throwValidation('evaluation_result', 'Evaluation result must be one of the allowed verdicts.');
+  }
+  return text;
+}
+
 function normalizeDirection(direction, cycleCode) {
   const normalized = formulaSvc.normalizeDirection(direction, cycleCode);
   if (!normalized) {
@@ -280,6 +295,12 @@ function getChangedBy(req) {
 }
 
 function sendError(res, error) {
+  // Always log full error details for debugging.
+  console.error('[calibration-workbook ERROR]', error);
+  if (error.stack) {
+    console.error('[calibration-workbook STACK]', error.stack);
+  }
+
   if (error.statusCode && error.validation) {
     return res.status(error.statusCode).json({
       success: false,
@@ -731,6 +752,27 @@ async function finalizeCalibrationSession(req, res) {
     const changedBy = getChangedBy(req);
     const data = await calcSvc.finalizeSession(sessionId, changedBy);
     return res.status(200).json(data);
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
+async function approveSession(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const data = await calcSvc.approveSession(sessionId, req.user);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
+async function rejectSession(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const { reason } = req.body || {};
+    const data = await calcSvc.rejectSession(sessionId, req.user, reason);
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     return sendError(res, error);
   }
@@ -1460,6 +1502,43 @@ async function deletePressureConversion(req, res) {
   }
 }
 
+async function updateEvaluationResult(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const session = await ensureSessionExists(sessionId);
+
+    if (String(session.status || '').toUpperCase() === 'FINALIZED') {
+      return res.status(409).json({
+        success: false,
+        message: 'FINALIZED session cannot be edited.',
+      });
+    }
+
+    const evaluationResult = normalizeEvaluationResult(
+      req.body.evaluationResult ?? req.body.evaluation_result
+    );
+    const changedBy = getChangedBy(req);
+    await repo.updateEvaluationResult(sessionId, evaluationResult, changedBy);
+
+    await writeAuditSafe({
+      session_id: sessionId,
+      entity_name: 'calibration_session',
+      entity_id: sessionId,
+      action_type: 'UPDATE',
+      old_value: JSON.stringify({ evaluation_result: session.evaluation_result || null }),
+      new_value: JSON.stringify({ evaluation_result: evaluationResult }),
+      changed_by: changedBy,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { session_id: sessionId, evaluation_result: evaluationResult },
+    });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
 module.exports = {
   listCalibrationSessions,
   getCalibrationSession,
@@ -1467,7 +1546,10 @@ module.exports = {
   updateCalibrationSession,
   deleteCalibrationSession,
   finalizeCalibrationSession,
+  approveSession,
+  rejectSession,
   publishSertifikatBagian,
+  updateEvaluationResult,
   listNominalPoints,
   createNominalPoint,
   updateNominalPoint,

@@ -15,7 +15,12 @@ const SESSION_COLUMNS = `
   interval_bulan, metode_kalibrasi, keterangan, tolerance_accuracy,
   temperature, humidity, std_nama, std_no_identitas, std_no_sertifikat,
   std_tertelusur, std_rekalibrasi, qa_id, id_no_sertifikat, status,
-  pic, conclusion, evaluation_result, created_by, updated_by, created_at, updated_at
+  pic, conclusion, evaluation_result,
+  approved_by_admin, approved_by_admin_date,
+  approved_by_officer, approved_by_officer_date,
+  approved_by_manager, approved_by_manager_date,
+  rejected_by, rejected_reason, rejected_at,
+  created_by, updated_by, created_at, updated_at
 `;
 
 async function listSessions(filters = {}) {
@@ -150,6 +155,84 @@ async function updateSessionStatus(sessionId, status, updatedBy, transaction) {
       SET status = @Status, updated_by = @UpdatedBy, updated_at = GETDATE()
       WHERE session_id = @SessionId
     `);
+}
+
+async function updateSessionApproval(sessionId, { roleKey, userId }, transaction) {
+  const columnMap = {
+    admin: 'approved_by_admin',
+    officer: 'approved_by_officer',
+    manager: 'approved_by_manager',
+  };
+  const dateColumnMap = {
+    admin: 'approved_by_admin_date',
+    officer: 'approved_by_officer_date',
+    manager: 'approved_by_manager_date',
+  };
+  const column = columnMap[roleKey];
+  const dateColumn = dateColumnMap[roleKey];
+  if (!column || !dateColumn) {
+    throw new Error(`Invalid approval role: ${roleKey}`);
+  }
+
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('SessionId', sql.Int, sessionId)
+    .input('UserId', sql.VarChar(100), toDbNull(userId))
+    .query(`
+      UPDATE [dbo].[rpm_sessions]
+      SET ${column} = @UserId, ${dateColumn} = GETDATE(), updated_by = @UserId, updated_at = GETDATE()
+      WHERE session_id = @SessionId
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function clearSessionApprovals(sessionId, { rejectedBy, rejectedReason }, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('SessionId', sql.Int, sessionId)
+    .input('RejectedBy', sql.VarChar(100), toDbNull(rejectedBy))
+    .input('RejectedReason', sql.VarChar(500), toDbNull(rejectedReason))
+    .query(`
+      UPDATE [dbo].[rpm_sessions]
+      SET
+        approved_by_admin = NULL,
+        approved_by_admin_date = NULL,
+        approved_by_officer = NULL,
+        approved_by_officer_date = NULL,
+        approved_by_manager = NULL,
+        approved_by_manager_date = NULL,
+        rejected_by = @RejectedBy,
+        rejected_reason = @RejectedReason,
+        rejected_at = GETDATE(),
+        updated_by = @RejectedBy,
+        updated_at = GETDATE()
+      WHERE session_id = @SessionId
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function resetSessionApprovals(sessionId, updatedBy, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('SessionId', sql.Int, sessionId)
+    .input('UpdatedBy', sql.VarChar(100), toDbNull(updatedBy))
+    .query(`
+      UPDATE [dbo].[rpm_sessions]
+      SET
+        approved_by_admin = NULL,
+        approved_by_admin_date = NULL,
+        approved_by_officer = NULL,
+        approved_by_officer_date = NULL,
+        approved_by_manager = NULL,
+        approved_by_manager_date = NULL,
+        rejected_by = NULL,
+        rejected_reason = NULL,
+        rejected_at = NULL,
+        updated_by = @UpdatedBy,
+        updated_at = GETDATE()
+      WHERE session_id = @SessionId
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
 
 async function updateSessionConclusion(sessionId, conclusion, transaction) {
@@ -386,6 +469,9 @@ module.exports = {
   createSession,
   updateSession,
   updateSessionStatus,
+  updateSessionApproval,
+  clearSessionApprovals,
+  resetSessionApprovals,
   updateSessionConclusion,
   updateSessionCertificate,
   deleteWorkbookBySession,

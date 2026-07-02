@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
@@ -312,6 +312,33 @@ function normalizeEvaluationResult(value) {
   return allowed.includes(text) ? text : '';
 }
 
+const APPROVAL_ROLES = {
+  admin: {
+    key: 'admin',
+    label: 'Admin',
+    column: 'ApprovedByAdmin',
+    dateColumn: 'ApprovedByAdminDate',
+    status: 'APPROVED_ADMIN',
+    rank: 1,
+  },
+  officer: {
+    key: 'officer',
+    label: 'Officer/Supervisor',
+    column: 'ApprovedByOfficer',
+    dateColumn: 'ApprovedByOfficerDate',
+    status: 'APPROVED_OFFICER',
+    rank: 2,
+  },
+  manager: {
+    key: 'manager',
+    label: 'Manager',
+    column: 'ApprovedByManager',
+    dateColumn: 'ApprovedByManagerDate',
+    status: 'APPROVED',
+    rank: 3,
+  },
+};
+
 function getWorkbookApprovalRole(req) {
   const jobLevel = Number(
     req?.user?.joblevel_id_user ??
@@ -320,59 +347,39 @@ function getWorkbookApprovalRole(req) {
       req?.body?.Job_LevelID
   );
 
-  if (jobLevel > 6) {
-    return {
-      key: 'admin',
-      label: 'Admin',
-      column: 'ApprovedByAdmin',
-      dateColumn: 'ApprovedByAdminDate',
-      status: 'APPROVED_ADMIN',
-    };
-  }
-
-  if (jobLevel === 5 || jobLevel === 6) {
-    return {
-      key: 'officer',
-      label: 'Officer/Supervisor',
-      column: 'ApprovedByOfficer',
-      dateColumn: 'ApprovedByOfficerDate',
-      status: 'APPROVED_OFFICER',
-    };
-  }
-
-  if (jobLevel === 3) {
-    return {
-      key: 'manager',
-      label: 'Manager',
-      column: 'ApprovedByManager',
-      dateColumn: 'ApprovedByManagerDate',
-      status: 'APPROVED',
-    };
-  }
+  if (jobLevel > 6) return APPROVAL_ROLES.admin;
+  if (jobLevel === 5 || jobLevel === 6) return APPROVAL_ROLES.officer;
+  if (jobLevel === 3) return APPROVAL_ROLES.manager;
 
   return null;
 }
 
-function assertWorkbookApprovalOrder(session, role) {
+function getPendingRole(session) {
+  if (!session?.ApprovedByAdmin) return APPROVAL_ROLES.admin;
+  if (!session?.ApprovedByOfficer) return APPROVAL_ROLES.officer;
+  if (!session?.ApprovedByManager) return APPROVAL_ROLES.manager;
+  return null;
+}
+
+function canApproveRole(userRole, pendingRole) {
+  if (!userRole || !pendingRole) return false;
+  return userRole.rank >= pendingRole.rank;
+}
+
+function assertWorkbookApprovalOrder(session, role, jobLevel) {
   if (!role) {
-    return 'User tidak memiliki role approval workbook';
+    return `User tidak memiliki role approval workbook (job level terdeteksi: ${jobLevel || '-'}).`;
   }
 
-  if (session?.[role.column]) {
-    return `Workbook sudah approve oleh ${role.label}`;
+  if (!session?.calculationResult) {
+    return 'Lakukan perhitungan dan simpan workbook terlebih dahulu';
   }
 
-  if (role.key === 'officer' && !session?.ApprovedByAdmin) {
-    return 'Admin harus approve workbook terlebih dahulu';
-  }
+  const pending = getPendingRole(session);
+  if (!pending) return 'Workbook sudah fully approved';
 
-  if (role.key === 'manager') {
-    if (!session?.ApprovedByAdmin) {
-      return 'Admin harus approve workbook terlebih dahulu';
-    }
-    if (!session?.ApprovedByOfficer) {
-      return 'Officer/Supervisor harus approve workbook terlebih dahulu';
-    }
+  if (!canApproveRole(role, pending)) {
+    return `Role ${role.label} tidak bisa melakukan approval ${pending.label}`;
   }
 
   return '';
@@ -1209,8 +1216,14 @@ const approveSession = async (req, res, next) => {
       });
     }
 
+    const jobLevel = Number(
+      req?.user?.joblevel_id_user ??
+        req?.body?.job_level_id ??
+        req?.body?.jobLevelId ??
+        req?.body?.Job_LevelID
+    );
     const role = getWorkbookApprovalRole(req);
-    const orderMessage = assertWorkbookApprovalOrder(session, role);
+    const orderMessage = assertWorkbookApprovalOrder(session, role, jobLevel);
     if (orderMessage) {
       return res.status(403).json({
         success: false,
@@ -1218,12 +1231,13 @@ const approveSession = async (req, res, next) => {
       });
     }
 
+    const pendingRole = getPendingRole(session);
     await sequelizeMSQL.query(
       `
         UPDATE ${SESSION_TABLE}
         SET
-          ${role.column} = :userId,
-          ${role.dateColumn} = GETDATE(),
+          ${pendingRole.column} = :userId,
+          ${pendingRole.dateColumn} = GETDATE(),
           Status = :status,
           Update_Date = GETDATE()
         WHERE Session_ID = :sessionId
@@ -1231,7 +1245,7 @@ const approveSession = async (req, res, next) => {
       {
         replacements: {
           userId: user_id,
-          status: role.status,
+          status: pendingRole.status,
           sessionId,
         },
         type: Sequelize.QueryTypes.UPDATE,
@@ -1241,7 +1255,7 @@ const approveSession = async (req, res, next) => {
     const data = await fetchSessionById(sessionId);
     return res.status(200).json({
       success: true,
-      message: `Workbook approved by ${role.label}`,
+      message: `Workbook approved by ${pendingRole.label}`,
       data,
     });
   } catch (error) {
@@ -1280,6 +1294,14 @@ const generateSertifikatFromSession = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Session not found',
+      });
+    }
+
+    if (!session.ApprovedByAdmin || !session.ApprovedByOfficer || !session.ApprovedByManager) {
+      await transaction.rollback();
+      return res.status(403).json({
+        success: false,
+        message: 'Sertifikat hanya bisa diterbitkan setelah approval Admin, Officer, dan Manager lengkap.',
       });
     }
 

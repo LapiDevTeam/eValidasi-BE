@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const repo = require('../../repositories/temperature-calibration.repository');
 const calc = require('../../src/services/temperatureCalculation.service');
@@ -118,6 +118,27 @@ async function finalize(req, res) {
   }
 }
 
+async function approveSession(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const data = await calc.approveSession(sessionId, req.user);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
+async function rejectSession(req, res) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const { reason } = req.body || {};
+    const data = await calc.rejectSession(sessionId, req.user, reason);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return sendError(res, error);
+  }
+}
+
 async function listDaCandidates(req, res) {
   try {
     const data = await calc.listDaCandidates({
@@ -153,6 +174,8 @@ module.exports = {
   calculate,
   getResults,
   finalize,
+  approveSession,
+  rejectSession,
   listDaCandidates,
   publishSertifikat,
 };
