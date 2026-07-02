@@ -8,6 +8,7 @@ BEGIN
     Schedule_Header_ID INT NOT NULL,
     Period_Year NVARCHAR(50) NOT NULL,
     Period_Month NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(20) NOT NULL,
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL,
     Is_Locked BIT NOT NULL,
@@ -30,6 +31,15 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist
+    ADD Workflow_View VARCHAR(20) NOT NULL
+      CONSTRAINT DF_T_Monthly_Schedule_Header_Hist_Workflow_View DEFAULT ('plan');
+END;
+GO
+
 IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.T_Monthly_Schedule_External_Header_Hist
@@ -40,6 +50,7 @@ BEGIN
     Schedule_External_Header_ID INT NOT NULL,
     Base_Period_Year NVARCHAR(50) NOT NULL,
     Base_Period_Month NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(20) NOT NULL,
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL,
     Is_Locked BIT NOT NULL,
@@ -55,6 +66,15 @@ BEGIN
     Updated_By NVARCHAR(50) NULL,
     Updated_Date DATETIME2(0) NULL
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist
+    ADD Workflow_View VARCHAR(20) NOT NULL
+      CONSTRAINT DF_T_Monthly_Schedule_External_Header_Hist_Workflow_View DEFAULT ('plan');
 END;
 GO
 
@@ -133,12 +153,12 @@ BEGIN
   BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
-      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
-      'UPDATE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      'UPDATE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM inserted;
@@ -147,12 +167,12 @@ BEGIN
   BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
-      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
-      'INSERT', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      'INSERT', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM inserted;
@@ -161,12 +181,12 @@ BEGIN
   BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
-      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
-      'DELETE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Revision_No,
+      'DELETE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
       [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM deleted;
@@ -322,6 +342,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,
@@ -346,6 +367,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,
@@ -374,6 +396,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,
@@ -398,6 +421,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,
@@ -426,6 +450,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,
@@ -450,6 +475,7 @@ BEGIN
       Schedule_Header_ID,
       Period_Year,
       Period_Month,
+      Workflow_View,
       Revision_No,
       [Status],
       Is_Locked,

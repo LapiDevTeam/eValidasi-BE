@@ -5,6 +5,7 @@ BEGIN
     Schedule_Header_ID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_T_Monthly_Schedule_Header PRIMARY KEY,
     Period_Year NVARCHAR(50) NOT NULL,
     Period_Month NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(20) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_Header_Workflow_View DEFAULT ('plan'),
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_Header_Status DEFAULT ('REQUESTED'),
     Is_Locked BIT NOT NULL CONSTRAINT DF_T_Monthly_Schedule_Header_Is_Locked DEFAULT (0),
@@ -23,12 +24,48 @@ BEGIN
     Created_Date DATETIME2(0) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_Header_Created_Date DEFAULT (SYSDATETIME()),
     Updated_By NVARCHAR(50) NULL,
     Updated_Date DATETIME2(0) NULL,
-    CONSTRAINT UQ_T_Monthly_Schedule_Header_Period_Revision UNIQUE (Period_Year, Period_Month, Revision_No),
     CONSTRAINT CK_T_Monthly_Schedule_Header_Status CHECK ([Status] IN ('REQUESTED', 'APPROVED', 'REJECTED', 'SUPERSEDED')),
+    CONSTRAINT CK_T_Monthly_Schedule_Header_Workflow_View CHECK (Workflow_View IN ('plan', 'realization')),
     CONSTRAINT CK_T_Monthly_Schedule_Header_Period_Month CHECK (
       Period_Month IN ('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12')
     )
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header
+    ADD Workflow_View VARCHAR(20) NOT NULL
+      CONSTRAINT DF_T_Monthly_Schedule_Header_Workflow_View DEFAULT ('plan');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM sys.key_constraints
+    WHERE name = 'UQ_T_Monthly_Schedule_Header_Period_Revision'
+      AND parent_object_id = OBJECT_ID('dbo.T_Monthly_Schedule_Header')
+  )
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header
+    DROP CONSTRAINT UQ_T_Monthly_Schedule_Header_Period_Revision;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sys.check_constraints
+    WHERE name = 'CK_T_Monthly_Schedule_Header_Workflow_View'
+      AND parent_object_id = OBJECT_ID('dbo.T_Monthly_Schedule_Header')
+  )
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header
+    ADD CONSTRAINT CK_T_Monthly_Schedule_Header_Workflow_View
+      CHECK (Workflow_View IN ('plan', 'realization'));
 END;
 GO
 
@@ -39,6 +76,7 @@ BEGIN
     Schedule_External_Header_ID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_T_Monthly_Schedule_External_Header PRIMARY KEY,
     Base_Period_Year NVARCHAR(50) NOT NULL,
     Base_Period_Month NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(20) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Workflow_View DEFAULT ('plan'),
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Status DEFAULT ('REQUESTED'),
     Is_Locked BIT NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Is_Locked DEFAULT (0),
@@ -53,12 +91,48 @@ BEGIN
     Created_Date DATETIME2(0) NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Created_Date DEFAULT (SYSDATETIME()),
     Updated_By NVARCHAR(50) NULL,
     Updated_Date DATETIME2(0) NULL,
-    CONSTRAINT UQ_T_Monthly_Schedule_External_Header_Period_Revision UNIQUE (Base_Period_Year, Base_Period_Month, Revision_No),
     CONSTRAINT CK_T_Monthly_Schedule_External_Header_Status CHECK ([Status] IN ('REQUESTED', 'APPROVED', 'REJECTED', 'SUPERSEDED')),
+    CONSTRAINT CK_T_Monthly_Schedule_External_Header_Workflow_View CHECK (Workflow_View IN ('plan', 'realization')),
     CONSTRAINT CK_T_Monthly_Schedule_External_Header_Period_Month CHECK (
       Base_Period_Month IN ('01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12')
     )
   );
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header
+    ADD Workflow_View VARCHAR(20) NOT NULL
+      CONSTRAINT DF_T_Monthly_Schedule_External_Header_Workflow_View DEFAULT ('plan');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM sys.key_constraints
+    WHERE name = 'UQ_T_Monthly_Schedule_External_Header_Period_Revision'
+      AND parent_object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Header')
+  )
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header
+    DROP CONSTRAINT UQ_T_Monthly_Schedule_External_Header_Period_Revision;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sys.check_constraints
+    WHERE name = 'CK_T_Monthly_Schedule_External_Header_Workflow_View'
+      AND parent_object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Header')
+  )
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header
+    ADD CONSTRAINT CK_T_Monthly_Schedule_External_Header_Workflow_View
+      CHECK (Workflow_View IN ('plan', 'realization'));
 END;
 GO
 
@@ -169,6 +243,54 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX IX_T_Monthly_Schedule_Header_Period_Status
     ON dbo.T_Monthly_Schedule_Header (Period_Year, Period_Month, [Status], Revision_No DESC);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_T_Monthly_Schedule_External_Header_Period_View_Revision'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Header')
+)
+BEGIN
+  CREATE UNIQUE INDEX UX_T_Monthly_Schedule_External_Header_Period_View_Revision
+    ON dbo.T_Monthly_Schedule_External_Header (Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_Monthly_Schedule_External_Header_Period_View_Status'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_External_Header')
+)
+BEGIN
+  CREATE INDEX IX_T_Monthly_Schedule_External_Header_Period_View_Status
+    ON dbo.T_Monthly_Schedule_External_Header (Base_Period_Year, Base_Period_Month, Workflow_View, [Status], Revision_No DESC);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'UX_T_Monthly_Schedule_Header_Period_View_Revision'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_Header')
+)
+BEGIN
+  CREATE UNIQUE INDEX UX_T_Monthly_Schedule_Header_Period_View_Revision
+    ON dbo.T_Monthly_Schedule_Header (Period_Year, Period_Month, Workflow_View, Revision_No);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_Monthly_Schedule_Header_Period_View_Status'
+    AND object_id = OBJECT_ID('dbo.T_Monthly_Schedule_Header')
+)
+BEGIN
+  CREATE INDEX IX_T_Monthly_Schedule_Header_Period_View_Status
+    ON dbo.T_Monthly_Schedule_Header (Period_Year, Period_Month, Workflow_View, [Status], Revision_No DESC);
 END;
 GO
 

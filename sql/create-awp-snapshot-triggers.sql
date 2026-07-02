@@ -7,6 +7,7 @@ BEGIN
     Action_At DATETIME2(0) NOT NULL CONSTRAINT DF_T_AWP_Header_Hist_Action_At DEFAULT (SYSDATETIME()),
     AWP_ID INT NOT NULL,
     [Year] NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(10) NULL,
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL,
     Requested_By NVARCHAR(50) NULL,
@@ -52,6 +53,7 @@ BEGIN
     Real_Date DATE NULL,
     Plan_Dates_JSON NVARCHAR(MAX) NULL,
     Real_Dates_JSON NVARCHAR(MAX) NULL,
+    OOC_Dates_JSON NVARCHAR(MAX) NULL,
     Plan_Months_JSON NVARCHAR(MAX) NULL,
     Real_Months_JSON NVARCHAR(MAX) NULL,
     Revision_Status VARCHAR(20) NULL,
@@ -215,6 +217,12 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Workflow_View VARCHAR(10) NULL;
+END;
+GO
+
 IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Prepared_By_Name') IS NULL
 BEGIN
   ALTER TABLE dbo.T_AWP_Header_Hist ADD Prepared_By_Name NVARCHAR(255) NULL;
@@ -242,6 +250,12 @@ GO
 IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'Real_Dates_JSON') IS NULL
 BEGIN
   ALTER TABLE dbo.T_AWP_Detail_Hist ADD Real_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Detail_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail_Hist', 'OOC_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail_Hist ADD OOC_Dates_JSON NVARCHAR(MAX) NULL;
 END;
 GO
 
@@ -307,6 +321,7 @@ BEGIN
       Action_Type,
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -328,6 +343,7 @@ BEGIN
       'UPDATE',
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -353,6 +369,7 @@ BEGIN
       Action_Type,
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -374,6 +391,7 @@ BEGIN
       'INSERT',
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -399,6 +417,7 @@ BEGIN
       Action_Type,
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -420,6 +439,7 @@ BEGIN
       'DELETE',
       AWP_ID,
       [Year],
+      Workflow_View,
       Revision_No,
       [Status],
       Requested_By,
@@ -477,6 +497,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,
@@ -503,6 +524,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,
@@ -533,6 +555,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,
@@ -559,6 +582,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,
@@ -589,6 +613,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,
@@ -615,6 +640,7 @@ BEGIN
       Real_Date,
       Plan_Dates_JSON,
       Real_Dates_JSON,
+      OOC_Dates_JSON,
       Plan_Months_JSON,
       Real_Months_JSON,
       Revision_Status,

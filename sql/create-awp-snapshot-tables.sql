@@ -4,6 +4,7 @@ BEGIN
   (
     AWP_ID INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_T_AWP_Header PRIMARY KEY,
     [Year] NVARCHAR(50) NOT NULL,
+    Workflow_View VARCHAR(10) NOT NULL CONSTRAINT DF_T_AWP_Header_Workflow_View DEFAULT ('start'),
     Revision_No INT NOT NULL,
     [Status] VARCHAR(20) NOT NULL CONSTRAINT DF_T_AWP_Header_Status DEFAULT ('REQUESTED'),
     Requested_By NVARCHAR(50) NULL,
@@ -20,6 +21,7 @@ BEGIN
     Created_At DATETIME2(0) NOT NULL CONSTRAINT DF_T_AWP_Header_Created_At DEFAULT (SYSDATETIME()),
     Updated_By NVARCHAR(50) NULL,
     Updated_At DATETIME2(0) NULL,
+    CONSTRAINT CK_T_AWP_Header_Workflow_View CHECK (Workflow_View IN ('start', 'end')),
     CONSTRAINT CK_T_AWP_Header_Status CHECK ([Status] IN ('REQUESTED', 'APPROVED', 'REJECTED', 'SUPERSEDED'))
   );
 END;
@@ -38,16 +40,14 @@ END;
 GO
 
 IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
-  AND NOT EXISTS (
+  AND EXISTS (
     SELECT 1
     FROM sys.indexes
     WHERE name = 'UX_T_AWP_Header_Year_Revision_Active'
       AND object_id = OBJECT_ID('dbo.T_AWP_Header')
   )
 BEGIN
-  CREATE UNIQUE INDEX UX_T_AWP_Header_Year_Revision_Active
-    ON dbo.T_AWP_Header ([Year], Revision_No)
-    WHERE [Status] <> 'REJECTED';
+  DROP INDEX UX_T_AWP_Header_Year_Revision_Active ON dbo.T_AWP_Header;
 END;
 GO
 
@@ -73,6 +73,7 @@ BEGIN
     Real_Date DATE NULL,
     Plan_Dates_JSON NVARCHAR(MAX) NULL,
     Real_Dates_JSON NVARCHAR(MAX) NULL,
+    OOC_Dates_JSON NVARCHAR(MAX) NULL,
     Plan_Months_JSON NVARCHAR(MAX) NULL,
     Real_Months_JSON NVARCHAR(MAX) NULL,
     Revision_Status VARCHAR(20) NOT NULL CONSTRAINT DF_T_AWP_Detail_Revision_Status DEFAULT ('UNCHANGED'),
@@ -92,6 +93,28 @@ GO
 IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_By') IS NULL
 BEGIN
   ALTER TABLE dbo.T_AWP_Header ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header', 'Workflow_View') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header
+    ADD Workflow_View VARCHAR(10) NOT NULL
+      CONSTRAINT DF_T_AWP_Header_Workflow_View DEFAULT ('start');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM sys.check_constraints
+    WHERE name = 'CK_T_AWP_Header_Workflow_View'
+      AND parent_object_id = OBJECT_ID('dbo.T_AWP_Header')
+  )
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header
+    ADD CONSTRAINT CK_T_AWP_Header_Workflow_View
+      CHECK (Workflow_View IN ('start', 'end'));
 END;
 GO
 
@@ -225,6 +248,12 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'OOC_Dates_JSON') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Detail ADD OOC_Dates_JSON NVARCHAR(MAX) NULL;
+END;
+GO
+
 IF OBJECT_ID('dbo.T_AWP_Detail', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Detail', 'Plan_Months_JSON') IS NULL
 BEGIN
   ALTER TABLE dbo.T_AWP_Detail ADD Plan_Months_JSON NVARCHAR(MAX) NULL;
@@ -262,12 +291,37 @@ GO
 IF NOT EXISTS (
   SELECT 1
   FROM sys.indexes
+  WHERE name = 'UX_T_AWP_Header_Year_View_Revision_Active'
+    AND object_id = OBJECT_ID('dbo.T_AWP_Header')
+)
+BEGIN
+  CREATE UNIQUE INDEX UX_T_AWP_Header_Year_View_Revision_Active
+    ON dbo.T_AWP_Header ([Year], Workflow_View, Revision_No)
+    WHERE [Status] <> 'REJECTED';
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
   WHERE name = 'IX_T_AWP_Header_Year_Status'
     AND object_id = OBJECT_ID('dbo.T_AWP_Header')
 )
 BEGIN
   CREATE INDEX IX_T_AWP_Header_Year_Status
     ON dbo.T_AWP_Header ([Year], [Status], Revision_No DESC);
+END;
+GO
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM sys.indexes
+  WHERE name = 'IX_T_AWP_Header_Year_View_Status'
+    AND object_id = OBJECT_ID('dbo.T_AWP_Header')
+)
+BEGIN
+  CREATE INDEX IX_T_AWP_Header_Year_View_Status
+    ON dbo.T_AWP_Header ([Year], Workflow_View, [Status], Revision_No DESC);
 END;
 GO
 
