@@ -73,7 +73,11 @@ const createAssessment = async (req, res, next) => {
 
     const errors = validateAssessmentBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const decision = calculateDecision({
@@ -119,12 +123,20 @@ const getAssessmentById = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const data = await repo.findById(id);
     if (!data) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({ success: true, data });
@@ -142,17 +154,29 @@ const updateAssessment = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const errors = validateAssessmentBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const decision = calculateDecision({
@@ -185,12 +209,20 @@ const deleteAssessment = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await repo.softDelete(id);
@@ -213,17 +245,29 @@ const patchAssessmentStatus = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const errors = validateStatusBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await repo.updateStatus(id, req.body.status, user_id);

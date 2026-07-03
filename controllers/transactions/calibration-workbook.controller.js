@@ -294,32 +294,35 @@ function getChangedBy(req) {
   return req?.user?.user_id || req?.user?.log_NIK || req?.body?.changedBy || null;
 }
 
-function sendError(res, error) {
+function sendError(res, next, error) {
   // Always log full error details for debugging.
   console.error('[calibration-workbook ERROR]', error);
   if (error.stack) {
     console.error('[calibration-workbook STACK]', error.stack);
   }
 
+  let response;
   if (error.statusCode && error.validation) {
-    return res.status(error.statusCode).json({
+    response = res.status(error.statusCode).json({
       success: false,
       message: 'Validation failed',
       errors: error.validation,
     });
-  }
-
-  if (error.statusCode) {
-    return res.status(error.statusCode).json({
+  } else if (error.statusCode) {
+    response = res.status(error.statusCode).json({
       success: false,
       message: error.message,
     });
+  } else {
+    response = res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
   }
 
-  return res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-  });
+  // Propagate to global error middleware so the mutation error logger can record it.
+  next(error);
+  return response;
 }
 
 async function writeAuditSafe(payload) {
@@ -538,7 +541,7 @@ function mapPublishPayload(body = {}) {
   };
 }
 
-async function listCalibrationSessions(req, res) {
+async function listCalibrationSessions(req, res, next) {
   try {
     const data = await repo.listSessions({
       status: normalizeString(req.query.status),
@@ -546,11 +549,11 @@ async function listCalibrationSessions(req, res) {
     });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getCalibrationSession(req, res) {
+async function getCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await repo.getSessionById(sessionId);
@@ -579,11 +582,11 @@ async function getCalibrationSession(req, res) {
       },
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createCalibrationSession(req, res) {
+async function createCalibrationSession(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -650,11 +653,11 @@ async function createCalibrationSession(req, res) {
     } catch (_) {
       // ignore rollback error
     }
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateCalibrationSession(req, res) {
+async function updateCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await repo.getSessionById(sessionId);
@@ -706,11 +709,11 @@ async function updateCalibrationSession(req, res) {
 
     return res.status(200).json({ success: true, data: { session_id: sessionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteCalibrationSession(req, res) {
+async function deleteCalibrationSession(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -742,43 +745,43 @@ async function deleteCalibrationSession(req, res) {
     } catch (_) {
       // ignore rollback error
     }
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function finalizeCalibrationSession(req, res) {
+async function finalizeCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const changedBy = getChangedBy(req);
     const data = await calcSvc.finalizeSession(sessionId, changedBy);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function approveSession(req, res) {
+async function approveSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calcSvc.approveSession(sessionId, req.user);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function rejectSession(req, res) {
+async function rejectSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const { reason } = req.body || {};
     const data = await calcSvc.rejectSession(sessionId, req.user, reason);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function publishSertifikatBagian(req, res) {
+async function publishSertifikatBagian(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const changedBy = getChangedBy(req);
@@ -794,21 +797,21 @@ async function publishSertifikatBagian(req, res) {
 
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function listNominalPoints(req, res) {
+async function listNominalPoints(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listPoints(sessionId, { includeInactive: false });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createNominalPoint(req, res) {
+async function createNominalPoint(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -841,11 +844,11 @@ async function createNominalPoint(req, res) {
 
     return res.status(201).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateNominalPoint(req, res) {
+async function updateNominalPoint(req, res, next) {
   try {
     const pointId = parseIntParam(req.params.pointId, 'pointId');
     const current = await repo.getPointById(pointId);
@@ -886,11 +889,11 @@ async function updateNominalPoint(req, res) {
 
     return res.status(200).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteNominalPoint(req, res) {
+async function deleteNominalPoint(req, res, next) {
   try {
     const pointId = parseIntParam(req.params.pointId, 'pointId');
     const current = await repo.getPointById(pointId);
@@ -914,7 +917,7 @@ async function deleteNominalPoint(req, res) {
 
     return res.status(200).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
@@ -943,17 +946,17 @@ function mapReadingPayload(body) {
   };
 }
 
-async function listReadings(req, res) {
+async function listReadings(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listReadings(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createReading(req, res) {
+async function createReading(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -972,11 +975,11 @@ async function createReading(req, res) {
 
     return res.status(201).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateReading(req, res) {
+async function updateReading(req, res, next) {
   try {
     const readingId = parseIntParam(req.params.readingId, 'readingId');
     const current = await repo.getReadingById(readingId);
@@ -1002,11 +1005,11 @@ async function updateReading(req, res) {
 
     return res.status(200).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteReading(req, res) {
+async function deleteReading(req, res, next) {
   try {
     const readingId = parseIntParam(req.params.readingId, 'readingId');
     const current = await repo.getReadingById(readingId);
@@ -1030,11 +1033,11 @@ async function deleteReading(req, res) {
 
     return res.status(200).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function bulkUpsertReadings(req, res) {
+async function bulkUpsertReadings(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -1071,21 +1074,21 @@ async function bulkUpsertReadings(req, res) {
     } catch (_) {
       // ignore rollback error
     }
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function listRegressionInputs(req, res) {
+async function listRegressionInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listRegressionInputs(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createRegressionInput(req, res) {
+async function createRegressionInput(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -1130,11 +1133,11 @@ async function createRegressionInput(req, res) {
 
     return res.status(201).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateRegressionInput(req, res) {
+async function updateRegressionInput(req, res, next) {
   try {
     const inputId = parseIntParam(req.params.regressionId, 'regressionId');
     const current = await repo.getRegressionInputById(inputId);
@@ -1187,11 +1190,11 @@ async function updateRegressionInput(req, res) {
 
     return res.status(200).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteRegressionInput(req, res) {
+async function deleteRegressionInput(req, res, next) {
   try {
     const inputId = parseIntParam(req.params.regressionId, 'regressionId');
     const current = await repo.getRegressionInputById(inputId);
@@ -1215,11 +1218,11 @@ async function deleteRegressionInput(req, res) {
 
     return res.status(200).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getLevelCorrection(req, res) {
+async function getLevelCorrection(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.getLevelCorrection(sessionId);
@@ -1228,11 +1231,11 @@ async function getLevelCorrection(req, res) {
     }
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateLevelCorrection(req, res) {
+async function updateLevelCorrection(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -1284,11 +1287,11 @@ async function updateLevelCorrection(req, res) {
 
     return res.status(200).json({ success: true, data: updated });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getUncertaintyInputs(req, res) {
+async function getUncertaintyInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.getUncertaintyInputs(sessionId);
@@ -1297,11 +1300,11 @@ async function getUncertaintyInputs(req, res) {
     }
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateUncertaintyInputs(req, res) {
+async function updateUncertaintyInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -1366,51 +1369,51 @@ async function updateUncertaintyInputs(req, res) {
 
     return res.status(200).json({ success: true, data: updated });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function calculateSession(req, res) {
+async function calculateSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calcSvc.calculateSession(sessionId);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getResults(req, res) {
+async function getResults(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calcSvc.getResults(sessionId);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getSummary(req, res) {
+async function getSummary(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calcSvc.getSummary(sessionId);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function listPressureConversions(req, res) {
+async function listPressureConversions(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listPressureConversions(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createPressureConversion(req, res) {
+async function createPressureConversion(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -1442,11 +1445,11 @@ async function createPressureConversion(req, res) {
 
     return res.status(201).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updatePressureConversion(req, res) {
+async function updatePressureConversion(req, res, next) {
   try {
     const conversionId = parseIntParam(req.params.conversionId, 'conversionId');
     const current = await repo.getPressureConversionById(conversionId);
@@ -1486,11 +1489,11 @@ async function updatePressureConversion(req, res) {
 
     return res.status(200).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deletePressureConversion(req, res) {
+async function deletePressureConversion(req, res, next) {
   try {
     const conversionId = parseIntParam(req.params.conversionId, 'conversionId');
     const deleted = await repo.deletePressureConversion(conversionId);
@@ -1499,11 +1502,11 @@ async function deletePressureConversion(req, res) {
     }
     return res.status(200).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateEvaluationResult(req, res) {
+async function updateEvaluationResult(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await ensureSessionExists(sessionId);
@@ -1536,7 +1539,7 @@ async function updateEvaluationResult(req, res) {
       data: { session_id: sessionId, evaluation_result: evaluationResult },
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
