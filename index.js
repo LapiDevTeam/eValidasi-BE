@@ -13,6 +13,7 @@ const path = require("path");
 const { Kemasan } = require("./models");
 const errorHandler = require("./middlewares/errorHandler");
 const error = require("./middlewares/error");
+const errorLogger = require("./middlewares/errorLogger");
 const { BASE_URL } = require("./config/configMssql");
 const port = process.env.PORT || 3001;
 const sqllapi = process.env.MS_SQL_DB_SERVER;
@@ -46,6 +47,7 @@ app.use((req, _res, next) => {
 });
 
 app.use(routers);
+app.use(errorLogger);
 app.use(error);
 
 app.listen(port, () => {
