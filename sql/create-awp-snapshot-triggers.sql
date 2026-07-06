@@ -13,9 +13,11 @@ BEGIN
     Requested_By NVARCHAR(50) NULL,
     Prepared_By NVARCHAR(50) NULL,
     Prepared_By_Name NVARCHAR(255) NULL,
+    Prepared_By_Title NVARCHAR(255) NULL,
     Requested_At DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
     Approved_By_Name NVARCHAR(255) NULL,
+    Approved_By_Title NVARCHAR(255) NULL,
     Approved_At DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_At DATETIME2(0) NULL,
@@ -229,9 +231,21 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Prepared_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Prepared_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
 IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Approved_By_Name') IS NULL
 BEGIN
   ALTER TABLE dbo.T_AWP_Header_Hist ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Approved_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Approved_By_Title NVARCHAR(255) NULL;
 END;
 GO
 
@@ -327,9 +341,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -349,9 +365,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -375,9 +393,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -397,9 +417,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -423,9 +445,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,
@@ -445,9 +469,11 @@ BEGIN
       Requested_By,
       Prepared_By,
       Prepared_By_Name,
+      Prepared_By_Title,
       Requested_At,
       Approved_By,
       Approved_By_Name,
+      Approved_By_Title,
       Approved_At,
       Rejected_By,
       Rejected_At,

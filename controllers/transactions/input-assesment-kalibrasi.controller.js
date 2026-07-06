@@ -17,6 +17,8 @@ const getSertifikatGeneratorQuery = (parameterSertifikasi) => {
   return `SELECT dbo.fnGetKal_Ser_${code}_No_ID() as ID_No_sertifikat`;
 };
 
+const normalizeSertifikatId = (value) => String(value || '').replace(/\s+/g, '');
+
 const isTimbanganSertifikatParameter = (parameterSertifikasi) =>
   getCertificateTypeCode(parameterSertifikasi) === 'M';
 
@@ -1724,7 +1726,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(getSertifikatGeneratorQuery(V_Parameter_Sertifikasi), {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi,
@@ -1744,7 +1746,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(getSertifikatGeneratorQuery(V_Parameter_Sertifikasi), {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Timbangan (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi,
@@ -1766,7 +1768,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(sertifikatQuery, {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Bagian (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi,
@@ -1793,7 +1795,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(getSertifikatGeneratorQuery(V_Parameter_Sertifikasi), {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi,
@@ -1810,7 +1812,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(getSertifikatGeneratorQuery(V_Parameter_Sertifikasi), {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Timbangan (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, Program_verifikasi,
@@ -1832,7 +1834,7 @@ const generateSertifikat = async (req, res, next) => {
         const sertifikatIdResult = await sequelizeMSQL.query(sertifikatQuery, {
           type: Sequelize.QueryTypes.SELECT,
         });
-        Auto_ID_No_sertifikat = sertifikatIdResult[0].ID_No_sertifikat || '';
+        Auto_ID_No_sertifikat = normalizeSertifikatId(sertifikatIdResult[0].ID_No_sertifikat);
 
         SQL_Insert = `INSERT INTO T_Kalibrasi_Sertifikat_Bagian (QA_ID, ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi, Tgl, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Assm_Merk, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi, UserID, Delegated_To, Process_date)
                       SELECT '${Auto_QA_ID}' as QA_ID, '${Auto_ID_No_sertifikat}' as ID_No_sertifikat, Jenis_kalibrasi, parameter_sertifikasi,

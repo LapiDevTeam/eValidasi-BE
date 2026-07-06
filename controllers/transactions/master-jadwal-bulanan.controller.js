@@ -1,6 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
+const moment = require('moment');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 
@@ -78,6 +79,42 @@ const ensureMonthlyScheduleInternalSchema = async () => {
         END;
 
         IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By NVARCHAR(50) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_Date') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_Date DATETIME2(0) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
           AND EXISTS (
             SELECT 1
             FROM sys.key_constraints
@@ -146,6 +183,42 @@ const ensureMonthlyScheduleExternalSchema = async () => {
           ALTER TABLE dbo.T_Monthly_Schedule_External_Header
             ADD Workflow_View VARCHAR(20) NOT NULL
               CONSTRAINT DF_T_Monthly_Schedule_External_Header_Workflow_View DEFAULT ('plan');
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By NVARCHAR(50) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_Date') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_Date DATETIME2(0) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_By_Title NVARCHAR(255) NULL;
         END;
 
         IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
@@ -248,6 +321,106 @@ const getUserDepartmentCandidates = (user = {}) =>
 
 const canApproveOrRejectMonthlySchedule = (user = {}) =>
   getUserJobLevel(user) === 3 && getUserDepartmentCandidates(user).includes('VN');
+
+const getUserDisplayName = (user = {}) =>
+  String(
+    user?.delegatedTo?.Nama ??
+      user?.delegatedTo?.nama_user ??
+      user?.user?.Nama ??
+      user?.user?.nama_user ??
+      user?.Nama ??
+      user?.nama_user ??
+      user?.user_id ??
+      ''
+  ).trim();
+
+const getUserJobDescription = (user = {}) =>
+  String(
+    user?.delegatedTo?.Jabatan ??
+      user?.delegatedTo?.jabatan ??
+      user?.delegatedTo?.job_description ??
+      user?.user?.Jabatan ??
+      user?.user?.jabatan ??
+      user?.user?.job_description ??
+      user?.Jabatan ??
+      user?.jabatan ??
+      user?.jabatan_desc_user ??
+      user?.job_description ??
+      ''
+  ).trim();
+
+const getRequestJobDescription = (req = {}, field = null) => {
+  const body = req.body || {};
+  const query = req.query || {};
+  return String(
+    (field ? body?.[field] : undefined) ??
+      body?.job_description ??
+      body?.user_job_description ??
+      body?.prepared_by_title ??
+      body?.approved_by_title ??
+      (field ? query?.[field] : undefined) ??
+      query?.job_description ??
+      query?.user_job_description ??
+      query?.prepared_by_title ??
+      query?.approved_by_title ??
+      getUserJobDescription(req.user) ??
+      ''
+  ).trim();
+};
+
+const formatSignatureDate = (value) => {
+  if (!value) return '';
+  const parsed = moment.utc(value);
+  return parsed.isValid() ? parsed.format('DD/MM/YY') : '';
+};
+
+const getPreparedByName = (header) =>
+  header?.Prepared_By_Name ||
+  header?.Prepared_By ||
+  header?.Requested_By ||
+  header?.Updated_By ||
+  header?.Created_By ||
+  '';
+
+const getPreparedByDate = (header) =>
+  header?.Prepared_Date || header?.Requested_Date || header?.Updated_Date || header?.Created_Date || null;
+
+const getApprovedByName = (header) =>
+  header?.Approved_By_Name || header?.Approved_By || '';
+
+const writeApprovalSignatureBlocks = (
+  worksheet,
+  {
+    startRow,
+    leftStart,
+    leftEnd,
+    rightStart,
+    rightEnd,
+    header,
+  }
+) => {
+  const signatureRows = [
+    ['Prepared By :', 'Approved By :', true],
+    [getPreparedByName(header), getApprovedByName(header), true],
+    [formatSignatureDate(getPreparedByDate(header)), formatSignatureDate(header?.Approved_Date), false],
+    [header?.Prepared_By_Title || '', header?.Approved_By_Title || '', false],
+  ];
+
+  signatureRows.forEach(([leftValue, rightValue, bold], index) => {
+    const rowNumber = startRow + index;
+    worksheet.mergeCells(rowNumber, leftStart, rowNumber, leftEnd);
+    worksheet.mergeCells(rowNumber, rightStart, rowNumber, rightEnd);
+
+    const leftCell = worksheet.getCell(rowNumber, leftStart);
+    const rightCell = worksheet.getCell(rowNumber, rightStart);
+    leftCell.value = leftValue || '';
+    rightCell.value = rightValue || '';
+    leftCell.font = bold ? { bold: true } : {};
+    rightCell.font = bold ? { bold: true } : {};
+    leftCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    rightCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  });
+};
 
 const toDateObject = (value) => {
   if (!value) return null;
@@ -1195,30 +1368,20 @@ const applyRowBorder = (worksheet, rowNumber) => {
   applyRowBorderRange(worksheet, rowNumber, 1, 12);
 };
 
-const getExternalPreparedBy = (header) =>
-  header?.Requested_By || header?.Updated_By || header?.Created_By || '';
-
 const writeExternalApprovalInfo = (worksheet, startRow, header) => {
-  const preparedBy = getExternalPreparedBy(header);
-  const approvedBy = header?.Approved_By || '';
-  const preparedDate = header?.Requested_Date || header?.Updated_Date || header?.Created_Date;
-  const approvedDate = header?.Approved_Date || null;
+  writeApprovalSignatureBlocks(worksheet, {
+    startRow,
+    leftStart: 1,
+    leftEnd: 5,
+    rightStart: 7,
+    rightEnd: 11,
+    header,
+  });
 
-  worksheet.mergeCells(`A${startRow}:E${startRow}`);
-  worksheet.mergeCells(`F${startRow}:K${startRow}`);
-  worksheet.mergeCells(`A${startRow + 1}:E${startRow + 1}`);
-  worksheet.mergeCells(`F${startRow + 1}:K${startRow + 1}`);
-
-  worksheet.getCell(`A${startRow}`).value = `Prepared by: ${preparedBy}`;
-  worksheet.getCell(`F${startRow}`).value = `Approved by: ${approvedBy}`;
-  worksheet.getCell(`A${startRow + 1}`).value = `Prepared date: ${formatDateDisplay(preparedDate)}`;
-  worksheet.getCell(`F${startRow + 1}`).value = `Approved date: ${formatDateDisplay(approvedDate)}`;
-
-  for (let rowNumber = startRow; rowNumber <= startRow + 1; rowNumber += 1) {
+  for (let rowNumber = startRow; rowNumber <= startRow + 3; rowNumber += 1) {
     for (let col = 1; col <= 11; col += 1) {
       const cell = worksheet.getCell(rowNumber, col);
-      cell.font = { bold: col === 1 || col === 6 };
-      cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
         top: { style: 'thin' },
         left: { style: 'thin' },
@@ -1253,7 +1416,13 @@ const getLatestMonthlyScheduleHeaderByStatus = async (
         Buffer_End,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -1329,7 +1498,13 @@ const getMonthlyScheduleHeaderById = async (scheduleHeaderId, transaction = null
         Buffer_End,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -1405,7 +1580,13 @@ const mapMonthlyScheduleRevisionInfo = (header) => {
     buffer_end: header.Buffer_End,
     requested_by: header.Requested_By,
     requested_date: header.Requested_Date,
+    prepared_by: header.Prepared_By || header.Requested_By,
+    prepared_by_name: header.Prepared_By_Name || header.Prepared_By || header.Requested_By,
+    prepared_by_title: header.Prepared_By_Title || '',
+    prepared_date: header.Prepared_Date || header.Requested_Date,
     approved_by: header.Approved_By,
+    approved_by_name: header.Approved_By_Name || header.Approved_By,
+    approved_by_title: header.Approved_By_Title || '',
     approved_date: header.Approved_Date,
     rejected_by: header.Rejected_By,
     rejected_date: header.Rejected_Date,
@@ -1443,7 +1624,13 @@ const getPreviousMonthlyScheduleHeader = async (
         Buffer_End,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -2065,6 +2252,8 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
       (row) => row.include_in_revision !== false
     );
     const { user_id } = req.user || {};
+    const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
       return res.status(400).json({
@@ -2148,6 +2337,10 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
         `
           UPDATE T_Monthly_Schedule_Header
           SET
+            Prepared_By = :userId,
+            Prepared_By_Name = :preparedByName,
+            Prepared_By_Title = :preparedByTitle,
+            Prepared_Date = GETDATE(),
             Updated_By = :userId,
             Updated_Date = GETDATE()
           WHERE Schedule_Header_ID = :scheduleHeaderId
@@ -2156,6 +2349,8 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
           replacements: {
             scheduleHeaderId: header.Schedule_Header_ID,
             userId: user_id,
+            preparedByName,
+            preparedByTitle,
           },
           type: Sequelize.QueryTypes.UPDATE,
           transaction,
@@ -2195,6 +2390,8 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
       false
     );
     const { user_id } = req.user || {};
+    const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -2328,7 +2525,13 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
             Buffer_End DATE,
             Requested_By NVARCHAR(50),
             Requested_Date DATETIME2(0),
+            Prepared_By NVARCHAR(50),
+            Prepared_By_Name NVARCHAR(255),
+            Prepared_By_Title NVARCHAR(255),
+            Prepared_Date DATETIME2(0),
             Approved_By NVARCHAR(50),
+            Approved_By_Name NVARCHAR(255),
+            Approved_By_Title NVARCHAR(255),
             Approved_Date DATETIME2(0),
             Rejected_By NVARCHAR(50),
             Rejected_Date DATETIME2(0),
@@ -2353,6 +2556,10 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
               Buffer_End,
               Requested_By,
               Requested_Date,
+              Prepared_By,
+              Prepared_By_Name,
+              Prepared_By_Title,
+              Prepared_Date,
               Remarks,
               Created_By,
               Created_Date,
@@ -2373,7 +2580,13 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
             INSERTED.Buffer_End,
             INSERTED.Requested_By,
             INSERTED.Requested_Date,
+            INSERTED.Prepared_By,
+            INSERTED.Prepared_By_Name,
+            INSERTED.Prepared_By_Title,
+            INSERTED.Prepared_Date,
             INSERTED.Approved_By,
+            INSERTED.Approved_By_Name,
+            INSERTED.Approved_By_Title,
             INSERTED.Approved_Date,
             INSERTED.Rejected_By,
             INSERTED.Rejected_Date,
@@ -2397,6 +2610,10 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
               :bufferEnd,
               :userId,
               GETDATE(),
+              :userId,
+              :preparedByName,
+              :preparedByTitle,
+              GETDATE(),
               :remarks,
               :userId,
               GETDATE(),
@@ -2418,7 +2635,13 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
             Buffer_End,
             Requested_By,
             Requested_Date,
+            Prepared_By,
+            Prepared_By_Name,
+            Prepared_By_Title,
+            Prepared_Date,
             Approved_By,
+            Approved_By_Name,
+            Approved_By_Title,
             Approved_Date,
             Rejected_By,
             Rejected_Date,
@@ -2440,6 +2663,8 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
             bufferStart: window.bufferStartISO,
             bufferEnd: window.bufferEndISO,
             userId: user_id,
+            preparedByName,
+            preparedByTitle,
             remarks,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -2475,6 +2700,8 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
     const workflowView = parseMonthlyScheduleWorkflowView(req.body?.view || req.query?.view);
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
+    const approvedByName = getUserDisplayName(req.user) || user_id;
+    const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
       return res.status(400).json({
@@ -2563,6 +2790,8 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
             [Status] = 'APPROVED',
             Is_Locked = 1,
             Approved_By = :userId,
+            Approved_By_Name = :approvedByName,
+            Approved_By_Title = :approvedByTitle,
             Approved_Date = GETDATE(),
             Remarks = COALESCE(:remarks, Remarks),
             Updated_By = :userId,
@@ -2573,6 +2802,8 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
           replacements: {
             scheduleHeaderId: header.Schedule_Header_ID,
             userId: user_id,
+            approvedByName,
+            approvedByTitle,
             remarks,
           },
           type: Sequelize.QueryTypes.UPDATE,
@@ -2737,6 +2968,38 @@ const rejectMasterJadwalBulanan = async (req, res, next) => {
   }
 };
 
+const getMonthlyScheduleHeaderForExport = async (
+  selectedYear,
+  selectedMonth,
+  source,
+  workflowView = MONTHLY_SCHEDULE_WORKFLOW_VIEW.PLAN
+) => {
+  const view = parseMonthlyScheduleWorkflowView(workflowView);
+  if (source === 'live' || source === 'scan') return null;
+
+  if (source === 'requested') {
+    return getLatestRequestedMonthlyScheduleHeader(selectedYear, selectedMonth, view);
+  }
+
+  if (source === 'previous') {
+    const { previousHeader } = await getMonthlyScheduleRevisionState(
+      selectedYear,
+      selectedMonth,
+      view
+    );
+    return previousHeader;
+  }
+
+  const approvedHeader = await getLatestApprovedMonthlyScheduleHeader(
+    selectedYear,
+    selectedMonth,
+    view
+  );
+  if (approvedHeader) return approvedHeader;
+
+  return getLatestRequestedMonthlyScheduleHeader(selectedYear, selectedMonth, view);
+};
+
 const exportMasterJadwalBulanan = async (req, res, next) => {
   try {
     const yearParam = req.body?.year ?? req.query?.year;
@@ -2759,37 +3022,14 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
     await ensureMonthlyScheduleInternalSchema();
 
     let rows = normalizeIncomingRows(req.body?.rows);
-    let snapshotHeader = null;
+    let snapshotHeader = await getMonthlyScheduleHeaderForExport(
+      selectedYear,
+      selectedMonth,
+      source,
+      workflowView
+    );
 
     if (!rows.length) {
-      if (source === 'requested') {
-        snapshotHeader = await getLatestRequestedMonthlyScheduleHeader(
-          selectedYear,
-          selectedMonth,
-          workflowView
-        );
-      } else if (source === 'previous') {
-        const { previousHeader } = await getMonthlyScheduleRevisionState(
-          selectedYear,
-          selectedMonth,
-          workflowView
-        );
-        snapshotHeader = previousHeader;
-      } else if (source !== 'live' && source !== 'scan') {
-        snapshotHeader = await getLatestApprovedMonthlyScheduleHeader(
-          selectedYear,
-          selectedMonth,
-          workflowView
-        );
-        if (!snapshotHeader) {
-          snapshotHeader = await getLatestRequestedMonthlyScheduleHeader(
-            selectedYear,
-            selectedMonth,
-            workflowView
-          );
-        }
-      }
-
       if (snapshotHeader) {
         const details = await getMonthlyScheduleDetails(snapshotHeader.Schedule_Header_ID);
         rows = mapMonthlyScheduleDetailRows(details);
@@ -2873,6 +3113,15 @@ const exportMasterJadwalBulanan = async (req, res, next) => {
     const lastRow = Math.max(currentRow - 1, 3);
     worksheet.autoFilter = `A2:I${lastRow}`;
 
+    writeApprovalSignatureBlocks(worksheet, {
+      startRow: lastRow + 3,
+      leftStart: 1,
+      leftEnd: 6,
+      rightStart: 8,
+      rightEnd: 12,
+      header: snapshotHeader,
+    });
+
     const fileName = `Master-Jadwal-Bulanan-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
 
@@ -2944,7 +3193,13 @@ const getLatestExternalHeaderByStatus = async (
         Is_Locked,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -3016,7 +3271,13 @@ const getExternalHeaderById = async (scheduleHeaderId, transaction = null) => {
         Is_Locked,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -3083,7 +3344,13 @@ const mapExternalRevisionInfo = (header) => {
     is_locked: Boolean(header.Is_Locked),
     requested_by: header.Requested_By,
     requested_date: header.Requested_Date,
+    prepared_by: header.Prepared_By || header.Requested_By,
+    prepared_by_name: header.Prepared_By_Name || header.Prepared_By || header.Requested_By,
+    prepared_by_title: header.Prepared_By_Title || '',
+    prepared_date: header.Prepared_Date || header.Requested_Date,
     approved_by: header.Approved_By,
+    approved_by_name: header.Approved_By_Name || header.Approved_By,
+    approved_by_title: header.Approved_By_Title || '',
     approved_date: header.Approved_Date,
     rejected_by: header.Rejected_By,
     rejected_date: header.Rejected_Date,
@@ -3117,7 +3384,13 @@ const getPreviousExternalHeader = async (
         Is_Locked,
         Requested_By,
         Requested_Date,
+        Prepared_By,
+        Prepared_By_Name,
+        Prepared_By_Title,
+        Prepared_Date,
         Approved_By,
+        Approved_By_Name,
+        Approved_By_Title,
         Approved_Date,
         Rejected_By,
         Rejected_Date,
@@ -3539,6 +3812,8 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
       workflowView
     );
     const { user_id } = req.user || {};
+    const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
       return res.status(400).json({
@@ -3589,6 +3864,10 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
           UPDATE T_Monthly_Schedule_External_Header
           SET
             Requested_By = :userId,
+            Prepared_By = :userId,
+            Prepared_By_Name = :preparedByName,
+            Prepared_By_Title = :preparedByTitle,
+            Prepared_Date = GETDATE(),
             Updated_By = :userId,
             Updated_Date = GETDATE()
           WHERE Schedule_External_Header_ID = :scheduleHeaderId
@@ -3597,6 +3876,8 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
           replacements: {
             scheduleHeaderId: header.Schedule_External_Header_ID,
             userId: user_id,
+            preparedByName,
+            preparedByTitle,
           },
           type: Sequelize.QueryTypes.UPDATE,
           transaction,
@@ -3713,6 +3994,8 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
     const workflowView = parseMonthlyScheduleWorkflowView(req.body?.view || req.query?.view);
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
+    const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -3816,7 +4099,13 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
             Is_Locked BIT,
             Requested_By NVARCHAR(50),
             Requested_Date DATETIME2(0),
+            Prepared_By NVARCHAR(50),
+            Prepared_By_Name NVARCHAR(255),
+            Prepared_By_Title NVARCHAR(255),
+            Prepared_Date DATETIME2(0),
             Approved_By NVARCHAR(50),
+            Approved_By_Name NVARCHAR(255),
+            Approved_By_Title NVARCHAR(255),
             Approved_Date DATETIME2(0),
             Rejected_By NVARCHAR(50),
             Rejected_Date DATETIME2(0),
@@ -3837,6 +4126,10 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
               Is_Locked,
               Requested_By,
               Requested_Date,
+              Prepared_By,
+              Prepared_By_Name,
+              Prepared_By_Title,
+              Prepared_Date,
               Remarks,
               Created_By,
               Created_Date,
@@ -3853,7 +4146,13 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
             INSERTED.Is_Locked,
             INSERTED.Requested_By,
             INSERTED.Requested_Date,
+            INSERTED.Prepared_By,
+            INSERTED.Prepared_By_Name,
+            INSERTED.Prepared_By_Title,
+            INSERTED.Prepared_Date,
             INSERTED.Approved_By,
+            INSERTED.Approved_By_Name,
+            INSERTED.Approved_By_Title,
             INSERTED.Approved_Date,
             INSERTED.Rejected_By,
             INSERTED.Rejected_Date,
@@ -3873,6 +4172,10 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
               0,
               :userId,
               GETDATE(),
+              :userId,
+              :preparedByName,
+              :preparedByTitle,
+              GETDATE(),
               :remarks,
               :userId,
               GETDATE(),
@@ -3889,6 +4192,8 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
             workflowView,
             revisionNo,
             userId: user_id,
+            preparedByName,
+            preparedByTitle,
             remarks,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -4003,6 +4308,8 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
     const workflowView = parseMonthlyScheduleWorkflowView(req.body?.view || req.query?.view);
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
+    const approvedByName = getUserDisplayName(req.user) || user_id;
+    const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
       return res.status(400).json({ success: false, message: 'Schedule header ID or valid year and month are required' });
@@ -4078,6 +4385,8 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
             [Status] = 'APPROVED',
             Is_Locked = 1,
             Approved_By = :userId,
+            Approved_By_Name = :approvedByName,
+            Approved_By_Title = :approvedByTitle,
             Approved_Date = GETDATE(),
             Remarks = COALESCE(:remarks, Remarks),
             Updated_By = :userId,
@@ -4088,6 +4397,8 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
           replacements: {
             headerId: header.Schedule_External_Header_ID,
             userId: user_id,
+            approvedByName,
+            approvedByTitle,
             remarks,
           },
           type: Sequelize.QueryTypes.UPDATE,
@@ -4310,10 +4621,10 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
     writeExternalApprovalInfo(worksheet, 2, snapshotHeader);
-    writeExternalTableHeader(worksheet, 5);
-    worksheet.views = [{ state: 'frozen', ySplit: 6 }];
+    writeExternalTableHeader(worksheet, 7);
+    worksheet.views = [{ state: 'frozen', ySplit: 8 }];
 
-    let currentRow = 7;
+    let currentRow = 9;
     const groupedByPeriod = rows.reduce((acc, row) => {
       const key = row._period_key || `${normalizePeriodYear(selectedYear)}-${normalizePeriodMonth(selectedMonth)}`;
       if (!acc[key]) acc[key] = { label: row._period_label || key, rows: [] };
@@ -4346,7 +4657,7 @@ const exportMasterJadwalBulananExternal = async (req, res, next) => {
     });
 
     const lastRow = Math.max(currentRow - 1, 3);
-    worksheet.autoFilter = `A5:K${lastRow}`;
+    worksheet.autoFilter = `A7:K${lastRow}`;
 
     const fileName = `Master-Jadwal-Bulanan-External-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();

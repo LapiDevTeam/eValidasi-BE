@@ -15,7 +15,13 @@ BEGIN
     Buffer_End DATE NOT NULL,
     Requested_By NVARCHAR(50) NULL,
     Requested_Date DATETIME2(0) NULL,
+    Prepared_By NVARCHAR(50) NULL,
+    Prepared_By_Name NVARCHAR(255) NULL,
+    Prepared_By_Title NVARCHAR(255) NULL,
+    Prepared_Date DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
+    Approved_By_Name NVARCHAR(255) NULL,
+    Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
@@ -39,6 +45,48 @@ BEGIN
   ALTER TABLE dbo.T_Monthly_Schedule_Header
     ADD Workflow_View VARCHAR(20) NOT NULL
       CONSTRAINT DF_T_Monthly_Schedule_Header_Workflow_View DEFAULT ('plan');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_Date') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_Date DATETIME2(0) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_By_Title NVARCHAR(255) NULL;
 END;
 GO
 
@@ -82,7 +130,13 @@ BEGIN
     Is_Locked BIT NOT NULL CONSTRAINT DF_T_Monthly_Schedule_External_Header_Is_Locked DEFAULT (0),
     Requested_By NVARCHAR(50) NULL,
     Requested_Date DATETIME2(0) NULL,
+    Prepared_By NVARCHAR(50) NULL,
+    Prepared_By_Name NVARCHAR(255) NULL,
+    Prepared_By_Title NVARCHAR(255) NULL,
+    Prepared_Date DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
+    Approved_By_Name NVARCHAR(255) NULL,
+    Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
@@ -106,6 +160,48 @@ BEGIN
   ALTER TABLE dbo.T_Monthly_Schedule_External_Header
     ADD Workflow_View VARCHAR(20) NOT NULL
       CONSTRAINT DF_T_Monthly_Schedule_External_Header_Workflow_View DEFAULT ('plan');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_Date') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_Date DATETIME2(0) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_By_Title NVARCHAR(255) NULL;
 END;
 GO
 

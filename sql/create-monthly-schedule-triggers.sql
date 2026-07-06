@@ -18,7 +18,13 @@ BEGIN
     Buffer_End DATE NOT NULL,
     Requested_By NVARCHAR(50) NULL,
     Requested_Date DATETIME2(0) NULL,
+    Prepared_By NVARCHAR(50) NULL,
+    Prepared_By_Name NVARCHAR(255) NULL,
+    Prepared_By_Title NVARCHAR(255) NULL,
+    Prepared_Date DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
+    Approved_By_Name NVARCHAR(255) NULL,
+    Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
@@ -40,6 +46,48 @@ BEGIN
 END;
 GO
 
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Prepared_By') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Prepared_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Prepared_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Prepared_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Prepared_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Prepared_Date') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Prepared_Date DATETIME2(0) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Approved_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header_Hist', 'Approved_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header_Hist ADD Approved_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
 IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NULL
 BEGIN
   CREATE TABLE dbo.T_Monthly_Schedule_External_Header_Hist
@@ -56,7 +104,13 @@ BEGIN
     Is_Locked BIT NOT NULL,
     Requested_By NVARCHAR(50) NULL,
     Requested_Date DATETIME2(0) NULL,
+    Prepared_By NVARCHAR(50) NULL,
+    Prepared_By_Name NVARCHAR(255) NULL,
+    Prepared_By_Title NVARCHAR(255) NULL,
+    Prepared_Date DATETIME2(0) NULL,
     Approved_By NVARCHAR(50) NULL,
+    Approved_By_Name NVARCHAR(255) NULL,
+    Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
@@ -75,6 +129,48 @@ BEGIN
   ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist
     ADD Workflow_View VARCHAR(20) NOT NULL
       CONSTRAINT DF_T_Monthly_Schedule_External_Header_Hist_Workflow_View DEFAULT ('plan');
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Prepared_By') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Prepared_By NVARCHAR(50) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Prepared_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Prepared_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Prepared_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Prepared_By_Title NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Prepared_Date') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Prepared_Date DATETIME2(0) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Approved_By_Name') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Approved_By_Name NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header_Hist', 'Approved_By_Title') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header_Hist ADD Approved_By_Title NVARCHAR(255) NULL;
 END;
 GO
 
@@ -154,12 +250,14 @@ BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
       Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
       'UPDATE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM inserted;
   END
@@ -168,12 +266,14 @@ BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
       Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
       'INSERT', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM inserted;
   END
@@ -182,12 +282,14 @@ BEGIN
     INSERT INTO dbo.T_Monthly_Schedule_External_Header_Hist
     (
       Action_Type, Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     )
     SELECT
       'DELETE', Schedule_External_Header_ID, Base_Period_Year, Base_Period_Month, Workflow_View, Revision_No,
-      [Status], Is_Locked, Requested_By, Requested_Date, Approved_By, Approved_Date,
+      [Status], Is_Locked, Requested_By, Requested_Date, Prepared_By, Prepared_By_Name, Prepared_By_Title, Prepared_Date,
+      Approved_By, Approved_By_Name, Approved_By_Title, Approved_Date,
       Rejected_By, Rejected_Date, Remarks, Created_By, Created_Date, Updated_By, Updated_Date
     FROM deleted;
   END;
@@ -352,7 +454,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,
@@ -377,7 +485,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,
@@ -406,7 +520,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,
@@ -431,7 +551,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,
@@ -460,7 +586,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,
@@ -485,7 +617,13 @@ BEGIN
       Buffer_End,
       Requested_By,
       Requested_Date,
+      Prepared_By,
+      Prepared_By_Name,
+      Prepared_By_Title,
+      Prepared_Date,
       Approved_By,
+      Approved_By_Name,
+      Approved_By_Title,
       Approved_Date,
       Rejected_By,
       Rejected_Date,

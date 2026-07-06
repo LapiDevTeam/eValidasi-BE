@@ -1,6 +1,7 @@
 'use strict';
 
 const ExcelJS = require('exceljs');
+const moment = require('moment');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 
@@ -10,6 +11,8 @@ const AWP_WORKFLOW_VIEWS = {
   START: 'start',
   END: 'end',
 };
+
+let awpSignatureSchemaPromise = null;
 
 const parseYear = (year) => {
   const selectedYear = Number(year);
@@ -61,6 +64,129 @@ const getUserDepartment = (user = {}) =>
 
 const canApproveOrRejectAWP = (user = {}) =>
   getUserJobLevel(user) === 3 && getUserDepartment(user) === 'VN';
+
+const getUserJobDescription = (user = {}) =>
+  String(
+    user?.delegatedTo?.Jabatan ??
+      user?.delegatedTo?.jabatan ??
+      user?.delegatedTo?.job_description ??
+      user?.user?.Jabatan ??
+      user?.user?.jabatan ??
+      user?.user?.job_description ??
+      user?.Jabatan ??
+      user?.jabatan ??
+      user?.jabatan_desc_user ??
+      user?.job_description ??
+      ''
+  ).trim();
+
+const getRequestJobDescription = (req = {}, field = null) => {
+  const body = req.body || {};
+  const query = req.query || {};
+  return String(
+    (field ? body?.[field] : undefined) ??
+      body?.job_description ??
+      body?.user_job_description ??
+      body?.prepared_by_title ??
+      body?.approved_by_title ??
+      (field ? query?.[field] : undefined) ??
+      query?.job_description ??
+      query?.user_job_description ??
+      query?.prepared_by_title ??
+      query?.approved_by_title ??
+      getUserJobDescription(req.user) ??
+      ''
+  ).trim();
+};
+
+const formatSignatureDate = (value) => {
+  if (!value) return '';
+  const parsed = moment.utc(value);
+  return parsed.isValid() ? parsed.format('DD/MM/YY') : '';
+};
+
+const writeSignatureBlocks = (
+  worksheet,
+  {
+    startRow,
+    leftStart,
+    leftEnd,
+    rightStart,
+    rightEnd,
+    preparedByName,
+    preparedByDate,
+    preparedByTitle,
+    approvedByName,
+    approvedByDate,
+    approvedByTitle,
+  }
+) => {
+  const signatureRows = [
+    ['Prepared By :', 'Approved By :', true],
+    [preparedByName || '', approvedByName || '', true],
+    [formatSignatureDate(preparedByDate), formatSignatureDate(approvedByDate), false],
+    [preparedByTitle || '', approvedByTitle || '', false],
+  ];
+
+  signatureRows.forEach(([leftValue, rightValue, bold], index) => {
+    const rowNumber = startRow + index;
+    worksheet.mergeCells(rowNumber, leftStart, rowNumber, leftEnd);
+    worksheet.mergeCells(rowNumber, rightStart, rowNumber, rightEnd);
+
+    const leftCell = worksheet.getCell(rowNumber, leftStart);
+    const rightCell = worksheet.getCell(rowNumber, rightStart);
+    leftCell.value = leftValue;
+    rightCell.value = rightValue;
+    leftCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    rightCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    leftCell.font = bold ? { bold: true } : {};
+    rightCell.font = bold ? { bold: true } : {};
+  });
+};
+
+const ensureAWPSignatureSchema = async () => {
+  if (!awpSignatureSchemaPromise) {
+    awpSignatureSchemaPromise = sequelizeMSQL.query(
+      `
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_By') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Prepared_By NVARCHAR(50) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Prepared_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Prepared_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_By_Name') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Approved_By_Name NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_By_Title') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Approved_By_Title NVARCHAR(255) NULL;
+        END;
+      `,
+      { type: Sequelize.QueryTypes.RAW }
+    ).catch((error) => {
+      awpSignatureSchemaPromise = null;
+      throw error;
+    });
+  }
+
+  return awpSignatureSchemaPromise;
+};
 
 const getRKTDataByYear = async (selectedYear) => {
   const query = `
@@ -670,6 +796,7 @@ const getLatestAWPHeaderByStatus = async (
   workflowView = AWP_WORKFLOW_VIEWS.START,
   transaction = null
 ) => {
+  await ensureAWPSignatureSchema();
   const view = parseWorkflowView(workflowView);
   const rows = await sequelizeMSQL.query(
     `
@@ -682,9 +809,11 @@ const getLatestAWPHeaderByStatus = async (
         Requested_By,
         Prepared_By,
         Prepared_By_Name,
+        Prepared_By_Title,
         Requested_At,
         Approved_By,
         Approved_By_Name,
+        Approved_By_Title,
         Approved_At,
         Rejected_By,
         Rejected_At,
@@ -728,6 +857,7 @@ const getLatestPreviousAWPHeader = (
 ) => getLatestAWPHeaderByStatus(selectedYear, 'SUPERSEDED', workflowView, transaction);
 
 const getAWPSnapshotHeaderById = async (awpId, transaction = null) => {
+  await ensureAWPSignatureSchema();
   const rows = await sequelizeMSQL.query(
     `
       SELECT
@@ -739,9 +869,11 @@ const getAWPSnapshotHeaderById = async (awpId, transaction = null) => {
         Requested_By,
         Prepared_By,
         Prepared_By_Name,
+        Prepared_By_Title,
         Requested_At,
         Approved_By,
         Approved_By_Name,
+        Approved_By_Title,
         Approved_At,
         Rejected_By,
         Rejected_At,
@@ -814,9 +946,11 @@ const mapAWPRevisionInfo = (header) => {
     requested_by: header.Requested_By,
     prepared_by: header.Prepared_By || header.Requested_By,
     prepared_by_name: header.Prepared_By_Name || header.Prepared_By || header.Requested_By,
+    prepared_by_title: header.Prepared_By_Title || '',
     requested_at: header.Requested_At,
     approved_by: header.Approved_By,
     approved_by_name: header.Approved_By_Name || header.Approved_By,
+    approved_by_title: header.Approved_By_Title || '',
     approved_at: header.Approved_At,
     notes: header.Notes,
     created_by: header.Created_By,
@@ -1511,7 +1645,6 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
   worksheet.autoFilter = `A2:H${tableBottomRow}`;
 
   const signatureLabelRow = tableBottomRow + 3;
-  const signatureNameRow = signatureLabelRow + 4;
   const leftSignatureEnd = Math.floor(lastColumn / 2);
   const rightSignatureStart = leftSignatureEnd + 2;
   const preparedByName =
@@ -1524,22 +1657,19 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
     snapshotHeader?.Approved_By ||
     'VN Manager';
 
-  worksheet.mergeCells(signatureLabelRow, 1, signatureLabelRow, leftSignatureEnd);
-  worksheet.mergeCells(signatureLabelRow, rightSignatureStart, signatureLabelRow, lastColumn);
-  worksheet.getCell(signatureLabelRow, 1).value = 'Prepared By,';
-  worksheet.getCell(signatureLabelRow, rightSignatureStart).value = 'Approved By,';
-
-  worksheet.mergeCells(signatureNameRow, 1, signatureNameRow, leftSignatureEnd);
-  worksheet.mergeCells(signatureNameRow, rightSignatureStart, signatureNameRow, lastColumn);
-  worksheet.getCell(signatureNameRow, 1).value = preparedByName;
-  worksheet.getCell(signatureNameRow, rightSignatureStart).value = approvedByName;
-
-  worksheet.getCell(signatureLabelRow, 1).alignment = { horizontal: 'center' };
-  worksheet.getCell(signatureLabelRow, rightSignatureStart).alignment = { horizontal: 'center' };
-  worksheet.getCell(signatureNameRow, 1).alignment = { horizontal: 'center' };
-  worksheet.getCell(signatureNameRow, rightSignatureStart).alignment = { horizontal: 'center' };
-  worksheet.getCell(signatureNameRow, 1).font = { bold: true };
-  worksheet.getCell(signatureNameRow, rightSignatureStart).font = { bold: true };
+  writeSignatureBlocks(worksheet, {
+    startRow: signatureLabelRow,
+    leftStart: 1,
+    leftEnd: leftSignatureEnd,
+    rightStart: rightSignatureStart,
+    rightEnd: lastColumn,
+    preparedByName,
+    preparedByDate: snapshotHeader?.Requested_At,
+    preparedByTitle: snapshotHeader?.Prepared_By_Title,
+    approvedByName,
+    approvedByDate: snapshotHeader?.Approved_At,
+    approvedByTitle: snapshotHeader?.Approved_By_Title,
+  });
 
   const fileName =
     source === 'scan'
@@ -1587,6 +1717,10 @@ const exportMasterRKT = async (req, res, next) => {
     }
 
     const results = await getRKTDataByYear(selectedYear);
+    const snapshotHeader = await getLatestAWPSnapshotHeader(
+      selectedYear,
+      AWP_WORKFLOW_VIEWS.START
+    );
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(`RKT${selectedYear}`);
@@ -1695,24 +1829,29 @@ const exportMasterRKT = async (req, res, next) => {
     worksheet.autoFilter = `A2:E${tableBottomRow}`;
 
     const signatureLabelRow = tableBottomRow + 3;
-    const signatureNameRow = signatureLabelRow + 4;
+    const preparedByName =
+      snapshotHeader?.Prepared_By_Name ||
+      snapshotHeader?.Prepared_By ||
+      snapshotHeader?.Requested_By ||
+      'Qualification & Calibration Officer';
+    const approvedByName =
+      snapshotHeader?.Approved_By_Name ||
+      snapshotHeader?.Approved_By ||
+      'VN Manager';
 
-    worksheet.mergeCells(`A${signatureLabelRow}:H${signatureLabelRow}`);
-    worksheet.mergeCells(`J${signatureLabelRow}:Q${signatureLabelRow}`);
-    worksheet.getCell(`A${signatureLabelRow}`).value = 'Prepared By,';
-    worksheet.getCell(`J${signatureLabelRow}`).value = 'Approved By,';
-
-    worksheet.mergeCells(`A${signatureNameRow}:H${signatureNameRow}`);
-    worksheet.mergeCells(`J${signatureNameRow}:Q${signatureNameRow}`);
-    worksheet.getCell(`A${signatureNameRow}`).value = 'Qualification & Calibration Officer';
-    worksheet.getCell(`J${signatureNameRow}`).value = 'VN Manager';
-
-    worksheet.getCell(`A${signatureLabelRow}`).alignment = { horizontal: 'center' };
-    worksheet.getCell(`J${signatureLabelRow}`).alignment = { horizontal: 'center' };
-    worksheet.getCell(`A${signatureNameRow}`).alignment = { horizontal: 'center' };
-    worksheet.getCell(`J${signatureNameRow}`).alignment = { horizontal: 'center' };
-    worksheet.getCell(`A${signatureNameRow}`).font = { bold: true };
-    worksheet.getCell(`J${signatureNameRow}`).font = { bold: true };
+    writeSignatureBlocks(worksheet, {
+      startRow: signatureLabelRow,
+      leftStart: 1,
+      leftEnd: 8,
+      rightStart: 10,
+      rightEnd: 17,
+      preparedByName,
+      preparedByDate: snapshotHeader?.Requested_At,
+      preparedByTitle: snapshotHeader?.Prepared_By_Title,
+      approvedByName,
+      approvedByDate: snapshotHeader?.Approved_At,
+      approvedByTitle: snapshotHeader?.Approved_By_Title,
+    });
 
     const fileName = `Master-RKT-${selectedYear}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
@@ -1749,6 +1888,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
       : null;
     const { user_id, nama_user } = req.user || {};
     const preparedByName = nama_user || user_id;
+    const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear) {
       return res.status(400).json({
@@ -1763,6 +1903,8 @@ const requestMasterRKTApproval = async (req, res, next) => {
         message: 'User is not authenticated',
       });
     }
+
+    await ensureAWPSignatureSchema();
 
     const snapshotPayload = await sequelizeMSQL.transaction(async (transaction) => {
       const existingRequested = await sequelizeMSQL.query(
@@ -1843,9 +1985,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             Requested_By NVARCHAR(50),
             Prepared_By NVARCHAR(50),
             Prepared_By_Name NVARCHAR(255),
+            Prepared_By_Title NVARCHAR(255),
             Requested_At DATETIME2(0),
             Approved_By NVARCHAR(50),
             Approved_By_Name NVARCHAR(255),
+            Approved_By_Title NVARCHAR(255),
             Approved_At DATETIME2(0),
             Rejected_By NVARCHAR(50),
             Rejected_At DATETIME2(0),
@@ -1865,6 +2009,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
               Requested_By,
               Prepared_By,
               Prepared_By_Name,
+              Prepared_By_Title,
               Requested_At,
               Notes,
               Created_By,
@@ -1881,9 +2026,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             INSERTED.Requested_By,
             INSERTED.Prepared_By,
             INSERTED.Prepared_By_Name,
+            INSERTED.Prepared_By_Title,
             INSERTED.Requested_At,
             INSERTED.Approved_By,
             INSERTED.Approved_By_Name,
+            INSERTED.Approved_By_Title,
             INSERTED.Approved_At,
             INSERTED.Rejected_By,
             INSERTED.Rejected_At,
@@ -1902,6 +2049,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
               :userId,
               :userId,
               :preparedByName,
+              :preparedByTitle,
               GETDATE(),
               :notes,
               :userId,
@@ -1919,9 +2067,11 @@ const requestMasterRKTApproval = async (req, res, next) => {
             Requested_By,
             Prepared_By,
             Prepared_By_Name,
+            Prepared_By_Title,
             Requested_At,
             Approved_By,
             Approved_By_Name,
+            Approved_By_Title,
             Approved_At,
             Rejected_By,
             Rejected_At,
@@ -1939,6 +2089,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
             revisionNo,
             userId: user_id,
             preparedByName,
+            preparedByTitle,
             notes,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -2073,6 +2224,7 @@ const approveMasterRKT = async (req, res, next) => {
     const notes = req.body?.notes || null;
     const { user_id, nama_user } = req.user || {};
     const approvedByName = nama_user || user_id;
+    const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!awpId && !selectedYear) {
       return res.status(400).json({
@@ -2095,6 +2247,8 @@ const approveMasterRKT = async (req, res, next) => {
       });
     }
 
+    await ensureAWPSignatureSchema();
+
     const snapshotPayload = await sequelizeMSQL.transaction(async (transaction) => {
       let header = null;
 
@@ -2112,9 +2266,11 @@ const approveMasterRKT = async (req, res, next) => {
               Requested_By,
               Prepared_By,
               Prepared_By_Name,
+              Prepared_By_Title,
               Requested_At,
               Approved_By,
               Approved_By_Name,
+              Approved_By_Title,
               Approved_At,
               Rejected_By,
               Rejected_At,
@@ -2181,6 +2337,7 @@ const approveMasterRKT = async (req, res, next) => {
             Status = 'APPROVED',
             Approved_By = :userId,
             Approved_By_Name = :approvedByName,
+            Approved_By_Title = :approvedByTitle,
             Approved_At = GETDATE(),
             Notes = COALESCE(:notes, Notes),
             Updated_By = :userId,
@@ -2192,6 +2349,7 @@ const approveMasterRKT = async (req, res, next) => {
             awpId: header.AWP_ID,
             userId: user_id,
             approvedByName,
+            approvedByTitle,
             notes,
           },
           type: Sequelize.QueryTypes.UPDATE,
