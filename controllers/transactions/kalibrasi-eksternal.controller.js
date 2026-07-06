@@ -153,7 +153,15 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
     const { schedule_detail_id } = req.query;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id is required' });
+      const err = new Error('schedule_detail_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const query = `
@@ -216,14 +224,27 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
     });
 
     if (!results.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (bagian_user && bagian_user !== 'VN' && results[0].departemen !== bagian_user) {
-      return res.status(403).json({
-        success: false,
-        message: 'Anda tidak memiliki akses ke data departemen lain',
-      });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     return res.status(200).json({
@@ -266,13 +287,29 @@ const saveKalibrasiEksternal = async (req, res, next) => {
     } = req.body;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id wajib diisi' });
+      const err = new Error('schedule_detail_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard: create uses schedule_detail_id, update uses ekst_id
     const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!ekst_id) {
@@ -287,10 +324,15 @@ const saveKalibrasiEksternal = async (req, res, next) => {
       });
 
       if (checkResult[0]?.cnt > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Record kalibrasi eksternal untuk alat ini sudah ada',
-        });
+        const err = new Error('Record kalibrasi eksternal untuk alat ini sudah ada');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
 
       const insertQuery = `
@@ -333,7 +375,15 @@ const saveKalibrasiEksternal = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (statusCheck[0]?.status === 'APPROVED') {
-      return res.status(400).json({ success: false, message: 'Data yang sudah disetujui tidak dapat diedit' });
+      const err = new Error('Data yang sudah disetujui tidak dapat diedit');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const updateQuery = `
@@ -394,13 +444,29 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const statusCheck = await sequelizeMSQL.query(
@@ -409,13 +475,26 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
     );
 
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (statusCheck[0]?.status !== 'DRAFT') {
-      return res.status(400).json({
-        success: false,
-        message: 'Hanya data berstatus DRAFT yang dapat dihapus',
-      });
+      const err = new Error('Hanya data berstatus DRAFT yang dapat dihapus');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     await sequelizeMSQL.query(
@@ -442,17 +521,41 @@ const uploadSertifikatVendor = async (req, res, next) => {
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'File tidak ditemukan' });
+      const err = new Error('File tidak ditemukan');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const ext = path.extname(req.file.originalname);
@@ -466,10 +569,26 @@ const uploadSertifikatVendor = async (req, res, next) => {
     );
 
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (statusCheck[0]?.status === 'APPROVED') {
-      return res.status(400).json({ success: false, message: 'Data yang sudah disetujui tidak dapat diubah' });
+      const err = new Error('Data yang sudah disetujui tidak dapat diubah');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     await sequelizeMSQL.query(
@@ -507,7 +626,15 @@ const getCurrentApprove = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const query = `
@@ -544,7 +671,15 @@ const checkApproveButton = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Current approval level
@@ -618,16 +753,40 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     const { ekst_id, action, catatan } = req.body;
 
     if (!ekst_id || !action) {
-      return res.status(400).json({ success: false, message: 'ekst_id dan action wajib diisi' });
+      const err = new Error('ekst_id dan action wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
+      const err = new Error('action harus "approve" atau "reject"');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard (additional to existing approver auth check)
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Verify record status allows approval
@@ -637,13 +796,26 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     );
 
     if (!ekstRecord.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (ekstRecord[0]?.status !== 'UPLOADED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Hanya data berstatus UPLOADED yang dapat disetujui/ditolak',
-      });
+      const err = new Error('Hanya data berstatus UPLOADED yang dapat disetujui/ditolak');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Current approval level
@@ -655,7 +827,15 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     const appr_no = apprmax + 1;
 
     if (appr_no > 1) {
-      return res.status(400).json({ success: false, message: 'Approval sudah selesai' });
+      const err = new Error('Approval sudah selesai');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Validate user is authorized
@@ -670,7 +850,15 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     );
 
     if ((authCheck[0]?.cnt || 0) === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak approval untuk record ini' });
+      const err = new Error('Anda tidak memiliki hak approval untuk record ini');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
@@ -725,13 +913,29 @@ const downloadSertifikatVendor = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const result = await sequelizeMSQL.query(
@@ -742,7 +946,15 @@ const downloadSertifikatVendor = async (req, res, next) => {
     );
 
     if (!result.length || !result[0]?.sertifikat_vendor_path) {
-      return res.status(404).json({ success: false, message: 'File tidak ditemukan' });
+      const err = new Error('File tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     return res.sendFile(result[0].sertifikat_vendor_path);
@@ -765,16 +977,40 @@ const saveTidakDapat = async (req, res, next) => {
     const { schedule_detail_id, ekst_id, alasan_tidak_dapat, kondisi_alat } = req.body;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id wajib diisi' });
+      const err = new Error('schedule_detail_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!alasan_tidak_dapat?.trim()) {
-      return res.status(400).json({ success: false, message: 'Alasan tidak dapat dikalibrasi wajib diisi' });
+      const err = new Error('Alasan tidak dapat dikalibrasi wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard: create uses schedule_detail_id, update uses ekst_id
     const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!ekst_id) {
@@ -783,7 +1019,15 @@ const saveTidakDapat = async (req, res, next) => {
         { replacements: { schedule_detail_id }, type: Sequelize.QueryTypes.SELECT }
       );
       if (checkResult[0]?.cnt > 0) {
-        return res.status(400).json({ success: false, message: 'Record kalibrasi eksternal untuk alat ini sudah ada' });
+        const err = new Error('Record kalibrasi eksternal untuk alat ini sudah ada');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
 
       await sequelizeMSQL.query(
@@ -807,10 +1051,26 @@ const saveTidakDapat = async (req, res, next) => {
         { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
       );
       if (!statusCheck.length) {
-        return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+        const err = new Error('Data tidak ditemukan');
+
+        err.statusCode = 404;
+
+        res.status(404).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
       if (statusCheck[0]?.status !== 'TIDAK_DAPAT') {
-        return res.status(400).json({ success: false, message: 'Hanya data berstatus TIDAK_DAPAT yang dapat diubah' });
+        const err = new Error('Hanya data berstatus TIDAK_DAPAT yang dapat diubah');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
 
       await sequelizeMSQL.query(
@@ -852,16 +1112,40 @@ const approveTidakDapat = async (req, res, next) => {
     const { ekst_id, action, catatan } = req.body;
 
     if (!ekst_id || !action) {
-      return res.status(400).json({ success: false, message: 'ekst_id dan action wajib diisi' });
+      const err = new Error('ekst_id dan action wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
+      const err = new Error('action harus "approve" atau "reject"');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard (additional to existing approver auth check)
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const ekstRecord = await sequelizeMSQL.query(
@@ -869,10 +1153,26 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (!ekstRecord.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (ekstRecord[0]?.status !== 'TIDAK_DAPAT') {
-      return res.status(400).json({ success: false, message: 'Hanya data berstatus TIDAK_DAPAT yang dapat disetujui/ditolak' });
+      const err = new Error('Hanya data berstatus TIDAK_DAPAT yang dapat disetujui/ditolak');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const appr_no = 1;
@@ -886,7 +1186,15 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { appCode: APP_CODE, bagian_user, user_id, appr_no }, type: Sequelize.QueryTypes.SELECT }
     );
     if ((authCheck[0]?.cnt || 0) === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak approval untuk record ini' });
+      const err = new Error('Anda tidak memiliki hak approval untuk record ini');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Always delete existing status record first (idempotent, handles retry)
@@ -945,13 +1253,29 @@ const konfirmasiLabel = async (req, res, next) => {
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id wajib diisi' });
+      const err = new Error('ekst_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Ownership guard
     const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
     if (ownerDept && ownerDept !== bagian_user) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses ke data departemen lain' });
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const statusCheck = await sequelizeMSQL.query(
@@ -959,15 +1283,28 @@ const konfirmasiLabel = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const currentStatus = statusCheck[0]?.status;
     if (!['APPROVED', 'TIDAK_DAPAT_APPROVED'].includes(currentStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Konfirmasi label hanya bisa dilakukan setelah sertifikat disetujui (APPROVED atau TIDAK_DAPAT_APPROVED)',
-      });
+      const err = new Error('Konfirmasi label hanya bisa dilakukan setelah sertifikat disetujui (APPROVED atau TIDAK_DAPAT_APPROVED)');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     await sequelizeMSQL.query(

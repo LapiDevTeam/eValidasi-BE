@@ -2187,10 +2187,11 @@ const getMasterJadwalBulananPreview = async (req, res, next) => {
         workflowView
       );
       if (!previousHeader) {
-        return res.status(404).json({
-          success: false,
-          message: 'No previous monthly schedule revision is available.',
-        });
+        const err = new Error('No previous monthly schedule revision is available.');
+        err.statusCode = 404;
+        res.status(404).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
       const previousPayload = await buildMonthlyScheduleSnapshotPayload(
         previousHeader,
@@ -2256,24 +2257,27 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Schedule header ID or valid year and month are required',
-      });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!incomingRows.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'No schedule rows were provided.',
-      });
+      const err = new Error('No schedule rows were provided.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await ensureMonthlyScheduleInternalSchema();
@@ -2370,10 +2374,11 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-      });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in saveMasterJadwalBulanan:', error);
     next(error);
@@ -2394,17 +2399,19 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid year and month are required',
-      });
+      const err = new Error('Valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await ensureMonthlyScheduleInternalSchema();
@@ -2429,10 +2436,11 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
     rowsForSnapshot = rowsForSnapshot.map((row, index) => ({ ...row, no: index + 1 }));
 
     if (!rowsForSnapshot.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'No monthly schedule data is available to request approval.',
-      });
+      const err = new Error('No monthly schedule data is available to request approval.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const snapshotPayload = await sequelizeMSQL.transaction(async (transaction) => {
@@ -2683,10 +2691,11 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-      });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in requestMasterJadwalBulananApproval:', error);
     next(error);
@@ -2704,17 +2713,19 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
     const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Schedule header ID or valid year and month are required',
-      });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!canApproveOrRejectMonthlySchedule(req.user)) {
@@ -2824,10 +2835,11 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-      });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in approveMasterJadwalBulanan:', error);
     next(error);
@@ -2844,17 +2856,19 @@ const rejectMasterJadwalBulanan = async (req, res, next) => {
     const { user_id } = req.user || {};
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Schedule header ID or valid year and month are required',
-      });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!canApproveOrRejectMonthlySchedule(req.user)) {
@@ -2958,10 +2972,11 @@ const rejectMasterJadwalBulanan = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({
-        success: false,
-        message: error.message,
-      });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in rejectMasterJadwalBulanan:', error);
     next(error);
@@ -3816,22 +3831,25 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Schedule header ID or valid year and month are required',
-      });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!incomingRows.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'No external schedule rows were provided.',
-      });
+      const err = new Error('No external schedule rows were provided.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await ensureMonthlyScheduleExternalSchema();
@@ -3980,7 +3998,11 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in saveMasterJadwalBulananExternal:', error);
     next(error);
@@ -3998,16 +4020,18 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid year and month are required',
-      });
+      const err = new Error('Valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!user_id) {
-      return res.status(401).json({
-        success: false,
-        message: 'User is not authenticated',
-      });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await ensureMonthlyScheduleExternalSchema();
@@ -4293,7 +4317,11 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in requestMasterJadwalBulananExternalApproval:', error);
     next(error);
@@ -4312,10 +4340,18 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
     const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({ success: false, message: 'Schedule header ID or valid year and month are required' });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!user_id) {
-      return res.status(401).json({ success: false, message: 'User is not authenticated' });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!canApproveOrRejectMonthlySchedule(req.user)) {
       return res.status(403).json({
@@ -4419,7 +4455,11 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in approveMasterJadwalBulananExternal:', error);
     next(error);
@@ -4436,10 +4476,18 @@ const rejectMasterJadwalBulananExternal = async (req, res, next) => {
     const { user_id } = req.user || {};
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
-      return res.status(400).json({ success: false, message: 'Schedule header ID or valid year and month are required' });
+      const err = new Error('Schedule header ID or valid year and month are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!user_id) {
-      return res.status(401).json({ success: false, message: 'User is not authenticated' });
+      const err = new Error('User is not authenticated');
+      err.statusCode = 401;
+      res.status(401).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!canApproveOrRejectMonthlySchedule(req.user)) {
       return res.status(403).json({
@@ -4523,7 +4571,11 @@ const rejectMasterJadwalBulananExternal = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
-      return res.status(error.status).json({ success: false, message: error.message });
+      const err = new Error(error.message);
+      err.statusCode = error.status;
+      res.status(error.status).json({ success: false, message: error.message });
+      next(err);
+      return;
     }
     console.error('Error in rejectMasterJadwalBulananExternal:', error);
     next(error);

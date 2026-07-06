@@ -217,10 +217,11 @@ const getSertifikatBagianDetail = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -258,10 +259,11 @@ const getSertifikatBagianDetail = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Data not found',
-      });
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({
@@ -289,10 +291,11 @@ const getHasilKalData = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -509,10 +512,11 @@ const checkIsApproved = async (req, res, next) => {
     const { qa_id, id_no_sertifikat, approver_no } = req.query;
 
     if (!qa_id || !id_no_sertifikat || approver_no === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id, id_no_sertifikat, and approver_no are required',
-      });
+      const err = new Error('qa_id, id_no_sertifikat, and approver_no are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -552,10 +556,11 @@ const checkApproveButton = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // 1# Check if user is an approver for KAL_Sert_Bagian level 1
@@ -617,10 +622,11 @@ const checkTglKalibrasi = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -696,10 +702,11 @@ const getApproverIdentityBagian = async (req, res, next) => {
     const { approver_id, approver_no } = req.query;
 
     if (!approver_id || approver_no === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'approver_id and approver_no are required',
-      });
+      const err = new Error('approver_id and approver_no are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -741,10 +748,11 @@ const getLabelData = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -776,10 +784,11 @@ const getLabelData = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Data not found',
-      });
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const labelData = results[0];
@@ -825,10 +834,11 @@ const getPrintData = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.query;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // 1# Header data (Section A, B, C bookmarks in VBA template)
@@ -901,10 +911,11 @@ const getPrintData = async (req, res, next) => {
     ]);
 
     if (headerResults.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sertifikat data not found',
-      });
+      const err = new Error('Sertifikat data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({
@@ -955,12 +966,20 @@ const saveSertifikatBagianHeader = async (req, res, next) => {
     } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // VBA parity: save is blocked if calibration date or interval is empty.
     if (isEmptyValue(tgl_kalibrasi) || isEmptyValue(interval)) {
-      return res.status(400).json({ success: false, message: 'Tanggal Kalibrasi dan interval harus di isi' });
+      const err = new Error('Tanggal Kalibrasi dan interval harus di isi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1 (fn_IS_approve(1) = true)
@@ -977,7 +996,11 @@ const saveSertifikatBagianHeader = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1059,7 +1082,11 @@ const saveHasilKalData = async (req, res, next) => {
     } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (
@@ -1068,7 +1095,11 @@ const saveHasilKalData = async (req, res, next) => {
       || isEmptyValue(error)
       || isEmptyValue(ketidakpastian)
     ) {
-      return res.status(400).json({ success: false, message: 'Data harap di isi semua' });
+      const err = new Error('Data harap di isi semua');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1085,7 +1116,11 @@ const saveHasilKalData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!seq_id) {
@@ -1141,7 +1176,11 @@ const deleteHasilKalData = async (req, res, next) => {
     const { qa_id, id_no_sertifikat, seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1158,7 +1197,11 @@ const deleteHasilKalData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1193,7 +1236,11 @@ const deleteKelembabanData = async (req, res, next) => {
     const { qa_id, id_no_sertifikat, seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1210,7 +1257,11 @@ const deleteKelembabanData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1245,7 +1296,11 @@ const approveSertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: fnIsInputTglKalibrasi — tgl_kalibrasi and interval must be filled
@@ -1261,11 +1316,19 @@ const approveSertifikatBagian = async (req, res, next) => {
     });
 
     if (tglResults.length === 0 || !tglResults[0].Tgl_kalibrasi) {
-      return res.status(400).json({ success: false, message: 'Belum simpan tanggal kalibrasi, save tanggal' });
+      const err = new Error('Belum simpan tanggal kalibrasi, save tanggal');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!tglResults[0].Interval) {
-      return res.status(400).json({ success: false, message: 'Harap isi interval' });
+      const err = new Error('Harap isi interval');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must NOT already be approved at level 1
@@ -1282,7 +1345,11 @@ const approveSertifikatBagian = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Get approver identity (fnApprIdentity — KAL_Sert_Bagian, level 1)
@@ -1328,7 +1395,11 @@ const rejectSertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must already be approved at level 1 to allow reject
@@ -1345,7 +1416,11 @@ const rejectSertifikatBagian = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa reject, data belum approve' });
+      const err = new Error('Tidak bisa reject, data belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Delete ALL status records for this QA_ID + ID_No_Sertifikat
@@ -1380,7 +1455,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must be approved at level 1
@@ -1397,7 +1476,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if ((approve1Results[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa generate DA karena belum approve' });
+      const err = new Error('Tidak bisa generate DA karena belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must NOT already have generated DA (level 2)
@@ -1414,7 +1497,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if ((approve2Results[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Sudah generate DA!' });
+      const err = new Error('Sudah generate DA!');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: interval must not be zero
@@ -1429,7 +1516,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if (!intervalResults[0]?.Interval || intervalResults[0].Interval == 0) {
-      return res.status(400).json({ success: false, message: 'Interval tidak boleh nol' });
+      const err = new Error('Interval tidak boleh nol');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Check if DA record already exists for this QA_ID
@@ -1554,7 +1645,11 @@ const createNewSertifikatBagian = async (req, res, next) => {
     const { qa_id, parameter_sertifikasi } = req.body;
 
     if (!qa_id || !parameter_sertifikasi) {
-      return res.status(400).json({ success: false, message: 'QA_ID dan parameter_sertifikasi wajib diisi' });
+      const err = new Error('QA_ID dan parameter_sertifikasi wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Get new certificate number based on parameter_sertifikasi
@@ -1566,14 +1661,22 @@ const createNewSertifikatBagian = async (req, res, next) => {
     } else if (parameter_sertifikasi === 'Temperatur') {
       fnQuery = `SELECT dbo.fnGetKal_Ser_T_No_ID() AS noSertifikat`;
     } else {
-      return res.status(400).json({ success: false, message: 'Tidak ada kategori Re-Sertifikasi untuk parameter ini' });
+      const err = new Error('Tidak ada kategori Re-Sertifikasi untuk parameter ini');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const noResults = await sequelizeMSQL.query(fnQuery, { type: Sequelize.QueryTypes.SELECT });
     const sNoSertifikat = noResults[0]?.noSertifikat;
 
     if (!sNoSertifikat) {
-      return res.status(500).json({ success: false, message: 'Gagal generate nomor sertifikat baru' });
+      const err = new Error('Gagal generate nomor sertifikat baru');
+      err.statusCode = 500;
+      res.status(500).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Insert new sertifikat from DA Bagian
@@ -1618,7 +1721,11 @@ const resertifikasiBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'QA_ID dan ID_No_Sertifikat wajib diisi' });
+      const err = new Error('QA_ID dan ID_No_Sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must be approved at level 1
@@ -1634,7 +1741,11 @@ const resertifikasiBagian = async (req, res, next) => {
     });
 
     if ((checkApproveResults[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa Re-Sertifikat karena belum approve' });
+      const err = new Error('Tidak bisa Re-Sertifikat karena belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Determine auto-number function from first char of id_no_sertifikat (P/R/T)
@@ -1647,14 +1758,22 @@ const resertifikasiBagian = async (req, res, next) => {
     } else if (sType === 'T') {
       fnQuery = `SELECT dbo.fnGetKal_Ser_T_No_ID() AS AutoNum`;
     } else {
-      return res.status(400).json({ success: false, message: 'Tidak ada kategori Re-Sertifikasi' });
+      const err = new Error('Tidak ada kategori Re-Sertifikasi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const noResults = await sequelizeMSQL.query(fnQuery, { type: Sequelize.QueryTypes.SELECT });
     const autoIDNoSertifikat = noResults[0]?.AutoNum;
 
     if (!autoIDNoSertifikat) {
-      return res.status(500).json({ success: false, message: 'Gagal generate nomor sertifikat baru' });
+      const err = new Error('Gagal generate nomor sertifikat baru');
+      err.statusCode = 500;
+      res.status(500).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const replacements = { auto_id: autoIDNoSertifikat, qa_id, id_no_sertifikat, user_id, delegated_to };
@@ -1724,7 +1843,11 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Read current label state
@@ -1747,7 +1870,11 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     });
 
     if (dataResults.length === 0) {
-      return res.status(404).json({ success: false, message: 'Label Terkalibrasi tidak dapat di cetak! Data Sertifikat Kalibrasi belum tersedia' });
+      const err = new Error('Label Terkalibrasi tidak dapat di cetak! Data Sertifikat Kalibrasi belum tersedia');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const row = dataResults[0];
