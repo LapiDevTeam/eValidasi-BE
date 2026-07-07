@@ -3,21 +3,23 @@
 /**
  * timbanganCalculation.service.js — Timbangan Calibration orchestration
  *
- * Ties the pure math engine (timbanganFormula.service) to the repository and
- * the existing Sertifikat-Bagian publish flow. Controllers call only this.
+ * Ties the pure math engine (timbanganFormula.service) to the repository.
+ * Controllers call only this.
  *
  * Workflow (reproduced from TIMBANGAN.xls):
  *   1. Save session identity + sub-tests (pre-adjust, repeatability, points,
  *      eccentricity, hysteresis) in one transactional replace.
  *   2. Calculate per-point error + uncertainty, repeatability, LOP, hysteresis,
  *      and the overall conclusion; auto-derive II. IDENTITAS STANDAR.
- *   3. Publish per-point results into T_Kalibrasi_Sertifikat_Bagian.
+ *   3. Publish into T_Kalibrasi_Sertifikat_Timbangan + 4 detail tables
+ *      (Pre_Adj, Daya_Ulang, Massa_Std, Pusat_Pan) — the legacy table read by
+ *      PrintMassa.jsx, which has dedicated columns for every section.
  */
 
 const sql = require('mssql');
 const repo = require('../../repositories/timbangan-calibration.repository');
 const formula = require('./timbanganFormula.service');
-const { getCertificateTypeCode } = require('../constants/certificateTypeCodes');
+const { hasCertificateGenerator } = require('../constants/certificateTypeCodes');
 
 function httpError(message, statusCode = 400, validation) {
   const err = new Error(message);
@@ -596,7 +598,7 @@ async function listDaCandidates(filters) {
 async function resolveQaCandidate(session, explicitQaId, transaction) {
   if (explicitQaId) {
     const matches = await repo.listTimbanganDaCandidates({ qa_id: explicitQaId }, transaction);
-    if (!matches.length) throw httpError(`QA_ID ${explicitQaId} not found in DA Bagian.`, 404);
+    if (!matches.length) throw httpError(`QA_ID ${explicitQaId} not found in DA Timbangan.`, 404);
     return matches[0];
   }
   const sessionQaId = String(session?.qa_id || session?.instrument_id || '').trim();
@@ -615,8 +617,27 @@ async function resolveQaCandidate(session, explicitQaId, transaction) {
     }
   }
   throw httpError('Cannot resolve QA_ID. Provide qa_id explicitly in publish request.', 422, [
-    { field: 'qa_id', message: 'No single DA Bagian match for this session.' },
+    { field: 'qa_id', message: 'No single DA Timbangan match for this session.' },
   ]);
+}
+
+// Format angka jadi label bertitel satuan, meniru konvensi input manual VBA
+// (mis. "99.99994 g") — konfirmasi lewat data produksi asli, bukan tebakan.
+// Dibulatkan ke 10 digit signifikan (toPrecision) untuk membuang noise floating
+// point (mis. 25.000010000000003 -> "25.00001") tanpa memotong presisi asli
+// input kalibrasi. String(n) berubah ke notasi eksponen untuk angka sangat
+// kecil (mis. ketidakpastian ~1e-7) — dihindari dengan toFixed manual supaya
+// tidak menghasilkan label seperti "1e-7 g" di sertifikat.
+function numberToLabel(value, unit) {
+  if (value === null || value === undefined || value === '') return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  if (n === 0) return unit ? `0 ${unit}` : '0';
+  const rounded = Number(n.toPrecision(10));
+  const text = Math.abs(rounded) < 1e-6
+    ? rounded.toFixed(18).replace(/0+$/, '').replace(/\.$/, '')
+    : String(rounded);
+  return unit ? `${text} ${unit}` : text;
 }
 
 function buildSuhuKelembabanText(session, explicit) {
@@ -680,6 +701,8 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
 
     const qaCandidate = await resolveQaCandidate(session, options.qa_id || options.qaId, transaction);
     const qaId = String(qaCandidate.QA_ID);
+    const certCode = 'M'; // T_Kalibrasi_DA_Timbangan is Timbangan-only; no Parameter_Sertifikasi check needed.
+
     const actor = changedBy || 'SYSTEM';
     const delegatedActor = delegatedTo || actor;
 
@@ -687,23 +710,30 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     // (Timbangan = M -> dbo.fnGetKal_Ser_M_No_ID). Lihat src/constants/certificateTypeCodes.js
     let idNoSertifikat = String(options.id_no_sertifikat || options.idNoSertifikat || session.id_no_sertifikat || '').trim();
     if (!idNoSertifikat) {
-      const certCode = getCertificateTypeCode(qaCandidate.Parameter_Sertifikasi) || 'M';
+      if (!hasCertificateGenerator(certCode)) {
+        throw httpError(
+          `Generator nomor sertifikat untuk kode "${certCode}" belum tersedia di database. ` +
+            `Hubungi admin untuk menambahkan dbo.fnGetKal_Ser_${certCode}_No_ID().`,
+          422,
+          [{ field: 'qa_id', message: `Kode sertifikat ${certCode} tanpa generator nomor sertifikat.` }]
+        );
+      }
       const nextNo = await repo.getNextCertificateNumberByCode(certCode, transaction);
       if (!nextNo) throw httpError('Failed to generate certificate number.', 500);
       idNoSertifikat = String(nextNo);
     }
 
-    let header = await repo.getSertifikatBagianHeader(qaId, idNoSertifikat, transaction);
+    let header = await repo.getTimbanganCertHeader(qaId, idNoSertifikat, transaction);
     let createdDraft = false;
     if (!header) {
-      const inserted = await repo.createSertifikatBagianDraftFromTimbanganDa(qaId, idNoSertifikat, actor, delegatedActor, transaction);
+      const inserted = await repo.createTimbanganCertDraftFromDa(qaId, idNoSertifikat, actor, delegatedActor, transaction);
       if (!inserted) {
-        throw httpError(`Failed to create sertifikat draft from DA for QA_ID ${qaId}.`, 422, [
-          { field: 'qa_id', message: `DA Bagian record not found for QA_ID ${qaId}.` },
+        throw httpError(`Failed to create sertifikat draft from DA Timbangan for QA_ID ${qaId}.`, 422, [
+          { field: 'qa_id', message: `DA Timbangan record not found for QA_ID ${qaId}.` },
         ]);
       }
       createdDraft = true;
-      header = await repo.getSertifikatBagianHeader(qaId, idNoSertifikat, transaction);
+      header = await repo.getTimbanganCertHeader(qaId, idNoSertifikat, transaction);
     }
     if (!header) throw httpError(`Sertifikat header not found for QA_ID ${qaId} / ${idNoSertifikat}.`, 404);
 
@@ -716,12 +746,17 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       || toPositiveIntegerOrNull(header.Interval)
       || 12;
     const finalTglKalibrasi = toDateOrNull(options.tgl_kalibrasi) || toDateOrNull(session.calibration_date) || new Date();
+    const unit = String(session.unit || 'kg');
+
+    const summary = await repo.getSummary(sessionId, transaction);
 
     const headerPayload = {
       qa_id: qaId,
       id_no_sertifikat: idNoSertifikat,
       assm_nama_instrumen: options.assm_nama_instrumen ?? session.instrument_name ?? header.Assm_nama_instrumen ?? '',
       assm_no_identitas_kalibrasi: options.assm_no_identitas_kalibrasi ?? session.instrument_code ?? header.Assm_No_identitas_kalibrasi ?? '',
+      assm_merk: options.assm_merk ?? session.merk_tipe ?? header.Assm_Merk ?? '',
+      serial_number: options.serial_number ?? session.no_seri ?? header.SERIAL_NUMBER ?? '',
       assm_kapasitas: options.assm_kapasitas ?? session.kapasitas_resolusi ?? header.Assm_Kapasitas ?? '',
       assm_lokasi: options.assm_lokasi ?? session.lokasi ?? header.Assm_Lokasi ?? '',
       nama: options.nama ?? session.std_nama ?? header.Nama ?? '',
@@ -734,22 +769,89 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       metode_kalibrasi: metode,
       suhu_kelembaban: buildSuhuKelembabanText(session, options.suhu_kelembaban),
       catatan: options.catatan ?? session.keterangan ?? header.Catatan ?? '',
+      batas_unjuk_kerja: summary && summary.lop !== null && summary.lop !== undefined
+        ? `±${numberToLabel(summary.lop, unit)}`
+        : (header.BATAS_UNJUK_KERJA ?? ''),
       user_id: actor,
       delegated_to: delegatedActor,
     };
-    const updatedHeader = await repo.updateSertifikatBagianHeader(headerPayload, transaction);
+    const updatedHeader = await repo.updateTimbanganCertHeader(headerPayload, transaction);
     if (!updatedHeader) throw httpError('Failed to update sertifikat header.', 500);
 
-    const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));
-    const publishRows = sorted.map((row, index) => ({
-      seq_id: index + 1,
-      pembacaan_alat: toNumberOrNull(row.reading) ?? 0,
-      pembacaan_standar: toNumberOrNull(row.konv_mass) ?? 0,
-      error: toNumberOrNull(row.error) ?? 0,
-      ketidakpastian: toNumberOrNull(row.u_expanded) ?? 0,
-    }));
+    // I. Pre-Adjustment — satu baris ringkasan (mass total vs hasil pembacaan), seperti VBA.
+    const preadjustRows = await repo.listPreadjust(sessionId, transaction);
+    const preadjust = formula.computePreadjust(preadjustRows, unit);
+    const preAdjPublishRows = preadjustRows.length
+      ? [{
+          seq_id: 1,
+          pembacaan_standar: numberToLabel(preadjust.mass, unit),
+          pembacaan_alat: numberToLabel(preadjust.result, unit),
+          error: numberToLabel(preadjust.error, unit),
+        }]
+      : [];
+    await repo.replaceTimbanganPreAdjRows(qaId, idNoSertifikat, preAdjPublishRows, actor, delegatedActor, transaction);
 
-    await repo.replaceSertifikatBagianHasilKalRows(qaId, idNoSertifikat, publishRows, actor, delegatedActor, transaction);
+    // II. Daya Ulang — satu baris per kapasitas (half/max), skip yang tidak ada datanya.
+    const repeatabilityRows = await repo.listRepeatability(sessionId, transaction);
+    const resolusi = toNumberOrNull(session.resolusi) ?? 0;
+    const rep = formula.computeRepeatability(repeatabilityRows, resolusi);
+    const dayaUlangPublishRows = [];
+    if (repeatabilityRows.some((r) => r.half_reading !== null && r.half_reading !== undefined)) {
+      dayaUlangPublishRows.push({
+        seq_id: dayaUlangPublishRows.length + 1,
+        massa_standar: numberToLabel(rep.avgHalfReading, unit),
+        standar_deviasi: numberToLabel(rep.srHalf, unit),
+      });
+    }
+    if (repeatabilityRows.some((r) => r.max_reading !== null && r.max_reading !== undefined)) {
+      dayaUlangPublishRows.push({
+        seq_id: dayaUlangPublishRows.length + 1,
+        massa_standar: numberToLabel(rep.avgMaxReading, unit),
+        standar_deviasi: numberToLabel(rep.srMax, unit),
+      });
+    }
+    await repo.replaceTimbanganDayaUlangRows(qaId, idNoSertifikat, dayaUlangPublishRows, actor, delegatedActor, transaction);
+
+    // III. Penyimpangan dari Konvensional Massa Standar — satu baris per titik ukur.
+    const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));
+    const massaStdPublishRows = sorted.map((row, index) => ({
+      seq_id: index + 1,
+      konvensional_standar: numberToLabel(row.konv_mass, unit),
+      pembacaan_alat: numberToLabel(row.reading, unit),
+      error: numberToLabel(row.error, unit),
+      ketidakpastian: numberToLabel(row.u_expanded, unit),
+    }));
+    await repo.replaceTimbanganMassaStdRows(qaId, idNoSertifikat, massaStdPublishRows, actor, delegatedActor, transaction);
+
+    // IV. Beban Tidak Di Pusat Pan — satu baris ringkasan dari 5 posisi eksentrisitas.
+    // Kolom "0-0".."0-4" di sertifikat referensi berisi nilai KECIL dekat nol
+    // (mis. "0.0000 g", "-0.0007 g"), bukan rata-rata pembacaan penuh (~100 g)
+    // — dikonfirmasi dari TIMBANGAN (gr).xls (kolom "PERBEDAAN" = center - avg[i],
+    // bukan kolom "RATA-RATA"). Jadi dipetakan dari `diffs`, bukan `averages`.
+    // "Massa" (beban nominal) tidak dihitung dari data eksentrisitas manapun (workbook
+    // referensi TIMBANGAN.xls juga tidak punya kolom itu) — diisi manual oleh teknisi
+    // di form (session.eccentricity_nominal_mass), sama seperti alur VBA (txt4_Massa).
+    const eccentricityRows = await repo.listEccentricity(sessionId, transaction);
+    const eccentricity = formula.computeEccentricity(eccentricityRows);
+    const pusatPanPublishRows = eccentricityRows.length
+      ? [{
+          seq_id: 1,
+          massa: numberToLabel(session.eccentricity_nominal_mass, unit),
+          massa_0: numberToLabel(eccentricity.diffs?.[0], unit),
+          massa_1: numberToLabel(eccentricity.diffs?.[1], unit),
+          massa_2: numberToLabel(eccentricity.diffs?.[2], unit),
+          massa_3: numberToLabel(eccentricity.diffs?.[3], unit),
+          massa_4: numberToLabel(eccentricity.diffs?.[4], unit),
+          perbedaan_max: numberToLabel(eccentricity.maxDiff, unit),
+        }]
+      : [];
+    await repo.replaceTimbanganPusatPanRows(qaId, idNoSertifikat, pusatPanPublishRows, actor, delegatedActor, transaction);
+
+    // Endpoint print-data lama (getPrintDataTimbangan) menolak print tanpa baris approval
+    // di T_Kalibrasi_Sertifikat_Timbangan_Status — mekanisme itu mendahului approval
+    // role-based (admin/officer/manager) yang sudah dicek di atas, jadi begitu lolos
+    // pengecekan itu di sini, otomatis tandai disetujui juga di tabel lama.
+    await repo.ensureTimbanganCertApproved(qaId, idNoSertifikat, actor, delegatedActor, transaction);
 
     await repo.updateSessionCertificate(sessionId, idNoSertifikat, qaId, transaction);
     await repo.updateSessionStatus(sessionId, 'PUBLISHED', actor, transaction);
@@ -760,7 +862,7 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       entity_id: null,
       action_type: 'UPDATE',
       old_value: null,
-      new_value: JSON.stringify({ qa_id: qaId, id_no_sertifikat: idNoSertifikat, rows: publishRows.length }),
+      new_value: JSON.stringify({ qa_id: qaId, id_no_sertifikat: idNoSertifikat, rows: massaStdPublishRows.length }),
       changed_by: actor,
     }, transaction).catch(() => { /* audit optional */ });
 
@@ -772,9 +874,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       qa_id: qaId,
       id_no_sertifikat: idNoSertifikat,
       created_new_sertifikat: createdDraft,
-      published_rows: publishRows.length,
-      certificate_source: 'T_Kalibrasi_Sertifikat_Bagian',
-      print_data_endpoint: `/transactions/kalibrasi/sertifikat-bagian/print-data?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
+      published_rows: massaStdPublishRows.length,
+      certificate_source: 'T_Kalibrasi_Sertifikat_Timbangan',
+      print_data_endpoint: `/transactions/kalibrasi/sertifikat-timbangan/print-data?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
     };
   } catch (error) {
     try { await transaction.rollback(); } catch (_) { /* keep original error */ }

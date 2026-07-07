@@ -1796,10 +1796,25 @@ async function getNextCertificateNumberByCode(code, transaction) {
   }
   // `normalized` sudah ter-whitelist (hanya A-Z dari daftar kode), aman diinterpolasi.
   const request = await createRequest(transaction);
-  const result = await request.query(`
-    SELECT dbo.fnGetKal_Ser_${normalized}_No_ID() AS id_no_sertifikat
-  `);
-  return result.recordset[0]?.id_no_sertifikat || null;
+  try {
+    const result = await request.query(`
+      SELECT dbo.fnGetKal_Ser_${normalized}_No_ID() AS id_no_sertifikat
+    `);
+    return result.recordset[0]?.id_no_sertifikat || null;
+  } catch (err) {
+    const message = err?.message || String(err);
+    if (/conversion failed.*nvarchar.*int/i.test(message)) {
+      const wrapped = new Error(
+        `Generator nomor sertifikat dbo.fnGetKal_Ser_${normalized}_No_ID() gagal karena konversi data di SQL Server. ` +
+          `Kemungkinan: kolom Group_Da_Dept / kode departemen pada T_Kalibrasi_DA_Bagian mengandung nilai non-numerik (mis. 'Q00') ` +
+          `sedang fungsi SQL mencoba mengubahnya ke INT. Periksa dan perbaiki definisi fungsi SQL, atau isi id_no_sertifikat manual lewat request.`
+      );
+      wrapped.statusCode = 500;
+      wrapped.originalError = err;
+      throw wrapped;
+    }
+    throw err;
+  }
 }
 
 async function createSertifikatBagianDraftFromDa(
