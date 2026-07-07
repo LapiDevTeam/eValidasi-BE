@@ -2210,7 +2210,18 @@ function sanitizeCssColor(value, fallback = '#000000') {
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);

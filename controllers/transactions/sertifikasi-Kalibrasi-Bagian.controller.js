@@ -918,12 +918,15 @@ const getPrintData = async (req, res, next) => {
       return;
     }
 
+    const disintegration = await getDisintegrationPrintBundle(qa_id, id_no_sertifikat);
+
     return res.status(200).json({
       success: true,
       data: {
         header: headerResults[0],
         hasil_kal: hasilKalResults,
         approver: approverResults[0] || null,
+        disintegration,
       },
     });
   } catch (error) {
@@ -931,6 +934,86 @@ const getPrintData = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Disintegration Tester certificates need 4 separate result sections
+ * (Temperature / Kayuhan per menit / Jarak naik-turun paddle / Setting Timer)
+ * instead of the generic single Hasil_Kal table every other Bagian module uses.
+ * The data is already computed and sitting in disintegration_results /
+ * disintegration_timer_readings (same MSSQL DB) — no schema changes needed,
+ * this just joins it back by qa_id/id_no_sertifikat for the print page.
+ * Returns null when the certificate isn't a Disintegration one.
+ */
+async function getDisintegrationPrintBundle(qa_id, id_no_sertifikat) {
+  const sessionRows = await sequelizeMSQL.query(
+    `
+      SELECT session_id, paddle_count, keterangan
+      FROM disintegration_sessions
+      WHERE qa_id = :qa_id
+        AND id_no_sertifikat = :id_no_sertifikat
+    `,
+    { replacements: { qa_id, id_no_sertifikat }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  const session = sessionRows[0];
+  if (!session) return null;
+
+  const [resultRows, timerNominalRows] = await Promise.all([
+    sequelizeMSQL.query(
+      `
+        SELECT result_type, point_no, paddle_no, mean_standard, mean_uut, mean_error,
+               sd_value, u_combined, u_expanded, u_expanded_min, u_expanded_hour, tolerance, pass_flag
+        FROM disintegration_results
+        WHERE session_id = :session_id
+        ORDER BY result_type, point_no, paddle_no
+      `,
+      { replacements: { session_id: session.session_id }, type: Sequelize.QueryTypes.SELECT }
+    ),
+    sequelizeMSQL.query(
+      `
+        SELECT paddle_no, MIN(nominal_value) AS nominal_value, MIN(unit) AS unit
+        FROM disintegration_timer_readings
+        WHERE session_id = :session_id
+        GROUP BY paddle_no
+      `,
+      { replacements: { session_id: session.session_id }, type: Sequelize.QueryTypes.SELECT }
+    ),
+  ]);
+
+  const nominalByPaddle = new Map(timerNominalRows.map((row) => [Number(row.paddle_no), row]));
+  const byType = (type) => resultRows.filter((row) => row.result_type === type);
+
+  return {
+    paddle_count: Number(session.paddle_count) || 1,
+    keterangan: session.keterangan || '',
+    temperature: byType('TEMPERATURE').map((row) => ({
+      titik_ukur: row.point_no,
+      pembacaan_alat: row.mean_uut,
+      pembacaan_standar: row.mean_standard,
+      error: row.mean_error,
+      ketidakpastian: row.u_expanded,
+    })),
+    strokeRate: byType('STROKE_RATE').map((row) => ({
+      paddle_no: row.paddle_no,
+      t_1_kayuhan_detik: row.mean_standard,
+      kayuhan_per_menit: row.mean_uut,
+    })),
+    distance: byType('DISTANCE').map((row) => ({
+      paddle_no: row.paddle_no,
+      distance_mm: row.mean_standard,
+    })),
+    timer: byType('TIMER').map((row) => ({
+      paddle_no: row.paddle_no,
+      setting_alat: nominalByPaddle.get(Number(row.paddle_no))?.nominal_value ?? null,
+      setting_unit: nominalByPaddle.get(Number(row.paddle_no))?.unit ?? 'Menit',
+      pembacaan_alat_sec: row.mean_uut,
+      pembacaan_standar_sec: row.mean_standard,
+      error_sec: row.mean_error,
+      ketidakpastian_menit: row.u_expanded_min,
+      ketidakpastian_detik: row.u_expanded,
+    })),
+  };
+}
 
 // ============================================================
 // SAVE HEADER
