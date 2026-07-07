@@ -2362,8 +2362,24 @@ border-left: 0; border-right:0;
 
  const  printTerkalibrasi = async (req, res, next) => {
   const { link, noDoc, tanggal, revisi, judul } = req.query;
+  const linkedParams = new URLSearchParams();
+  if (link) {
+    try {
+      const parsedLink = new URL(link);
+      parsedLink.searchParams.forEach((value, key) => linkedParams.set(key, value));
+    } catch (error) {
+      console.warn('Unable to parse print label link query:', error.message);
+    }
+  }
+
+  const requestedTitle = String(judul || linkedParams.get('judul') || '').trim();
+  const labelType = String(req.query.labelType || linkedParams.get('labelType') || '').trim().toLowerCase();
+  const isOutOfCalibration =
+    labelType === 'ooc' ||
+    ['OUT OF CALIBRATION', 'TIDAK DAPAT DIGUNAKAN'].includes(requestedTitle.toUpperCase());
+  const resolvedJudul = isOutOfCalibration ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI");
   const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
-  const labelTitle = escapeHtml(judul || "TERKALIBRASI");
+  const labelTitle = escapeHtml(resolvedJudul);
   const escapedNoDoc = escapeHtml(noDoc || '');
   const escapedTanggal = escapeHtml(tanggal || '');
   const escapedRevisi = escapeHtml(revisi || '');
@@ -2374,6 +2390,208 @@ border-left: 0; border-right:0;
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
+
+    if (isOutOfCalibration) {
+      const noIdentitas = escapeHtml(req.query.sertif || linkedParams.get('sertif') || '');
+      const approvedBy = escapeHtml(req.query.apv || linkedParams.get('apv') || '');
+      const printDate = escapeHtml(req.query.pdt || linkedParams.get('pdt') || '');
+      const parafTanggal = [approvedBy, printDate].filter(Boolean).join(' / ');
+      const oocNoDoc = escapeHtml(noDoc || 'FO.VN.000002');
+      const oocTanggal = escapeHtml(tanggal || '30/10/2025');
+      const oocRevisi = escapeHtml(revisi || '00');
+
+      await page.setContent(`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              @page {
+                size: 47mm 36mm;
+                margin: 0;
+              }
+
+              * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+
+              html,
+              body {
+                width: 47mm;
+                height: 36mm;
+                margin: 0;
+                padding: 0;
+                font-family: Verdana, sans-serif;
+                color: #000;
+                background: transparent;
+              }
+
+              .label-page {
+                width: 47mm;
+                height: 36mm;
+                padding: 2.5mm 3mm 2.5mm 2mm;
+              }
+
+              .label {
+                width: 42mm;
+                height: 31mm;
+                border: 0.25mm solid #000;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+              }
+
+              .header {
+                flex: 0 0 15mm;
+                display: flex;
+                border-bottom: 0.25mm solid #000;
+              }
+
+              .logo-cell {
+                width: 11mm;
+                height: 15mm;
+                border-right: 0.25mm solid #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1mm;
+              }
+
+              .logo-cell img {
+                width: 8.8mm;
+                max-height: 8mm;
+                object-fit: contain;
+                filter: grayscale(100%) contrast(140%);
+              }
+
+              .title-cell {
+                width: 30.5mm;
+                height: 15mm;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: 11pt;
+                font-weight: 700;
+                line-height: 1.08;
+              }
+
+              .body {
+                flex: 1;
+                min-height: 0;
+                font-size: 7pt;
+                line-height: 1.2;
+              }
+
+              .body-row {
+                display: grid;
+                grid-template-columns: 13mm 2mm 1fr;
+                align-items: start;
+                min-height: 4.8mm;
+              }
+
+              .body-label,
+              .body-colon,
+              .body-value {
+                font-weight: 400;
+                overflow-wrap: anywhere;
+              }
+
+              .footer {
+                flex: 0 0 3mm;
+                border-top: 0.25mm solid #000;
+              }
+
+              .footer table {
+                width: 100%;
+                height: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                text-align: center;
+                font-size: 3pt;
+                line-height: 1;
+              }
+
+              .footer td {
+                border-right: 0.25mm solid #000;
+                padding: 0;
+                vertical-align: middle;
+                white-space: nowrap;
+                overflow: hidden;
+              }
+
+              .footer td:last-child {
+                border-right: 0;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="label-page">
+              <div class="label">
+                <div class="header">
+                  <div class="logo-cell">
+                    <img src="${logoBase64}" alt="Lapi" />
+                  </div>
+                  <div class="title-cell">
+                    TIDAK DAPAT<br />DIGUNAKAN
+                  </div>
+                </div>
+
+                <div class="body">
+                  <div class="body-row">
+                    <div class="body-label">No ID</div>
+                    <div class="body-colon">:</div>
+                    <div class="body-value">${noIdentitas}</div>
+                  </div>
+                  <div class="body-row">
+                    <div class="body-label">Paraf/Tgl</div>
+                    <div class="body-colon">:</div>
+                    <div class="body-value">${parafTanggal}</div>
+                  </div>
+                </div>
+
+                <div class="footer">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td style="width:10%;">Nomor</td>
+                        <td style="width:20%;">${oocNoDoc}</td>
+                        <td style="width:12%;">Tanggal</td>
+                        <td style="width:18%;">${oocTanggal}</td>
+                        <td style="width:9%;">Revisi</td>
+                        <td style="width:7%;">${oocRevisi}</td>
+                        <td style="width:12%;">Halaman</td>
+                        <td style="width:11%;">1 dari 1</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf({
+        width: '47mm',
+        height: '36mm',
+        displayHeaderFooter: false,
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: {
+          top: '0px',
+          bottom: '0px',
+          left: '0px',
+          right: '0px',
+        },
+      });
+
+      await browser.close();
+      res.setHeader('Content-Type', 'application/pdf');
+      return res.end(pdfBuffer);
+    }
 
     // Navigate to the page and wait for it to load
     await page.goto(link, {
@@ -2392,7 +2610,7 @@ border-left: 0; border-right:0;
         titleElement.style.color = labelTitleColor;
       }
     }, {
-      labelTitleText: judul || "TERKALIBRASI",
+      labelTitleText: resolvedJudul,
       labelTitleColor: judulColor,
     });
 
