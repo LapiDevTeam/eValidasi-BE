@@ -72,6 +72,34 @@ async function getSessionById(sessionId, transaction) {
   return result.recordset[0] || null;
 }
 
+async function getPublishedHysteresisByCertificate({ qa_id: qaId, id_no_sertifikat: idNoSertifikat }, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT TOP 1
+        s.session_id,
+        s.qa_id,
+        s.id_no_sertifikat,
+        s.instrument_id,
+        s.instrument_code,
+        s.instrument_name,
+        s.calibration_date,
+        s.status,
+        summary.summary_id,
+        summary.hysteresis
+      FROM [dbo].[timbangan_sessions] s
+      INNER JOIN [dbo].[timbangan_result_summary] summary
+        ON summary.session_id = s.session_id
+      WHERE LTRIM(RTRIM(s.qa_id)) = @QaId
+        AND LTRIM(RTRIM(s.id_no_sertifikat)) = @IdNoSertifikat
+        AND s.status = 'PUBLISHED'
+      ORDER BY s.session_id DESC, summary.summary_id DESC
+    `);
+  return result.recordset[0] || null;
+}
+
 function bindSessionInputs(request, payload) {
   return request
     .input('SessionCode', sql.VarChar(50), toDbNull(payload.session_code))
@@ -1008,6 +1036,7 @@ module.exports = {
   // sessions
   listSessions,
   getSessionById,
+  getPublishedHysteresisByCertificate,
   createSession,
   updateSession,
   updateSessionStatus,
