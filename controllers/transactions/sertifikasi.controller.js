@@ -2343,7 +2343,7 @@ border-left: 0; border-right:0;
       printBackground: true,
       footerTemplate: footerLandscape,
       headerTemplate:headerLandscape,
-      margin: { bottom: '60px', top: '0px', left: '18px', right: '17px' },
+      margin: { bottom: '60px', top: '95px', left: '18px', right: '17px' },
       landscape: !landscape ? false : true,
     });
 
