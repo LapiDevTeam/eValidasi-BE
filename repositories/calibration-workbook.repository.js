@@ -20,7 +20,8 @@ async function createRequest(transaction) {
 }
 
 function toDbNull(value) {
-  return value === undefined ? null : value;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
 }
 
 async function listSessions(filters = {}) {

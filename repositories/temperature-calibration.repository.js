@@ -6,7 +6,8 @@ const workbookRepo = require('./calibration-workbook.repository');
 const { getPool, createRequest } = workbookRepo;
 
 function toDbNull(value) {
-  return value === undefined ? null : value;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
 }
 
 const SESSION_COLUMNS = `
