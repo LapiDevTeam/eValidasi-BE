@@ -514,7 +514,8 @@ const saveAssesmentKalibrasi = async (req, res, next) => {
       parameter_kalibrasi,
       parameter_no_id_anak_timbang,
       parameter_interval,
-      parameter_kriteria
+      parameter_kriteria,
+      Interval_Bulan
     } = req.body;
 
     // Validation 1: Check group_da
@@ -695,6 +696,7 @@ const saveAssesmentKalibrasi = async (req, res, next) => {
         Parameter_No_id_anak_timbang = :parameter_no_id_anak_timbang,
         Parameter_Interval = :parameter_interval,
         Parameter_kriteria = :parameter_kriteria,
+        Interval_Bulan = :Interval_Bulan,
         Process_Date = GETDATE(),
         UserID = :user_id,
         Delegated_To = :delegated_to
@@ -724,6 +726,7 @@ const saveAssesmentKalibrasi = async (req, res, next) => {
         parameter_no_id_anak_timbang: parameter_no_id_anak_timbang || '',
         parameter_interval: parameter_interval || '',
         parameter_kriteria: parameter_kriteria || '',
+        Interval_Bulan: Interval_Bulan || null,
         user_id: user_id,
         delegated_to: delegated_to,
         no_permohonan: no_permohonan

@@ -69,6 +69,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_timbangan_sessions_sta
     CREATE INDEX [IX_timbangan_sessions_status] ON [dbo].[timbangan_sessions] ([status], [created_at]);
 GO
 
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_timbangan_sessions_certificate_lookup' AND object_id = OBJECT_ID(N'[dbo].[timbangan_sessions]'))
+    CREATE INDEX [IX_timbangan_sessions_certificate_lookup] ON [dbo].[timbangan_sessions] ([qa_id], [id_no_sertifikat], [status]);
+GO
+
 -- -----------------------------------------------------------------------------
 -- 2) timbangan_preadjust_rows  (I. PRE ADJUSTMENT)
 -- -----------------------------------------------------------------------------
