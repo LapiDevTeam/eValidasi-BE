@@ -660,6 +660,7 @@ const searchDAThermo = async (req, res, next) => {
         A.QA_ID LIKE :search
         OR Assm_nama_instrumen LIKE :search
         OR Assm_No_identitas_Istrumen LIKE :search
+        OR Assm_No_identitas_kalibrasi LIKE :search
       )
       ORDER BY Assm_nama_instrumen
     `;

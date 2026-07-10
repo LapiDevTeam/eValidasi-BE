@@ -366,11 +366,32 @@ const searchDABagian = async (req, res, next) => {
       LEFT JOIN (
         SELECT QA_ID FROM T_Kalibrasi_Permohonan WHERE QA_ID IS NOT NULL
       ) AS D ON D.QA_ID = A.QA_ID
-      WHERE A.Parameter_Sertifikasi IN ('Timer', 'Tekanan', 'Temperatur')
+      WHERE A.Parameter_Sertifikasi IN (
+        'Tekanan',
+        'Volume',
+        'Dimensi',
+        'Timer',
+        'Temperatur',
+        'Enclosures',
+        'Dissolution Tester',
+        'Disintegration Tester',
+        'Friability Tester',
+        'Moisture Analyzer',
+        'RPM',
+        'pH, Redoks, dan Conductivity',
+        'Indikator Suhu dan Simulasi Kelistrikan',
+        'Torque',
+        'Hardness Tester',
+        'Melting Point',
+        'Leak Tester',
+        'Tapped Volumeter',
+        'Lain-Lain'
+      )
         AND (
           A.QA_ID LIKE :search
           OR Assm_nama_instrumen LIKE :search
           OR Assm_No_identitas_Istrumen LIKE :search
+          OR Assm_No_identitas_kalibrasi LIKE :search
         )
       ORDER BY A.QA_ID ASC
     `;
