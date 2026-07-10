@@ -56,6 +56,34 @@ async function listSessions(req, res, next) {
   }
 }
 
+async function getPublishedHysteresisByCertificate(req, res, next) {
+  try {
+    const qaId = String(req.query.qa_id || '').trim();
+    const idNoSertifikat = String(req.query.id_no_sertifikat || '').trim();
+
+    if (!qaId || !idNoSertifikat) {
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const data = await repo.getPublishedHysteresisByCertificate({
+      qa_id: qaId,
+      id_no_sertifikat: idNoSertifikat,
+    });
+
+    if (!data) {
+      const err = new Error('Published timbangan hysteresis summary not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return sendError(res, next, error);
+  }
+}
+
 async function getSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
@@ -217,6 +245,7 @@ async function publishSertifikat(req, res, next) {
 
 module.exports = {
   listSessions,
+  getPublishedHysteresisByCertificate,
   getSession,
   createSession,
   updateSession,

@@ -11,6 +11,7 @@ router.use(authentication);
 
 // Sessions
 router.get('/timbangan-sessions', controller.listSessions);
+router.get('/timbangan-sessions/hysteresis', controller.getPublishedHysteresisByCertificate);
 router.get('/timbangan-sessions/:sessionId', controller.getSession);
 router.post('/timbangan-sessions', controller.createSession);
 router.put('/timbangan-sessions/:sessionId', controller.updateSession);
