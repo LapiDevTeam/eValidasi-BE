@@ -41,7 +41,13 @@ const ROLES = {
 
 const ROLE_ORDER = ['admin', 'officer', 'manager'];
 
-const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian', 'kalibrasi-eksternal']);
+const BAGIAN_MODULES = new Set([
+  'da-bagian',
+  'sertifikat-bagian',
+  'da-thermo',
+  'sertifikat-thermo',
+  'kalibrasi-eksternal',
+]);
 
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
@@ -60,11 +66,11 @@ function canApproveRole(userRole, pendingRole) {
  */
 const MODULE_REGISTRY = {
   thermohygrometer: {
-    displayName: 'Thermohygrometer',
+    displayName: 'Thermo Workbook',
     table: 'dbo.T_Kalibrasi_Thermohygro_Workbook_Session',
     idColumn: 'Session_ID',
-    instrumentNameColumn: null,
-    calibrationDateColumn: null,
+    instrumentNameColumn: 'ThermoDa.Assm_nama_instrumen',
+    calibrationDateColumn: 'ThermoDa.Tgl_kalibrasi',
     qaIdColumn: 'QA_ID',
     idNoSertifikatColumn: 'ID_No_Sertifikat',
     userIdColumn: 'UserID',
@@ -73,6 +79,24 @@ const MODULE_REGISTRY = {
     statusColumn: 'Status',
     conforming: true,
     routePrefix: '/thermohygrometer-calibration',
+    detailApply: `
+      OUTER APPLY (
+        SELECT TOP 1
+          D.Assm_nama_instrumen,
+          D.Tgl_kalibrasi
+        FROM dbo.T_Kalibrasi_DA_Thermohygro AS D
+        WHERE D.QA_ID = S.QA_ID
+        ORDER BY D.Process_date DESC
+      ) AS ThermoDa
+    `,
+    buildDeepLink: ({ raw, qaId, idNoSertifikat }) => {
+      const params = [`sessionId=${encodeURIComponent(raw.id)}`];
+      if (qaId) params.push(`qa_id=${encodeURIComponent(qaId)}`);
+      if (idNoSertifikat) {
+        params.push(`id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`);
+      }
+      return `/thermohygrometer-calibration?${params.join('&')}`;
+    },
     approvalColumns: {
       admin: 'ApprovedByAdmin',
       adminDate: 'ApprovedByAdminDate',
@@ -361,6 +385,15 @@ function normalizeDate(value) {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
+function buildConformingDeepLink(routePrefix, qaId, idNoSertifikat) {
+  const params = [];
+  if (qaId) params.push(`qa_id=${encodeURIComponent(qaId)}`);
+  if (idNoSertifikat) {
+    params.push(`id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`);
+  }
+  return params.length ? `${routePrefix}?${params.join('&')}` : routePrefix;
+}
+
 function moduleKeys() {
   return Object.keys(MODULE_REGISTRY);
 }
@@ -412,18 +445,25 @@ async function assertTableAndColumns(config) {
   return existing;
 }
 
+function columnExpression(columnName, tableAlias = 'S') {
+  if (!columnName) return '';
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(columnName)
+    ? `${tableAlias}.${columnName}`
+    : columnName;
+}
+
 function columnOrNull(columnName, alias) {
   if (!columnName) {
     return `NULL AS ${alias}`;
   }
-  return `${columnName} AS ${alias}`;
+  return `${columnExpression(columnName)} AS ${alias}`;
 }
 
 function coalesceLike(columnName, searchParam) {
   if (!columnName) {
     return `'' LIKE ${searchParam}`;
   }
-  return `COALESCE(${columnName}, '') LIKE ${searchParam}`;
+  return `COALESCE(${columnExpression(columnName)}, '') LIKE ${searchParam}`;
 }
 
 function parseModule(module) {
@@ -448,7 +488,7 @@ async function scanModule(config, filters = {}) {
   const request = await createRequest();
 
   const selectCols = [
-    `${config.idColumn} AS id`,
+    `${columnExpression(config.idColumn)} AS id`,
     columnOrNull(config.qaIdColumn, 'qaId'),
     columnOrNull(config.idNoSertifikatColumn, 'idNoSertifikat'),
     columnOrNull(config.instrumentNameColumn, 'instrumentName'),
@@ -459,31 +499,32 @@ async function scanModule(config, filters = {}) {
   ];
 
   // Approval columns selected with camelCase aliases for normalization.
-  selectCols.push(`ISNULL(${ac.admin}, '') AS approvedByAdmin`);
-  selectCols.push(`${ac.adminDate} AS approvedByAdminDate`);
-  selectCols.push(`ISNULL(${ac.officer}, '') AS approvedByOfficer`);
-  selectCols.push(`${ac.officerDate} AS approvedByOfficerDate`);
-  selectCols.push(`ISNULL(${ac.manager}, '') AS approvedByManager`);
-  selectCols.push(`${ac.managerDate} AS approvedByManagerDate`);
+  selectCols.push(`ISNULL(${columnExpression(ac.admin)}, '') AS approvedByAdmin`);
+  selectCols.push(`${columnExpression(ac.adminDate)} AS approvedByAdminDate`);
+  selectCols.push(`ISNULL(${columnExpression(ac.officer)}, '') AS approvedByOfficer`);
+  selectCols.push(`${columnExpression(ac.officerDate)} AS approvedByOfficerDate`);
+  selectCols.push(`ISNULL(${columnExpression(ac.manager)}, '') AS approvedByManager`);
+  selectCols.push(`${columnExpression(ac.managerDate)} AS approvedByManagerDate`);
 
   let query = `
     SELECT TOP 200
       ${selectCols.join(', ')}
-    FROM ${config.table}
+    FROM ${config.table} AS S
+    ${config.detailApply || ''}
     WHERE (
-      ${ac.admin} IS NULL
-      OR ${ac.officer} IS NULL
-      OR ${ac.manager} IS NULL
+      ${columnExpression(ac.admin)} IS NULL
+      OR ${columnExpression(ac.officer)} IS NULL
+      OR ${columnExpression(ac.manager)} IS NULL
     )
   `;
 
   if (config.conforming && existing.has(config.statusColumn)) {
     query += `
-      AND ${config.statusColumn} IN ('CALCULATED', 'APPROVED_ADMIN', 'APPROVED_OFFICER')
+      AND ${columnExpression(config.statusColumn)} IN ('CALCULATED', 'APPROVED_ADMIN', 'APPROVED_OFFICER')
     `;
   } else if (existing.has(config.statusColumn)) {
     query += `
-      AND ${config.statusColumn} IN ('CALCULATED', 'FINALIZED', 'PUBLISHED')
+      AND ${columnExpression(config.statusColumn)} IN ('CALCULATED', 'FINALIZED', 'PUBLISHED')
     `;
   }
 
@@ -492,7 +533,7 @@ async function scanModule(config, filters = {}) {
     request.input('Search', search);
     query += `
       AND (
-        CAST(${config.idColumn} AS NVARCHAR(50)) LIKE @Search
+        CAST(${columnExpression(config.idColumn)} AS NVARCHAR(50)) LIKE @Search
         OR ${coalesceLike(config.qaIdColumn, '@Search')}
         OR ${coalesceLike(config.idNoSertifikatColumn, '@Search')}
         OR ${coalesceLike(config.instrumentNameColumn, '@Search')}
@@ -502,9 +543,9 @@ async function scanModule(config, filters = {}) {
 
   const sortColumn = config.updateDateColumn || config.processDateColumn;
   if (existing.has(sortColumn)) {
-    query += ` ORDER BY ${sortColumn} DESC`;
+    query += ` ORDER BY ${columnExpression(sortColumn)} DESC`;
   } else {
-    query += ` ORDER BY ${config.idColumn} DESC`;
+    query += ` ORDER BY ${columnExpression(config.idColumn)} DESC`;
   }
 
   const result = await request.query(query);
@@ -520,6 +561,11 @@ function normalizeRow(config, moduleKey, raw) {
 
   const qaId = normalizeValue(raw.qaId);
   const idNoSertifikat = normalizeValue(raw.idNoSertifikat);
+  const deepLink = typeof config.buildDeepLink === 'function'
+    ? config.buildDeepLink({ raw, qaId, idNoSertifikat })
+    : config.conforming
+      ? buildConformingDeepLink(config.routePrefix, qaId, idNoSertifikat)
+      : `${config.routePrefix}?sessionId=${encodeURIComponent(raw.id)}`;
 
   return {
     module: moduleKey,
@@ -539,9 +585,7 @@ function normalizeRow(config, moduleKey, raw) {
     approvedByManagerDate: normalizeDate(raw.approvedByManagerDate),
     pendingLevel: pendingRole ? pendingRole.key : null,
     pendingRole: pendingRole ? pendingRole.label : null,
-    deepLink: config.conforming
-      ? `${config.routePrefix}?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`
-      : `${config.routePrefix}?sessionId=${encodeURIComponent(raw.id)}`,
+    deepLink,
   };
 }
 
@@ -689,6 +733,150 @@ async function scanSertifikatBagianPending(rawSearch) {
   return rows.map((raw) => normalizeSertifikatBagianRow(raw));
 }
 
+// =============================================================================
+// DA THERMO & SERTIFIKAT THERMO
+// =============================================================================
+
+function normalizeDaThermoRow(raw) {
+  const qaId = normalizeValue(raw.QA_ID);
+  return {
+    module: 'da-thermo',
+    moduleDisplayName: 'DA Thermo',
+    sessionId: qaId,
+    qaId,
+    idNoSertifikat: '',
+    instrumentName: normalizeValue(raw.Assm_nama_instrumen),
+    calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
+    requester: normalizeValue(raw.UserID),
+    updatedAt: normalizeDate(raw.Process_date),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: '',
+    approvedByOfficerDate: '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel: 'approver',
+    pendingRole: 'Approver',
+    deepLink: `/da-thermo?qa_id=${encodeURIComponent(qaId)}`,
+  };
+}
+
+async function scanDaThermoPending(rawSearch) {
+  const search = buildLikeSearch(rawSearch);
+  const replacements = {};
+  let where = `
+    WHERE NOT EXISTS (
+      SELECT 1 FROM T_Kalibrasi_DA_Thermohygro_status AS S
+      WHERE S.QA_ID = A.QA_ID AND S.Approver_No = 1
+    )
+  `;
+
+  if (search) {
+    where += `
+      AND (
+        A.QA_ID LIKE :search
+        OR A.Assm_nama_instrumen LIKE :search
+        OR A.Assm_No_identitas_kalibrasi LIKE :search
+      )
+    `;
+    replacements.search = search;
+  }
+
+  const query = `
+    SELECT TOP 200
+      A.QA_ID,
+      A.Assm_nama_instrumen,
+      A.Assm_No_identitas_kalibrasi,
+      A.Tgl_kalibrasi,
+      A.UserID,
+      A.Process_date
+    FROM T_Kalibrasi_DA_Thermohygro AS A
+    ${where}
+    ORDER BY A.Process_date DESC
+  `;
+
+  const rows = await sequelizeMSQL.query(query, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map((raw) => normalizeDaThermoRow(raw));
+}
+
+function normalizeSertifikatThermoRow(raw) {
+  const qaId = normalizeValue(raw.QA_ID);
+  const idNoSertifikat = normalizeValue(raw.ID_No_Sertifikat);
+  return {
+    module: 'sertifikat-thermo',
+    moduleDisplayName: 'Sertifikat Thermo',
+    sessionId: `${qaId}~${idNoSertifikat}`,
+    qaId,
+    idNoSertifikat,
+    instrumentName: normalizeValue(raw.Assm_nama_instrumen),
+    calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
+    requester: normalizeValue(raw.UserID),
+    updatedAt: normalizeDate(raw.tgl || raw.Process_date),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: '',
+    approvedByOfficerDate: '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel: 'approver',
+    pendingRole: 'Approver',
+    deepLink: `/sertifikat-thermo?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
+  };
+}
+
+async function scanSertifikatThermoPending(rawSearch) {
+  const search = buildLikeSearch(rawSearch);
+  const replacements = {};
+  let where = `
+    WHERE NULLIF(LTRIM(RTRIM(A.QA_ID)), '') IS NOT NULL
+      AND NULLIF(LTRIM(RTRIM(A.ID_No_Sertifikat)), '') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM T_Kalibrasi_Sertifikat_Thermohygro_Status AS S
+        WHERE S.QA_ID = A.QA_ID
+          AND S.ID_No_Sertifikat = A.ID_No_Sertifikat
+          AND S.Approver_No = 1
+      )
+  `;
+
+  if (search) {
+    where += `
+      AND (
+        A.QA_ID LIKE :search
+        OR A.ID_No_Sertifikat LIKE :search
+        OR A.Assm_nama_instrumen LIKE :search
+        OR A.Assm_No_identitas_kalibrasi LIKE :search
+      )
+    `;
+    replacements.search = search;
+  }
+
+  const query = `
+    SELECT TOP 200
+      A.QA_ID,
+      A.ID_No_Sertifikat,
+      A.Assm_nama_instrumen,
+      A.Assm_No_identitas_kalibrasi,
+      A.Tgl_kalibrasi,
+      A.UserID,
+      A.tgl,
+      A.Process_date
+    FROM T_Kalibrasi_Sertifikat_Thermohygro AS A
+    ${where}
+    ORDER BY A.tgl DESC
+  `;
+
+  const rows = await sequelizeMSQL.query(query, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map((raw) => normalizeSertifikatThermoRow(raw));
+}
+
 async function hasAllowInputPermission(userId) {
   const query = `
     SELECT COUNT(*) AS jumRow
@@ -734,6 +922,322 @@ async function isSertifikatBagianApproverLevel1(userId) {
     type: Sequelize.QueryTypes.SELECT,
   });
   return Number(results[0].jumRow) > 0;
+}
+
+async function isDaThermoApproverLevel1(userId) {
+  const query = `
+    SELECT COUNT(*) AS jumRow
+    FROM m_approver_lines
+    WHERE isactive = 1
+      AND Appr_ApplicationCode = 'KAL_DA_Thermo'
+      AND Appr_No = 1
+      AND Appr_ID = :userId
+  `;
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { userId },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  return Number(results[0].jumRow) > 0;
+}
+
+async function isSertifikatThermoApproverLevel1(userId) {
+  const query = `
+    SELECT COUNT(*) AS jumRow
+    FROM m_approver_lines
+    WHERE isactive = 1
+      AND Appr_ApplicationCode LIKE 'KAL_Sert_Thermo'
+      AND Appr_No = 1
+      AND Appr_ID = :userId
+  `;
+  const results = await sequelizeMSQL.query(query, {
+    replacements: { userId },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  return Number(results[0].jumRow) > 0;
+}
+
+async function getApproverIdentity(userId, applicationCode) {
+  const results = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1 Appr_Identity
+      FROM m_approver_lines
+      WHERE isactive = 1
+        AND Appr_ApplicationCode LIKE :applicationCode
+        AND Appr_ID = :userId
+        AND Appr_No = 1
+    `,
+    {
+      replacements: { userId, applicationCode },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+  return results.length > 0 ? results[0].Appr_Identity : 0;
+}
+
+async function approveDaThermoFromPending(qaId, user) {
+  const userId = user?.user_id || user?.log_NIK || '';
+  const delegatedTo = user?.delegated_to || userId;
+
+  if (!qaId) {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isDaThermoApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_DA_Thermo level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const approvalResult = await sequelizeMSQL.query(
+    `
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_DA_Thermohygro_status
+      WHERE QA_ID = :qaId
+        AND Approver_No = 1
+    `,
+    {
+      replacements: { qaId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if ((approvalResult[0]?.jumRow || 0) > 0) {
+    const err = new Error('Tidak bisa simpan, karena data sudah approve!');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const approverIdentity = await getApproverIdentity(userId, 'KAL_DA_Thermo');
+
+  await sequelizeMSQL.query(
+    `
+      INSERT INTO T_Kalibrasi_DA_Thermohygro_status
+        (QA_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+      VALUES
+        (:qaId, 1, 0, :approverIdentity, GETDATE(), :userId, :delegatedTo, NULL)
+    `,
+    {
+      replacements: { qaId, approverIdentity, userId, delegatedTo },
+      type: Sequelize.QueryTypes.INSERT,
+    }
+  );
+
+  return {
+    module: 'da-thermo',
+    sessionId: qaId,
+    qaId,
+    approvedBy: 'approver',
+    approvedByLabel: 'Approver',
+  };
+}
+
+async function rejectDaThermoFromPending(qaId, user) {
+  const userId = user?.user_id || user?.log_NIK || '';
+
+  if (!qaId) {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isDaThermoApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_DA_Thermo level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const approvalResult = await sequelizeMSQL.query(
+    `
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_DA_Thermohygro_status
+      WHERE QA_ID = :qaId
+        AND Approver_No = 1
+    `,
+    {
+      replacements: { qaId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if ((approvalResult[0]?.jumRow || 0) === 0) {
+    const err = new Error('Tidak bisa reject karena belum approve!');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await sequelizeMSQL.query(
+    `
+      DELETE FROM T_Kalibrasi_DA_Thermohygro_status
+      WHERE QA_ID = :qaId
+    `,
+    {
+      replacements: { qaId },
+      type: Sequelize.QueryTypes.DELETE,
+    }
+  );
+
+  return {
+    module: 'da-thermo',
+    sessionId: qaId,
+    qaId,
+    rejectedBy: userId,
+    rejectedReason: '',
+  };
+}
+
+async function approveSertifikatThermoFromPending(qaId, idNoSertifikat, user) {
+  const userId = user?.user_id || user?.log_NIK || '';
+  const delegatedTo = user?.delegated_to || userId;
+
+  if (!qaId || !idNoSertifikat) {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isSertifikatThermoApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_Sert_Thermo level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const tglResults = await sequelizeMSQL.query(
+    `
+      SELECT Tgl_kalibrasi, Interval
+      FROM T_Kalibrasi_Sertifikat_Thermohygro
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if (tglResults.length === 0 || !tglResults[0].Tgl_kalibrasi) {
+    const err = new Error('Belum simpan tanggal kalibrasi, save tanggal');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!tglResults[0].Interval) {
+    const err = new Error('Harap isi interval');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const approvalResult = await sequelizeMSQL.query(
+    `
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Status
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+        AND Approver_No = 1
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if ((approvalResult[0]?.jumRow || 0) > 0) {
+    const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const approverIdentity = await getApproverIdentity(userId, 'KAL_Sert_Thermo');
+
+  await sequelizeMSQL.query(
+    `
+      INSERT INTO T_Kalibrasi_Sertifikat_Thermohygro_Status
+        (QA_ID, ID_No_Sertifikat, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+      VALUES
+        (:qaId, :idNoSertifikat, 1, 0, :approverIdentity, GETDATE(), :userId, :delegatedTo, NULL)
+    `,
+    {
+      replacements: {
+        qaId,
+        idNoSertifikat,
+        approverIdentity,
+        userId,
+        delegatedTo,
+      },
+      type: Sequelize.QueryTypes.INSERT,
+    }
+  );
+
+  return {
+    module: 'sertifikat-thermo',
+    sessionId: `${qaId}~${idNoSertifikat}`,
+    qaId,
+    idNoSertifikat,
+    approvedBy: 'approver',
+    approvedByLabel: 'Approver',
+  };
+}
+
+async function rejectSertifikatThermoFromPending(qaId, idNoSertifikat, user) {
+  const userId = user?.user_id || user?.log_NIK || '';
+
+  if (!qaId || !idNoSertifikat) {
+    const err = new Error('Data belum di pilih');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const isApprover = await isSertifikatThermoApproverLevel1(userId);
+  if (!isApprover) {
+    const err = new Error('User bukan approver KAL_Sert_Thermo level 1');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const approvalResult = await sequelizeMSQL.query(
+    `
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_Sertifikat_Thermohygro_Status
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+        AND Approver_No = 1
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  if ((approvalResult[0]?.jumRow || 0) === 0) {
+    const err = new Error('Tidak bisa reject, data belum approve');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await sequelizeMSQL.query(
+    `
+      DELETE FROM T_Kalibrasi_Sertifikat_Thermohygro_Status
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `,
+    {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.DELETE,
+    }
+  );
+
+  return {
+    module: 'sertifikat-thermo',
+    sessionId: `${qaId}~${idNoSertifikat}`,
+    qaId,
+    idNoSertifikat,
+    rejectedBy: userId,
+    rejectedReason: '',
+  };
 }
 
 async function approveDaBagianFromPending(qaId, user) {
@@ -1369,9 +1873,19 @@ async function listPendingApprovals(options = {}) {
   const includeWorkbook = !moduleFilter || MODULE_REGISTRY[moduleKey];
   const includeDaBagian = !moduleFilter || moduleKey === 'da-bagian';
   const includeSertifikatBagian = !moduleFilter || moduleKey === 'sertifikat-bagian';
+  const includeDaThermo = !moduleFilter || moduleKey === 'da-thermo';
+  const includeSertifikatThermo = !moduleFilter || moduleKey === 'sertifikat-thermo';
   const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
 
-  if (moduleFilter && !includeWorkbook && !includeDaBagian && !includeSertifikatBagian && !includeKalibrasiEksternal) {
+  if (
+    moduleFilter
+    && !includeWorkbook
+    && !includeDaBagian
+    && !includeSertifikatBagian
+    && !includeDaThermo
+    && !includeSertifikatThermo
+    && !includeKalibrasiEksternal
+  ) {
     const error = new Error(`Unknown calibration module: ${moduleFilter}`);
     error.statusCode = 400;
     throw error;
@@ -1421,6 +1935,26 @@ async function listPendingApprovals(options = {}) {
     }
   }
 
+  if (includeDaThermo) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const rows = await scanDaThermoPending(search);
+      results.push(...rows);
+    } catch (err) {
+      console.error('[pendingCalibrationApprovals] scan failed for da-thermo:', err.message);
+    }
+  }
+
+  if (includeSertifikatThermo) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const rows = await scanSertifikatThermoPending(search);
+      results.push(...rows);
+    } catch (err) {
+      console.error('[pendingCalibrationApprovals] scan failed for sertifikat-thermo:', err.message);
+    }
+  }
+
   if (includeKalibrasiEksternal) {
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -1443,18 +1977,19 @@ async function getSessionById(config, sessionId) {
     .input('SessionId', sessionId)
     .query(`
       SELECT TOP 1
-        ${config.idColumn} AS id,
+        ${columnExpression(config.idColumn)} AS id,
         ${columnOrNull(config.qaIdColumn, 'qaId')},
         ${columnOrNull(config.idNoSertifikatColumn, 'idNoSertifikat')},
         ${columnOrNull(config.instrumentNameColumn, 'instrumentName')},
-        ${ac.admin} AS approved_by_admin,
-        ${ac.adminDate} AS approved_by_admin_date,
-        ${ac.officer} AS approved_by_officer,
-        ${ac.officerDate} AS approved_by_officer_date,
-        ${ac.manager} AS approved_by_manager,
-        ${ac.managerDate} AS approved_by_manager_date
-      FROM ${config.table}
-      WHERE ${config.idColumn} = @SessionId
+        ${columnExpression(ac.admin)} AS approved_by_admin,
+        ${columnExpression(ac.adminDate)} AS approved_by_admin_date,
+        ${columnExpression(ac.officer)} AS approved_by_officer,
+        ${columnExpression(ac.officerDate)} AS approved_by_officer_date,
+        ${columnExpression(ac.manager)} AS approved_by_manager,
+        ${columnExpression(ac.managerDate)} AS approved_by_manager_date
+      FROM ${config.table} AS S
+      ${config.detailApply || ''}
+      WHERE ${columnExpression(config.idColumn)} = @SessionId
     `);
   return result.recordset[0] || null;
 }
@@ -1465,10 +2000,16 @@ async function approveSession(module, sessionId, user) {
     if (moduleKey === 'da-bagian') {
       return approveDaBagianFromPending(sessionId, user);
     }
+    if (moduleKey === 'da-thermo') {
+      return approveDaThermoFromPending(sessionId, user);
+    }
     if (moduleKey === 'kalibrasi-eksternal') {
       return approveKalibrasiEksternalFromPending(sessionId, user);
     }
     const [qaId, idNoSertifikat] = String(sessionId).split('~');
+    if (moduleKey === 'sertifikat-thermo') {
+      return approveSertifikatThermoFromPending(qaId, idNoSertifikat, user);
+    }
     return approveSertifikatBagianFromPending(qaId, idNoSertifikat, user);
   }
 
@@ -1534,10 +2075,16 @@ async function rejectSession(module, sessionId, user, reason) {
     if (moduleKey === 'da-bagian') {
       return rejectDaBagianFromPending(sessionId, user);
     }
+    if (moduleKey === 'da-thermo') {
+      return rejectDaThermoFromPending(sessionId, user);
+    }
     if (moduleKey === 'kalibrasi-eksternal') {
       return rejectKalibrasiEksternalFromPending(sessionId, user, reason);
     }
     const [qaId, idNoSertifikat] = String(sessionId).split('~');
+    if (moduleKey === 'sertifikat-thermo') {
+      return rejectSertifikatThermoFromPending(qaId, idNoSertifikat, user);
+    }
     return rejectSertifikatBagianFromPending(qaId, idNoSertifikat, user);
   }
 

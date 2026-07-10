@@ -18,7 +18,13 @@ function getUser(req) {
   return req?.user || {};
 }
 
-const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian', 'kalibrasi-eksternal']);
+const BAGIAN_MODULES = new Set([
+  'da-bagian',
+  'sertifikat-bagian',
+  'da-thermo',
+  'sertifikat-thermo',
+  'kalibrasi-eksternal',
+]);
 
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
