@@ -178,7 +178,10 @@ async function updateSession(sessionId, body, updatedBy) {
  * Replace all measurement points and their cycle readings for a session.
  * @param {number} sessionId
  * @param {Array}  points  [{ point_order, nominal_value, unit, correction_std, uc_std,
+ *                            digital_resolution, analog_resolution,
  *                            cycles: [{ cycle_no, std_jam, std_menit, ... }] }]
+ *                          digital_resolution/analog_resolution are optional per-point
+ *                          overrides; leave null/undefined to inherit the session default.
  */
 async function saveWorkbook(sessionId, points = []) {
   const pool = await repo.getPool();
@@ -205,6 +208,9 @@ async function saveWorkbook(sessionId, points = []) {
           unit: String(p.unit || session.unit_mode || 'DETIK').toUpperCase(),
           correction_std: toNumberOrNull(p.correction_std) ?? 0,
           uc_std: toNumberOrNull(p.uc_std) ?? 0,
+          // null = inherit session-level default resolution; non-null = per-point override
+          digital_resolution: toNumberOrNull(p.digital_resolution),
+          analog_resolution: toNumberOrNull(p.analog_resolution),
           is_active: true,
         },
         transaction
@@ -272,8 +278,11 @@ async function calculate(sessionId, changedBy = null) {
     const byPoint = groupReadingsByPoint(readings);
 
     const tolerance = toNumberOrNull(session.tolerance);
-    const digitalRes = toNumberOrNull(session.digital_resolution) ?? 0;
-    const analogRes = toNumberOrNull(session.analog_resolution) ?? 0;
+    // Session-level values are just the DEFAULT resolution; a point can override them
+    // (e.g. an analog UUT's dial resolution differs between the menit-range and
+    // jam-range measurement points on the same instrument — confirmed 2026-07-10).
+    const defaultDigitalRes = toNumberOrNull(session.digital_resolution) ?? 0;
+    const defaultAnalogRes = toNumberOrNull(session.analog_resolution) ?? 0;
 
     await repo.deleteResultsBySession(sessionId, transaction);
 
@@ -284,6 +293,8 @@ async function calculate(sessionId, changedBy = null) {
 
     for (const point of points) {
       const pointReadings = byPoint.get(point.point_id) || [];
+      const digitalRes = toNumberOrNull(point.digital_resolution) ?? defaultDigitalRes;
+      const analogRes = toNumberOrNull(point.analog_resolution) ?? defaultAnalogRes;
       const computed = formula.computePoint({
         correctionStd: toNumberOrNull(point.correction_std) ?? 0,
         ucStd: toNumberOrNull(point.uc_std) ?? 0,

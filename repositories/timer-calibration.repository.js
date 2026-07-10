@@ -316,7 +316,8 @@ async function listPoints(sessionId, transaction) {
     .input('SessionId', sql.Int, sessionId)
     .query(`
       SELECT point_id, session_id, point_order, nominal_value, unit,
-             correction_std, uc_std, is_active, created_at, updated_at
+             correction_std, uc_std, digital_resolution, analog_resolution,
+             is_active, created_at, updated_at
       FROM [dbo].[timer_points]
       WHERE session_id = @SessionId AND is_active = 1
       ORDER BY point_order ASC, point_id ASC
@@ -333,12 +334,16 @@ async function createPoint(sessionId, payload, transaction) {
     .input('Unit', sql.VarChar(20), payload.unit || 'DETIK')
     .input('CorrectionStd', sql.Decimal(18, 10), payload.correction_std ?? 0)
     .input('UcStd', sql.Decimal(18, 10), payload.uc_std ?? 0)
+    .input('DigitalResolution', sql.Decimal(18, 10), toDbNull(payload.digital_resolution))
+    .input('AnalogResolution', sql.Decimal(18, 10), toDbNull(payload.analog_resolution))
     .input('IsActive', sql.Bit, boolBit(payload.is_active))
     .query(`
       INSERT INTO [dbo].[timer_points]
-        (session_id, point_order, nominal_value, unit, correction_std, uc_std, is_active)
+        (session_id, point_order, nominal_value, unit, correction_std, uc_std,
+         digital_resolution, analog_resolution, is_active)
       OUTPUT INSERTED.point_id
-      VALUES (@SessionId, @PointOrder, @NominalValue, @Unit, @CorrectionStd, @UcStd, @IsActive)
+      VALUES (@SessionId, @PointOrder, @NominalValue, @Unit, @CorrectionStd, @UcStd,
+              @DigitalResolution, @AnalogResolution, @IsActive)
     `);
   return result.recordset[0].point_id;
 }
@@ -352,12 +357,15 @@ async function updatePoint(pointId, payload, transaction) {
     .input('Unit', sql.VarChar(20), payload.unit || 'DETIK')
     .input('CorrectionStd', sql.Decimal(18, 10), payload.correction_std ?? 0)
     .input('UcStd', sql.Decimal(18, 10), payload.uc_std ?? 0)
+    .input('DigitalResolution', sql.Decimal(18, 10), toDbNull(payload.digital_resolution))
+    .input('AnalogResolution', sql.Decimal(18, 10), toDbNull(payload.analog_resolution))
     .input('IsActive', sql.Bit, boolBit(payload.is_active))
     .query(`
       UPDATE [dbo].[timer_points] SET
         point_order = @PointOrder, nominal_value = @NominalValue, unit = @Unit,
-        correction_std = @CorrectionStd, uc_std = @UcStd, is_active = @IsActive,
-        updated_at = GETDATE()
+        correction_std = @CorrectionStd, uc_std = @UcStd,
+        digital_resolution = @DigitalResolution, analog_resolution = @AnalogResolution,
+        is_active = @IsActive, updated_at = GETDATE()
       WHERE point_id = @PointId
     `);
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
