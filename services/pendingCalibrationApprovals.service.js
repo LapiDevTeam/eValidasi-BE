@@ -589,6 +589,11 @@ function normalizeRow(config, moduleKey, raw) {
   };
 }
 
+function shouldSuppressPendingWorkbookRow(row) {
+  // Thermohygrometer manager approval is represented by Sertifikat Thermo.
+  return row?.module === 'thermohygrometer' && row?.pendingLevel === 'manager';
+}
+
 // =============================================================================
 // DA BAGIAN & SERTIFIKAT BAGIAN
 // =============================================================================
@@ -1904,6 +1909,9 @@ async function listPendingApprovals(options = {}) {
         const rows = await scanModule(config, { search });
         for (const raw of rows) {
           const normalized = normalizeRow(config, key, raw);
+          if (shouldSuppressPendingWorkbookRow(normalized)) {
+            continue;
+          }
           if (!targetLevel || normalized.pendingLevel === targetLevel) {
             results.push(normalized);
           }
