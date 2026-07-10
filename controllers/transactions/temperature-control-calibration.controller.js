@@ -3,6 +3,12 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
+const {
+  assertWorkbookApproval,
+  getActorApprovalRole,
+  hasCertificateManagerApproval,
+  resolveTargetApprovalRole,
+} = require('../../services/calibrationWorkbookApproval.service');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_TemperatureControl_Workbook_Session';
 
@@ -890,8 +896,21 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const role = getWorkbookApprovalRole(req);
-    const orderMessage = assertWorkbookApprovalOrder(session, role);
+    const actorRole = getActorApprovalRole(req);
+    const role = resolveTargetApprovalRole(req);
+    const certificateApprovedByManager =
+      role?.key === 'manager'
+        ? await hasCertificateManagerApproval({
+            qaId: session.QA_ID,
+            idNoSertifikat: session.ID_No_Sertifikat,
+          })
+        : true;
+    const orderMessage = assertWorkbookApproval({
+      session,
+      actorRole,
+      targetRole: role,
+      certificateApprovedByManager,
+    });
     if (orderMessage) {
       return res.status(403).json({
         success: false,

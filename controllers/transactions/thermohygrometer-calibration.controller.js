@@ -3,6 +3,12 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
+const {
+  assertWorkbookApproval,
+  getActorApprovalRole,
+  hasCertificateManagerApproval,
+  resolveTargetApprovalRole,
+} = require('../../services/calibrationWorkbookApproval.service');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_Thermohygro_Workbook_Session';
 
@@ -1216,14 +1222,22 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const jobLevel = Number(
-      req?.user?.joblevel_id_user ??
-        req?.body?.job_level_id ??
-        req?.body?.jobLevelId ??
-        req?.body?.Job_LevelID
-    );
-    const role = getWorkbookApprovalRole(req);
-    const orderMessage = assertWorkbookApprovalOrder(session, role, jobLevel);
+    const actorRole = getActorApprovalRole(req);
+    const role = resolveTargetApprovalRole(req);
+    const certificateApprovedByManager =
+      role?.key === 'manager'
+        ? await hasCertificateManagerApproval({
+            qaId: session.QA_ID,
+            idNoSertifikat: session.ID_No_Sertifikat,
+            statusTable: 'T_Kalibrasi_Sertifikat_Thermohygro_Status',
+          })
+        : true;
+    const orderMessage = assertWorkbookApproval({
+      session,
+      actorRole,
+      targetRole: role,
+      certificateApprovedByManager,
+    });
     if (orderMessage) {
       return res.status(403).json({
         success: false,
@@ -1231,13 +1245,12 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const pendingRole = getPendingRole(session);
     await sequelizeMSQL.query(
       `
         UPDATE ${SESSION_TABLE}
         SET
-          ${pendingRole.column} = :userId,
-          ${pendingRole.dateColumn} = GETDATE(),
+          ${role.column} = :userId,
+          ${role.dateColumn} = GETDATE(),
           Status = :status,
           Update_Date = GETDATE()
         WHERE Session_ID = :sessionId
@@ -1245,7 +1258,7 @@ const approveSession = async (req, res, next) => {
       {
         replacements: {
           userId: user_id,
-          status: pendingRole.status,
+          status: role.status,
           sessionId,
         },
         type: Sequelize.QueryTypes.UPDATE,
@@ -1255,7 +1268,7 @@ const approveSession = async (req, res, next) => {
     const data = await fetchSessionById(sessionId);
     return res.status(200).json({
       success: true,
-      message: `Workbook approved by ${pendingRole.label}`,
+      message: `Workbook approved by ${role.label}`,
       data,
     });
   } catch (error) {

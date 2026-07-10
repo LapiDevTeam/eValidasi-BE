@@ -33,6 +33,7 @@ const routerMasterVendor = require("../routers/transactions/master-vendor.router
 const routerKalibrasiEksternal = require("../routers/transactions/kalibrasi-eksternal.router");
 const routerCmsDashboard = require("../routers/cms/dashboard.router");
 const routerPendingCalibrationApprovals = require("../routers/reports/pending-calibration-approvals.router");
+const routerApproverProfile = require("../routers/transactions/approver-profile.router");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -83,6 +84,7 @@ router.use("/transactions/master-vendor", routerMasterVendor);
 router.use("/transactions/kalibrasi-eksternal", routerKalibrasiEksternal);
 router.use("/cms/dashboard", routerCmsDashboard);
 router.use("/reports/pending-calibration-approvals", routerPendingCalibrationApprovals);
+router.use("/transactions/approver-profiles", routerApproverProfile);
 
 module.exports = router;
 
