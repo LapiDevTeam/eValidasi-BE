@@ -9,6 +9,10 @@ const {
   hasCertificateManagerApproval,
   resolveTargetApprovalRole,
 } = require('../../services/calibrationWorkbookApproval.service');
+const {
+  normalizeCalculationNumbers,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_Thermohygro_Workbook_Session';
 
@@ -227,12 +231,7 @@ function textValue(value) {
 }
 
 function parseNumberValue(value) {
-  if (value === undefined || value === null || value === '') return null;
-  const normalized = typeof value === 'string'
-    ? value.replace(',', '.').trim()
-    : value;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
+  return parseDotDecimal(value);
 }
 
 function parseCalibrationDate(value) {
@@ -638,7 +637,7 @@ async function fetchSessionById(sessionId) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -899,7 +898,7 @@ const saveSession = async (req, res, next) => {
     const channels = workbookPayload.channels || body.channels || {};
     const suhuChannel = channels.suhu || {};
     const rhChannel = channels.rh || {};
-    const calculationResult = body.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(body.calculationResult || null);
     const includeRh = Boolean(workbookPayload.includeRh ?? body.includeRh);
 
     const replacements = {
@@ -1387,7 +1386,9 @@ const generateSertifikatFromSession = async (req, res, next) => {
       transaction,
     });
 
-    const calculationResult = body.calculationResult || session.calculationResult || {};
+    const calculationResult = normalizeCalculationNumbers(
+      body.calculationResult || session.calculationResult || {}
+    );
     const evaluationResult = normalizeEvaluationResult(
       pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
         session.Evaluation_Result

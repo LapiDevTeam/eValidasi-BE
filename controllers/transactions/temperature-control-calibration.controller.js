@@ -9,6 +9,12 @@ const {
   hasCertificateManagerApproval,
   resolveTargetApprovalRole,
 } = require('../../services/calibrationWorkbookApproval.service');
+const {
+  formatResultRows,
+  normalizeCalculationNumbers,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_TemperatureControl_Workbook_Session';
 
@@ -38,12 +44,7 @@ function parseJson(value, fallback) {
 }
 
 function parseNumberValue(value) {
-  if (value === undefined || value === null || value === '') return null;
-  const normalized = typeof value === 'string'
-    ? value.replace(',', '.').trim()
-    : value;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
+  return parseDotDecimal(value);
 }
 
 function parseCalibrationDate(value) {
@@ -224,7 +225,7 @@ async function fetchSessionById(sessionId) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -251,7 +252,7 @@ async function fetchLatestSessionByCertificate(qaId, idNoSertifikat) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -479,7 +480,7 @@ function normalizeSessionPayload(body) {
     header: body.header || null,
     workbook: body.workbook || null,
   };
-  const calculationResult = body.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(body.calculationResult || null);
 
   return {
     qaId: textValue(qaId),
@@ -634,7 +635,8 @@ const getSession = async (req, res, next) => {
 
 const getPrintData = async (req, res, next) => {
   try {
-    const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } = req.query;
+    const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } =
+      normalizeCertificateQuery(req.query);
 
     if (!qaId || !idNoSertifikat) {
       return res.status(400).json({
@@ -712,8 +714,8 @@ const getPrintData = async (req, res, next) => {
       data: {
         header: headerResults[0],
         workbook: workbookPayload.workbook || null,
-        calculation: latestSession?.calculationResult || null,
-        hasil_kal: rows,
+        calculation: normalizeCalculationNumbers(latestSession?.calculationResult || null),
+        hasil_kal: formatResultRows(rows),
         approvalSignature: approverResults[0] || null,
       },
     });
@@ -1052,7 +1054,9 @@ const generateTemperatureControlSertifikat = async (req, res, next) => {
       transaction,
     });
 
-    const calculationResult = body.calculationResult || session.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(
+      body.calculationResult || session.calculationResult || null
+    );
     const evaluationResult = normalizeEvaluationResult(
       pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
         session.Evaluation_Result

@@ -9,6 +9,11 @@ const {
   getAutoHasilKalBagianID,
   isInputTglKalibrasiBAGIAN,
 } = require('../../helpers/kalibrasi.helper');
+const {
+  formatResultRows,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const isEmptyValue = (value) => {
   if (value === null || value === undefined) return true;
@@ -214,7 +219,7 @@ const searchByQAID = async (req, res, next) => {
 const getSertifikatBagianDetail = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -288,7 +293,7 @@ const getSertifikatBagianDetail = async (req, res, next) => {
 const getHasilKalData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -318,7 +323,7 @@ const getHasilKalData = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      data: results,
+      data: formatResultRows(results),
     });
   } catch (error) {
     console.error('Error in getHasilKalData:', error);
@@ -530,7 +535,8 @@ const searchResertifikasiBagian = async (req, res, next) => {
 const checkIsApproved = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, approver_no } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { approver_no } = req.query;
 
     if (!qa_id || !id_no_sertifikat || approver_no === undefined) {
       const err = new Error('qa_id, id_no_sertifikat, and approver_no are required');
@@ -574,7 +580,7 @@ const checkIsApproved = async (req, res, next) => {
 const checkApproveButton = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -640,7 +646,7 @@ const checkApproveButton = async (req, res, next) => {
 const checkTglKalibrasi = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -766,7 +772,7 @@ const getApproverIdentityBagian = async (req, res, next) => {
  */
 const getLabelData = async (req, res, next) => {
   try {
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -852,7 +858,7 @@ const getLabelData = async (req, res, next) => {
  */
 const getPrintData = async (req, res, next) => {
   try {
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       const err = new Error('qa_id and id_no_sertifikat are required');
@@ -945,7 +951,7 @@ const getPrintData = async (req, res, next) => {
       success: true,
       data: {
         header: headerResults[0],
-        hasil_kal: hasilKalResults,
+        hasil_kal: formatResultRows(hasilKalResults),
         approver: approverResults[0] || null,
         disintegration,
       },
@@ -1007,23 +1013,23 @@ async function getDisintegrationPrintBundle(qa_id, id_no_sertifikat) {
   return {
     paddle_count: Number(session.paddle_count) || 1,
     keterangan: session.keterangan || '',
-    temperature: byType('TEMPERATURE').map((row) => ({
+    temperature: formatResultRows(byType('TEMPERATURE').map((row) => ({
       titik_ukur: row.point_no,
       pembacaan_alat: row.mean_uut,
       pembacaan_standar: row.mean_standard,
       error: row.mean_error,
       ketidakpastian: row.u_expanded,
-    })),
-    strokeRate: byType('STROKE_RATE').map((row) => ({
+    }))),
+    strokeRate: formatResultRows(byType('STROKE_RATE').map((row) => ({
       paddle_no: row.paddle_no,
       t_1_kayuhan_detik: row.mean_standard,
       kayuhan_per_menit: row.mean_uut,
-    })),
-    distance: byType('DISTANCE').map((row) => ({
+    }))),
+    distance: formatResultRows(byType('DISTANCE').map((row) => ({
       paddle_no: row.paddle_no,
       distance_mm: row.mean_standard,
-    })),
-    timer: byType('TIMER').map((row) => ({
+    }))),
+    timer: formatResultRows(byType('TIMER').map((row) => ({
       paddle_no: row.paddle_no,
       setting_alat: nominalByPaddle.get(Number(row.paddle_no))?.nominal_value ?? null,
       setting_unit: nominalByPaddle.get(Number(row.paddle_no))?.unit ?? 'Menit',
@@ -1032,7 +1038,7 @@ async function getDisintegrationPrintBundle(qa_id, id_no_sertifikat) {
       error_sec: row.mean_error,
       ketidakpastian_menit: row.u_expanded_min,
       ketidakpastian_detik: row.u_expanded,
-    })),
+    }))),
   };
 }
 
@@ -1206,6 +1212,21 @@ const saveHasilKalData = async (req, res, next) => {
       return;
     }
 
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      const err = new Error('Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
+
     // Guard: blocked when already approved at level 1
     const checkApproveQuery = `
       SELECT COUNT(*) AS jumRow
@@ -1237,7 +1258,14 @@ const saveHasilKalData = async (req, res, next) => {
         VALUES
           (:qa_id, :id_no_sertifikat, :seq_id, :pembacaan_alat, :pembacaan_standar, :error, :ketidakpastian, :user_id, :delegated_to, GETDATE())
       `, {
-        replacements: { qa_id, id_no_sertifikat, seq_id: autoSeqId, pembacaan_alat, pembacaan_standar, error, ketidakpastian, user_id, delegated_to },
+        replacements: {
+          qa_id,
+          id_no_sertifikat,
+          seq_id: autoSeqId,
+          ...numericRow,
+          user_id,
+          delegated_to,
+        },
         type: Sequelize.QueryTypes.INSERT,
       });
 
@@ -1257,7 +1285,14 @@ const saveHasilKalData = async (req, res, next) => {
           AND ID_No_Sertifikat = :id_no_sertifikat
           AND Seq_ID = :seq_id
       `, {
-        replacements: { qa_id, id_no_sertifikat, seq_id, pembacaan_alat, pembacaan_standar, error, ketidakpastian, user_id, delegated_to },
+        replacements: {
+          qa_id,
+          id_no_sertifikat,
+          seq_id,
+          ...numericRow,
+          user_id,
+          delegated_to,
+        },
         type: Sequelize.QueryTypes.UPDATE,
       });
 
@@ -1277,7 +1312,8 @@ const saveHasilKalData = async (req, res, next) => {
 const deleteHasilKalData = async (req, res, next) => {
   try {
     const { user_id } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       const err = new Error('Data belum di pilih');
@@ -1337,7 +1373,8 @@ const deleteHasilKalData = async (req, res, next) => {
 const deleteKelembabanData = async (req, res, next) => {
   try {
     const { user_id } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       const err = new Error('Data belum di pilih');

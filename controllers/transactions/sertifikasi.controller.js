@@ -2,6 +2,11 @@ const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
 const { getDateTime, getEmployeeName } = require('../../helpers/kalibrasi.helper');
+const {
+  formatResultRows,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
@@ -147,7 +152,7 @@ const searchSertifikat = async (req, res, next) => {
 const getSertifikatDetail = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -226,7 +231,7 @@ const getSertifikatDetail = async (req, res, next) => {
 const getSuhuData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -259,7 +264,7 @@ const getSuhuData = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Data fetched successfully',
-      data: results,
+      data: formatResultRows(results),
       count: results.length
     });
 
@@ -277,7 +282,7 @@ const getSuhuData = async (req, res, next) => {
 const getKelembabanData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -310,7 +315,7 @@ const getKelembabanData = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Data fetched successfully',
-      data: results,
+      data: formatResultRows(results),
       count: results.length
     });
 
@@ -328,7 +333,8 @@ const getKelembabanData = async (req, res, next) => {
 const checkIsApproved = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, approver_level } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { approver_level } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !approver_level) {
       return res.status(400).json({
@@ -421,7 +427,7 @@ const getApproverIdentity = async (req, res, next) => {
 const checkTglKalibrasi = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -700,7 +706,7 @@ const searchDAThermo = async (req, res, next) => {
 const checkApproveButton = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -917,10 +923,26 @@ const saveSuhuData = async (req, res, next) => {
     }
 
     // Validate required fields
-    if (!pembacaan_alat || !pembacaan_standar || !error || !ketidakpastian) {
+    if ([pembacaan_alat, pembacaan_standar, error, ketidakpastian].some(
+      (value) => value === undefined || value === null || value === ''
+    )) {
       return res.status(400).json({
         success: false,
         message: 'Data harap di isi semua'
+      });
+    }
+
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal'
       });
     }
 
@@ -974,10 +996,7 @@ const saveSuhuData = async (req, res, next) => {
           qa_id,
           id_no_sertifikat,
           seq_id: newSeqId,
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to
         },
@@ -1009,10 +1028,7 @@ const saveSuhuData = async (req, res, next) => {
 
       await sequelizeMSQL.query(updateQuery, {
         replacements: {
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to,
           qa_id,
@@ -1060,10 +1076,26 @@ const saveKelembabanData = async (req, res, next) => {
     }
 
     // Validate required fields
-    if (!pembacaan_alat || !pembacaan_standar || !error || !ketidakpastian) {
+    if ([pembacaan_alat, pembacaan_standar, error, ketidakpastian].some(
+      (value) => value === undefined || value === null || value === ''
+    )) {
       return res.status(400).json({
         success: false,
         message: 'Data harap di isi semua'
+      });
+    }
+
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal'
       });
     }
 
@@ -1117,10 +1149,7 @@ const saveKelembabanData = async (req, res, next) => {
           qa_id,
           id_no_sertifikat,
           seq_id: newSeqId,
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to
         },
@@ -1152,10 +1181,7 @@ const saveKelembabanData = async (req, res, next) => {
 
       await sequelizeMSQL.query(updateQuery, {
         replacements: {
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to,
           qa_id,
@@ -1185,7 +1211,8 @@ const saveKelembabanData = async (req, res, next) => {
 const deleteSuhuData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       return res.status(400).json({
@@ -1250,7 +1277,8 @@ const deleteSuhuData = async (req, res, next) => {
 const deleteKelembabanData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       return res.status(400).json({
@@ -2016,8 +2044,8 @@ const generateSertifikatPDF = async (req, res, next) => {
       message: 'Data fetched successfully',
       data: {
         header: formattedHeader,
-        suhuData: suhuData,
-        kelembabanData: kelembabanData,
+        suhuData: formatResultRows(suhuData),
+        kelembabanData: formatResultRows(kelembabanData),
         approvalSignature: approvalSignature[0] || {}
       }
     });
