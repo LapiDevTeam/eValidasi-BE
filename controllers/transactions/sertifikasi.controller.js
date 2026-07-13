@@ -2536,8 +2536,9 @@ border-left: 0; border-right:0;
                     <img src="${logoBase64}" alt="Lapi" />
                   </div>
                   <div class="title-cell">
-                    TIDAK DAPAT<br />DIGUNAKAN
-                  </div>
+                  <span style="white-space: nowrap;">TIDAK DAPAT</span><br />
+                  DIGUNAKAN
+                </div>
                 </div>
 
                 <div class="body">
