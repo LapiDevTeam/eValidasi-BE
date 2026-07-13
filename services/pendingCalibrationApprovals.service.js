@@ -89,12 +89,13 @@ const MODULE_REGISTRY = {
         ORDER BY D.Process_date DESC
       ) AS ThermoDa
     `,
-    buildDeepLink: ({ raw, qaId, idNoSertifikat }) => {
+    buildDeepLink: ({ raw, qaId, idNoSertifikat, focusEvaluation }) => {
       const params = [`sessionId=${encodeURIComponent(raw.id)}`];
       if (qaId) params.push(`qa_id=${encodeURIComponent(qaId)}`);
       if (idNoSertifikat) {
         params.push(`id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`);
       }
+      if (focusEvaluation) params.push('focusEvaluation=1');
       return `/thermohygrometer-calibration?${params.join('&')}`;
     },
     approvalColumns: {
@@ -385,12 +386,13 @@ function normalizeDate(value) {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
-function buildConformingDeepLink(routePrefix, qaId, idNoSertifikat) {
+function buildConformingDeepLink(routePrefix, qaId, idNoSertifikat, focusEvaluation) {
   const params = [];
   if (qaId) params.push(`qa_id=${encodeURIComponent(qaId)}`);
   if (idNoSertifikat) {
     params.push(`id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`);
   }
+  if (focusEvaluation) params.push('focusEvaluation=1');
   return params.length ? `${routePrefix}?${params.join('&')}` : routePrefix;
 }
 
@@ -487,13 +489,17 @@ async function scanModule(config, filters = {}) {
   const existing = await assertTableAndColumns(config);
   const request = await createRequest();
 
+  const requesterExpr = config.userIdColumn
+    ? `dbo.fnGetInisialKaryawan(${columnExpression(config.userIdColumn)})`
+    : `''`;
+
   const selectCols = [
     `${columnExpression(config.idColumn)} AS id`,
     columnOrNull(config.qaIdColumn, 'qaId'),
     columnOrNull(config.idNoSertifikatColumn, 'idNoSertifikat'),
     columnOrNull(config.instrumentNameColumn, 'instrumentName'),
     columnOrNull(config.calibrationDateColumn, 'calibrationDate'),
-    columnOrNull(config.userIdColumn, 'requester'),
+    `${requesterExpr} AS requester`,
     columnOrNull(config.updateDateColumn, 'updateDate'),
     columnOrNull(config.processDateColumn, 'processDate'),
   ];
@@ -541,6 +547,12 @@ async function scanModule(config, filters = {}) {
     `;
   }
 
+  if (filters.requester) {
+    const requester = `%${filters.requester.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+    request.input('Requester', requester);
+    query += ` AND ${requesterExpr} LIKE @Requester`;
+  }
+
   const sortColumn = config.updateDateColumn || config.processDateColumn;
   if (existing.has(sortColumn)) {
     query += ` ORDER BY ${columnExpression(sortColumn)} DESC`;
@@ -561,11 +573,12 @@ function normalizeRow(config, moduleKey, raw) {
 
   const qaId = normalizeValue(raw.qaId);
   const idNoSertifikat = normalizeValue(raw.idNoSertifikat);
+  const isWorkbookModule = !isBagianModule(moduleKey);
   const deepLink = typeof config.buildDeepLink === 'function'
-    ? config.buildDeepLink({ raw, qaId, idNoSertifikat })
+    ? config.buildDeepLink({ raw, qaId, idNoSertifikat, focusEvaluation: isWorkbookModule })
     : config.conforming
-      ? buildConformingDeepLink(config.routePrefix, qaId, idNoSertifikat)
-      : `${config.routePrefix}?sessionId=${encodeURIComponent(raw.id)}`;
+      ? buildConformingDeepLink(config.routePrefix, qaId, idNoSertifikat, isWorkbookModule)
+      : `${config.routePrefix}?sessionId=${encodeURIComponent(raw.id)}${isWorkbookModule ? '&focusEvaluation=1' : ''}`;
 
   return {
     module: moduleKey,
@@ -615,7 +628,7 @@ function normalizeDaBagianRow(raw) {
     idNoSertifikat: '',
     instrumentName: normalizeValue(raw.Assm_nama_instrumen),
     calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
-    requester: normalizeValue(raw.UserID),
+    requester: normalizeValue(raw.requester),
     updatedAt: normalizeDate(raw.Process_date),
     approvedByAdmin: '',
     approvedByAdminDate: '',
@@ -629,8 +642,9 @@ function normalizeDaBagianRow(raw) {
   };
 }
 
-async function scanDaBagianPending(rawSearch) {
+async function scanDaBagianPending(rawSearch, requester) {
   const search = buildLikeSearch(rawSearch);
+  const requesterLike = buildLikeSearch(requester);
   const replacements = {};
   let where = `
     WHERE NOT EXISTS (
@@ -649,12 +663,17 @@ async function scanDaBagianPending(rawSearch) {
     replacements.search = search;
   }
 
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(A.UserID) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
   const query = `
     SELECT TOP 200
       A.QA_ID,
       A.Assm_nama_instrumen,
       A.Tgl_kalibrasi,
-      A.UserID,
+      dbo.fnGetInisialKaryawan(A.UserID) AS requester,
       A.Process_date
     FROM T_Kalibrasi_DA_Bagian AS A
     ${where}
@@ -680,7 +699,7 @@ function normalizeSertifikatBagianRow(raw) {
     idNoSertifikat,
     instrumentName: normalizeValue(raw.Assm_nama_instrumen),
     calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
-    requester: normalizeValue(raw.UserID),
+    requester: normalizeValue(raw.requester),
     updatedAt: normalizeDate(raw.tgl || raw.Process_date),
     approvedByAdmin: '',
     approvedByAdminDate: '',
@@ -694,8 +713,9 @@ function normalizeSertifikatBagianRow(raw) {
   };
 }
 
-async function scanSertifikatBagianPending(rawSearch) {
+async function scanSertifikatBagianPending(rawSearch, requester) {
   const search = buildLikeSearch(rawSearch);
+  const requesterLike = buildLikeSearch(requester);
   const replacements = {};
   let where = `
     WHERE NOT EXISTS (
@@ -717,13 +737,18 @@ async function scanSertifikatBagianPending(rawSearch) {
     replacements.search = search;
   }
 
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(A.UserID) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
   const query = `
     SELECT TOP 200
       A.QA_ID,
       A.ID_No_Sertifikat,
       A.Assm_nama_instrumen,
       A.Tgl_kalibrasi,
-      A.UserID,
+      dbo.fnGetInisialKaryawan(A.UserID) AS requester,
       A.tgl
     FROM T_Kalibrasi_Sertifikat_Bagian AS A
     ${where}
@@ -752,7 +777,7 @@ function normalizeDaThermoRow(raw) {
     idNoSertifikat: '',
     instrumentName: normalizeValue(raw.Assm_nama_instrumen),
     calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
-    requester: normalizeValue(raw.UserID),
+    requester: normalizeValue(raw.requester),
     updatedAt: normalizeDate(raw.Process_date),
     approvedByAdmin: '',
     approvedByAdminDate: '',
@@ -766,8 +791,9 @@ function normalizeDaThermoRow(raw) {
   };
 }
 
-async function scanDaThermoPending(rawSearch) {
+async function scanDaThermoPending(rawSearch, requester) {
   const search = buildLikeSearch(rawSearch);
+  const requesterLike = buildLikeSearch(requester);
   const replacements = {};
   let where = `
     WHERE NOT EXISTS (
@@ -787,13 +813,18 @@ async function scanDaThermoPending(rawSearch) {
     replacements.search = search;
   }
 
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(A.UserID) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
   const query = `
     SELECT TOP 200
       A.QA_ID,
       A.Assm_nama_instrumen,
       A.Assm_No_identitas_kalibrasi,
       A.Tgl_kalibrasi,
-      A.UserID,
+      dbo.fnGetInisialKaryawan(A.UserID) AS requester,
       A.Process_date
     FROM T_Kalibrasi_DA_Thermohygro AS A
     ${where}
@@ -819,7 +850,7 @@ function normalizeSertifikatThermoRow(raw) {
     idNoSertifikat,
     instrumentName: normalizeValue(raw.Assm_nama_instrumen),
     calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
-    requester: normalizeValue(raw.UserID),
+    requester: normalizeValue(raw.requester),
     updatedAt: normalizeDate(raw.tgl || raw.Process_date),
     approvedByAdmin: '',
     approvedByAdminDate: '',
@@ -833,8 +864,9 @@ function normalizeSertifikatThermoRow(raw) {
   };
 }
 
-async function scanSertifikatThermoPending(rawSearch) {
+async function scanSertifikatThermoPending(rawSearch, requester) {
   const search = buildLikeSearch(rawSearch);
+  const requesterLike = buildLikeSearch(requester);
   const replacements = {};
   let where = `
     WHERE NULLIF(LTRIM(RTRIM(A.QA_ID)), '') IS NOT NULL
@@ -859,6 +891,11 @@ async function scanSertifikatThermoPending(rawSearch) {
     replacements.search = search;
   }
 
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(A.UserID) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
   const query = `
     SELECT TOP 200
       A.QA_ID,
@@ -866,7 +903,7 @@ async function scanSertifikatThermoPending(rawSearch) {
       A.Assm_nama_instrumen,
       A.Assm_No_identitas_kalibrasi,
       A.Tgl_kalibrasi,
-      A.UserID,
+      dbo.fnGetInisialKaryawan(A.UserID) AS requester,
       A.tgl,
       A.Process_date
     FROM T_Kalibrasi_Sertifikat_Thermohygro AS A
@@ -1597,7 +1634,7 @@ function normalizeKalibrasiEksternalRow(raw) {
     idNoSertifikat: '',
     instrumentName: normalizeValue(raw.Instrument_Name),
     calibrationDate: normalizeDate(raw.Due_Date),
-    requester: normalizeValue(raw.created_by),
+    requester: normalizeValue(raw.requester),
     updatedAt: normalizeDate(raw.updated_date || raw.created_date),
     approvedByAdmin: '',
     approvedByAdminDate: '',
@@ -1611,8 +1648,9 @@ function normalizeKalibrasiEksternalRow(raw) {
   };
 }
 
-async function scanKalibrasiEksternalPending(rawSearch, bagianUser) {
+async function scanKalibrasiEksternalPending(rawSearch, bagianUser, requester) {
   const search = buildLikeSearch(rawSearch);
+  const requesterLike = buildLikeSearch(requester);
   const replacements = {};
   let where = `
     WHERE e.status IN ('UPLOADED', 'TIDAK_DAPAT')
@@ -1639,6 +1677,11 @@ async function scanKalibrasiEksternalPending(rawSearch, bagianUser) {
     replacements.search = search;
   }
 
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(e.created_by) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
   const query = `
     SELECT TOP 200
       e.ekst_id,
@@ -1646,7 +1689,7 @@ async function scanKalibrasiEksternalPending(rawSearch, bagianUser) {
       d.QA_ID,
       d.Instrument_Name,
       d.Due_Date,
-      e.created_by,
+      dbo.fnGetInisialKaryawan(e.created_by) AS requester,
       e.created_date,
       e.updated_date
     FROM T_Kalibrasi_Eksternal AS e
@@ -1868,6 +1911,7 @@ async function listPendingApprovals(options = {}) {
     bagian_user,
     moduleFilter,
     search,
+    requester,
     limit = 200,
   } = options;
 
@@ -1906,7 +1950,7 @@ async function listPendingApprovals(options = {}) {
     for (const { key, config } of modulesToScan) {
       try {
         // eslint-disable-next-line no-await-in-loop
-        const rows = await scanModule(config, { search });
+        const rows = await scanModule(config, { search, requester });
         for (const raw of rows) {
           const normalized = normalizeRow(config, key, raw);
           if (shouldSuppressPendingWorkbookRow(normalized)) {
@@ -1926,7 +1970,7 @@ async function listPendingApprovals(options = {}) {
   if (includeDaBagian) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await scanDaBagianPending(search);
+      const rows = await scanDaBagianPending(search, requester);
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for da-bagian:', err.message);
@@ -1936,7 +1980,7 @@ async function listPendingApprovals(options = {}) {
   if (includeSertifikatBagian) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await scanSertifikatBagianPending(search);
+      const rows = await scanSertifikatBagianPending(search, requester);
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for sertifikat-bagian:', err.message);
@@ -1946,7 +1990,7 @@ async function listPendingApprovals(options = {}) {
   if (includeDaThermo) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await scanDaThermoPending(search);
+      const rows = await scanDaThermoPending(search, requester);
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for da-thermo:', err.message);
@@ -1956,7 +2000,7 @@ async function listPendingApprovals(options = {}) {
   if (includeSertifikatThermo) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await scanSertifikatThermoPending(search);
+      const rows = await scanSertifikatThermoPending(search, requester);
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for sertifikat-thermo:', err.message);
@@ -1966,7 +2010,7 @@ async function listPendingApprovals(options = {}) {
   if (includeKalibrasiEksternal) {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const rows = await scanKalibrasiEksternalPending(search, bagian_user);
+      const rows = await scanKalibrasiEksternalPending(search, bagian_user, requester);
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for kalibrasi-eksternal:', err.message);

@@ -222,9 +222,9 @@ function normalizeInteger(
 }
 
 function normalizeUnitMode(value) {
-  const unit = String(value || '').trim().toUpperCase();
-  if (!['PA', 'BAR'].includes(unit)) {
-    throwValidation('unit_mode', 'Unit mode must be PA or BAR.');
+  const unit = String(value || '').trim();
+  if (unit.length > 20) {
+    throwValidation('unit_mode', 'Unit mode cannot exceed 20 characters.');
   }
   return unit;
 }

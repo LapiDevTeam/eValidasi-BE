@@ -14,6 +14,11 @@ function normalizeSearch(search) {
   return text && text !== '%' ? text : '';
 }
 
+function normalizeRequester(requester) {
+  const text = String(requester || '').trim();
+  return text && text !== '%' ? text : '';
+}
+
 function getUser(req) {
   return req?.user || {};
 }
@@ -45,6 +50,7 @@ const listPendingApprovals = async (req, res, next) => {
     const user = getUser(req);
     const moduleFilter = req.query.module || '';
     const search = normalizeSearch(req.query.search);
+    const requester = normalizeRequester(req.query.requester);
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
     const data = await service.listPendingApprovals({
@@ -52,6 +58,7 @@ const listPendingApprovals = async (req, res, next) => {
       bagian_user: user.bagian_user,
       moduleFilter,
       search,
+      requester,
       limit,
     });
 

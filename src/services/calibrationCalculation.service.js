@@ -291,11 +291,6 @@ function validateCalculationInputs({
     });
   }
 
-  const unitMode = String(session.unit_mode || '').toUpperCase();
-  if (!['PA', 'BAR'].includes(unitMode)) {
-    errors.push({ field: 'unit_mode', message: 'Unit mode must be PA or BAR.' });
-  }
-
   if (!Array.isArray(points) || points.length === 0) {
     errors.push({ field: 'points', message: 'At least one nominal point is required.' });
   }

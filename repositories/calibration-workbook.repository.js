@@ -33,7 +33,7 @@ async function listSessions(filters = {}) {
     where.push('cs.status = @Status');
   }
   if (filters.unitMode) {
-    request.input('UnitMode', sql.VarChar(20), String(filters.unitMode).toUpperCase());
+    request.input('UnitMode', sql.NVarChar(20), String(filters.unitMode));
     where.push('cs.unit_mode = @UnitMode');
   }
 
@@ -130,7 +130,7 @@ async function createSession(payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
-    .input('UnitMode', sql.VarChar(20), payload.unit_mode)
+    .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status || 'DRAFT')
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
@@ -183,7 +183,7 @@ async function updateSession(sessionId, payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
-    .input('UnitMode', sql.VarChar(20), payload.unit_mode)
+    .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status)
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
@@ -407,7 +407,7 @@ async function createPoint(sessionId, payload, transaction) {
     .input('SessionId', sql.Int, sessionId)
     .input('PointOrder', sql.Int, payload.point_order)
     .input('NominalValue', sql.Decimal(18, 10), payload.nominal_value)
-    .input('Unit', sql.VarChar(20), payload.unit)
+    .input('Unit', sql.NVarChar(20), payload.unit)
     .input('IsActive', sql.Bit, payload.is_active === undefined ? 1 : payload.is_active ? 1 : 0)
     .query(`
       INSERT INTO [dbo].[calibration_nominal_points]
@@ -426,7 +426,7 @@ async function updatePoint(pointId, payload, transaction) {
     .input('PointId', sql.Int, pointId)
     .input('PointOrder', sql.Int, payload.point_order)
     .input('NominalValue', sql.Decimal(18, 10), payload.nominal_value)
-    .input('Unit', sql.VarChar(20), payload.unit)
+    .input('Unit', sql.NVarChar(20), payload.unit)
     .input('IsActive', sql.Bit, payload.is_active === undefined ? 1 : payload.is_active ? 1 : 0)
     .query(`
       UPDATE [dbo].[calibration_nominal_points]
@@ -799,7 +799,7 @@ async function upsertLevelCorrection(sessionId, payload, transaction) {
         sql.Decimal(18, 10),
         toDbNull(payload.correction_session_unit)
       )
-      .input('SessionUnit', sql.VarChar(20), payload.session_unit)
+      .input('SessionUnit', sql.NVarChar(20), payload.session_unit)
       .query(`
         INSERT INTO [dbo].[calibration_level_corrections]
         (
@@ -839,7 +839,7 @@ async function upsertLevelCorrection(sessionId, payload, transaction) {
       sql.Decimal(18, 10),
       toDbNull(payload.correction_session_unit)
     )
-    .input('SessionUnit', sql.VarChar(20), payload.session_unit)
+    .input('SessionUnit', sql.NVarChar(20), payload.session_unit)
     .query(`
       UPDATE [dbo].[calibration_level_corrections]
       SET
@@ -1068,7 +1068,7 @@ async function insertResults(rows, transaction) {
       .input('PointId', sql.Int, row.point_id)
       .input('PointOrder', sql.Int, row.point_order)
       .input('NominalValue', sql.Decimal(18, 10), row.nominal_value)
-      .input('Unit', sql.VarChar(20), row.unit)
+      .input('Unit', sql.NVarChar(20), row.unit)
       .input('IncStandardAvg', sql.Decimal(18, 10), toDbNull(row.inc_standard_avg))
       .input('IncUutAvg', sql.Decimal(18, 10), toDbNull(row.inc_uut_avg))
       .input('IncError', sql.Decimal(18, 10), toDbNull(row.inc_error))
@@ -1133,7 +1133,7 @@ async function insertUncertaintyComponents(rows, transaction) {
       .input('SessionId', sql.Int, row.session_id)
       .input('ComponentOrder', sql.Int, row.component_order)
       .input('ComponentName', sql.VarChar(255), row.component_name)
-      .input('Unit', sql.VarChar(20), toDbNull(row.unit))
+      .input('Unit', sql.NVarChar(20), toDbNull(row.unit))
       .input('UncertaintyType', sql.VarChar(10), toDbNull(row.uncertainty_type))
       .input('Distribution', sql.VarChar(30), toDbNull(row.distribution))
       .input('UValue', sql.Decimal(18, 10), toDbNull(row.u_value))
@@ -1469,7 +1469,7 @@ async function upsertTemplate(template, transaction) {
     await request
       .input('TemplateId', sql.Int, existing.template_id)
       .input('TemplateName', sql.VarChar(255), template.template_name)
-      .input('UnitMode', sql.VarChar(20), template.unit_mode)
+      .input('UnitMode', sql.NVarChar(20), template.unit_mode)
       .query(`
         UPDATE [dbo].[calibration_point_templates]
         SET template_name = @TemplateName, unit_mode = @UnitMode
@@ -1482,7 +1482,7 @@ async function upsertTemplate(template, transaction) {
   const result = await request
     .input('TemplateCode', sql.VarChar(100), template.template_code)
     .input('TemplateName', sql.VarChar(255), template.template_name)
-    .input('UnitMode', sql.VarChar(20), template.unit_mode)
+    .input('UnitMode', sql.NVarChar(20), template.unit_mode)
     .query(`
       INSERT INTO [dbo].[calibration_point_templates]
       (template_code, template_name, unit_mode)
