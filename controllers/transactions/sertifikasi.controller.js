@@ -2483,7 +2483,7 @@ border-left: 0; border-right:0;
               .body {
                 flex: 1;
                 min-height: 0;
-                font-size: 7pt;
+                font-size: 6pt;
                 line-height: 1.2;
               }
 
