@@ -2474,9 +2474,10 @@ border-left: 0; border-right:0;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                font-size: 11pt;
+                font-size: 9pt;
                 font-weight: 700;
                 line-height: 1.08;
+                white-space: nowrap;
               }
 
               .body {
@@ -2536,9 +2537,8 @@ border-left: 0; border-right:0;
                     <img src="${logoBase64}" alt="Lapi" />
                   </div>
                   <div class="title-cell">
-                  <span style="white-space: nowrap;">TIDAK DAPAT</span><br />
-                  DIGUNAKAN
-                </div>
+                    TIDAK DAPAT<br />DIGUNAKAN
+                  </div>
                 </div>
 
                 <div class="body">
