@@ -1315,14 +1315,6 @@ const generateSertifikatFromSession = async (req, res, next) => {
       });
     }
 
-    if (!session.ApprovedByAdmin || !session.ApprovedByOfficer || !session.ApprovedByManager) {
-      await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: 'Sertifikat hanya bisa diterbitkan setelah approval Admin, Officer, dan Manager lengkap.',
-      });
-    }
-
     const sessionWorkbookPayload = session.workbookPayload || {};
     const requestWorkbookPayload = body.workbookPayload || {};
     const mergedHeader = {
