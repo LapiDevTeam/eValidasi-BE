@@ -1094,7 +1094,7 @@ async function createRegressionInput(req, res, next) {
     await ensureSessionExists(sessionId);
     const payload = {
       point_id: normalizeInteger(req.body.point_id ?? req.body.pointId, {
-        required: true,
+        required: false,
         field: 'point_id',
         min: 1,
       }),
@@ -1114,7 +1114,9 @@ async function createRegressionInput(req, res, next) {
       source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
     };
 
-    await ensurePointBelongsToSession(payload.point_id, sessionId);
+    if (payload.point_id !== null) {
+      await ensurePointBelongsToSession(payload.point_id, sessionId);
+    }
 
     const inputId = await repo.createRegressionInput(sessionId, payload);
     await writeAuditSafe({
@@ -1143,7 +1145,7 @@ async function updateRegressionInput(req, res, next) {
 
     const payload = {
       point_id: normalizeInteger(req.body.point_id ?? req.body.pointId, {
-        required: true,
+        required: false,
         field: 'point_id',
         min: 1,
       }),
@@ -1163,7 +1165,9 @@ async function updateRegressionInput(req, res, next) {
       source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
     };
 
-    await ensurePointBelongsToSession(payload.point_id, current.session_id);
+    if (payload.point_id !== null) {
+      await ensurePointBelongsToSession(payload.point_id, current.session_id);
+    }
 
     const updated = await repo.updateRegressionInput(inputId, payload);
     if (!updated) {
@@ -1380,8 +1384,12 @@ async function calculateSession(req, res, next) {
 async function getResults(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const data = await calcSvc.getResults(sessionId);
-    return res.status(200).json(data);
+    const bundle = await calcSvc.getSessionResultBundle(sessionId);
+    return res.status(200).json({
+      success: true,
+      data: bundle.results,
+      certificate_rows: bundle.certificate_rows,
+    });
   } catch (error) {
     return sendError(res, next, error);
   }
@@ -1390,8 +1398,12 @@ async function getResults(req, res, next) {
 async function getSummary(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const data = await calcSvc.getSummary(sessionId);
-    return res.status(200).json(data);
+    const bundle = await calcSvc.getSessionResultBundle(sessionId);
+    return res.status(200).json({
+      success: true,
+      data: bundle.summary,
+      uncertainty_components: bundle.uncertainty_components,
+    });
   } catch (error) {
     return sendError(res, next, error);
   }
