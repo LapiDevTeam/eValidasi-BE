@@ -54,7 +54,6 @@ const listPendingApprovals = async (req, res, next) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
     const data = await service.listPendingApprovals({
-      userJobLevel: user.joblevel_id_user,
       bagian_user: user.bagian_user,
       moduleFilter,
       search,

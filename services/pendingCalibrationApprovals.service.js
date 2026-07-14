@@ -17,6 +17,40 @@
 const { createRequest } = require('../repositories/calibration-workbook.repository');
 const { sequelizeMSQL } = require('../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../models');
+const {
+  publishSessionToSertifikatBagian,
+} = require('../src/services/calibrationCalculation.service');
+const {
+  publishToSertifikat: publishDisintegrationSertifikat,
+} = require('../src/services/disintegrationCalculation.service');
+const {
+  publishToSertifikat: publishRpmSertifikat,
+} = require('../src/services/rpmCalculation.service');
+const {
+  publishToSertifikat: publishTimerSertifikat,
+} = require('../src/services/timerCalculation.service');
+const {
+  publishToSertifikat: publishTemperatureSertifikat,
+} = require('../src/services/temperatureCalculation.service');
+const {
+  publishToSertifikat: publishTappedVolumeterSertifikat,
+} = require('../src/services/tappedVolumeterCalculation.service');
+const {
+  publishToSertifikat: publishTimbanganSertifikat,
+} = require('../src/services/timbanganCalculation.service');
+
+// Modules that use the same approve-manager-then-auto-publish-certificate
+// pattern (most share the "Bagian" certificate tables; Timbangan has its own
+// dedicated T_Kalibrasi_Sertifikat_Timbangan tables but the same gap).
+const FINAL_APPROVAL_PUBLISH_HANDLERS = {
+  'calibration-workbook': publishSessionToSertifikatBagian,
+  disintegration: publishDisintegrationSertifikat,
+  rpm: publishRpmSertifikat,
+  timer: publishTimerSertifikat,
+  temperature: publishTemperatureSertifikat,
+  'tapped-volumeter': publishTappedVolumeterSertifikat,
+  timbangan: publishTimbanganSertifikat,
+};
 
 const ROLES = {
   admin: {
@@ -1907,7 +1941,6 @@ async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
 
 async function listPendingApprovals(options = {}) {
   const {
-    userJobLevel,
     bagian_user,
     moduleFilter,
     search,
@@ -1915,8 +1948,6 @@ async function listPendingApprovals(options = {}) {
     limit = 200,
   } = options;
 
-  const userRole = getWorkbookApprovalRole(userJobLevel);
-  const targetLevel = userRole ? userRole.key : null;
   const moduleKey = String(moduleFilter || '').toLowerCase();
 
   const includeWorkbook = !moduleFilter || MODULE_REGISTRY[moduleKey];
@@ -1956,9 +1987,10 @@ async function listPendingApprovals(options = {}) {
           if (shouldSuppressPendingWorkbookRow(normalized)) {
             continue;
           }
-          if (!targetLevel || normalized.pendingLevel === targetLevel) {
-            results.push(normalized);
-          }
+          // Oversight page: show every pending item regardless of which role
+          // it's currently waiting on. The Approve button itself is still
+          // gated per-row by the viewer's role (FE canAct / BE approveSession).
+          results.push(normalized);
         }
       } catch (err) {
         // Log and continue so one broken module does not block the whole page.
@@ -2100,6 +2132,27 @@ async function approveSession(module, sessionId, user) {
   }
 
   const pendingRole = getPendingRole(normalizedSession);
+  const publishHandler = FINAL_APPROVAL_PUBLISH_HANDLERS[key];
+  const isFinalWorkbookApproval = Boolean(publishHandler) && pendingRole.key === 'manager';
+
+  if (isFinalWorkbookApproval) {
+    const evalRequest = await createRequest();
+    const evalResult = await evalRequest
+      .input('SessionId', sessionId)
+      .query(`
+        SELECT evaluation_result
+        FROM ${config.table}
+        WHERE ${config.idColumn} = @SessionId
+      `);
+    if (!evalResult.recordset[0]?.evaluation_result) {
+      const err = new Error(
+        'Hasil evaluasi (kesimpulan) belum dipilih. Approval Manager bersifat final dan akan otomatis menerbitkan serta menyetujui sertifikat, jadi pilih hasil evaluasi terlebih dahulu.'
+      );
+      err.statusCode = 422;
+      throw err;
+    }
+  }
+
   const request = await createRequest();
   await request
     .input('UserId', userId)
@@ -2113,12 +2166,38 @@ async function approveSession(module, sessionId, user) {
       WHERE ${config.idColumn} = @SessionId
     `);
 
-  return {
+  const result = {
     module: key,
     sessionId,
     approvedBy: pendingRole.key,
     approvedByLabel: pendingRole.label,
   };
+
+  if (isFinalWorkbookApproval) {
+    try {
+      const publishResult = await publishHandler(
+        Number(sessionId),
+        userId,
+        userId,
+        {}
+      );
+      result.certificate = {
+        qa_id: publishResult.qa_id,
+        id_no_sertifikat: publishResult.id_no_sertifikat,
+        created_new_sertifikat: publishResult.created_new_sertifikat,
+        published_rows: publishResult.published_rows,
+        certificate_approved: publishResult.certificate_approved,
+        print_data_endpoint: publishResult.next?.print_data_endpoint || publishResult.print_data_endpoint,
+      };
+    } catch (publishError) {
+      // Manager approval is already committed at this point; surface the
+      // certificate failure as a warning instead of failing the approval call.
+      result.certificateError =
+        `Workbook approved, tetapi sertifikat & DA gagal diterbitkan otomatis: ${publishError.message}`;
+    }
+  }
+
+  return result;
 }
 
 async function rejectSession(module, sessionId, user, reason) {

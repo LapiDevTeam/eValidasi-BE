@@ -539,13 +539,42 @@ async function approveSession(sessionId, user) {
   }
 
   const pendingRole = getPendingRole(session);
+  const isFinalApproval = pendingRole.key === 'manager';
+
+  if (isFinalApproval && !normalizeEvaluationResult(session.evaluation_result)) {
+    throw httpError(
+      'Hasil evaluasi (kesimpulan) belum dipilih. Approval Manager bersifat final dan akan otomatis menerbitkan serta menyetujui sertifikat, jadi pilih hasil evaluasi terlebih dahulu.',
+      422,
+      [{ field: 'evaluation_result', message: 'Hasil evaluasi manual belum dipilih.' }]
+    );
+  }
+
   await repo.updateSessionApproval(sessionId, { roleKey: pendingRole.key, userId });
 
-  return {
+  const result = {
     sessionId,
     approvedBy: pendingRole.key,
     approvedByLabel: pendingRole.label,
   };
+
+  if (isFinalApproval) {
+    try {
+      const publishResult = await publishToSertifikat(sessionId, userId, userId, {});
+      result.certificate = {
+        qa_id: publishResult.qa_id,
+        id_no_sertifikat: publishResult.id_no_sertifikat,
+        created_new_sertifikat: publishResult.created_new_sertifikat,
+        published_rows: publishResult.published_rows,
+        certificate_approved: publishResult.certificate_approved,
+        print_data_endpoint: publishResult.print_data_endpoint,
+      };
+    } catch (publishError) {
+      result.certificateError =
+        `Workbook approved, tetapi sertifikat gagal diterbitkan otomatis: ${publishError.message}`;
+    }
+  }
+
+  return result;
 }
 
 async function rejectSession(sessionId, user, reason = '') {
@@ -876,6 +905,7 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       created_new_sertifikat: createdDraft,
       published_rows: massaStdPublishRows.length,
       certificate_source: 'T_Kalibrasi_Sertifikat_Timbangan',
+      certificate_approved: true,
       print_data_endpoint: `/transactions/kalibrasi/sertifikat-timbangan/print-data?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
     };
   } catch (error) {

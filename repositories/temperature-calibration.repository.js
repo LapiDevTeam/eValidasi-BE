@@ -500,6 +500,9 @@ module.exports = {
   getSertifikatBagianHeader: workbookRepo.getSertifikatBagianHeader,
   updateSertifikatBagianHeader: workbookRepo.updateSertifikatBagianHeader,
   replaceSertifikatBagianHasilKalRows: workbookRepo.replaceSertifikatBagianHasilKalRows,
+  getApproverIdentity: workbookRepo.getApproverIdentity,
+  isSertifikatBagianApproved: workbookRepo.isSertifikatBagianApproved,
+  insertSertifikatBagianStatus: workbookRepo.insertSertifikatBagianStatus,
   insertAuditLog: workbookRepo.insertAuditLog,
 };
 

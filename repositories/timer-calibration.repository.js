@@ -642,5 +642,7 @@ module.exports = {
   getApproverIdentity: workbookRepo.getApproverIdentity,
   insertDaBagianStatus: workbookRepo.insertDaBagianStatus,
   deleteDaBagianStatusByQaId: workbookRepo.deleteDaBagianStatusByQaId,
+  isSertifikatBagianApproved: workbookRepo.isSertifikatBagianApproved,
+  insertSertifikatBagianStatus: workbookRepo.insertSertifikatBagianStatus,
   insertAuditLog: workbookRepo.insertAuditLog,
 };

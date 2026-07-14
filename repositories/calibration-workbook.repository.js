@@ -1924,6 +1924,40 @@ async function updateSertifikatBagianHeader(payload, transaction) {
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
 
+async function isSertifikatBagianApproved(qaId, idNoSertifikat, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_Sertifikat_Bagian_Status
+      WHERE QA_ID = @QaId
+        AND ID_No_Sertifikat = @IdNoSertifikat
+        AND Approver_No = 1
+    `);
+
+  return (result.recordset[0]?.jumRow || 0) > 0;
+}
+
+async function insertSertifikatBagianStatus(payload, transaction) {
+  const request = await createRequest(transaction);
+  await request
+    .input('QaId', sql.VarChar(50), payload.qa_id)
+    .input('IdNoSertifikat', sql.VarChar(50), payload.id_no_sertifikat)
+    .input('ApproverNo', sql.Int, payload.approver_no)
+    .input('IsReject', sql.Bit, payload.is_reject ? 1 : 0)
+    .input('ApproverIdentity', sql.VarChar(100), payload.approver_identity)
+    .input('UserId', sql.VarChar(100), toDbNull(payload.user_id))
+    .input('DelegatedTo', sql.VarChar(100), toDbNull(payload.delegated_to))
+    .query(`
+      INSERT INTO T_Kalibrasi_Sertifikat_Bagian_Status
+        (QA_ID, ID_No_Sertifikat, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+      VALUES
+        (@QaId, @IdNoSertifikat, @ApproverNo, @IsReject, @ApproverIdentity, GETDATE(), @UserId, @DelegatedTo, NULL)
+    `);
+}
+
 async function replaceSertifikatBagianHasilKalRows(
   qaId,
   idNoSertifikat,
@@ -2049,5 +2083,7 @@ module.exports = {
   getNextCertificateNumberByCode,
   createSertifikatBagianDraftFromDa,
   updateSertifikatBagianHeader,
+  isSertifikatBagianApproved,
+  insertSertifikatBagianStatus,
   replaceSertifikatBagianHasilKalRows,
 };
