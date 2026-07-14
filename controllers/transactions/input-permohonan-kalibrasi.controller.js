@@ -26,6 +26,50 @@ function createHttpError(statusCode, message) {
   return error;
 }
 
+function isAllQueryValue(value) {
+  return String(value || '').trim().toUpperCase() === 'ALL';
+}
+
+function parsePeriodNumber(value, min, max) {
+  if (value === undefined || value === null || String(value).trim() === '' || isAllQueryValue(value)) {
+    return null;
+  }
+
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < min || number > max) {
+    return null;
+  }
+
+  return number;
+}
+
+function getDashboardPeriodFilter(query = {}) {
+  return {
+    year: parsePeriodNumber(query.year ?? query.tahun, 1900, 9999),
+    month: parsePeriodNumber(query.month ?? query.bulan, 1, 12),
+  };
+}
+
+function buildLatestDateFilter(periodFilter, columnName = 'latest_date', keyword = 'WHERE') {
+  const conditions = [];
+  const replacements = {};
+
+  if (periodFilter.year) {
+    conditions.push(`YEAR(${columnName}) = :year`);
+    replacements.year = periodFilter.year;
+  }
+
+  if (periodFilter.month) {
+    conditions.push(`MONTH(${columnName}) = :month`);
+    replacements.month = periodFilter.month;
+  }
+
+  return {
+    clause: conditions.length ? `${keyword} ${conditions.join(' AND ')}` : '',
+    replacements,
+  };
+}
+
 function validatePermohonanPayload(body) {
   const { kategori_permohonan, ket_rekalibrasi, tgl_butuh } = body;
 
@@ -608,6 +652,13 @@ const searchInstrumen = async (req, res, next) => {
       });
     }
 
+    const periodFilter = getDashboardPeriodFilter(req.query);
+    const dateFilter = buildLatestDateFilter(
+      periodFilter,
+      'MAX(Kalibrasi_selanjutnya)',
+      'HAVING'
+    );
+
     const query = `
       SELECT
         QA_ID,
@@ -719,12 +770,13 @@ const searchInstrumen = async (req, res, next) => {
         Assm_Kapasitas,
         Parameter_Kalibrasi,
         Assm_Lokasi
+      ${dateFilter.clause}
       ORDER BY 1
     `;
 
 
     const results = await sequelizeMSQL.query(query, {
-      replacements: { search: `%${search}%` },
+      replacements: { search: `%${search}%`, ...dateFilter.replacements },
       type: Sequelize.QueryTypes.SELECT,
     });
 
@@ -747,54 +799,26 @@ const searchInstrumen = async (req, res, next) => {
  */
 const getDashboardSummary = async (req, res, next) => {
   try {
-    let { month, year } = req.query;
-
-    // Normalize input
-    month = month ? month.toString().padStart(2, "0") : null;
-    year = year || null;
-
-    const replacements = {};
-
-    // Only apply filter if BOTH month & year exist
-    let dateFilter = "";
-
-    if (month && year) {
-      month = month.toString().padStart(2, "0");
-
-      replacements.month = parseInt(month, 10);
-      replacements.year = parseInt(year, 10);
-
-      dateFilter = `
-        WHERE YEAR(latest_date) = :year
-        AND MONTH(latest_date) = :month
-      `;
-    }
+    const periodFilter = getDashboardPeriodFilter(req.query);
+    const dateFilter = buildLatestDateFilter(periodFilter);
     const totalQuery = `
       SELECT COUNT(*) as total FROM (
-        SELECT DISTINCT
-          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
-        FROM T_Kalibrasi_DA_Thermohygro
-        UNION ALL
-        SELECT DISTINCT
-          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
-        FROM T_Kalibrasi_DA_Anak_Timbangan
-        UNION ALL
-        SELECT DISTINCT
-          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
-        FROM T_Kalibrasi_DA_Timbangan
-        UNION ALL
-        SELECT DISTINCT
-          QA_ID, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi
-        FROM T_Kalibrasi_DA_Bagian
-        UNION ALL
-        SELECT DISTINCT
-          QA_ID,
-          InstrumentName AS Assm_nama_instrumen,
-          InstrumentCode AS Assm_No_identitas_Istrumen,
-          Assm_No_identitas_kalibrasi
-        FROM RA_CalibrationAssessment
-        WHERE IsDeleted = 0
-      ) AS A
+        SELECT *
+        FROM (
+          SELECT QA_ID, MAX(Kalibrasi_selanjutnya) AS latest_date
+          FROM (
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Thermohygro WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Anak_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Timbangan WHERE Kalibrasi_selanjutnya IS NOT NULL
+            UNION ALL
+            SELECT QA_ID, Kalibrasi_selanjutnya FROM T_Kalibrasi_DA_Bagian WHERE Kalibrasi_selanjutnya IS NOT NULL
+          ) AS all_dates
+          GROUP BY QA_ID
+        ) AS latest_per_instrument
+        ${dateFilter.clause}
+      ) AS filtered_latest
     `;
 
     const statusQuery = `
@@ -817,17 +841,18 @@ const getDashboardSummary = async (req, res, next) => {
           ) AS all_dates
           GROUP BY QA_ID
         ) AS latest_per_instrument
-        ${dateFilter}   -- ← optional filter here
+        ${dateFilter.clause}
       ) AS filtered_latest
     `;
 
     const [totalResults, statusResults] = await Promise.all([
       sequelizeMSQL.query(totalQuery, {
         type: Sequelize.QueryTypes.SELECT,
+        replacements: dateFilter.replacements,
       }),
       sequelizeMSQL.query(statusQuery, {
         type: Sequelize.QueryTypes.SELECT,
-        replacements,
+        replacements: dateFilter.replacements,
       }),
     ]);
 
