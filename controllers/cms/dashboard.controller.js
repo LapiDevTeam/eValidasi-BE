@@ -12,10 +12,9 @@ const { Sequelize } = require('../../models');
  *   Not Ready : unit tidak bisa dikalibrasi sama sekali (is_tidak_dapat = 1,
  *               diisi manual FA lewat controller tidak-dapat-internal).
  *   OOC       : unit sudah dikalibrasi tapi hasilnya gagal/di luar toleransi
- *               (is_ooc = 1, di-set otomatis saat sertifikat publish dari
- *               evaluation_result = 'Tidak layak digunakan'). Scope: Bagian +
- *               Timbangan saja — Thermohygro belum punya workbook baru yang
- *               menghitung evaluation_result, jadi belum bisa auto-compute OOC.
+ *               (is_ooc = 1, di-set otomatis saat approval Manager / sertifikat
+ *               publish dari evaluation_result = 'Tidak layak digunakan').
+ *               Scope: Bagian + Timbangan + Thermohygro.
  *   Not Ready dan OOC adalah dua kondisi terpisah dan bisa saling lepas —
  *   lihat catatan Process/2026-07-14-arsitektur-penyimpanan-ooc-tidak-siap.md.
  *
@@ -84,6 +83,11 @@ const getUnitConditions = async (req, res, next) => {
       OR EXISTS (
         SELECT 1
         FROM T_Kalibrasi_Sertifikat_Timbangan s
+        WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM T_Kalibrasi_Sertifikat_Thermohygro s
         WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
       )
     `;
@@ -249,6 +253,11 @@ const getUnitConditions = async (req, res, next) => {
             FROM T_Kalibrasi_Sertifikat_Timbangan s
             WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
           )
+          OR EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Thermohygro s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
             THEN 1
           ELSE 0
         END AS Is_OOC,
@@ -265,6 +274,12 @@ const getUnitConditions = async (req, res, next) => {
             WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
           )
             THEN 'Timbangan'
+          WHEN EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Thermohygro s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
+            THEN 'Thermohygro'
           ELSE NULL
         END AS OOC_Source
       FROM DA_Units A

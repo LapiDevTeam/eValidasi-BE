@@ -434,8 +434,9 @@ function normalizeDate(value) {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
-function buildConformingDeepLink(routePrefix, qaId, idNoSertifikat, focusEvaluation) {
+function buildConformingDeepLink(routePrefix, sessionId, qaId, idNoSertifikat, focusEvaluation) {
   const params = [];
+  if (sessionId) params.push(`sessionId=${encodeURIComponent(sessionId)}`);
   if (qaId) params.push(`qa_id=${encodeURIComponent(qaId)}`);
   if (idNoSertifikat) {
     params.push(`id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`);
@@ -625,7 +626,7 @@ function normalizeRow(config, moduleKey, raw) {
   const deepLink = typeof config.buildDeepLink === 'function'
     ? config.buildDeepLink({ raw, qaId, idNoSertifikat, focusEvaluation: isWorkbookModule })
     : config.conforming
-      ? buildConformingDeepLink(config.routePrefix, qaId, idNoSertifikat, isWorkbookModule)
+      ? buildConformingDeepLink(config.routePrefix, raw.id, qaId, idNoSertifikat, isWorkbookModule)
       : `${config.routePrefix}?sessionId=${encodeURIComponent(raw.id)}${isWorkbookModule ? '&focusEvaluation=1' : ''}`;
 
   return {

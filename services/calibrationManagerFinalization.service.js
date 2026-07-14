@@ -28,6 +28,34 @@ function createError(message, statusCode = 400) {
   return error;
 }
 
+// Verdict OOC (hasil kalibrasi gagal/di luar toleransi) — hanya 'Tidak layak
+// digunakan' yang dihitung OOC. 'Penggunaan faktor koreksi' bukan OOC karena
+// unit tetap dipakai (dengan faktor koreksi).
+const OOC_EVALUATION_VALUE = 'Tidak layak digunakan';
+
+function isOocEvaluation(value) {
+  return String(value ?? '').trim() === OOC_EVALUATION_VALUE;
+}
+
+async function applyOocFlag({ config, qaId, idNoSertifikat, session, transaction }) {
+  const isOoc = isOocEvaluation(session?.Evaluation_Result);
+  await sequelizeMSQL.query(
+    `
+      UPDATE ${config.certificateTable}
+      SET
+        is_ooc = :isOoc,
+        tanggal_ooc = CASE WHEN :isOoc = 1 THEN GETDATE() ELSE NULL END
+      WHERE QA_ID = :qaId
+        AND ID_No_Sertifikat = :idNoSertifikat
+    `,
+    {
+      replacements: { qaId, idNoSertifikat, isOoc: isOoc ? 1 : 0 },
+      type: Sequelize.QueryTypes.UPDATE,
+      transaction,
+    }
+  );
+}
+
 function getCount(row, ...keys) {
   for (const key of keys) {
     if (row?.[key] !== undefined) return Number(row[key]) || 0;
@@ -555,6 +583,8 @@ async function finalizeManagerCalibrationApproval({
   if (!qaId || !idNoSertifikat) {
     throw createError('Generate sertifikat terlebih dahulu.');
   }
+
+  await applyOocFlag({ config, qaId, idNoSertifikat, session, transaction });
 
   await ensureCertificateApproved({
     config,
