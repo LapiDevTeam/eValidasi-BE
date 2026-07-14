@@ -2403,10 +2403,20 @@ border-left: 0; border-right:0;
 
   const requestedTitle = String(judul || linkedParams.get('judul') || '').trim();
   const labelType = String(req.query.labelType || linkedParams.get('labelType') || '').trim().toLowerCase();
-  const isOutOfCalibration =
+  // 'ooc'      = label "Tidak Siap" lama (is_tidak_dapat — unit tidak bisa dikalibrasi
+  //              sama sekali). Nama historis, dipertahankan agar caller lama tidak pecah.
+  // 'hasil-ooc' = label OOC hasil kalibrasi (is_ooc — hasil kalibrasi gagal/di luar
+  //              toleransi). Lihat Process/2026-07-14-arsitektur-penyimpanan-ooc-tidak-siap.md.
+  const isTidakSiapLabel =
     labelType === 'ooc' ||
-    ['OUT OF CALIBRATION', 'TIDAK DAPAT DIGUNAKAN'].includes(requestedTitle.toUpperCase());
-  const resolvedJudul = isOutOfCalibration ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI");
+    ['TIDAK DAPAT DIGUNAKAN'].includes(requestedTitle.toUpperCase());
+  const isResultOocLabel =
+    labelType === 'hasil-ooc' ||
+    ['OUT OF CALIBRATION'].includes(requestedTitle.toUpperCase());
+  const isOutOfCalibration = isTidakSiapLabel || isResultOocLabel;
+  const resolvedJudul = isResultOocLabel
+    ? 'OUT OF CALIBRATION'
+    : (isTidakSiapLabel ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI"));
   const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
   const labelTitle = escapeHtml(resolvedJudul);
   const escapedNoDoc = escapeHtml(noDoc || '');

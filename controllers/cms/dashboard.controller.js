@@ -7,15 +7,23 @@ const { Sequelize } = require('../../models');
  * CMS Dashboard — Kondisi Unit Overdue / Compliant
  *
  * Aturan:
- *   Overdue   : Tgl_kalibrasi IS NULL dan tidak sedang ditandai "tidak siap" (OOC).
+ *   Overdue   : Tgl_kalibrasi IS NULL dan tidak sedang ditandai Tidak Siap / OOC.
  *   Compliant : selain Overdue.
- *   Not Ready : sedang ditandai "tidak siap" (is_tidak_dapat=1 atau tanggal_label_OOC IS NOT NULL).
+ *   Not Ready : unit tidak bisa dikalibrasi sama sekali (is_tidak_dapat = 1,
+ *               diisi manual FA lewat controller tidak-dapat-internal).
+ *   OOC       : unit sudah dikalibrasi tapi hasilnya gagal/di luar toleransi
+ *               (is_ooc = 1, di-set otomatis saat sertifikat publish dari
+ *               evaluation_result = 'Tidak layak digunakan'). Scope: Bagian +
+ *               Timbangan saja — Thermohygro belum punya workbook baru yang
+ *               menghitung evaluation_result, jadi belum bisa auto-compute OOC.
+ *   Not Ready dan OOC adalah dua kondisi terpisah dan bisa saling lepas —
+ *   lihat catatan Process/2026-07-14-arsitektur-penyimpanan-ooc-tidak-siap.md.
  *
  * Hak akses:
  *   - Departemen VN : super user, lihat semua unit.
  *   - Lainnya       : hanya unit dengan Group_Da_Dept = dept user;
- *                     unit yang sedang OOC tetap ditampilkan meski DA-nya
- *                     belum di-approve manager VN.
+ *                     unit yang sedang Not Ready atau OOC tetap ditampilkan
+ *                     meski DA-nya belum di-approve manager VN.
  */
 const getUnitConditions = async (req, res, next) => {
   try {
@@ -49,24 +57,34 @@ const getUnitConditions = async (req, res, next) => {
       )
     `;
 
-    const oocWhere = `
+    const notReadyWhere = `
       EXISTS (
         SELECT 1
         FROM T_Kalibrasi_Sertifikat_Bagian s
-        WHERE s.QA_ID = A.QA_ID
-          AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+        WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
       )
       OR EXISTS (
         SELECT 1
         FROM T_Kalibrasi_Sertifikat_Thermohygro s
-        WHERE s.QA_ID = A.QA_ID
-          AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+        WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
       )
       OR EXISTS (
         SELECT 1
         FROM T_Kalibrasi_Sertifikat_Timbangan s
-        WHERE s.QA_ID = A.QA_ID
-          AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+        WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
+      )
+    `;
+
+    const oocWhere = `
+      EXISTS (
+        SELECT 1
+        FROM T_Kalibrasi_Sertifikat_Bagian s
+        WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM T_Kalibrasi_Sertifikat_Timbangan s
+        WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
       )
     `;
 
@@ -75,6 +93,7 @@ const getUnitConditions = async (req, res, next) => {
       : `A.Group_Da_Dept = :dept
         AND (
           ${vnApprovalWhere}
+          OR ${notReadyWhere}
           OR ${oocWhere}
         )`;
 
@@ -164,20 +183,17 @@ const getUnitConditions = async (req, res, next) => {
                AND NOT EXISTS (
                  SELECT 1
                  FROM T_Kalibrasi_Sertifikat_Bagian s
-                 WHERE s.QA_ID = A.QA_ID
-                   AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+                 WHERE s.QA_ID = A.QA_ID AND (s.is_tidak_dapat = 1 OR s.is_ooc = 1)
                )
                AND NOT EXISTS (
                  SELECT 1
                  FROM T_Kalibrasi_Sertifikat_Thermohygro s
-                 WHERE s.QA_ID = A.QA_ID
-                   AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+                 WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
                )
                AND NOT EXISTS (
                  SELECT 1
                  FROM T_Kalibrasi_Sertifikat_Timbangan s
-                 WHERE s.QA_ID = A.QA_ID
-                   AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+                 WHERE s.QA_ID = A.QA_ID AND (s.is_tidak_dapat = 1 OR s.is_ooc = 1)
                )
             THEN 'Overdue'
           ELSE 'Compliant'
@@ -186,20 +202,17 @@ const getUnitConditions = async (req, res, next) => {
           WHEN EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Bagian s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
           OR EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Thermohygro s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
           OR EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Timbangan s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
             THEN 1
           ELSE 0
@@ -208,26 +221,52 @@ const getUnitConditions = async (req, res, next) => {
           WHEN EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Bagian s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
             THEN 'Bagian'
           WHEN EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Thermohygro s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
             THEN 'Thermohygro'
           WHEN EXISTS (
             SELECT 1
             FROM T_Kalibrasi_Sertifikat_Timbangan s
-            WHERE s.QA_ID = A.QA_ID
-              AND (s.is_tidak_dapat = 1 OR s.tanggal_label_OOC IS NOT NULL)
+            WHERE s.QA_ID = A.QA_ID AND s.is_tidak_dapat = 1
           )
             THEN 'Timbangan'
           ELSE NULL
-        END AS Not_Ready_Source
+        END AS Not_Ready_Source,
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Bagian s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Timbangan s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
+            THEN 1
+          ELSE 0
+        END AS Is_OOC,
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Bagian s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
+            THEN 'Bagian'
+          WHEN EXISTS (
+            SELECT 1
+            FROM T_Kalibrasi_Sertifikat_Timbangan s
+            WHERE s.QA_ID = A.QA_ID AND s.is_ooc = 1
+          )
+            THEN 'Timbangan'
+          ELSE NULL
+        END AS OOC_Source
       FROM DA_Units A
       WHERE ${accessWhere}
       ORDER BY
@@ -244,6 +283,7 @@ const getUnitConditions = async (req, res, next) => {
     const overdue = results.filter((r) => r.Condition_Status === 'Overdue');
     const compliant = results.filter((r) => r.Condition_Status === 'Compliant');
     const notReady = results.filter((r) => r.Is_Not_Ready === 1);
+    const ooc = results.filter((r) => r.Is_OOC === 1);
 
     return res.status(200).json({
       success: true,
@@ -252,6 +292,7 @@ const getUnitConditions = async (req, res, next) => {
         overdue_count: overdue.length,
         compliant_count: compliant.length,
         not_ready_count: notReady.length,
+        ooc_count: ooc.length,
         is_vn: isVN,
         dept: bagian_user,
       },
