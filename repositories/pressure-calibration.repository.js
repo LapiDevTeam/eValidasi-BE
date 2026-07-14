@@ -1703,13 +1703,13 @@ async function createSession(data) {
          standard_uncertainty, metal_rule_uncertainty,
          delta_h, media_density, gravity,
          status, created_by)
-      OUTPUT INSERTED.session_id
       VALUES
         (@InstrumentId, @StandardId, @CalibrationDate, @Temperature, @Humidity,
          @Pic, @UutUnit, @StandardUnit, @IndicatorType, @Resolution,
          @StandardUncertainty, @MetalRuleUncertainty,
          @DeltaH, @MediaDensity, @Gravity,
-         'DRAFT', @CreatedBy)
+         'DRAFT', @CreatedBy);
+      SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
     `);
   return result.recordset[0].session_id;
 }

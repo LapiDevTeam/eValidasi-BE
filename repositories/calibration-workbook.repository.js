@@ -153,7 +153,6 @@ async function createSession(payload, transaction) {
       notes,
       created_by
     )
-    OUTPUT INSERTED.session_id
     VALUES
     (
       @SessionCode,
@@ -168,7 +167,8 @@ async function createSession(payload, transaction) {
       @Humidity,
       @Notes,
       @CreatedBy
-    )
+    );
+    SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
   `);
 
   return result.recordset[0].session_id;

@@ -1261,18 +1261,20 @@ async function updateLevelCorrection(req, res, next) {
       }),
     };
 
+    const unitMode = (await repo.getSessionById(sessionId))?.unit_mode || 'PA';
+
     const values = formulaSvc.calculateLevelCorrection({
       delta_h: payload.delta_h ?? 0.02,
       media_density: payload.media_density ?? 1.2,
       gravity: payload.gravity ?? 9.78,
-      unit_mode: (await repo.getSessionById(sessionId))?.unit_mode || 'PA',
+      unit_mode: unitMode,
     });
 
     const updated = await repo.upsertLevelCorrection(sessionId, {
       ...payload,
       correction_pascal: values.correction_pascal,
       correction_session_unit: values.correction_session_unit,
-      session_unit: values.session_unit,
+      session_unit: unitMode,
     });
 
     await writeAuditSafe({
