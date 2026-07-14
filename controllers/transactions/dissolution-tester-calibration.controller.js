@@ -782,13 +782,11 @@ const saveSession = async (req, res, next) => {
       }
 
       if (
-        existing.ApprovedByAdmin ||
-        existing.ApprovedByOfficer ||
         existing.ApprovedByManager
       ) {
         return res.status(403).json({
           success: false,
-          message: 'Tidak bisa simpan workbook karena sudah approve',
+          message: 'Tidak bisa simpan workbook karena sudah approve Manager',
         });
       }
 
