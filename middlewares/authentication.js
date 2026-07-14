@@ -14,12 +14,19 @@ const authentication = async (req, res, next) => {
 
     if (!token) throw new MyError(401, "Not Authentication");
     if (token) {
-      const response = await fetch("http://192.168.1.38/api/lms-dev/v1/decode", {
-        method: "GET",
-        headers: {
-          access_token: token,
-        },
-      });
+      let response;
+      try {
+        response = await fetch("http://192.168.1.38/api/lms-dev/v1/decode", {
+          method: "GET",
+          headers: {
+            access_token: token,
+          },
+        });
+      } catch (fetchError) {
+        // fetchError.cause holds the real network reason (ECONNRESET/ETIMEDOUT/etc)
+        console.error('[authentication] LMS decode fetch failed:', fetchError.cause || fetchError);
+        throw new MyError(503, "Auth service tidak dapat dihubungi, silakan coba lagi", fetchError);
+      }
 
       const result = await response.json();
 

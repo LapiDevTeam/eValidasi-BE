@@ -1098,24 +1098,20 @@ async function createRegressionInput(req, res, next) {
         field: 'point_id',
         min: 1,
       }),
-      slope: normalizeDecimal(req.body.slope, {
+      direction: normalizeDirection(req.body.direction, null),
+      x_variable: normalizeDecimal(req.body.x_variable ?? req.body.xVariable, {
         required: true,
-        field: 'slope',
+        field: 'x_variable',
         precision: 18,
-        scale: 10,
+        scale: 12,
       }),
       intercept: normalizeDecimal(req.body.intercept, {
         required: true,
         field: 'intercept',
         precision: 18,
-        scale: 10,
+        scale: 12,
       }),
-      r_squared: normalizeDecimal(req.body.r_squared ?? req.body.rSquared, {
-        required: false,
-        field: 'r_squared',
-        precision: 18,
-        scale: 10,
-      }),
+      source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
     };
 
     await ensurePointBelongsToSession(payload.point_id, sessionId);
@@ -1151,24 +1147,20 @@ async function updateRegressionInput(req, res, next) {
         field: 'point_id',
         min: 1,
       }),
-      slope: normalizeDecimal(req.body.slope, {
+      direction: normalizeDirection(req.body.direction, null),
+      x_variable: normalizeDecimal(req.body.x_variable ?? req.body.xVariable, {
         required: true,
-        field: 'slope',
+        field: 'x_variable',
         precision: 18,
-        scale: 10,
+        scale: 12,
       }),
       intercept: normalizeDecimal(req.body.intercept, {
         required: true,
         field: 'intercept',
         precision: 18,
-        scale: 10,
+        scale: 12,
       }),
-      r_squared: normalizeDecimal(req.body.r_squared ?? req.body.rSquared, {
-        required: false,
-        field: 'r_squared',
-        precision: 18,
-        scale: 10,
-      }),
+      source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
     };
 
     await ensurePointBelongsToSession(payload.point_id, current.session_id);
