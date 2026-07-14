@@ -1924,6 +1924,24 @@ async function updateSertifikatBagianHeader(payload, transaction) {
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
 
+async function updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .input('IsOoc', sql.Bit, isOoc ? 1 : 0)
+    .query(`
+      UPDATE T_Kalibrasi_Sertifikat_Bagian
+      SET
+        is_ooc = @IsOoc,
+        tanggal_ooc = CASE WHEN @IsOoc = 1 THEN GETDATE() ELSE NULL END
+      WHERE QA_ID = @QaId
+        AND ID_No_Sertifikat = @IdNoSertifikat
+    `);
+
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
 async function isSertifikatBagianApproved(qaId, idNoSertifikat, transaction) {
   const request = await createRequest(transaction);
   const result = await request
@@ -2083,6 +2101,7 @@ module.exports = {
   getNextCertificateNumberByCode,
   createSertifikatBagianDraftFromDa,
   updateSertifikatBagianHeader,
+  updateSertifikatBagianOOC,
   isSertifikatBagianApproved,
   insertSertifikatBagianStatus,
   replaceSertifikatBagianHasilKalRows,

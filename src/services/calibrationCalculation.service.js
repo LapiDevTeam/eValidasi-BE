@@ -15,6 +15,18 @@ function toNumberOrNull(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+// Manual evaluation verdict — same three canonical options as the other workbook modules.
+const EVALUATION_OPTIONS = [
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+];
+
+function normalizeEvaluationResult(value) {
+  const text = String(value ?? '').trim();
+  return EVALUATION_OPTIONS.includes(text) ? text : '';
+}
+
 function buildValidationError(errors) {
   const err = new Error('Validation failed');
   err.statusCode = 422;
@@ -897,6 +909,9 @@ async function publishSessionToSertifikatBagian(
       err.statusCode = 500;
       throw err;
     }
+
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
 
     const sortedResults = [...results].sort(
       (a, b) => Number(a.point_order) - Number(b.point_order)

@@ -807,6 +807,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const updatedHeader = await repo.updateTimbanganCertHeader(headerPayload, transaction);
     if (!updatedHeader) throw httpError('Failed to update sertifikat header.', 500);
 
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatTimbanganOOC(qaId, idNoSertifikat, isOoc, transaction);
+
     // I. Pre-Adjustment — satu baris ringkasan (mass total vs hasil pembacaan), seperti VBA.
     const preadjustRows = await repo.listPreadjust(sessionId, transaction);
     const preadjust = formula.computePreadjust(preadjustRows, unit);

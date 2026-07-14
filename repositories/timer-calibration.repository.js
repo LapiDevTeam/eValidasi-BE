@@ -638,6 +638,7 @@ module.exports = {
   getNextCertificateNumberByCode: workbookRepo.getNextCertificateNumberByCode,
   getSertifikatBagianHeader: workbookRepo.getSertifikatBagianHeader,
   updateSertifikatBagianHeader: workbookRepo.updateSertifikatBagianHeader,
+  updateSertifikatBagianOOC: workbookRepo.updateSertifikatBagianOOC,
   replaceSertifikatBagianHasilKalRows: workbookRepo.replaceSertifikatBagianHasilKalRows,
   getApproverIdentity: workbookRepo.getApproverIdentity,
   insertDaBagianStatus: workbookRepo.insertDaBagianStatus,

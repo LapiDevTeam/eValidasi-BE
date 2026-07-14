@@ -83,8 +83,22 @@ const BAGIAN_MODULES = new Set([
   'kalibrasi-eksternal',
 ]);
 
+// Modules removed from the pending-approval oversight list by request.
+// Approval/reject endpoints remain available for direct links.
+const EXCLUDED_PENDING_MODULES = new Set([
+  'da-bagian',
+  'sertifikat-bagian',
+  'da-thermo',
+  'sertifikat-thermo',
+  'timbangan',
+]);
+
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
+}
+
+function isExcludedFromPending(module) {
+  return EXCLUDED_PENDING_MODULES.has(String(module || '').toLowerCase());
 }
 
 function canApproveRole(userRole, pendingRole) {
@@ -564,7 +578,7 @@ async function scanModule(config, filters = {}) {
     `;
   } else if (existing.has(config.statusColumn)) {
     query += `
-      AND ${columnExpression(config.statusColumn)} IN ('CALCULATED', 'FINALIZED', 'PUBLISHED')
+      AND ${columnExpression(config.statusColumn)} IN ('CALCULATED', 'FINALIZED', 'PUBLISHED', 'APPROVED_ADMIN', 'APPROVED_OFFICER')
     `;
   }
 
@@ -1950,11 +1964,17 @@ async function listPendingApprovals(options = {}) {
 
   const moduleKey = String(moduleFilter || '').toLowerCase();
 
+  // If a removed module is explicitly requested, return an empty list gracefully.
+  // Approval/reject endpoints still work for direct links.
+  if (moduleKey && isExcludedFromPending(moduleKey)) {
+    return [];
+  }
+
   const includeWorkbook = !moduleFilter || MODULE_REGISTRY[moduleKey];
-  const includeDaBagian = !moduleFilter || moduleKey === 'da-bagian';
-  const includeSertifikatBagian = !moduleFilter || moduleKey === 'sertifikat-bagian';
-  const includeDaThermo = !moduleFilter || moduleKey === 'da-thermo';
-  const includeSertifikatThermo = !moduleFilter || moduleKey === 'sertifikat-thermo';
+  const includeDaBagian = false;
+  const includeSertifikatBagian = false;
+  const includeDaThermo = false;
+  const includeSertifikatThermo = false;
   const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
 
   if (
@@ -1976,7 +1996,9 @@ async function listPendingApprovals(options = {}) {
   if (includeWorkbook) {
     const modulesToScan = moduleFilter
       ? [{ key: moduleKey, config: MODULE_REGISTRY[moduleKey] }]
-      : moduleKeys().map((key) => ({ key, config: MODULE_REGISTRY[key] }));
+      : moduleKeys()
+        .map((key) => ({ key, config: MODULE_REGISTRY[key] }))
+        .filter(({ key }) => !isExcludedFromPending(key));
 
     for (const { key, config } of modulesToScan) {
       try {
@@ -1996,46 +2018,6 @@ async function listPendingApprovals(options = {}) {
         // Log and continue so one broken module does not block the whole page.
         console.error(`[pendingCalibrationApprovals] scan failed for ${key}:`, err.message);
       }
-    }
-  }
-
-  if (includeDaBagian) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const rows = await scanDaBagianPending(search, requester);
-      results.push(...rows);
-    } catch (err) {
-      console.error('[pendingCalibrationApprovals] scan failed for da-bagian:', err.message);
-    }
-  }
-
-  if (includeSertifikatBagian) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const rows = await scanSertifikatBagianPending(search, requester);
-      results.push(...rows);
-    } catch (err) {
-      console.error('[pendingCalibrationApprovals] scan failed for sertifikat-bagian:', err.message);
-    }
-  }
-
-  if (includeDaThermo) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const rows = await scanDaThermoPending(search, requester);
-      results.push(...rows);
-    } catch (err) {
-      console.error('[pendingCalibrationApprovals] scan failed for da-thermo:', err.message);
-    }
-  }
-
-  if (includeSertifikatThermo) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const rows = await scanSertifikatThermoPending(search, requester);
-      results.push(...rows);
-    } catch (err) {
-      console.error('[pendingCalibrationApprovals] scan failed for sertifikat-thermo:', err.message);
     }
   }
 

@@ -700,6 +700,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       );
     }
 
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
+
     // Hasil Kalibrasi rows: per point -> Pembacaan Alat / Standar / Error / Ketidakpastian
     const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));
     const publishRows = sorted.map((row, index) => ({

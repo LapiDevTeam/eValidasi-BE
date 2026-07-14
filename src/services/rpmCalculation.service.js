@@ -464,6 +464,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       delegated_to: delegatedActor,
     }, transaction);
 
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
+
     const publishRows = results.map((row, index) => ({
       seq_id: index + 1,
       pembacaan_alat: toNumberOrNull(row.mean_uut) ?? 0,

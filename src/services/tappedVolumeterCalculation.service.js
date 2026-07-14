@@ -458,6 +458,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       delegated_to: delegatedActor,
     }, transaction);
 
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
+
     // Pemetaan baris hasil kalibrasi -> T_Kalibrasi_Sertifikat_Bagian_Hasil_Kal:
     //   pembacaan_alat   = rata-rata ketukan/menit (E_avg)
     //   pembacaan_standar = nominal target (250 ketukan/menit)
