@@ -31,8 +31,18 @@ const BAGIAN_MODULES = new Set([
   'kalibrasi-eksternal',
 ]);
 
+const MASTER_MODULES = new Set([
+  'master-awp',
+  'master-map-internal',
+  'master-map-external',
+]);
+
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
+}
+
+function isMasterModule(module) {
+  return MASTER_MODULES.has(String(module || '').toLowerCase());
 }
 
 function validateSessionId(module, sessionId) {
@@ -92,11 +102,16 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const result = await service.approveSession(moduleSlug, sessionId, user);
+    const result = await service.approveSession(
+      moduleSlug,
+      sessionId,
+      user,
+      req.body || {}
+    );
 
     return res.status(200).json({
       success: true,
-      message: isBagianModule(moduleSlug)
+      message: isBagianModule(moduleSlug) || isMasterModule(moduleSlug)
         ? 'Item approved successfully'
         : `Workbook approved by ${result.approvedByLabel}`,
       data: result,
@@ -143,7 +158,7 @@ const rejectSession = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: isBagianModule(moduleSlug)
+      message: isBagianModule(moduleSlug) || isMasterModule(moduleSlug)
         ? 'Item rejected successfully'
         : 'Workbook rejected successfully',
       data: result,

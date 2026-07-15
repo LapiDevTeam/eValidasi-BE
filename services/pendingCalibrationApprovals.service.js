@@ -93,8 +93,126 @@ const EXCLUDED_PENDING_MODULES = new Set([
   'timbangan',
 ]);
 
+const MASTER_APPROVAL_MODULES = new Set([
+  'master-awp',
+  'master-map-internal',
+  'master-map-external',
+]);
+
+const MASTER_APPROVAL_CONFIGS = {
+  'master-awp': {
+    displayName: 'Master AWP',
+    table: 'dbo.T_AWP_Header',
+    idColumn: 'AWP_ID',
+    yearColumn: 'Year',
+    monthColumn: null,
+    statusColumn: 'Status',
+    workflowColumn: 'Workflow_View',
+    revisionColumn: 'Revision_No',
+    requestedByColumn: 'Requested_By',
+    requestedAtColumn: 'Requested_At',
+    preparedByColumn: 'Prepared_By',
+    preparedByNameColumn: 'Prepared_By_Name',
+    approvedByColumn: 'Approved_By',
+    approvedByNameColumn: 'Approved_By_Name',
+    approvedByTitleColumn: 'Approved_By_Title',
+    approvedDateColumn: 'Approved_At',
+    rejectedByColumn: 'Rejected_By',
+    rejectedDateColumn: 'Rejected_At',
+    notesColumn: 'Notes',
+    createdByColumn: 'Created_By',
+    createdDateColumn: 'Created_At',
+    updatedByColumn: 'Updated_By',
+    updatedDateColumn: 'Updated_At',
+    lockedColumn: null,
+    planWorkflow: 'start',
+    realizationWorkflow: 'end',
+    planRoute: '/master-rkt-template',
+    realizationRoute: '/master-rkt',
+  },
+  'master-map-internal': {
+    displayName: 'Master MAP Internal',
+    table: 'dbo.T_Monthly_Schedule_Header',
+    idColumn: 'Schedule_Header_ID',
+    yearColumn: 'Period_Year',
+    monthColumn: 'Period_Month',
+    statusColumn: 'Status',
+    workflowColumn: 'Workflow_View',
+    revisionColumn: 'Revision_No',
+    requestedByColumn: 'Requested_By',
+    requestedAtColumn: 'Requested_Date',
+    preparedByColumn: 'Prepared_By',
+    preparedByNameColumn: 'Prepared_By_Name',
+    approvedByColumn: 'Approved_By',
+    approvedByNameColumn: 'Approved_By_Name',
+    approvedByTitleColumn: 'Approved_By_Title',
+    approvedDateColumn: 'Approved_Date',
+    rejectedByColumn: 'Rejected_By',
+    rejectedDateColumn: 'Rejected_Date',
+    notesColumn: 'Remarks',
+    createdByColumn: 'Created_By',
+    createdDateColumn: 'Created_Date',
+    updatedByColumn: 'Updated_By',
+    updatedDateColumn: 'Updated_Date',
+    lockedColumn: 'Is_Locked',
+    planWorkflow: 'plan',
+    realizationWorkflow: 'realization',
+    planRoute: '/master-jadwal-bulanan-template',
+    realizationRoute: '/master-jadwal-bulanan',
+  },
+  'master-map-external': {
+    displayName: 'Master MAP External',
+    table: 'dbo.T_Monthly_Schedule_External_Header',
+    idColumn: 'Schedule_External_Header_ID',
+    yearColumn: 'Base_Period_Year',
+    monthColumn: 'Base_Period_Month',
+    statusColumn: 'Status',
+    workflowColumn: 'Workflow_View',
+    revisionColumn: 'Revision_No',
+    requestedByColumn: 'Requested_By',
+    requestedAtColumn: 'Requested_Date',
+    preparedByColumn: 'Prepared_By',
+    preparedByNameColumn: 'Prepared_By_Name',
+    approvedByColumn: 'Approved_By',
+    approvedByNameColumn: 'Approved_By_Name',
+    approvedByTitleColumn: 'Approved_By_Title',
+    approvedDateColumn: 'Approved_Date',
+    rejectedByColumn: 'Rejected_By',
+    rejectedDateColumn: 'Rejected_Date',
+    notesColumn: 'Remarks',
+    createdByColumn: 'Created_By',
+    createdDateColumn: 'Created_Date',
+    updatedByColumn: 'Updated_By',
+    updatedDateColumn: 'Updated_Date',
+    lockedColumn: 'Is_Locked',
+    planWorkflow: 'plan',
+    realizationWorkflow: 'realization',
+    planRoute: '/master-jadwal-bulanan-external-template',
+    realizationRoute: '/master-jadwal-bulanan-external',
+  },
+};
+
+const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
+}
+
+function isMasterApprovalModule(module) {
+  return MASTER_APPROVAL_MODULES.has(String(module || '').toLowerCase());
 }
 
 function isExcludedFromPending(module) {
@@ -665,6 +783,254 @@ function buildLikeSearch(rawSearch) {
   if (!text) return null;
   const escaped = text.replace(/%/g, '\\%').replace(/_/g, '\\_');
   return `%${escaped}%`;
+}
+
+function quotedColumn(columnName) {
+  return `[${columnName}]`;
+}
+
+function masterColumn(existing, columnName, alias = 'H') {
+  if (!columnName || !existing.has(columnName)) return 'NULL';
+  return `${alias}.${quotedColumn(columnName)}`;
+}
+
+function normalizePeriodMonth(value) {
+  const numberValue = Number(value);
+  if (Number.isInteger(numberValue) && numberValue >= 1 && numberValue <= 12) {
+    return String(numberValue).padStart(2, '0');
+  }
+  return normalizeValue(value);
+}
+
+function getMasterPeriodLabel(moduleKey, year, month) {
+  if (moduleKey === 'master-awp') return normalizeValue(year);
+  const monthNumber = Number(month);
+  const monthLabel = MONTH_LABELS[monthNumber - 1] || normalizeValue(month);
+  return `${monthLabel} ${normalizeValue(year)}`.trim();
+}
+
+function isMasterPlanningWorkflow(config, workflowView) {
+  return normalizeValue(workflowView).toLowerCase() === config.planWorkflow;
+}
+
+function buildMasterApprovalDeepLink(moduleKey, raw) {
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  const year = normalizeValue(raw.periodYear);
+  const month = normalizePeriodMonth(raw.periodMonth);
+  const route = isMasterPlanningWorkflow(config, raw.workflowView)
+    ? config.planRoute
+    : config.realizationRoute;
+  const params = [`year=${encodeURIComponent(year)}`, 'source=requested'];
+  if (month) {
+    params.splice(1, 0, `month=${encodeURIComponent(Number(month) || month)}`);
+  }
+  return `${route}?${params.join('&')}`;
+}
+
+function getMasterRequesterExpression(existing, config) {
+  const preparedName = masterColumn(existing, config.preparedByNameColumn);
+  const preparedBy = masterColumn(existing, config.preparedByColumn);
+  const requestedBy = masterColumn(existing, config.requestedByColumn);
+  const createdBy = masterColumn(existing, config.createdByColumn);
+  return `COALESCE(
+    dbo.fnGetInisialKaryawan(COALESCE(${preparedBy}, ${requestedBy}, ${createdBy})),
+    ${preparedBy},
+    ${requestedBy},
+    ${createdBy},
+    ${preparedName},
+    ''
+  )`;
+}
+
+function getMasterRequiredColumns(config) {
+  return [
+    config.idColumn,
+    config.yearColumn,
+    config.statusColumn,
+    config.workflowColumn,
+    config.revisionColumn,
+  ].filter(Boolean);
+}
+
+function normalizeMasterApprovalRow(moduleKey, raw) {
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  const year = normalizeValue(raw.periodYear);
+  const month = normalizePeriodMonth(raw.periodMonth);
+  const isPlanning = isMasterPlanningWorkflow(config, raw.workflowView);
+  const workflowLabel = isPlanning ? 'Plan' : 'Realization';
+  const periodLabel = getMasterPeriodLabel(moduleKey, year, month);
+  const revisionNo = normalizeValue(raw.revisionNo);
+
+  return {
+    module: moduleKey,
+    moduleDisplayName: `${config.displayName} ${workflowLabel}`,
+    sessionId: normalizeValue(raw.id),
+    qaId: periodLabel,
+    idNoSertifikat: revisionNo ? `Rev ${revisionNo}` : '',
+    instrumentName: `${config.displayName} ${workflowLabel} ${periodLabel}`.trim(),
+    calibrationDate: '',
+    requester: normalizeValue(raw.requester),
+    updatedAt: normalizeDate(raw.updatedAt || raw.requestedAt || raw.createdAt),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: '',
+    approvedByOfficerDate: '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel: 'manager',
+    pendingRole: 'Manager',
+    deepLink: buildMasterApprovalDeepLink(moduleKey, raw),
+  };
+}
+
+function getMasterUserJobLevel(user = {}) {
+  return Number(
+    user?.delegatedTo?.Job_LevelID ??
+      user?.delegatedTo?.emp_JobLevelID ??
+      user?.delegatedTo?.joblevel_id_user ??
+      user?.user?.Job_LevelID ??
+      user?.user?.emp_JobLevelID ??
+      user?.user?.joblevel_id_user ??
+      user?.Job_LevelID ??
+      user?.emp_JobLevelID ??
+      user?.joblevel_id_user ??
+      user?.jabatan_user ??
+      0
+  );
+}
+
+function getMasterUserDepartments(user = {}) {
+  return [
+    user?.delegatedTo?.emp_DeptID,
+    user?.delegatedTo?.DeptID,
+    user?.delegatedTo?.emp_JobID,
+    user?.delegatedTo?.emp_JobId,
+    user?.delegatedTo?.emp_Job_id,
+    user?.delegatedTo?.bagian_user,
+    user?.user?.emp_DeptID,
+    user?.user?.DeptID,
+    user?.user?.emp_JobID,
+    user?.user?.emp_JobId,
+    user?.user?.emp_Job_id,
+    user?.user?.bagian_user,
+    user?.emp_DeptID,
+    user?.DeptID,
+    user?.emp_JobID,
+    user?.emp_JobId,
+    user?.emp_Job_id,
+    user?.bagian_user,
+  ]
+    .map((value) => String(value ?? '').trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function assertMasterVNManager(user = {}) {
+  if (
+    getMasterUserJobLevel(user) === 3 &&
+    getMasterUserDepartments(user).includes('VN')
+  ) {
+    return;
+  }
+
+  const err = new Error('Only VN Manager can approve or reject master planning revisions.');
+  err.statusCode = 403;
+  throw err;
+}
+
+function getMasterUserId(user = {}) {
+  return user?.user_id || user?.log_NIK || user?.UserID || '';
+}
+
+function getMasterUserName(user = {}) {
+  return String(
+    user?.delegatedTo?.Nama ??
+      user?.delegatedTo?.nama_user ??
+      user?.user?.Nama ??
+      user?.user?.nama_user ??
+      user?.Nama ??
+      user?.nama_user ??
+      getMasterUserId(user)
+  ).trim();
+}
+
+function getMasterApprovalTitle(options = {}) {
+  return String(
+    options?.approved_by_title ??
+      options?.approvedByTitle ??
+      options?.job_description ??
+      options?.jobDescription ??
+      ''
+  ).trim();
+}
+
+async function scanMasterApprovalPending(moduleKey, filters = {}) {
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  if (!config) return [];
+
+  const existing = await getExistingColumns(config.table);
+  const missingRequired = getMasterRequiredColumns(config).filter(
+    (columnName) => !existing.has(columnName)
+  );
+  if (missingRequired.length > 0) {
+    return [];
+  }
+
+  const idExpr = masterColumn(existing, config.idColumn);
+  const yearExpr = masterColumn(existing, config.yearColumn);
+  const monthExpr = masterColumn(existing, config.monthColumn);
+  const workflowExpr = masterColumn(existing, config.workflowColumn);
+  const revisionExpr = masterColumn(existing, config.revisionColumn);
+  const requesterExpr = getMasterRequesterExpression(existing, config);
+  const requestedAtExpr = masterColumn(existing, config.requestedAtColumn);
+  const createdAtExpr = masterColumn(existing, config.createdDateColumn);
+  const updatedAtExpr = masterColumn(existing, config.updatedDateColumn);
+
+  const replacements = {};
+  let where = `WHERE ${masterColumn(existing, config.statusColumn)} = 'REQUESTED'`;
+
+  const search = buildLikeSearch(filters.search);
+  if (search) {
+    replacements.search = search;
+    where += `
+      AND (
+        CAST(${idExpr} AS NVARCHAR(50)) LIKE :search
+        OR CAST(${yearExpr} AS NVARCHAR(50)) LIKE :search
+        OR CAST(${revisionExpr} AS NVARCHAR(50)) LIKE :search
+        OR CAST(${workflowExpr} AS NVARCHAR(50)) LIKE :search
+        OR ${requesterExpr} LIKE :search
+        ${config.monthColumn ? `OR CAST(${monthExpr} AS NVARCHAR(50)) LIKE :search` : ''}
+      )
+    `;
+  }
+
+  const requester = buildLikeSearch(filters.requester);
+  if (requester) {
+    replacements.requester = requester;
+    where += ` AND ${requesterExpr} LIKE :requester`;
+  }
+
+  const query = `
+    SELECT TOP 200
+      ${idExpr} AS id,
+      CAST(${yearExpr} AS NVARCHAR(50)) AS periodYear,
+      ${config.monthColumn ? `RIGHT('0' + CAST(${monthExpr} AS VARCHAR(2)), 2)` : 'NULL'} AS periodMonth,
+      CAST(${workflowExpr} AS NVARCHAR(20)) AS workflowView,
+      ${revisionExpr} AS revisionNo,
+      ${requesterExpr} AS requester,
+      ${requestedAtExpr} AS requestedAt,
+      ${createdAtExpr} AS createdAt,
+      ${updatedAtExpr} AS updatedAt
+    FROM ${config.table} AS H
+    ${where}
+    ORDER BY COALESCE(${updatedAtExpr}, ${requestedAtExpr}, ${createdAtExpr}) DESC, ${idExpr} DESC
+  `;
+
+  const rows = await sequelizeMSQL.query(query, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map((row) => normalizeMasterApprovalRow(moduleKey, row));
 }
 
 function normalizeDaBagianRow(raw) {
@@ -1954,6 +2320,215 @@ async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
   };
 }
 
+async function getMasterApprovalHeaderById(moduleKey, sessionId, transaction) {
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  if (!config) {
+    const err = new Error(`Unknown master approval module: ${moduleKey}`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const headerId = Number(sessionId);
+  if (!Number.isInteger(headerId) || headerId <= 0) {
+    const err = new Error('Positive numeric master header ID is required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existing = await getExistingColumns(config.table);
+  const missingRequired = getMasterRequiredColumns(config).filter(
+    (columnName) => !existing.has(columnName)
+  );
+  if (missingRequired.length > 0) {
+    const err = new Error(
+      `Missing required master approval columns in ${config.table}: ${missingRequired.join(', ')}`
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        ${masterColumn(existing, config.idColumn)} AS id,
+        CAST(${masterColumn(existing, config.yearColumn)} AS NVARCHAR(50)) AS periodYear,
+        ${config.monthColumn ? `RIGHT('0' + CAST(${masterColumn(existing, config.monthColumn)} AS VARCHAR(2)), 2)` : 'NULL'} AS periodMonth,
+        CAST(${masterColumn(existing, config.workflowColumn)} AS NVARCHAR(20)) AS workflowView,
+        ${masterColumn(existing, config.revisionColumn)} AS revisionNo,
+        CAST(${masterColumn(existing, config.statusColumn)} AS NVARCHAR(20)) AS status
+      FROM ${config.table} AS H WITH (UPDLOCK, HOLDLOCK)
+      WHERE ${masterColumn(existing, config.idColumn)} = :headerId
+    `,
+    {
+      replacements: { headerId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    }
+  );
+
+  return rows[0] || null;
+}
+
+function addMasterSetIfExists(setList, existing, columnName, expression) {
+  if (columnName && existing.has(columnName)) {
+    setList.push(`${quotedColumn(columnName)} = ${expression}`);
+  }
+}
+
+async function approveMasterApprovalFromPending(moduleKey, sessionId, user, options = {}) {
+  assertMasterVNManager(user);
+
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  const userId = getMasterUserId(user);
+  const approvedByName = getMasterUserName(user) || userId;
+  const approvedByTitle = getMasterApprovalTitle(options);
+  const notes = options?.notes || options?.remarks || null;
+
+  if (!userId) {
+    const err = new Error('User is not authenticated');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  return sequelizeMSQL.transaction(async (transaction) => {
+    const existing = await getExistingColumns(config.table);
+    const header = await getMasterApprovalHeaderById(moduleKey, sessionId, transaction);
+    if (!header) {
+      const err = new Error('No master planning revision is waiting for approval.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (header.status !== 'REQUESTED') {
+      const err = new Error('Only requested master planning revisions can be approved.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const supersedeSet = [`${quotedColumn(config.statusColumn)} = 'SUPERSEDED'`];
+    addMasterSetIfExists(supersedeSet, existing, config.lockedColumn, '1');
+    addMasterSetIfExists(supersedeSet, existing, config.updatedByColumn, ':userId');
+    addMasterSetIfExists(supersedeSet, existing, config.updatedDateColumn, 'GETDATE()');
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${config.table}
+        SET ${supersedeSet.join(', ')}
+        WHERE ${quotedColumn(config.yearColumn)} = :year
+          ${config.monthColumn ? `AND ${quotedColumn(config.monthColumn)} = :month` : ''}
+          AND ${quotedColumn(config.workflowColumn)} = :workflowView
+          AND ${quotedColumn(config.statusColumn)} = 'APPROVED'
+          AND ${quotedColumn(config.idColumn)} <> :headerId
+      `,
+      {
+        replacements: {
+          year: header.periodYear,
+          month: header.periodMonth,
+          workflowView: header.workflowView,
+          headerId: header.id,
+          userId,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    const approveSet = [`${quotedColumn(config.statusColumn)} = 'APPROVED'`];
+    addMasterSetIfExists(approveSet, existing, config.lockedColumn, '1');
+    addMasterSetIfExists(approveSet, existing, config.approvedByColumn, ':userId');
+    addMasterSetIfExists(approveSet, existing, config.approvedByNameColumn, ':approvedByName');
+    addMasterSetIfExists(approveSet, existing, config.approvedByTitleColumn, ':approvedByTitle');
+    addMasterSetIfExists(approveSet, existing, config.approvedDateColumn, 'GETDATE()');
+    addMasterSetIfExists(approveSet, existing, config.notesColumn, `COALESCE(:notes, ${quotedColumn(config.notesColumn)})`);
+    addMasterSetIfExists(approveSet, existing, config.updatedByColumn, ':userId');
+    addMasterSetIfExists(approveSet, existing, config.updatedDateColumn, 'GETDATE()');
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${config.table}
+        SET ${approveSet.join(', ')}
+        WHERE ${quotedColumn(config.idColumn)} = :headerId
+      `,
+      {
+        replacements: {
+          headerId: header.id,
+          userId,
+          approvedByName,
+          approvedByTitle,
+          notes,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    return {
+      module: moduleKey,
+      sessionId: normalizeValue(header.id),
+      approvedBy: 'approver',
+      approvedByLabel: 'Manager',
+    };
+  });
+}
+
+async function rejectMasterApprovalFromPending(moduleKey, sessionId, user, reason) {
+  assertMasterVNManager(user);
+
+  const config = MASTER_APPROVAL_CONFIGS[moduleKey];
+  const userId = getMasterUserId(user);
+  if (!userId) {
+    const err = new Error('User is not authenticated');
+    err.statusCode = 401;
+    throw err;
+  }
+
+  return sequelizeMSQL.transaction(async (transaction) => {
+    const existing = await getExistingColumns(config.table);
+    const header = await getMasterApprovalHeaderById(moduleKey, sessionId, transaction);
+    if (!header) {
+      const err = new Error('No master planning revision is waiting for approval.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (header.status !== 'REQUESTED') {
+      const err = new Error('Only requested master planning revisions can be rejected.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const rejectSet = [`${quotedColumn(config.statusColumn)} = 'REJECTED'`];
+    addMasterSetIfExists(rejectSet, existing, config.lockedColumn, '0');
+    addMasterSetIfExists(rejectSet, existing, config.rejectedByColumn, ':userId');
+    addMasterSetIfExists(rejectSet, existing, config.rejectedDateColumn, 'GETDATE()');
+    addMasterSetIfExists(rejectSet, existing, config.notesColumn, `COALESCE(:reason, ${quotedColumn(config.notesColumn)})`);
+    addMasterSetIfExists(rejectSet, existing, config.updatedByColumn, ':userId');
+    addMasterSetIfExists(rejectSet, existing, config.updatedDateColumn, 'GETDATE()');
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${config.table}
+        SET ${rejectSet.join(', ')}
+        WHERE ${quotedColumn(config.idColumn)} = :headerId
+      `,
+      {
+        replacements: {
+          headerId: header.id,
+          userId,
+          reason: reason || null,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+
+    return {
+      module: moduleKey,
+      sessionId: normalizeValue(header.id),
+      rejectedBy: userId,
+      rejectedReason: reason || '',
+    };
+  });
+}
+
 async function listPendingApprovals(options = {}) {
   const {
     bagian_user,
@@ -1977,6 +2552,7 @@ async function listPendingApprovals(options = {}) {
   const includeDaThermo = false;
   const includeSertifikatThermo = false;
   const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
+  const includeMasterApproval = !moduleFilter || isMasterApprovalModule(moduleKey);
 
   if (
     moduleFilter
@@ -1986,6 +2562,7 @@ async function listPendingApprovals(options = {}) {
     && !includeDaThermo
     && !includeSertifikatThermo
     && !includeKalibrasiEksternal
+    && !includeMasterApproval
   ) {
     const error = new Error(`Unknown calibration module: ${moduleFilter}`);
     error.statusCode = 400;
@@ -2032,6 +2609,28 @@ async function listPendingApprovals(options = {}) {
     }
   }
 
+  if (includeMasterApproval) {
+    const masterModulesToScan = moduleFilter
+      ? [moduleKey]
+      : Array.from(MASTER_APPROVAL_MODULES);
+
+    for (const masterModuleKey of masterModulesToScan) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const rows = await scanMasterApprovalPending(masterModuleKey, {
+          search,
+          requester,
+        });
+        results.push(...rows);
+      } catch (err) {
+        console.error(
+          `[pendingCalibrationApprovals] scan failed for ${masterModuleKey}:`,
+          err.message
+        );
+      }
+    }
+  }
+
   results.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
   return results.slice(0, limit);
 }
@@ -2061,9 +2660,13 @@ async function getSessionById(config, sessionId) {
   return result.recordset[0] || null;
 }
 
-async function approveSession(module, sessionId, user) {
+async function approveSession(module, sessionId, user, options = {}) {
+  const moduleKey = String(module || '').toLowerCase();
+  if (isMasterApprovalModule(moduleKey)) {
+    return approveMasterApprovalFromPending(moduleKey, sessionId, user, options);
+  }
+
   if (isBagianModule(module)) {
-    const moduleKey = String(module).toLowerCase();
     if (moduleKey === 'da-bagian') {
       return approveDaBagianFromPending(sessionId, user);
     }
@@ -2184,8 +2787,12 @@ async function approveSession(module, sessionId, user) {
 }
 
 async function rejectSession(module, sessionId, user, reason) {
+  const moduleKey = String(module || '').toLowerCase();
+  if (isMasterApprovalModule(moduleKey)) {
+    return rejectMasterApprovalFromPending(moduleKey, sessionId, user, reason);
+  }
+
   if (isBagianModule(module)) {
-    const moduleKey = String(module).toLowerCase();
     if (moduleKey === 'da-bagian') {
       return rejectDaBagianFromPending(sessionId, user);
     }
