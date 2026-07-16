@@ -669,6 +669,7 @@ const searchInstrumen = async (req, res, next) => {
         Assm_Kapasitas,
         Parameter_Kalibrasi,
         Assm_Lokasi,
+        MAX(Tgl_kalibrasi) AS Tgl_kalibrasi,
         MAX(Kalibrasi_selanjutnya) AS Kalibrasi_selanjutnya,
         CASE
           WHEN MAX(ISNULL(Jenis_Kalibrasi, 1)) = 1 THEN 'Internal'
@@ -691,6 +692,7 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Assm_Lokasi,
           ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Tgl_kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Thermohygro
 
@@ -706,6 +708,7 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Assm_Lokasi,
           ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Tgl_kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Anak_Timbangan
 
@@ -721,6 +724,7 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Assm_Lokasi,
           ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Tgl_kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Timbangan
 
@@ -736,6 +740,7 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Assm_Lokasi,
           ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
+          Tgl_kalibrasi,
           Kalibrasi_selanjutnya
         FROM T_Kalibrasi_DA_Bagian
 
@@ -751,6 +756,7 @@ const searchInstrumen = async (req, res, next) => {
           Parameter_Kalibrasi,
           Location AS Assm_Lokasi,
           CAST(1 AS INT) AS Jenis_Kalibrasi,
+          NULL AS Tgl_kalibrasi,
           NULL AS Kalibrasi_selanjutnya
         FROM RA_CalibrationAssessment
         WHERE IsDeleted = 0
