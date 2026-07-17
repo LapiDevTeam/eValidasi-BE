@@ -26,6 +26,19 @@ function stdev(values) {
   return Math.sqrt(sumSq / (clean.length - 1));
 }
 
+// Reading dianggap blank bila standard & uut dua-duanya kosong/nol
+// (mirror Excel: baris kosong tidak ikut AVERAGE/STDEV — preseden timerFormula.isBlankReading)
+function isBlankReading(row = {}) {
+  return toNumber(row.standard_value) === 0 && toNumber(row.uut_value) === 0;
+}
+
+// Titik ukur blank bila tidak punya reading sama sekali atau semua reading-nya blank
+function isBlankPoint(point = {}) {
+  const readings = point.readings || [];
+  if (!readings.length) return true;
+  return readings.every((row) => isBlankReading(row));
+}
+
 function computePoint(point = {}) {
   const correction = toNumber(point.correction);
   const readings = (point.readings || []).map((row, index) => {
@@ -75,11 +88,15 @@ function computePoint(point = {}) {
 }
 
 function computeWorkbook(input = {}) {
-  const points = (input.points || []).map((point, index) => computePoint({
-    ...point,
-    point_no: point.point_no || index + 1,
-    tolerance: input.tolerance,
-  }));
+  // Titik ukur blank (tidak terpakai) dilewati total: tidak menghasilkan baris hasil,
+  // tidak mempengaruhi max_u_expanded maupun kesimpulan (revisi LMS RPM Rev 01)
+  const points = (input.points || [])
+    .filter((point) => !isBlankPoint(point))
+    .map((point, index) => computePoint({
+      ...point,
+      point_no: point.point_no || index + 1,
+      tolerance: input.tolerance,
+    }));
   const evaluated = points.filter((point) => point.pass !== null);
   const conclusion = evaluated.length
     ? (evaluated.every((point) => point.pass) ? 'LAYAK DIGUNAKAN' : 'TIDAK LAYAK DIGUNAKAN')
@@ -100,6 +117,8 @@ module.exports = {
   CERT_DIVISOR,
   mean,
   stdev,
+  isBlankReading,
+  isBlankPoint,
   computePoint,
   computeWorkbook,
 };

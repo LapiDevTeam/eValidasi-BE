@@ -129,6 +129,13 @@ async function updateSession(sessionId, body, updatedBy) {
   return { updated: ok };
 }
 
+// Reading blank total (standard & uut dua-duanya kosong) tidak disimpan,
+// sehingga titik ukur yang tidak dipakai tidak menghasilkan baris nol (revisi LMS RPM Rev 01).
+// Nol eksplisit yang diketik user tetap tersimpan (dibedakan via toNumberOrNull === null).
+function isBlankReadingInput(row = {}) {
+  return toNumberOrNull(row.standard_value) === null && toNumberOrNull(row.uut_value) === null;
+}
+
 function normalizePoints(points = []) {
   return points.map((point, index) => ({
     point_no: Number(point.point_no) || index + 1,
@@ -137,12 +144,14 @@ function normalizePoints(points = []) {
     uc: toNumberOrNull(point.uc) ?? 0,
     digital_resolution: toNumberOrNull(point.digital_resolution) ?? 0,
     analog_resolution: toNumberOrNull(point.analog_resolution) ?? 0,
-    readings: (point.readings || []).map((row, rIndex) => ({
-      point_no: Number(point.point_no) || index + 1,
-      sequence_no: Number(row.sequence_no) || rIndex + 1,
-      standard_value: toNumberOrNull(row.standard_value) ?? 0,
-      uut_value: toNumberOrNull(row.uut_value) ?? 0,
-    })),
+    readings: (point.readings || [])
+      .filter((row) => !isBlankReadingInput(row))
+      .map((row, rIndex) => ({
+        point_no: Number(point.point_no) || index + 1,
+        sequence_no: Number(row.sequence_no) || rIndex + 1,
+        standard_value: toNumberOrNull(row.standard_value) ?? 0,
+        uut_value: toNumberOrNull(row.uut_value) ?? 0,
+      })),
   })).filter((point) => point.readings.length);
 }
 
