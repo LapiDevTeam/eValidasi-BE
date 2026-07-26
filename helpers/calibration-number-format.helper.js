@@ -7,6 +7,8 @@ const RESULT_NUMERIC_KEYS = new Set([
   'pembacaan_alat',
   'pembacaan_standar',
   'pembacaanstandar',
+  'nilai_standar',
+  'nilai_error',
   'error',
   'ketidakpastian',
   'ketidakpastian_menit',
@@ -22,7 +24,6 @@ const RESULT_NUMERIC_KEYS = new Set([
   'nominal',
   'min',
   'max',
-  'vessel',
   'shaftwobble',
   'basketswobble',
   'basketwobble',
@@ -33,10 +34,17 @@ const RESULT_NUMERIC_KEYS = new Set([
   'basket',
   'paddle',
   'tempvessel',
-  'paddle_no',
   't_1_kayuhan_detik',
   'kayuhan_per_menit',
   'distance_mm',
+  'avg_std',
+  'avg_uut',
+  'avg_error',
+  'u_expanded',
+  'u_combined',
+  'standard',
+  'uut',
+  'uncertainty',
 ]);
 
 function normalizeKey(key) {
@@ -92,6 +100,22 @@ function roundNumericForDisplay(value) {
   return value;
 }
 
+function formatFixedNumericForDisplay(value) {
+  if (value === undefined || value === null || value === '') return value;
+
+  const numeric =
+    typeof value === 'number'
+      ? value
+      : Number(String(value).trim().replace(',', '.'));
+
+  if (!Number.isFinite(numeric)) return value;
+
+  const zeroThreshold = 0.5 * 10 ** -DEFAULT_DECIMAL_PLACES;
+  const safeNumeric = Math.abs(numeric) < zeroThreshold ? 0 : numeric;
+  const fixed = safeNumeric.toFixed(DEFAULT_DECIMAL_PLACES);
+  return fixed === '-0.000' ? '0.000' : fixed;
+}
+
 function normalizeCalculationNumbers(value) {
   if (value === null || value === undefined) return value;
   if (typeof value === 'number') {
@@ -118,8 +142,8 @@ function formatResultRow(row) {
   return Object.fromEntries(
     Object.entries(row).map(([key, value]) => {
       const normalizedKey = normalizeKey(key);
-      const shouldFormat = RESULT_NUMERIC_KEYS.has(normalizedKey) || typeof value === 'number';
-      return [key, shouldFormat ? roundNumericForDisplay(value) : value];
+      const shouldFormat = RESULT_NUMERIC_KEYS.has(normalizedKey);
+      return [key, shouldFormat ? formatFixedNumericForDisplay(value) : value];
     })
   );
 }

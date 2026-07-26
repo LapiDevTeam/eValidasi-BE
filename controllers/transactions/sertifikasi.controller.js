@@ -2270,6 +2270,33 @@ function sanitizeCssColor(value, fallback = '#000000') {
         table {
           margin-top: ${!landscape ? `10px` : `13px`} !important; /* Ensures margin applies to all tables */
         }
+
+        .enclosures-certificate .result-table th {
+          font-size: ${!landscape ? `8px` : `9px`} !important;
+          line-height: 1.05 !important;
+          padding: 2px 3px !important;
+          white-space: normal !important;
+        }
+
+        .enclosures-certificate .result-table td {
+          font-size: ${!landscape ? `9px` : `10px`} !important;
+          line-height: 1.1 !important;
+          padding: 2px 3px !important;
+        }
+
+        .enclosures-certificate .uncertainty-head {
+          font-size: ${!landscape ? `7px` : `8px`} !important;
+          line-height: 1 !important;
+        }
+
+        .enclosures-certificate h5.calibration-note,
+        .enclosures-certificate .calibration-note {
+          font-size: ${!landscape ? `8px` : `9px`} !important;
+          line-height: 1.25 !important;
+          margin-top: 4px !important;
+          margin-bottom: 0 !important;
+          font-weight: 400 !important;
+        }
       `,
     });
     let headerLandscape = `

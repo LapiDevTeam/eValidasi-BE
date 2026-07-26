@@ -11,6 +11,7 @@ const {
 } = require('../../helpers/kalibrasi.helper');
 const {
   formatResultRows,
+  normalizeCalculationNumbers,
   normalizeCertificateQuery,
   parseDotDecimal,
 } = require('../../helpers/calibration-number-format.helper');
@@ -20,6 +21,545 @@ const isEmptyValue = (value) => {
   if (typeof value === 'string' && value.trim() === '') return true;
   return false;
 };
+
+const WORKBOOK_CERTIFICATE_CONFIGS = [
+  {
+    key: 'torque-meter',
+    label: 'Torque Meter',
+    prefixes: ['TQ'],
+    table: 'dbo.T_Kalibrasi_TorqueMeter_Workbook_Session',
+    printRoute: '/PrintTorqueMeter',
+    sessionRoute: '/torque-meter-calibration',
+  },
+  {
+    key: 'dissolution-tester',
+    label: 'Dissolution Tester',
+    prefixes: ['DT'],
+    table: 'dbo.T_Kalibrasi_DissolutionTester_Workbook_Session',
+    printRoute: '/PrintDissolutionTester',
+    sessionRoute: '/dissolution-tester-calibration',
+  },
+  {
+    key: 'enclosures',
+    label: 'Enclosures',
+    prefixes: ['E'],
+    table: 'dbo.T_Kalibrasi_Enclosures_Workbook_Session',
+    printRoute: '/PrintEnclosures',
+    sessionRoute: '/enclosures-calibration',
+  },
+  {
+    key: 'friability',
+    label: 'Friability',
+    prefixes: ['FT'],
+    table: 'dbo.T_Kalibrasi_Friability_Workbook_Session',
+    printRoute: '/PrintFriabilityTester',
+    sessionRoute: '/friability-calibration',
+  },
+  {
+    key: 'hardness-tester',
+    label: 'Hardness Tester',
+    prefixes: ['HT'],
+    table: 'dbo.T_Kalibrasi_HardnessTester_Workbook_Session',
+    printRoute: '/PrintHardnessTester',
+    sessionRoute: '/hardness-tester-calibration',
+  },
+  {
+    key: 'leak-test',
+    label: 'Leak Test',
+    prefixes: ['LT'],
+    table: 'dbo.T_Kalibrasi_LeakTest_Workbook_Session',
+    printRoute: '/PrintLeakTest',
+    sessionRoute: '/leak-test-calibration',
+  },
+  {
+    key: 'moisture',
+    label: 'Moisture',
+    prefixes: ['MA'],
+    table: 'dbo.T_Kalibrasi_Moisture_Workbook_Session',
+    printRoute: '/PrintMoisture',
+    sessionRoute: '/moisture-calibration',
+  },
+  {
+    key: 'temperature-control',
+    label: 'Temperature Control',
+    prefixes: ['TC'],
+    table: 'dbo.T_Kalibrasi_TemperatureControl_Workbook_Session',
+    printRoute: '/PrintTemperatureControl',
+    sessionRoute: '/temperature-control-calibration',
+  },
+];
+
+const WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX = WORKBOOK_CERTIFICATE_CONFIGS.reduce(
+  (map, config) => {
+    config.prefixes.forEach((prefix) => {
+      map.set(prefix, config);
+    });
+    return map;
+  },
+  new Map()
+);
+
+const SORTED_WORKBOOK_PREFIXES = [...WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX.keys()].sort(
+  (a, b) => b.length - a.length
+);
+
+function parseJson(value, fallback = null) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function textValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function parseNumberValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(String(value).replace(',', '.'));
+  return Number.isFinite(number) ? number : null;
+}
+
+function displayNumber(value, { signed = false, uncertainty = false, decimals = 3 } = {}) {
+  const number = parseNumberValue(value);
+  if (number === null) {
+    const text = textValue(value);
+    return uncertainty && text && !text.startsWith('\u00B1') ? `\u00B1${text}` : text;
+  }
+
+  const safeNumber = Math.abs(number) < 0.5 * 10 ** -decimals ? 0 : number;
+  const absolute = uncertainty ? Math.abs(safeNumber) : safeNumber;
+  const fixed = absolute.toFixed(decimals);
+  const cleanFixed = fixed === '-0.000' ? '0.000' : fixed;
+
+  if (uncertainty) return `\u00B1${cleanFixed}`;
+  if (signed && safeNumber > 0) return `+${cleanFixed}`;
+  return cleanFixed;
+}
+
+function getCertificateWorkbookPrefix(idNoSertifikat) {
+  const text = textValue(idNoSertifikat).toUpperCase();
+  return SORTED_WORKBOOK_PREFIXES.find((prefix) => text.startsWith(prefix)) || '';
+}
+
+function getWorkbookCertificateConfig(idNoSertifikat) {
+  const prefix = getCertificateWorkbookPrefix(idNoSertifikat);
+  return prefix ? WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX.get(prefix) : null;
+}
+
+function column(field, headerName, minWidth = 130) {
+  return { field, headerName, minWidth, flex: 1 };
+}
+
+function genericWorkbookRows(calculationResult = {}) {
+  const rows = Array.isArray(calculationResult?.certificateRows)
+    ? calculationResult.certificateRows
+    : Array.isArray(calculationResult?.rows)
+      ? calculationResult.rows
+      : Array.isArray(calculationResult?.points)
+        ? calculationResult.points
+        : [];
+
+  return rows.map((row, index) => ({
+    No: index + 1,
+    Setting: displayNumber(row.setting ?? row.Setting ?? row.setPoint),
+    Pembacaan_Alat: displayNumber(
+      row.pembacaanAlat ?? row.Pembacaan_Alat ?? row.indicator ?? row.avgUut
+    ),
+    Pembacaan_standar: displayNumber(
+      row.pembacaanStandar ?? row.Pembacaan_standar ?? row.reference ?? row.avgStd
+    ),
+    Error: displayNumber(row.error ?? row.ERROR ?? row.avgError, { signed: true }),
+    Ketidakpastian: displayNumber(
+      row.ketidakpastian ?? row.Ketidakpastian ?? row.uncertainty?.expanded,
+      { uncertainty: true }
+    ),
+  }));
+}
+
+function buildTorqueWorkbookGrid(calculationResult = {}) {
+  const directionLabels = {
+    clockwise: 'Pembacaan Searah Jarum Jam',
+    anticlockwise: 'Pembacaan Berlawanan Arah Jarum Jam',
+  };
+  const rows = (Array.isArray(calculationResult?.tables) ? calculationResult.tables : []).map(
+    (table, index) => ({
+      No: index + 1,
+      Arah: directionLabels[table.directionKey] || textValue(table.directionLabel),
+      Nilai_Standar: displayNumber(table.avgStandard),
+      Pembacaan_Alat: displayNumber(table.avgUut),
+      Error: displayNumber(table.avgError, { signed: true }),
+      Ketidakpastian: displayNumber(table.uExpanded, { uncertainty: true }),
+    })
+  );
+
+  return {
+    columns: [
+      column('Arah', 'Arah', 220),
+      column('Nilai_Standar', 'Nilai Standar'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows,
+  };
+}
+
+function buildEnclosuresWorkbookGrid(calculationResult = {}) {
+  const temperatureRows = Array.isArray(calculationResult?.temperature)
+    ? calculationResult.temperature
+    : [];
+  const humidityRows = Array.isArray(calculationResult?.humidity)
+    ? calculationResult.humidity
+    : [];
+  const hasHumidity = humidityRows.length > 0;
+  const rows = [
+    ...temperatureRows.map((point, index) => ({
+      No: index + 1,
+      Parameter: 'Suhu',
+      Setting_Alat: displayNumber(point.setPoint ?? point.setting),
+      Penunjukan_Alat: displayNumber(point.indicatorValue ?? point.pembacaanAlat),
+      Hasil_Terukur: displayNumber(point.measurementValue ?? point.pembacaanStandar),
+      Error: displayNumber(point.error, { signed: true }),
+      Ketidakpastian: displayNumber(point.uncertainty?.expanded ?? point.ketidakpastian),
+      Variasi_Spasial: displayNumber(point.spatialVariation),
+      Variasi_Temporal: displayNumber(point.temporalVariation),
+      Variasi_Total: displayNumber(point.totalVariation),
+    })),
+    ...humidityRows.map((point, index) => ({
+      No: temperatureRows.length + index + 1,
+      Parameter: 'rH',
+      Setting_Alat: displayNumber(point.setPoint ?? point.setting),
+      Penunjukan_Alat: displayNumber(point.indicatorValue ?? point.pembacaanAlat),
+      Hasil_Terukur: displayNumber(point.measurementValue ?? point.pembacaanStandar),
+      Error: displayNumber(point.error, { signed: true }),
+      Ketidakpastian: displayNumber(point.uncertainty?.expanded ?? point.ketidakpastian),
+      Variasi_Spasial: displayNumber(point.spatialVariation),
+      Variasi_Temporal: displayNumber(point.temporalVariation),
+      Variasi_Total: displayNumber(point.totalVariation),
+    })),
+  ];
+
+  return {
+    columns: [
+      ...(hasHumidity ? [column('Parameter', 'Parameter', 100)] : []),
+      column('Setting_Alat', 'Setting Alat'),
+      column('Penunjukan_Alat', 'Penunjukan Alat'),
+      column('Hasil_Terukur', 'Hasil Terukur'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian', 155),
+      column('Variasi_Spasial', 'Variasi Spasial'),
+      column('Variasi_Temporal', 'Variasi Temporal'),
+      column('Variasi_Total', 'Variasi Total'),
+    ],
+    rows,
+  };
+}
+
+function buildDissolutionWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.vesselRows)
+    ? calculationResult.vesselRows
+    : []
+  ).map((row, index) => ({
+    Vessel: row.vessel || index + 1,
+    Shaft_Wobble: displayNumber(row.shaftWobble),
+    Baskets_Wobble: displayNumber(row.basketsWobble ?? row.basketWobble),
+    Paddle_Wobble: displayNumber(row.paddleWobble),
+    Rot_Spd_1: displayNumber(row.rotSpd1),
+    Rot_Spd_2: displayNumber(row.rotSpd2),
+    Rot_Spd_3: displayNumber(row.rotSpd3),
+    Basket: displayNumber(row.basket ?? row.basketHeight),
+    Paddle: displayNumber(row.paddle ?? row.paddleHeight),
+    Temp_Vessel: displayNumber(row.tempVessel ?? row.temperatureVessel),
+  }));
+
+  return {
+    columns: [
+      column('Vessel', 'Vessel', 90),
+      column('Shaft_Wobble', 'Shaft Wobble'),
+      column('Baskets_Wobble', 'Baskets Wobble'),
+      column('Paddle_Wobble', 'Paddle Wobble'),
+      column('Rot_Spd_1', 'Rot Spd 1'),
+      column('Rot_Spd_2', 'Rot Spd 2'),
+      column('Rot_Spd_3', 'Rot Spd 3'),
+      column('Basket', 'Basket'),
+      column('Paddle', 'Paddle'),
+      column('Temp_Vessel', 'Temp Vessel'),
+    ],
+    rows,
+  };
+}
+
+function buildFriabilityWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.rows) ? calculationResult.rows : []).map(
+    (row, index) => ({
+      No: index + 1,
+      Time: displayNumber(row.time ?? row.tOneRotation),
+      RPM: displayNumber(row.rpm),
+      Pembacaan_Alat: displayNumber(row.rpm),
+      Pembacaan_standar: displayNumber(25),
+      Error: displayNumber(parseNumberValue(row.rpm) === null ? null : parseNumberValue(row.rpm) - 25, {
+        signed: true,
+      }),
+      Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      Keterangan: textValue(row.ket),
+    })
+  );
+
+  return {
+    columns: [
+      column('No', 'No', 80),
+      column('Time', 'Time'),
+      column('RPM', 'RPM'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Keterangan', 'Keterangan'),
+    ],
+    rows,
+  };
+}
+
+function buildMoistureWorkbookGrid(calculationResult = {}) {
+  const massRows = Array.isArray(calculationResult?.massRows)
+    ? calculationResult.massRows.map((row, index) => ({
+        No: index + 1,
+        Type: 'Mass',
+        Setting: '',
+        Pembacaan_Alat: displayNumber(row.r),
+        Pembacaan_standar: displayNumber(row.conventionalMass),
+        Error: displayNumber(row.error, { signed: true }),
+        Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      }))
+    : [];
+  const temperatureRows = Array.isArray(calculationResult?.temperatureRows)
+    ? calculationResult.temperatureRows.map((row, index) => ({
+        No: massRows.length + index + 1,
+        Type: 'Temperature',
+        Setting: displayNumber(row.setting),
+        Pembacaan_Alat: displayNumber(row.afterUut),
+        Pembacaan_standar: displayNumber(row.afterStandard),
+        Error: displayNumber(row.afterError, { signed: true }),
+        Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      }))
+    : [];
+
+  return {
+    columns: [
+      column('Type', 'Type', 120),
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows: [...massRows, ...temperatureRows],
+  };
+}
+
+function buildHardnessWorkbookGrid(calculationResult = {}) {
+  const labels = {
+    hardness: 'Hardness',
+    thickness: 'Thickness',
+    diameter: 'Diameter',
+  };
+  const activeKeys = Array.isArray(calculationResult?.activeKeys) && calculationResult.activeKeys.length
+    ? calculationResult.activeKeys
+    : ['hardness', 'thickness', 'diameter'].filter((key) => calculationResult?.[key]?.enabled);
+  const rows = [];
+
+  activeKeys.forEach((key) => {
+    const test = calculationResult?.[key] || {};
+    const unit = test?.setup?.unit || '';
+    (test.points || []).forEach((point) => {
+      rows.push({
+        Parameter: labels[key] || key,
+        Setting: displayNumber(point.setting),
+        Unit: textValue(point.unit || unit),
+        Pembacaan_Alat: displayNumber(key === 'hardness' ? point.result : point.avgUut),
+        Pembacaan_standar: displayNumber(
+          key === 'hardness' ? point.convertedStandard : point.avgStd
+        ),
+        Error: displayNumber(key === 'hardness' ? point.error : point.avgError, {
+          signed: true,
+        }),
+        Ketidakpastian: displayNumber(point.expandedUncertainty, { uncertainty: true }),
+      });
+    });
+  });
+
+  return {
+    columns: [
+      column('Parameter', 'Parameter', 120),
+      column('Setting', 'Setting'),
+      column('Unit', 'Unit', 90),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows,
+  };
+}
+
+function buildLeakTestWorkbookGrid(calculationResult = {}) {
+  const pressureRows = (Array.isArray(calculationResult?.points)
+    ? calculationResult.points
+    : []
+  ).map((point, index) => ({
+    No: index + 1,
+    Parameter: 'Vacuum',
+    Setting: displayNumber(point.setting),
+    Pembacaan_Alat: displayNumber(point.avgUut),
+    Pembacaan_standar: displayNumber(point.avgStd),
+    Error: displayNumber(point.avgError, { signed: true }),
+    Ketidakpastian: '',
+    Keterangan:
+      point.passed === null || point.passed === undefined
+        ? ''
+        : point.passed
+          ? 'MS'
+          : 'TMS',
+  }));
+  const timerEnabled = Boolean(
+    calculationResult?.timer?.enabled || calculationResult?.timer?.hasData
+  );
+  const timerRows = (Array.isArray(calculationResult?.timer?.points)
+    ? calculationResult.timer.points
+    : []
+  )
+    .filter((point) => timerEnabled && Number(point?.enteredCount || 0) > 0)
+    .map((point, index) => ({
+      No: pressureRows.length + index + 1,
+      Parameter: 'Timer',
+      Setting: displayNumber(point.setting),
+      Pembacaan_Alat: '',
+      Pembacaan_standar: displayNumber(point.meanStdSec),
+      Error: displayNumber(point.meanErrorSec, { signed: true }),
+      Ketidakpastian: displayNumber(point.uExpandedSec, { uncertainty: true }),
+      Keterangan: '',
+    }));
+
+  return {
+    columns: [
+      column('Parameter', 'Parameter', 120),
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Keterangan', 'Keterangan', 110),
+    ],
+    rows: [...pressureRows, ...timerRows],
+  };
+}
+
+function buildTemperatureControlWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.points)
+    ? calculationResult.points
+    : []
+  ).map((point, index) => ({
+    No: index + 1,
+    Setting: displayNumber(point.setting),
+    Pembacaan_Alat: displayNumber(point.selected?.indicator),
+    Pembacaan_standar: displayNumber(point.selected?.reference),
+    Error: displayNumber(point.selected?.error, { signed: true }),
+    Ketidakpastian: displayNumber(point.uncertainty?.expanded, {
+      uncertainty: true,
+    }),
+    Toleransi: displayNumber(point.tolerance),
+    Keterangan:
+      point.passed === null || point.passed === undefined
+        ? ''
+        : point.passed
+          ? 'MS'
+          : 'TMS',
+  }));
+
+  return {
+    columns: [
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Toleransi', 'Toleransi'),
+      column('Keterangan', 'Keterangan', 110),
+    ],
+    rows,
+  };
+}
+
+function buildWorkbookGridData(config, calculationResult = {}) {
+  if (config.key === 'torque-meter') return buildTorqueWorkbookGrid(calculationResult);
+  if (config.key === 'dissolution-tester') return buildDissolutionWorkbookGrid(calculationResult);
+  if (config.key === 'enclosures') return buildEnclosuresWorkbookGrid(calculationResult);
+  if (config.key === 'friability') return buildFriabilityWorkbookGrid(calculationResult);
+  if (config.key === 'moisture') return buildMoistureWorkbookGrid(calculationResult);
+  if (config.key === 'hardness-tester') return buildHardnessWorkbookGrid(calculationResult);
+  if (config.key === 'leak-test') return buildLeakTestWorkbookGrid(calculationResult);
+  if (config.key === 'temperature-control') {
+    return buildTemperatureControlWorkbookGrid(calculationResult);
+  }
+
+  return {
+    columns: [
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows: genericWorkbookRows(calculationResult),
+  };
+}
+
+async function workbookSessionTableExists(tableName) {
+  const result = await sequelizeMSQL.query(
+    `SELECT OBJECT_ID(:tableName, 'U') AS object_id`,
+    {
+      replacements: { tableName },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  return Boolean(result[0]?.object_id);
+}
+
+async function fetchWorkbookSessionByCertificate(config, qaId, idNoSertifikat) {
+  if (!config || !(await workbookSessionTableExists(config.table))) return null;
+
+  const qaFilter = qaId ? 'AND QA_ID = :qaId' : '';
+  const replacements = qaId ? { qaId, idNoSertifikat } : { idNoSertifikat };
+
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        Session_ID,
+        QA_ID,
+        ID_No_Sertifikat,
+        Workbook_Payload_JSON,
+        Calculation_Result_JSON,
+        Evaluation_Result,
+        Status,
+        Process_Date,
+        Update_Date
+      FROM ${config.table}
+      WHERE ID_No_Sertifikat = :idNoSertifikat
+        ${qaFilter}
+      ORDER BY ISNULL(Update_Date, Process_Date) DESC, Session_ID DESC
+    `,
+    {
+      replacements,
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  return rows[0] || null;
+}
 
 // ============================================================
 // SEARCH / LIST
@@ -327,6 +867,89 @@ const getHasilKalData = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getHasilKalData:', error);
+    next(error);
+  }
+};
+
+const getWorkbookPrintData = async (req, res, next) => {
+  try {
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+
+    if (!id_no_sertifikat) {
+      return res.status(400).json({
+        success: false,
+        message: 'id_no_sertifikat is required',
+      });
+    }
+
+    const config = getWorkbookCertificateConfig(id_no_sertifikat);
+    if (!config) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          registered: false,
+          printDataPresent: false,
+          reason: 'certificate prefix is not managed by a workbook',
+        },
+      });
+    }
+
+    const session = await fetchWorkbookSessionByCertificate(
+      config,
+      qa_id,
+      id_no_sertifikat
+    );
+
+    if (!session) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          registered: false,
+          printDataPresent: false,
+          workbook: {
+            key: config.key,
+            label: config.label,
+            printRoute: config.printRoute,
+            sessionRoute: config.sessionRoute,
+          },
+        },
+      });
+    }
+
+    const workbookPayload = parseJson(session.Workbook_Payload_JSON, null);
+    const calculationResult = normalizeCalculationNumbers(
+      parseJson(session.Calculation_Result_JSON, null)
+    );
+    const grid = buildWorkbookGridData(config, calculationResult || {});
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        registered: true,
+        printDataPresent: Boolean(calculationResult && grid.rows.length),
+        workbook: {
+          key: config.key,
+          label: config.label,
+          printRoute: config.printRoute,
+          sessionRoute: config.sessionRoute,
+        },
+        session: {
+          Session_ID: session.Session_ID,
+          QA_ID: session.QA_ID,
+          ID_No_Sertifikat: session.ID_No_Sertifikat,
+          Evaluation_Result: session.Evaluation_Result,
+          Status: session.Status,
+          Process_Date: session.Process_Date,
+          Update_Date: session.Update_Date,
+        },
+        workbookPayload,
+        calculation: calculationResult,
+        columns: grid.columns,
+        rows: grid.rows,
+      },
+    });
+  } catch (error) {
+    console.error('Error in getWorkbookPrintData:', error);
     next(error);
   }
 };
@@ -2075,6 +2698,7 @@ module.exports = {
   searchByQAID,
   getSertifikatBagianDetail,
   getHasilKalData,
+  getWorkbookPrintData,
   searchDABagian,
   searchResertifikasiBagian,
   checkIsApproved,

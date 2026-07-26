@@ -6,9 +6,11 @@ const moment = require('moment');
 const {
   assertWorkbookApproval,
   getActorApprovalRole,
-  hasCertificateManagerApproval,
   resolveTargetApprovalRole,
 } = require('../../services/calibrationWorkbookApproval.service');
+const {
+  finalizeManagerCalibrationApproval,
+} = require('../../services/calibrationManagerFinalization.service');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_Enclosures_Workbook_Session';
 
@@ -895,20 +897,20 @@ const approveSession = async (req, res, next) => {
       });
     }
 
+    if (!String(session.ID_No_Sertifikat || '').trim()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Generate sertifikat terlebih dahulu sebelum approve workbook.',
+      });
+    }
+
     const actorRole = getActorApprovalRole(req);
     const role = resolveTargetApprovalRole(req);
-    const certificateApprovedByManager =
-      role?.key === 'manager'
-        ? await hasCertificateManagerApproval({
-            qaId: session.QA_ID,
-            idNoSertifikat: session.ID_No_Sertifikat,
-          })
-        : true;
     const orderMessage = assertWorkbookApproval({
       session,
       actorRole,
       targetRole: role,
-      certificateApprovedByManager,
+      certificateApprovedByManager: true,
     });
     if (orderMessage) {
       return res.status(403).json({
@@ -917,25 +919,37 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    await sequelizeMSQL.query(
-      `
-        UPDATE ${SESSION_TABLE}
-        SET
-          ${role.column} = :userId,
-          ${role.dateColumn} = GETDATE(),
-          Status = :status,
-          Update_Date = GETDATE()
-        WHERE Session_ID = :sessionId
-      `,
-      {
-        replacements: {
-          userId: user_id,
-          status: role.status,
-          sessionId,
-        },
-        type: Sequelize.QueryTypes.UPDATE,
+    await sequelizeMSQL.transaction(async (transaction) => {
+      if (role.key === 'manager') {
+        await finalizeManagerCalibrationApproval({
+          certificateType: 'bagian',
+          session,
+          user: req.user,
+          transaction,
+        });
       }
-    );
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE ${SESSION_TABLE}
+          SET
+            ${role.column} = :userId,
+            ${role.dateColumn} = GETDATE(),
+            Status = :status,
+            Update_Date = GETDATE()
+          WHERE Session_ID = :sessionId
+        `,
+        {
+          replacements: {
+            userId: user_id,
+            status: role.status,
+            sessionId,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+    });
 
     const data = await fetchSessionById(sessionId);
     return res.status(200).json({
