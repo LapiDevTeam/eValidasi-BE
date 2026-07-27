@@ -38,6 +38,93 @@ const {
 const {
   publishToSertifikat: publishTimbanganSertifikat,
 } = require('../src/services/timbanganCalculation.service');
+const labelReprintRequestsController = require('../controllers/transactions/label-reprint-requests.controller');
+
+// Label Reprint requests use a single-step Manager approval (not the
+// Admin->Officer->Manager hierarchy below), and reuse the same 7 module keys
+// as their source modules. Namespaced with this prefix so they don't collide
+// with the (currently disabled) BAGIAN_MODULES session-approval dispatch for
+// those same 7 keys — see approveSession/rejectSession.
+const LABEL_REPRINT_MODULE_PREFIX = 'label-reprint:';
+
+const LABEL_REPRINT_MODULES = {
+  'sertifikat-thermo': { displayName: 'Sertifikat Thermo — Reprint Label', deepLinkPath: '/sertifikat-thermo' },
+  'sertifikat-timbangan': { displayName: 'Sertifikat Timbangan — Reprint Label', deepLinkPath: '/sertifikat-timbangan' },
+  'sertifikat-bagian': { displayName: 'Sertifikat Bagian — Reprint Label', deepLinkPath: '/sertifikat-bagian' },
+  'da-thermo': { displayName: 'DA Thermo — Reprint Label', deepLinkPath: '/da-thermo' },
+  'da-anak-timbangan': { displayName: 'DA Anak Timbangan — Reprint Label', deepLinkPath: '/anak-timbangan' },
+  'da-timbangan-massa': { displayName: 'DA Timbangan Massa — Reprint Label', deepLinkPath: '/da-timbangan' },
+  'da-bagian': { displayName: 'DA Bagian — Reprint Label', deepLinkPath: '/da-bagian' },
+};
+
+function isLabelReprintModule(module) {
+  return String(module || '').toLowerCase().startsWith(LABEL_REPRINT_MODULE_PREFIX);
+}
+
+function normalizeLabelReprintRow(raw) {
+  const sourceModule = raw.module;
+  const meta = LABEL_REPRINT_MODULES[sourceModule] || {};
+  const qaId = normalizeValue(raw.qa_id);
+  const idNoSertifikat = normalizeValue(raw.id_no_sertifikat);
+  const baseDisplayName = meta.displayName || `${sourceModule} — Reprint Label`;
+  return {
+    module: `${LABEL_REPRINT_MODULE_PREFIX}${sourceModule}`,
+    moduleDisplayName: raw.is_manual ? `${baseDisplayName} (Re-Print Manual)` : baseDisplayName,
+    sessionId: String(raw.request_id),
+    qaId,
+    idNoSertifikat,
+    instrumentName: normalizeValue(raw.instrument_name),
+    calibrationDate: '',
+    requester: normalizeValue(raw.requested_by),
+    updatedAt: normalizeDate(raw.requested_at),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: '',
+    approvedByOfficerDate: '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel: 'manager',
+    pendingRole: 'Manager',
+    reprintRemark: normalizeValue(raw.reprint_remark),
+    isManual: Boolean(raw.is_manual),
+    deepLink: meta.deepLinkPath
+      ? `${meta.deepLinkPath}?qa_id=${encodeURIComponent(qaId)}${idNoSertifikat ? `&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}` : ''}`
+      : '',
+  };
+}
+
+async function scanLabelReprintPending(filters = {}) {
+  const { search, requester, sourceModule } = filters;
+  const searchLike = buildLikeSearch(search);
+  const requesterLike = buildLikeSearch(requester);
+
+  const conditions = [`status = 'PENDING'`];
+  const replacements = {};
+  if (sourceModule) {
+    conditions.push('module = :sourceModule');
+    replacements.sourceModule = sourceModule;
+  }
+  if (searchLike) {
+    conditions.push('(qa_id LIKE :search OR instrument_name LIKE :search)');
+    replacements.search = searchLike;
+  }
+  if (requesterLike) {
+    conditions.push('requested_by LIKE :requester');
+    replacements.requester = requesterLike;
+  }
+
+  const rows = await sequelizeMSQL.query(`
+    SELECT TOP 200 *
+    FROM label_reprint_requests
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY requested_at DESC
+  `, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map(normalizeLabelReprintRow);
+}
 
 // Modules that use the same approve-manager-then-auto-publish-certificate
 // pattern (most share the "Bagian" certificate tables; Timbangan has its own
@@ -2543,7 +2630,7 @@ async function listPendingApprovals(options = {}) {
   // If a removed module is explicitly requested, return an empty list gracefully.
   // Approval/reject endpoints still work for direct links.
   if (moduleKey && isExcludedFromPending(moduleKey)) {
-    return [];
+    return { results: [], scanErrors: [] };
   }
 
   const includeWorkbook = !moduleFilter || MODULE_REGISTRY[moduleKey];
@@ -2553,6 +2640,7 @@ async function listPendingApprovals(options = {}) {
   const includeSertifikatThermo = false;
   const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
   const includeMasterApproval = !moduleFilter || isMasterApprovalModule(moduleKey);
+  const includeLabelReprint = !moduleFilter || isLabelReprintModule(moduleKey);
 
   if (
     moduleFilter
@@ -2563,6 +2651,7 @@ async function listPendingApprovals(options = {}) {
     && !includeSertifikatThermo
     && !includeKalibrasiEksternal
     && !includeMasterApproval
+    && !includeLabelReprint
   ) {
     const error = new Error(`Unknown calibration module: ${moduleFilter}`);
     error.statusCode = 400;
@@ -2570,6 +2659,10 @@ async function listPendingApprovals(options = {}) {
   }
 
   const results = [];
+  // Modul yang gagal di-scan (mis. kolom approval belum ada karena migrasi belum
+  // jalan) tetap dilaporkan ke caller alih-alih hanya console.error, supaya modul
+  // tidak lenyap senyap dari halaman tanpa jejak untuk user.
+  const scanErrors = [];
 
   if (includeWorkbook) {
     const modulesToScan = moduleFilter
@@ -2595,6 +2688,7 @@ async function listPendingApprovals(options = {}) {
       } catch (err) {
         // Log and continue so one broken module does not block the whole page.
         console.error(`[pendingCalibrationApprovals] scan failed for ${key}:`, err.message);
+        scanErrors.push({ module: key, moduleDisplayName: config.displayName, message: err.message });
       }
     }
   }
@@ -2606,6 +2700,7 @@ async function listPendingApprovals(options = {}) {
       results.push(...rows);
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for kalibrasi-eksternal:', err.message);
+      scanErrors.push({ module: 'kalibrasi-eksternal', message: err.message });
     }
   }
 
@@ -2627,12 +2722,25 @@ async function listPendingApprovals(options = {}) {
           `[pendingCalibrationApprovals] scan failed for ${masterModuleKey}:`,
           err.message
         );
+        scanErrors.push({ module: masterModuleKey, message: err.message });
       }
     }
   }
 
+  if (includeLabelReprint) {
+    try {
+      const sourceModule = moduleFilter ? moduleKey.slice(LABEL_REPRINT_MODULE_PREFIX.length) : '';
+      // eslint-disable-next-line no-await-in-loop
+      const rows = await scanLabelReprintPending({ search, requester, sourceModule });
+      results.push(...rows);
+    } catch (err) {
+      console.error('[pendingCalibrationApprovals] scan failed for label-reprint:', err.message);
+      scanErrors.push({ module: 'label-reprint', message: err.message });
+    }
+  }
+
   results.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-  return results.slice(0, limit);
+  return { results: results.slice(0, limit), scanErrors };
 }
 
 async function getSessionById(config, sessionId) {
@@ -2662,6 +2770,17 @@ async function getSessionById(config, sessionId) {
 
 async function approveSession(module, sessionId, user, options = {}) {
   const moduleKey = String(module || '').toLowerCase();
+  if (isLabelReprintModule(moduleKey)) {
+    const userId = user?.user_id || user?.log_NIK || '';
+    const updated = await labelReprintRequestsController.approveRequestById(sessionId, userId);
+    return {
+      module: moduleKey,
+      sessionId,
+      approvedBy: 'manager',
+      approvedByLabel: 'Manager',
+      labelReprintRequest: labelReprintRequestsController.toApiShape(updated),
+    };
+  }
   if (isMasterApprovalModule(moduleKey)) {
     return approveMasterApprovalFromPending(moduleKey, sessionId, user, options);
   }
@@ -2788,6 +2907,15 @@ async function approveSession(module, sessionId, user, options = {}) {
 
 async function rejectSession(module, sessionId, user, reason) {
   const moduleKey = String(module || '').toLowerCase();
+  if (isLabelReprintModule(moduleKey)) {
+    const userId = user?.user_id || user?.log_NIK || '';
+    const updated = await labelReprintRequestsController.rejectRequestById(sessionId, userId, reason);
+    return {
+      module: moduleKey,
+      sessionId,
+      labelReprintRequest: labelReprintRequestsController.toApiShape(updated),
+    };
+  }
   if (isMasterApprovalModule(moduleKey)) {
     return rejectMasterApprovalFromPending(moduleKey, sessionId, user, reason);
   }

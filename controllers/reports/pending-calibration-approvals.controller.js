@@ -63,7 +63,7 @@ const listPendingApprovals = async (req, res, next) => {
     const requester = normalizeRequester(req.query.requester);
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
-    const data = await service.listPendingApprovals({
+    const { results: data, scanErrors } = await service.listPendingApprovals({
       bagian_user: user.bagian_user,
       moduleFilter,
       search,
@@ -75,6 +75,7 @@ const listPendingApprovals = async (req, res, next) => {
       success: true,
       count: data.length,
       data,
+      scanErrors,
     });
   } catch (error) {
     console.error('Error in listPendingApprovals:', error);

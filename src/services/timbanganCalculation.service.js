@@ -661,12 +661,27 @@ function numberToLabel(value, unit) {
   if (value === null || value === undefined || value === '') return '';
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
-  if (n === 0) return unit ? `0 ${unit}` : '0';
   const rounded = Number(n.toPrecision(10));
   const text = Math.abs(rounded) < 1e-6
     ? rounded.toFixed(18).replace(/0+$/, '').replace(/\.$/, '')
     : String(rounded);
   return unit ? `${text} ${unit}` : text;
+}
+
+const CERT_DECIMALS = 3;
+
+// Tabel Pre-Adjustment & Penyimpangan Konvensional Massa Standar dipatok 3 desimal
+// agar seragam dengan tampilan workbook. `signed` memakai ambang >= 0 (bukan > 0)
+// supaya nol tetap bertanda: "+0.000 g", bukan "0 g" seperti perilaku lama.
+function fixedNumberToLabel(value, unit, { signed = false } = {}) {
+  if (value === null || value === undefined || value === '') return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  const raw = n.toFixed(CERT_DECIMALS);
+  // toFixed membiarkan tanda minus pada nol negatif (-0.0001 -> "-0.000").
+  const text = Number(raw) === 0 ? (0).toFixed(CERT_DECIMALS) : raw;
+  const sign = signed && !text.startsWith('-') ? '+' : '';
+  return unit ? `${sign}${text} ${unit}` : `${sign}${text}`;
 }
 
 function buildSuhuKelembabanText(session, explicit) {
@@ -816,9 +831,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const preAdjPublishRows = preadjustRows.length
       ? [{
           seq_id: 1,
-          pembacaan_standar: numberToLabel(preadjust.mass, unit),
-          pembacaan_alat: numberToLabel(preadjust.result, unit),
-          error: numberToLabel(preadjust.error, unit),
+          pembacaan_standar: fixedNumberToLabel(preadjust.mass, unit),
+          pembacaan_alat: fixedNumberToLabel(preadjust.result, unit),
+          error: fixedNumberToLabel(preadjust.error, unit, { signed: true }),
         }]
       : [];
     await repo.replaceTimbanganPreAdjRows(qaId, idNoSertifikat, preAdjPublishRows, actor, delegatedActor, transaction);
@@ -848,10 +863,10 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
     const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));
     const massaStdPublishRows = sorted.map((row, index) => ({
       seq_id: index + 1,
-      konvensional_standar: numberToLabel(row.konv_mass, unit),
-      pembacaan_alat: numberToLabel(row.reading, unit),
-      error: numberToLabel(row.error, unit),
-      ketidakpastian: numberToLabel(row.u_expanded, unit),
+      konvensional_standar: fixedNumberToLabel(row.konv_mass, unit),
+      pembacaan_alat: fixedNumberToLabel(row.reading, unit),
+      error: fixedNumberToLabel(row.error, unit, { signed: true }),
+      ketidakpastian: fixedNumberToLabel(row.u_expanded, unit),
     }));
     await repo.replaceTimbanganMassaStdRows(qaId, idNoSertifikat, massaStdPublishRows, actor, delegatedActor, transaction);
 

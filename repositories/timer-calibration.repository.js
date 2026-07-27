@@ -130,6 +130,8 @@ async function createSession(payload, transaction) {
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by));
 
   const result = await request.query(`
+    DECLARE @out TABLE (session_id INT);
+
     INSERT INTO [dbo].[timer_sessions]
     (
       session_code, instrument_id, instrument_code, instrument_name,
@@ -139,7 +141,7 @@ async function createSession(payload, transaction) {
       std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
       qa_id, status, pic, evaluation_result, created_by
     )
-    OUTPUT INSERTED.session_id
+    OUTPUT INSERTED.session_id INTO @out
     VALUES
     (
       @SessionCode, @InstrumentId, @InstrumentCode, @InstrumentName,
@@ -149,6 +151,8 @@ async function createSession(payload, transaction) {
       @StdNama, @StdNoIdentitas, @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi,
       @QaId, @Status, @Pic, @EvaluationResult, @CreatedBy
     )
+
+    SELECT session_id FROM @out;
   `);
   return result.recordset[0].session_id;
 }
@@ -338,12 +342,16 @@ async function createPoint(sessionId, payload, transaction) {
     .input('AnalogResolution', sql.Decimal(18, 10), toDbNull(payload.analog_resolution))
     .input('IsActive', sql.Bit, boolBit(payload.is_active))
     .query(`
+      DECLARE @out TABLE (point_id INT);
+
       INSERT INTO [dbo].[timer_points]
         (session_id, point_order, nominal_value, unit, correction_std, uc_std,
          digital_resolution, analog_resolution, is_active)
-      OUTPUT INSERTED.point_id
+      OUTPUT INSERTED.point_id INTO @out
       VALUES (@SessionId, @PointOrder, @NominalValue, @Unit, @CorrectionStd, @UcStd,
               @DigitalResolution, @AnalogResolution, @IsActive)
+
+      SELECT point_id FROM @out;
     `);
   return result.recordset[0].point_id;
 }

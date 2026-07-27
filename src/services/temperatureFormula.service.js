@@ -42,8 +42,10 @@ function computePoint(point = {}) {
       uut_raw: uutRaw,
       standard,
       uut,
-      error: standard - uut,
-      input_error: standardRaw - uutRaw,
+      // Error = UUT (alat) - Standar. Tanda ini harus sama dengan kolom Error
+      // yang ditulis ke sertifikat, kalau tidak workbook dan sertifikat berlawanan tanda.
+      error: uut - standard,
+      input_error: uutRaw - standardRaw,
     };
   });
   const errors = readings.map((row) => row.error);

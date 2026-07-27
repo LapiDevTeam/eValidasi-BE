@@ -198,20 +198,24 @@ async function calculate(sessionId, changedBy = null) {
       points: groupReadings(points, readings),
     });
 
-    for (const point of computed.points) {
-      await repo.insertResult({
-        session_id: sessionId,
-        point_no: point.point_no,
-        nominal_value: point.nominal_value,
-        mean_standard: point.mean_standard,
-        mean_uut: point.mean_uut,
-        mean_error: point.mean_error,
-        sd_value: point.sd,
-        u_combined: point.u_combined,
-        u_expanded: point.u_expanded,
-        tolerance: point.tolerance,
-        pass_flag: point.pass,
-      }, transaction);
+    // Bentuk baris hasil memakai nama kolom DB (sd_value/pass_flag) supaya response
+    // endpoint calculate identik dengan hasil yang dibaca ulang dari temperature_results.
+    const resultRows = computed.points.map((point) => ({
+      session_id: sessionId,
+      point_no: point.point_no,
+      nominal_value: point.nominal_value,
+      mean_standard: point.mean_standard,
+      mean_uut: point.mean_uut,
+      mean_error: point.mean_error,
+      sd_value: point.sd,
+      u_combined: point.u_combined,
+      u_expanded: point.u_expanded,
+      tolerance: point.tolerance,
+      pass_flag: point.pass,
+    }));
+
+    for (const row of resultRows) {
+      await repo.insertResult(row, transaction);
     }
     await repo.upsertSummary(sessionId, computed, transaction);
     await repo.updateSessionConclusion(sessionId, computed.conclusion, transaction);
@@ -229,7 +233,7 @@ async function calculate(sessionId, changedBy = null) {
     }, transaction).catch(() => {});
 
     await transaction.commit();
-    return { sessionId, ...computed, results: computed.points };
+    return { sessionId, ...computed, points: resultRows, results: resultRows };
   } catch (error) {
     try { await transaction.rollback(); } catch (_) { /* keep original error */ }
     throw error;
@@ -467,7 +471,7 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       seq_id: index + 1,
       pembacaan_alat: toNumberOrNull(row.mean_uut) ?? 0,
       pembacaan_standar: toNumberOrNull(row.mean_standard) ?? 0,
-      error: (toNumberOrNull(row.mean_uut) ?? 0) - (toNumberOrNull(row.mean_standard) ?? 0),
+      error: toNumberOrNull(row.mean_error) ?? 0,
       ketidakpastian: toNumberOrNull(row.u_expanded) ?? 0,
     }));
 
