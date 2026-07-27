@@ -2443,7 +2443,7 @@ border-left: 0; border-right:0;
   const isOutOfCalibration = isTidakSiapLabel || isResultOocLabel;
   const resolvedJudul = isResultOocLabel
     ? 'OUT OF CALIBRATION'
-    : (isTidakSiapLabel ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI"));
+    : (isTidakSiapLabel ? 'JANGAN DIGUNAKAN' : (judul || "TERKALIBRASI"));
   const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
   const labelTitle = escapeHtml(resolvedJudul);
   const escapedNoDoc = escapeHtml(noDoc || '');
