@@ -47,6 +47,35 @@ const MODULE_CONFIG = {
 // "Open" = still blocks a new request for the same record (spec FR-3)
 const OPEN_STATUS_SQL = `(status = 'PENDING' OR (status = 'APPROVED' AND reprinted_at IS NULL))`;
 
+const REQUEST_SELECT_SQL = `
+  request_id,
+  module,
+  qa_id,
+  id_no_sertifikat,
+  instrument_name,
+  instrument_code,
+  status,
+  reprint_remark,
+  requested_by,
+  requested_at,
+  approved_by,
+  approved_at,
+  CASE
+    WHEN approved_by IS NULL THEN NULL
+    ELSE dbo.fnGetNamaKaryawan(approved_by)
+  END AS approved_by_name,
+  rejected_by,
+  rejected_at,
+  rejected_reason,
+  reprinted_by,
+  reprinted_at,
+  CASE
+    WHEN reprinted_by IS NULL THEN NULL
+    ELSE dbo.fnGetNamaKaryawan(reprinted_by)
+  END AS reprinted_by_name,
+  is_manual
+`;
+
 function getModuleConfig(module) {
   return MODULE_CONFIG[module] || null;
 }
@@ -64,11 +93,13 @@ function toApiShape(row) {
     requestedBy: row.requested_by,
     requestedAt: row.requested_at,
     approvedBy: row.approved_by,
+    approvedByName: row.approved_by_name || null,
     approvedAt: row.approved_at,
     rejectedBy: row.rejected_by,
     rejectedAt: row.rejected_at,
     rejectedReason: row.rejected_reason,
     reprintedBy: row.reprinted_by,
+    reprintedByName: row.reprinted_by_name || null,
     reprintedAt: row.reprinted_at,
     isManual: Boolean(row.is_manual),
   };
@@ -243,7 +274,7 @@ const createLabelReprintRequest = async (req, res, next) => {
         : 'WHERE module = :module AND qa_id = :qaId';
 
       const created = await sequelizeMSQL.query(`
-        SELECT TOP 1 * FROM label_reprint_requests
+        SELECT TOP 1 ${REQUEST_SELECT_SQL} FROM label_reprint_requests
         ${createdWhere}
         ORDER BY request_id DESC
       `, {
@@ -305,7 +336,7 @@ const getReprintEligibility = async (req, res, next) => {
       : `WHERE module = :module AND qa_id = :qaId AND ${OPEN_STATUS_SQL}`;
 
     const openRows = await sequelizeMSQL.query(`
-      SELECT TOP 1 * FROM label_reprint_requests ${openWhere}
+      SELECT TOP 1 ${REQUEST_SELECT_SQL} FROM label_reprint_requests ${openWhere}
       ORDER BY request_id DESC
     `, {
       replacements: { module, qaId, idNoSertifikat },
@@ -361,7 +392,7 @@ const listLabelReprintRequests = async (req, res, next) => {
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const rows = await sequelizeMSQL.query(`
-      SELECT * FROM label_reprint_requests
+      SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests
       ${whereClause}
       ORDER BY requested_at DESC
     `, {
@@ -405,7 +436,7 @@ async function assertManagerAuthorized(module, userId, transaction) {
 
 async function loadPendingRequestForUpdate(requestId, transaction) {
   const rows = await sequelizeMSQL.query(`
-    SELECT * FROM label_reprint_requests WHERE request_id = :requestId
+    SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests WHERE request_id = :requestId
   `, {
     replacements: { requestId },
     type: Sequelize.QueryTypes.SELECT,
@@ -419,6 +450,33 @@ async function loadPendingRequestForUpdate(requestId, transaction) {
   }
   if (rows[0].status !== 'PENDING') {
     const err = new Error('Request reprint ini sudah diproses sebelumnya');
+    err.statusCode = 409;
+    throw err;
+  }
+  return rows[0];
+}
+
+async function loadApprovedRequestForReprint(requestId, transaction) {
+  const rows = await sequelizeMSQL.query(`
+    SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests WHERE request_id = :requestId
+  `, {
+    replacements: { requestId },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+
+  if (rows.length === 0) {
+    const err = new Error('Request reprint tidak ditemukan');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (rows[0].status !== 'APPROVED') {
+    const err = new Error('Request reprint belum disetujui Manager');
+    err.statusCode = 409;
+    throw err;
+  }
+  if (rows[0].reprinted_at) {
+    const err = new Error('Request reprint ini sudah pernah dicetak ulang');
     err.statusCode = 409;
     throw err;
   }
@@ -446,7 +504,7 @@ async function approveRequestById(requestId, actorUserId) {
     });
 
     const updated = await sequelizeMSQL.query(`
-      SELECT * FROM label_reprint_requests WHERE request_id = :requestId
+      SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests WHERE request_id = :requestId
     `, {
       replacements: { requestId },
       type: Sequelize.QueryTypes.SELECT,
@@ -507,7 +565,7 @@ async function rejectRequestById(requestId, actorUserId, rejectedReason) {
     });
 
     const updated = await sequelizeMSQL.query(`
-      SELECT * FROM label_reprint_requests WHERE request_id = :requestId
+      SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests WHERE request_id = :requestId
     `, {
       replacements: { requestId },
       type: Sequelize.QueryTypes.SELECT,
@@ -540,6 +598,52 @@ const rejectLabelReprintRequest = async (req, res, next) => {
   }
 };
 
+async function markRequestReprintedById(requestId, actorUserId) {
+  return sequelizeMSQL.transaction(async (transaction) => {
+    await loadApprovedRequestForReprint(requestId, transaction);
+
+    await sequelizeMSQL.query(`
+      UPDATE label_reprint_requests
+      SET reprinted_by = :userId, reprinted_at = GETDATE(), updated_by = :userId
+      WHERE request_id = :requestId
+    `, {
+      replacements: { userId: actorUserId, requestId },
+      type: Sequelize.QueryTypes.UPDATE,
+      transaction,
+    });
+
+    const updated = await sequelizeMSQL.query(`
+      SELECT ${REQUEST_SELECT_SQL} FROM label_reprint_requests WHERE request_id = :requestId
+    `, {
+      replacements: { requestId },
+      type: Sequelize.QueryTypes.SELECT,
+      transaction,
+    });
+    return updated[0];
+  });
+}
+
+/**
+ * POST /transactions/kalibrasi/label-reprint-requests/:requestId/reprint
+ * Auth: any authenticated user may execute an approved reprint once.
+ */
+const markLabelReprintRequestReprinted = async (req, res, next) => {
+  try {
+    const { user_id } = req.user;
+    const { requestId } = req.params;
+
+    const result = await markRequestReprintedById(requestId, user_id);
+
+    return res.status(200).json({ success: true, data: toApiShape(result) });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error('Error in markLabelReprintRequestReprinted:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   MODULE_CONFIG,
   toApiShape,
@@ -549,8 +653,10 @@ module.exports = {
   getReprintEligibility,
   approveLabelReprintRequest,
   rejectLabelReprintRequest,
+  markLabelReprintRequestReprinted,
   // Core logic, reused by pendingCalibrationApprovals.service.js so the
   // dashboard's approve/reject actions can't drift from the dedicated endpoints.
   approveRequestById,
   rejectRequestById,
+  markRequestReprintedById,
 };
