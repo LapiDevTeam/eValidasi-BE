@@ -48,7 +48,8 @@ const labelReprintRequestsController = require('../controllers/transactions/labe
 // as their source modules. Namespaced with this prefix so they don't collide
 // with the (currently disabled) BAGIAN_MODULES session-approval dispatch for
 // those same 7 keys — see approveSession/rejectSession.
-const LABEL_REPRINT_MODULE_PREFIX = 'label-reprint:';
+const LABEL_REPRINT_MODULE_PREFIX = 'label-reprint-';
+const LEGACY_LABEL_REPRINT_MODULE_PREFIX = 'label-reprint:';
 
 const LABEL_REPRINT_MODULES = {
   'sertifikat-thermo': { displayName: 'Sertifikat Thermo — Reprint Label', deepLinkPath: '/sertifikat-thermo' },
@@ -60,8 +61,19 @@ const LABEL_REPRINT_MODULES = {
   'da-bagian': { displayName: 'DA Bagian — Reprint Label', deepLinkPath: '/da-bagian' },
 };
 
+function getLabelReprintSourceModule(module) {
+  const moduleKey = String(module || '').toLowerCase();
+  if (moduleKey.startsWith(LABEL_REPRINT_MODULE_PREFIX)) {
+    return moduleKey.slice(LABEL_REPRINT_MODULE_PREFIX.length);
+  }
+  if (moduleKey.startsWith(LEGACY_LABEL_REPRINT_MODULE_PREFIX)) {
+    return moduleKey.slice(LEGACY_LABEL_REPRINT_MODULE_PREFIX.length);
+  }
+  return '';
+}
+
 function isLabelReprintModule(module) {
-  return String(module || '').toLowerCase().startsWith(LABEL_REPRINT_MODULE_PREFIX);
+  return Boolean(getLabelReprintSourceModule(module));
 }
 
 function normalizeLabelReprintRow(raw) {
@@ -2761,7 +2773,7 @@ async function listPendingApprovals(options = {}) {
 
   if (includeLabelReprint) {
     try {
-      const sourceModule = moduleFilter ? moduleKey.slice(LABEL_REPRINT_MODULE_PREFIX.length) : '';
+      const sourceModule = moduleFilter ? getLabelReprintSourceModule(moduleKey) : '';
       // eslint-disable-next-line no-await-in-loop
       const rows = await scanLabelReprintPending({ search, requester, sourceModule });
       results.push(...rows);
