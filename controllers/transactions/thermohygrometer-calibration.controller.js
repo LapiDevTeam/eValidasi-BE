@@ -236,6 +236,12 @@ function parseNumberValue(value) {
   return parseDotDecimal(value);
 }
 
+function certificateCellValue(value) {
+  const parsedValue = parseNumberValue(value);
+  if (Number.isFinite(parsedValue)) return parsedValue;
+  return textValue(value).trim();
+}
+
 function formatThermoCertificateNumber(value, { prefix = '', unit = '' } = {}) {
   const parsedValue = parseNumberValue(value);
   if (!Number.isFinite(parsedValue)) return textValue(value);
@@ -414,10 +420,10 @@ function buildThermoResultRows(channelResult = {}) {
   const points = Array.isArray(channelResult?.points) ? channelResult.points : [];
   return points.map((point, index) => ({
     seqId: index + 1,
-    pembacaanAlat: parseNumberValue(point.uutAverage),
-    pembacaanStandar: parseNumberValue(point.actualStd),
-    error: parseNumberValue(point.error),
-    ketidakpastian: parseNumberValue(point.u95),
+    pembacaanAlat: certificateCellValue(point.uutAverage),
+    pembacaanStandar: certificateCellValue(point.actualStd),
+    error: certificateCellValue(point.error),
+    ketidakpastian: certificateCellValue(point.u95),
   }));
 }
 

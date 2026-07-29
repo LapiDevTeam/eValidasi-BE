@@ -38,6 +38,9 @@ const {
 const {
   publishToSertifikat: publishTimbanganSertifikat,
 } = require('../src/services/timbanganCalculation.service');
+const {
+  finalizeManagerCalibrationApproval,
+} = require('./calibrationManagerFinalization.service');
 const labelReprintRequestsController = require('../controllers/transactions/label-reprint-requests.controller');
 
 // Label Reprint requests use a single-step Manager approval (not the
@@ -45,7 +48,8 @@ const labelReprintRequestsController = require('../controllers/transactions/labe
 // as their source modules. Namespaced with this prefix so they don't collide
 // with the (currently disabled) BAGIAN_MODULES session-approval dispatch for
 // those same 7 keys — see approveSession/rejectSession.
-const LABEL_REPRINT_MODULE_PREFIX = 'label-reprint:';
+const LABEL_REPRINT_MODULE_PREFIX = 'label-reprint-';
+const LEGACY_LABEL_REPRINT_MODULE_PREFIX = 'label-reprint:';
 
 const LABEL_REPRINT_MODULES = {
   'sertifikat-thermo': { displayName: 'Sertifikat Thermo — Reprint Label', deepLinkPath: '/sertifikat-thermo' },
@@ -57,8 +61,19 @@ const LABEL_REPRINT_MODULES = {
   'da-bagian': { displayName: 'DA Bagian — Reprint Label', deepLinkPath: '/da-bagian' },
 };
 
+function getLabelReprintSourceModule(module) {
+  const moduleKey = String(module || '').toLowerCase();
+  if (moduleKey.startsWith(LABEL_REPRINT_MODULE_PREFIX)) {
+    return moduleKey.slice(LABEL_REPRINT_MODULE_PREFIX.length);
+  }
+  if (moduleKey.startsWith(LEGACY_LABEL_REPRINT_MODULE_PREFIX)) {
+    return moduleKey.slice(LEGACY_LABEL_REPRINT_MODULE_PREFIX.length);
+  }
+  return '';
+}
+
 function isLabelReprintModule(module) {
-  return String(module || '').toLowerCase().startsWith(LABEL_REPRINT_MODULE_PREFIX);
+  return Boolean(getLabelReprintSourceModule(module));
 }
 
 function normalizeLabelReprintRow(raw) {
@@ -311,6 +326,54 @@ function canApproveRole(userRole, pendingRole) {
   return userRole.rank >= pendingRole.rank;
 }
 
+const CONFORMING_APPROVAL_COLUMNS = {
+  admin: 'ApprovedByAdmin',
+  adminDate: 'ApprovedByAdminDate',
+  officer: 'ApprovedByOfficer',
+  officerDate: 'ApprovedByOfficerDate',
+  manager: 'ApprovedByManager',
+  managerDate: 'ApprovedByManagerDate',
+  rejectedBy: 'RejectedBy',
+  rejectedReason: 'RejectedReason',
+  rejectedAt: 'RejectedAt',
+};
+
+const BAGIAN_CERTIFICATE_DETAIL_APPLY = `
+  OUTER APPLY (
+    SELECT TOP 1
+      C.Assm_nama_instrumen,
+      C.Tgl_kalibrasi
+    FROM dbo.T_Kalibrasi_Sertifikat_Bagian AS C
+    WHERE C.QA_ID = S.QA_ID
+      AND C.ID_No_Sertifikat = S.ID_No_Sertifikat
+  ) AS CertificateBagian
+`;
+
+function bagianWorkbookConfig({
+  displayName,
+  table,
+  routePrefix,
+}) {
+  return {
+    displayName,
+    table,
+    idColumn: 'Session_ID',
+    instrumentNameColumn: 'CertificateBagian.Assm_nama_instrumen',
+    calibrationDateColumn: 'CertificateBagian.Tgl_kalibrasi',
+    qaIdColumn: 'QA_ID',
+    idNoSertifikatColumn: 'ID_No_Sertifikat',
+    userIdColumn: 'UserID',
+    updateDateColumn: 'Update_Date',
+    processDateColumn: 'Process_Date',
+    statusColumn: 'Status',
+    conforming: true,
+    routePrefix,
+    detailApply: BAGIAN_CERTIFICATE_DETAIL_APPLY,
+    finalizationCertificateType: 'bagian',
+    approvalColumns: CONFORMING_APPROVAL_COLUMNS,
+  };
+}
+
 /**
  * Module registry.
  * Each entry maps the public module slug to its database table and columns.
@@ -332,6 +395,7 @@ const MODULE_REGISTRY = {
     statusColumn: 'Status',
     conforming: true,
     routePrefix: '/thermohygrometer-calibration',
+    finalizationCertificateType: 'thermo',
     detailApply: `
       OUTER APPLY (
         SELECT TOP 1
@@ -363,58 +427,46 @@ const MODULE_REGISTRY = {
       rejectedAt: 'RejectedAt',
     },
   },
-  moisture: {
+  moisture: bagianWorkbookConfig({
     displayName: 'Moisture Analyzer',
     table: 'dbo.T_Kalibrasi_Moisture_Workbook_Session',
-    idColumn: 'Session_ID',
-    instrumentNameColumn: null,
-    calibrationDateColumn: null,
-    qaIdColumn: 'QA_ID',
-    idNoSertifikatColumn: 'ID_No_Sertifikat',
-    userIdColumn: 'UserID',
-    updateDateColumn: 'Update_Date',
-    processDateColumn: 'Process_Date',
-    statusColumn: 'Status',
-    conforming: true,
     routePrefix: '/moisture-calibration',
-    approvalColumns: {
-      admin: 'ApprovedByAdmin',
-      adminDate: 'ApprovedByAdminDate',
-      officer: 'ApprovedByOfficer',
-      officerDate: 'ApprovedByOfficerDate',
-      manager: 'ApprovedByManager',
-      managerDate: 'ApprovedByManagerDate',
-      rejectedBy: 'RejectedBy',
-      rejectedReason: 'RejectedReason',
-      rejectedAt: 'RejectedAt',
-    },
-  },
-  friability: {
+  }),
+  friability: bagianWorkbookConfig({
     displayName: 'Friability Tester',
     table: 'dbo.T_Kalibrasi_Friability_Workbook_Session',
-    idColumn: 'Session_ID',
-    instrumentNameColumn: null,
-    calibrationDateColumn: null,
-    qaIdColumn: 'QA_ID',
-    idNoSertifikatColumn: 'ID_No_Sertifikat',
-    userIdColumn: 'UserID',
-    updateDateColumn: 'Update_Date',
-    processDateColumn: 'Process_Date',
-    statusColumn: 'Status',
-    conforming: true,
     routePrefix: '/friability-calibration',
-    approvalColumns: {
-      admin: 'ApprovedByAdmin',
-      adminDate: 'ApprovedByAdminDate',
-      officer: 'ApprovedByOfficer',
-      officerDate: 'ApprovedByOfficerDate',
-      manager: 'ApprovedByManager',
-      managerDate: 'ApprovedByManagerDate',
-      rejectedBy: 'RejectedBy',
-      rejectedReason: 'RejectedReason',
-      rejectedAt: 'RejectedAt',
-    },
-  },
+  }),
+  'dissolution-tester': bagianWorkbookConfig({
+    displayName: 'Dissolution Tester',
+    table: 'dbo.T_Kalibrasi_DissolutionTester_Workbook_Session',
+    routePrefix: '/dissolution-tester-calibration',
+  }),
+  enclosures: bagianWorkbookConfig({
+    displayName: 'Enclosures',
+    table: 'dbo.T_Kalibrasi_Enclosures_Workbook_Session',
+    routePrefix: '/enclosures-calibration',
+  }),
+  'hardness-tester': bagianWorkbookConfig({
+    displayName: 'Hardness Tester',
+    table: 'dbo.T_Kalibrasi_HardnessTester_Workbook_Session',
+    routePrefix: '/hardness-tester-calibration',
+  }),
+  'leak-test': bagianWorkbookConfig({
+    displayName: 'Leak Test',
+    table: 'dbo.T_Kalibrasi_LeakTest_Workbook_Session',
+    routePrefix: '/leak-test-calibration',
+  }),
+  'temperature-control': bagianWorkbookConfig({
+    displayName: 'Temperature Control',
+    table: 'dbo.T_Kalibrasi_TemperatureControl_Workbook_Session',
+    routePrefix: '/temperature-control-calibration',
+  }),
+  'torque-meter': bagianWorkbookConfig({
+    displayName: 'Torque Meter',
+    table: 'dbo.T_Kalibrasi_TorqueMeter_Workbook_Session',
+    routePrefix: '/torque-meter-calibration',
+  }),
   timer: {
     displayName: 'Timer',
     table: 'dbo.timer_sessions',
@@ -854,11 +906,6 @@ function normalizeRow(config, moduleKey, raw) {
     pendingRole: pendingRole ? pendingRole.label : null,
     deepLink,
   };
-}
-
-function shouldSuppressPendingWorkbookRow(row) {
-  // Thermohygrometer manager approval is represented by Sertifikat Thermo.
-  return row?.module === 'thermohygrometer' && row?.pendingLevel === 'manager';
 }
 
 // =============================================================================
@@ -2677,9 +2724,6 @@ async function listPendingApprovals(options = {}) {
         const rows = await scanModule(config, { search, requester });
         for (const raw of rows) {
           const normalized = normalizeRow(config, key, raw);
-          if (shouldSuppressPendingWorkbookRow(normalized)) {
-            continue;
-          }
           // Oversight page: show every pending item regardless of which role
           // it's currently waiting on. The Approve button itself is still
           // gated per-row by the viewer's role (FE canAct / BE approveSession).
@@ -2729,7 +2773,7 @@ async function listPendingApprovals(options = {}) {
 
   if (includeLabelReprint) {
     try {
-      const sourceModule = moduleFilter ? moduleKey.slice(LABEL_REPRINT_MODULE_PREFIX.length) : '';
+      const sourceModule = moduleFilter ? getLabelReprintSourceModule(moduleKey) : '';
       // eslint-disable-next-line no-await-in-loop
       const rows = await scanLabelReprintPending({ search, requester, sourceModule });
       results.push(...rows);
@@ -2766,6 +2810,86 @@ async function getSessionById(config, sessionId) {
       WHERE ${columnExpression(config.idColumn)} = @SessionId
     `);
   return result.recordset[0] || null;
+}
+
+async function getSessionForManagerFinalization(config, sessionId) {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        QA_ID,
+        ID_No_Sertifikat,
+        Evaluation_Result
+      FROM ${config.table}
+      WHERE ${config.idColumn} = :sessionId
+    `,
+    {
+      replacements: { sessionId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+  return rows[0] || null;
+}
+
+async function approveConformingManagerSession({
+  config,
+  ac,
+  sessionId,
+  userId,
+  user,
+  pendingRole,
+}) {
+  const sessionForFinalization = await getSessionForManagerFinalization(config, sessionId);
+  if (!sessionForFinalization) {
+    const err = new Error('Session not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (!normalizeValue(sessionForFinalization.Evaluation_Result)) {
+    const err = new Error('Pilih hasil evaluasi workbook terlebih dahulu');
+    err.statusCode = 422;
+    throw err;
+  }
+
+  await sequelizeMSQL.transaction(async (transaction) => {
+    const finalizationUser = {
+      ...user,
+      user_id: user?.user_id || user?.log_NIK || userId,
+      delegated_to:
+        user?.delegated_to ||
+        user?.delegatedTo?.user_id ||
+        user?.delegatedTo?.log_NIK ||
+        userId,
+    };
+
+    await finalizeManagerCalibrationApproval({
+      certificateType: config.finalizationCertificateType,
+      session: sessionForFinalization,
+      user: finalizationUser,
+      transaction,
+    });
+
+    await sequelizeMSQL.query(
+      `
+        UPDATE ${config.table}
+        SET
+          ${ac[pendingRole.key]} = :userId,
+          ${ac[`${pendingRole.key}Date`]} = GETDATE(),
+          ${config.statusColumn} = :status,
+          Update_Date = GETDATE()
+        WHERE ${config.idColumn} = :sessionId
+      `,
+      {
+        replacements: {
+          userId,
+          status: pendingRole.status,
+          sessionId,
+        },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      }
+    );
+  });
 }
 
 async function approveSession(module, sessionId, user, options = {}) {
@@ -2837,6 +2961,28 @@ async function approveSession(module, sessionId, user, options = {}) {
   }
 
   const pendingRole = getPendingRole(normalizedSession);
+  const isConformingManagerFinalization = Boolean(config.finalizationCertificateType)
+    && pendingRole.key === 'manager';
+
+  const result = {
+    module: key,
+    sessionId,
+    approvedBy: pendingRole.key,
+    approvedByLabel: pendingRole.label,
+  };
+
+  if (isConformingManagerFinalization) {
+    await approveConformingManagerSession({
+      config,
+      ac,
+      sessionId,
+      userId,
+      user,
+      pendingRole,
+    });
+    return result;
+  }
+
   const publishHandler = FINAL_APPROVAL_PUBLISH_HANDLERS[key];
   const isFinalWorkbookApproval = Boolean(publishHandler) && pendingRole.key === 'manager';
 
@@ -2870,13 +3016,6 @@ async function approveSession(module, sessionId, user, options = {}) {
         ${config.conforming ? `, ${config.statusColumn} = '${pendingRole.status}'` : ''}
       WHERE ${config.idColumn} = @SessionId
     `);
-
-  const result = {
-    module: key,
-    sessionId,
-    approvedBy: pendingRole.key,
-    approvedByLabel: pendingRole.label,
-  };
 
   if (isFinalWorkbookApproval) {
     try {

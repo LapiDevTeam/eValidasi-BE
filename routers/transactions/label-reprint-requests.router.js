@@ -9,6 +9,7 @@ const {
   getReprintEligibility,
   approveLabelReprintRequest,
   rejectLabelReprintRequest,
+  markLabelReprintRequestReprinted,
 } = require('../../controllers/transactions/label-reprint-requests.controller');
 
 // Registered before '/:requestId/*' so 'eligibility'/'candidates' aren't parsed as a requestId.
@@ -23,5 +24,6 @@ router.get('/', authentication, listLabelReprintRequests);
 
 router.post('/:requestId/approve', authentication, approveLabelReprintRequest);
 router.post('/:requestId/reject', authentication, rejectLabelReprintRequest);
+router.post('/:requestId/reprint', authentication, markLabelReprintRequestReprinted);
 
 module.exports = router;
