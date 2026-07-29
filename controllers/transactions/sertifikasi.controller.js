@@ -2443,7 +2443,7 @@ border-left: 0; border-right:0;
   const isOutOfCalibration = isTidakSiapLabel || isResultOocLabel;
   const resolvedJudul = isResultOocLabel
     ? 'OUT OF CALIBRATION'
-    : (isTidakSiapLabel ? 'JANGAN DIGUNAKAN' : (judul || "TERKALIBRASI"));
+    : (isTidakSiapLabel ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI"));
   const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
   const labelTitle = escapeHtml(resolvedJudul);
   const escapedNoDoc = escapeHtml(noDoc || '');
@@ -2602,7 +2602,7 @@ border-left: 0; border-right:0;
                     <img src="${logoBase64}" alt="Lapi" />
                   </div>
                   <div class="title-cell">
-                    TIDAK DAPAT<br />DIGUNAKAN
+                    JANGAN DIGUNAKAN
                   </div>
                 </div>
 
