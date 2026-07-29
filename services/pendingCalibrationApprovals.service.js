@@ -2666,6 +2666,327 @@ async function rejectMasterApprovalFromPending(moduleKey, sessionId, user, reaso
   });
 }
 
+// =============================================================================
+// UNIT TIDAK SIAP (INTERNAL — Sertifikat Bagian / Thermo / Timbangan)
+// =============================================================================
+// FA menandai sertifikat internal is_tidak_dapat=1 lewat tidak-dapat-internal.
+// controller. Alur approval-nya: SPV (Approver_No=10) -> MGR (Approver_No=11)
+// pada tabel {mainTable}_Status. Belum ada scanner-nya di halaman Pending
+// Approvals — modul ini menambahkannya sebagai satu module key `unit-tidak-siap`.
+
+const UNIT_TIDAK_SIAP_APPR_NO_SPV = 10;
+const UNIT_TIDAK_SIAP_APPR_NO_MGR = 11;
+
+const UNIT_TIDAK_SIAP_TIPE_CONFIG = {
+  bagian: {
+    mainTable: 'T_Kalibrasi_Sertifikat_Bagian',
+    statusTable: 'T_Kalibrasi_Sertifikat_Bagian_Status',
+    applicationCode: 'KAL_Sert_Bagian',
+    deepLinkPath: '/sertifikat-bagian',
+  },
+  thermohygro: {
+    mainTable: 'T_Kalibrasi_Sertifikat_Thermohygro',
+    statusTable: 'T_Kalibrasi_Sertifikat_Thermohygro_Status',
+    applicationCode: 'KAL_Sert_Thermo',
+    deepLinkPath: '/sertifikat-thermo',
+  },
+  timbangan: {
+    mainTable: 'T_Kalibrasi_Sertifikat_Timbangan',
+    statusTable: 'T_Kalibrasi_Sertifikat_Timbangan_Status',
+    applicationCode: 'KAL_Sert_Timbangan',
+    deepLinkPath: '/sertifikat-timbangan',
+  },
+};
+
+function isUnitTidakSiapModule(module) {
+  return String(module || '').toLowerCase() === 'unit-tidak-siap';
+}
+
+function parseUnitTidakSiapSessionId(sessionId) {
+  const raw = String(sessionId || '');
+  const colonIdx = raw.indexOf(':');
+  if (colonIdx < 0) return { tipe: '', qaId: '', idNoSertifikat: '' };
+  const tipe = raw.slice(0, colonIdx);
+  const rest = raw.slice(colonIdx + 1);
+  const [qaId, idNoSertifikat] = rest.split('~');
+  return {
+    tipe,
+    qaId: qaId || '',
+    idNoSertifikat: idNoSertifikat || '',
+  };
+}
+
+function normalizeUnitTidakSiapRow(tipe, raw) {
+  const cfg = UNIT_TIDAK_SIAP_TIPE_CONFIG[tipe];
+  const qaId = normalizeValue(raw.QA_ID);
+  const idNoSertifikat = normalizeValue(raw.ID_No_Sertifikat);
+  const spvDone = Number(raw.spv_done) > 0;
+  const pendingLevel = spvDone ? 'manager' : 'officer';
+  const pendingRole = spvDone ? 'Manager' : 'Officer/Supervisor';
+  return {
+    module: 'unit-tidak-siap',
+    moduleDisplayName: 'Unit Tidak Siap',
+    sessionId: `${tipe}:${qaId}~${idNoSertifikat}`,
+    qaId,
+    idNoSertifikat,
+    instrumentName: normalizeValue(raw.Assm_nama_instrumen),
+    calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
+    requester: normalizeValue(raw.requester),
+    updatedAt: normalizeDate(raw.tanggal_label_OOC || raw.tgl),
+    approvedByAdmin: '',
+    approvedByAdminDate: '',
+    approvedByOfficer: spvDone ? normalizeValue(raw.spv_user) : '',
+    approvedByOfficerDate: spvDone ? normalizeDate(raw.spv_date) : '',
+    approvedByManager: '',
+    approvedByManagerDate: '',
+    pendingLevel,
+    pendingRole,
+    deepLink: `${cfg.deepLinkPath}?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
+  };
+}
+
+async function scanUnitTidakSiapPendingForTipe(tipe, filters = {}) {
+  const cfg = UNIT_TIDAK_SIAP_TIPE_CONFIG[tipe];
+  if (!cfg) return [];
+  const search = buildLikeSearch(filters.search);
+  const requesterLike = buildLikeSearch(filters.requester);
+  const replacements = {};
+
+  let where = `
+    WHERE M.is_tidak_dapat = 1
+      AND MGR.QA_ID IS NULL
+  `;
+
+  if (search) {
+    where += `
+      AND (
+        M.QA_ID LIKE :search
+        OR M.ID_No_Sertifikat LIKE :search
+        OR M.Assm_nama_instrumen LIKE :search
+      )
+    `;
+    replacements.search = search;
+  }
+
+  if (requesterLike) {
+    where += ` AND dbo.fnGetInisialKaryawan(M.UserID) LIKE :requester`;
+    replacements.requester = requesterLike;
+  }
+
+  const query = `
+    SELECT TOP 200
+      M.QA_ID,
+      M.ID_No_Sertifikat,
+      M.Assm_nama_instrumen,
+      M.Tgl_kalibrasi,
+      M.tanggal_label_OOC,
+      M.tgl,
+      dbo.fnGetInisialKaryawan(M.UserID) AS requester,
+      CASE WHEN SPV.QA_ID IS NULL THEN 0 ELSE 1 END AS spv_done,
+      SPV.User_ID AS spv_user,
+      SPV.Process_Date AS spv_date
+    FROM ${cfg.mainTable} AS M
+    OUTER APPLY (
+      SELECT TOP 1 s.QA_ID, s.User_ID, s.Process_Date
+      FROM ${cfg.statusTable} AS s
+      WHERE s.QA_ID = M.QA_ID
+        AND s.ID_No_Sertifikat = M.ID_No_Sertifikat
+        AND s.Approver_No = ${UNIT_TIDAK_SIAP_APPR_NO_SPV}
+        AND ISNULL(s.isReject, 0) = 0
+    ) AS SPV
+    OUTER APPLY (
+      SELECT TOP 1 s.QA_ID
+      FROM ${cfg.statusTable} AS s
+      WHERE s.QA_ID = M.QA_ID
+        AND s.ID_No_Sertifikat = M.ID_No_Sertifikat
+        AND s.Approver_No = ${UNIT_TIDAK_SIAP_APPR_NO_MGR}
+        AND ISNULL(s.isReject, 0) = 0
+    ) AS MGR
+    ${where}
+    ORDER BY M.tanggal_label_OOC DESC, M.tgl DESC
+  `;
+
+  const rows = await sequelizeMSQL.query(query, {
+    replacements,
+    type: Sequelize.QueryTypes.SELECT,
+  });
+
+  return rows.map((raw) => normalizeUnitTidakSiapRow(tipe, raw));
+}
+
+async function scanUnitTidakSiapPending(filters = {}) {
+  const tipes = Object.keys(UNIT_TIDAK_SIAP_TIPE_CONFIG);
+  const results = [];
+  const errors = [];
+  for (const tipe of tipes) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const rows = await scanUnitTidakSiapPendingForTipe(tipe, filters);
+      results.push(...rows);
+    } catch (err) {
+      console.error(`[pendingCalibrationApprovals] scan unit-tidak-siap/${tipe} failed:`, err.message);
+      errors.push({ tipe, message: err.message });
+    }
+  }
+  return { rows: results, errors };
+}
+
+async function assertUnitTidakSiapApprover(cfg, userId) {
+  const result = await sequelizeMSQL.query(`
+    SELECT Appr_Identity FROM m_approver_lines
+    WHERE isactive = 1
+      AND Appr_ApplicationCode = :appCode
+      AND Appr_ID = :userId
+      AND Appr_No = 1
+  `, {
+    replacements: { appCode: cfg.applicationCode, userId },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  if (result.length === 0) {
+    const err = new Error('Anda tidak memiliki hak untuk mereview tidak dapat ini');
+    err.statusCode = 403;
+    throw err;
+  }
+  return result[0].Appr_Identity || 0;
+}
+
+async function approveUnitTidakSiapFromPending(sessionId, user) {
+  const { tipe, qaId, idNoSertifikat } = parseUnitTidakSiapSessionId(sessionId);
+  const cfg = UNIT_TIDAK_SIAP_TIPE_CONFIG[tipe];
+  if (!cfg || !qaId || !idNoSertifikat) {
+    const err = new Error('Session unit-tidak-siap tidak valid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const userId = user?.user_id || user?.log_NIK || '';
+  const delegatedTo = user?.delegated_to || null;
+  const apprIdentity = await assertUnitTidakSiapApprover(cfg, userId);
+
+  const mainCheck = await sequelizeMSQL.query(`
+    SELECT is_tidak_dapat FROM ${cfg.mainTable}
+    WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+  `, {
+    replacements: { qaId, idNoSertifikat },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  if (mainCheck.length === 0) {
+    const err = new Error('Data sertifikat tidak ditemukan');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (!mainCheck[0].is_tidak_dapat) {
+    const err = new Error('Status tidak dapat dikalibrasi belum diisi oleh FA');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const statusRows = await sequelizeMSQL.query(`
+    SELECT Approver_No FROM ${cfg.statusTable}
+    WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+      AND Approver_No IN (${UNIT_TIDAK_SIAP_APPR_NO_SPV}, ${UNIT_TIDAK_SIAP_APPR_NO_MGR})
+      AND ISNULL(isReject, 0) = 0
+  `, {
+    replacements: { qaId, idNoSertifikat },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  const hasSpv = statusRows.some((r) => Number(r.Approver_No) === UNIT_TIDAK_SIAP_APPR_NO_SPV);
+  const hasMgr = statusRows.some((r) => Number(r.Approver_No) === UNIT_TIDAK_SIAP_APPR_NO_MGR);
+
+  if (hasMgr) {
+    const err = new Error('Sudah disetujui oleh MGR');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const targetApprNo = hasSpv ? UNIT_TIDAK_SIAP_APPR_NO_MGR : UNIT_TIDAK_SIAP_APPR_NO_SPV;
+  const approvedByLabel = hasSpv ? 'Manager' : 'Officer/Supervisor';
+  const approvedByKey = hasSpv ? 'manager' : 'officer';
+
+  await sequelizeMSQL.query(`
+    INSERT INTO ${cfg.statusTable}
+      (QA_ID, ID_No_Sertifikat, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+    VALUES
+      (:qaId, :idNoSertifikat, ${targetApprNo}, 0, :apprIdentity, GETDATE(), :userId, :delegatedTo, NULL)
+  `, {
+    replacements: { qaId, idNoSertifikat, apprIdentity, userId, delegatedTo },
+    type: Sequelize.QueryTypes.INSERT,
+  });
+
+  return {
+    module: 'unit-tidak-siap',
+    sessionId,
+    approvedBy: approvedByKey,
+    approvedByLabel,
+  };
+}
+
+async function rejectUnitTidakSiapFromPending(sessionId, user, reason) {
+  const { tipe, qaId, idNoSertifikat } = parseUnitTidakSiapSessionId(sessionId);
+  const cfg = UNIT_TIDAK_SIAP_TIPE_CONFIG[tipe];
+  if (!cfg || !qaId || !idNoSertifikat) {
+    const err = new Error('Session unit-tidak-siap tidak valid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const userId = user?.user_id || user?.log_NIK || '';
+  await assertUnitTidakSiapApprover(cfg, userId);
+
+  const statusRows = await sequelizeMSQL.query(`
+    SELECT Approver_No FROM ${cfg.statusTable}
+    WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+      AND Approver_No IN (${UNIT_TIDAK_SIAP_APPR_NO_SPV}, ${UNIT_TIDAK_SIAP_APPR_NO_MGR})
+      AND ISNULL(isReject, 0) = 0
+  `, {
+    replacements: { qaId, idNoSertifikat },
+    type: Sequelize.QueryTypes.SELECT,
+  });
+  const hasSpv = statusRows.some((r) => Number(r.Approver_No) === UNIT_TIDAK_SIAP_APPR_NO_SPV);
+  const hasMgr = statusRows.some((r) => Number(r.Approver_No) === UNIT_TIDAK_SIAP_APPR_NO_MGR);
+
+  if (hasMgr) {
+    const err = new Error('Sudah disetujui oleh MGR — tidak dapat di-reject dari sini');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (hasSpv) {
+    await sequelizeMSQL.query(`
+      DELETE FROM ${cfg.statusTable}
+      WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+        AND Approver_No IN (${UNIT_TIDAK_SIAP_APPR_NO_SPV}, ${UNIT_TIDAK_SIAP_APPR_NO_MGR})
+    `, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.DELETE,
+    });
+    await sequelizeMSQL.query(`
+      UPDATE ${cfg.mainTable}
+      SET is_tidak_dapat = 0, alasan_tidak_dapat = NULL, kondisi_alat = NULL, tanggal_label_OOC = NULL
+      WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+    `, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+  } else {
+    await sequelizeMSQL.query(`
+      DELETE FROM ${cfg.statusTable}
+      WHERE QA_ID = :qaId AND ID_No_Sertifikat = :idNoSertifikat
+        AND Approver_No = ${UNIT_TIDAK_SIAP_APPR_NO_SPV}
+    `, {
+      replacements: { qaId, idNoSertifikat },
+      type: Sequelize.QueryTypes.DELETE,
+    });
+  }
+
+  return {
+    module: 'unit-tidak-siap',
+    sessionId,
+    rejectedBy: userId,
+    rejectedReason: reason || '',
+  };
+}
+
 async function listPendingApprovals(options = {}) {
   const {
     bagian_user,
@@ -2689,6 +3010,7 @@ async function listPendingApprovals(options = {}) {
   const includeDaThermo = false;
   const includeSertifikatThermo = false;
   const includeKalibrasiEksternal = !moduleFilter || moduleKey === 'kalibrasi-eksternal';
+  const includeUnitTidakSiap = !moduleFilter || isUnitTidakSiapModule(moduleKey);
   const includeMasterApproval = !moduleFilter || isMasterApprovalModule(moduleKey);
   const includeLabelReprint = !moduleFilter || isLabelReprintModule(moduleKey);
 
@@ -2700,6 +3022,7 @@ async function listPendingApprovals(options = {}) {
     && !includeDaThermo
     && !includeSertifikatThermo
     && !includeKalibrasiEksternal
+    && !includeUnitTidakSiap
     && !includeMasterApproval
     && !includeLabelReprint
   ) {
@@ -2748,6 +3071,24 @@ async function listPendingApprovals(options = {}) {
     } catch (err) {
       console.error('[pendingCalibrationApprovals] scan failed for kalibrasi-eksternal:', err.message);
       scanErrors.push({ module: 'kalibrasi-eksternal', message: err.message });
+    }
+  }
+
+  if (includeUnitTidakSiap) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const { rows, errors } = await scanUnitTidakSiapPending({ search, requester });
+      results.push(...rows);
+      for (const e of errors) {
+        scanErrors.push({
+          module: `unit-tidak-siap/${e.tipe}`,
+          moduleDisplayName: `Unit Tidak Siap (${e.tipe})`,
+          message: e.message,
+        });
+      }
+    } catch (err) {
+      console.error('[pendingCalibrationApprovals] scan failed for unit-tidak-siap:', err.message);
+      scanErrors.push({ module: 'unit-tidak-siap', message: err.message });
     }
   }
 
@@ -2897,6 +3238,9 @@ async function approveConformingManagerSession({
 
 async function approveSession(module, sessionId, user, options = {}) {
   const moduleKey = String(module || '').toLowerCase();
+  if (isUnitTidakSiapModule(moduleKey)) {
+    return approveUnitTidakSiapFromPending(sessionId, user);
+  }
   if (isLabelReprintModule(moduleKey)) {
     const userId = user?.user_id || user?.log_NIK || '';
     const updated = await labelReprintRequestsController.approveRequestById(sessionId, userId);
@@ -3049,6 +3393,9 @@ async function approveSession(module, sessionId, user, options = {}) {
 
 async function rejectSession(module, sessionId, user, reason) {
   const moduleKey = String(module || '').toLowerCase();
+  if (isUnitTidakSiapModule(moduleKey)) {
+    return rejectUnitTidakSiapFromPending(sessionId, user, reason);
+  }
   if (isLabelReprintModule(moduleKey)) {
     const userId = user?.user_id || user?.log_NIK || '';
     const updated = await labelReprintRequestsController.rejectRequestById(sessionId, userId, reason);
