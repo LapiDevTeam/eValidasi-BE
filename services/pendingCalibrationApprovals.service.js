@@ -2174,9 +2174,11 @@ function normalizeKalibrasiEksternalRow(raw) {
   const qaId = normalizeValue(raw.QA_ID);
   const ekstId = normalizeValue(raw.ekst_id);
   const scheduleDetailId = normalizeValue(raw.schedule_detail_id);
+  const status = String(raw.status || '').toUpperCase();
+  const isTidakDapat = status === 'TIDAK_DAPAT';
   return {
     module: 'kalibrasi-eksternal',
-    moduleDisplayName: 'Kalibrasi Eksternal',
+    moduleDisplayName: isTidakDapat ? 'Unit Tidak Siap' : 'Kalibrasi Eksternal',
     sessionId: ekstId,
     scheduleDetailId,
     qaId,
@@ -2235,6 +2237,7 @@ async function scanKalibrasiEksternalPending(rawSearch, bagianUser, requester) {
     SELECT TOP 200
       e.ekst_id,
       e.schedule_detail_id,
+      e.status,
       d.QA_ID,
       d.Instrument_Name,
       d.Due_Date,
