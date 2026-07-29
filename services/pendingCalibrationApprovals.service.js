@@ -81,10 +81,10 @@ function normalizeLabelReprintRow(raw) {
   const meta = LABEL_REPRINT_MODULES[sourceModule] || {};
   const qaId = normalizeValue(raw.qa_id);
   const idNoSertifikat = normalizeValue(raw.id_no_sertifikat);
-  const baseDisplayName = meta.displayName || `${sourceModule} — Reprint Label`;
+  const baseDisplayName = meta.displayName || `Reprint Label`;
   return {
     module: `${LABEL_REPRINT_MODULE_PREFIX}${sourceModule}`,
-    moduleDisplayName: raw.is_manual ? `${baseDisplayName} (Re-Print Manual)` : baseDisplayName,
+    moduleDisplayName: raw.is_manual ? `${baseDisplayName}` : baseDisplayName,
     sessionId: String(raw.request_id),
     qaId,
     idNoSertifikat,
