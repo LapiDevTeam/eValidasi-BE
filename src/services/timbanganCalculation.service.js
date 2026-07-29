@@ -671,16 +671,17 @@ function numberToLabel(value, unit) {
 const CERT_DECIMALS = 3;
 
 // Tabel Pre-Adjustment & Penyimpangan Konvensional Massa Standar dipatok 3 desimal
-// agar seragam dengan tampilan workbook. `signed` memakai ambang >= 0 (bukan > 0)
-// supaya nol tetap bertanda: "+0.000 g", bukan "0 g" seperti perilaku lama.
+// agar seragam dengan tampilan workbook. Sesuai feedback LMS TIMBANGAN.docx: nilai
+// yang dibulatkan ke 0 tampil polos ("0.000 g"), tanpa tanda + atau -.
 function fixedNumberToLabel(value, unit, { signed = false } = {}) {
   if (value === null || value === undefined || value === '') return '';
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
   const raw = n.toFixed(CERT_DECIMALS);
   // toFixed membiarkan tanda minus pada nol negatif (-0.0001 -> "-0.000").
-  const text = Number(raw) === 0 ? (0).toFixed(CERT_DECIMALS) : raw;
-  const sign = signed && !text.startsWith('-') ? '+' : '';
+  const isZero = Number(raw) === 0;
+  const text = isZero ? (0).toFixed(CERT_DECIMALS) : raw;
+  const sign = signed && !isZero && !text.startsWith('-') ? '+' : '';
   return unit ? `${sign}${text} ${unit}` : `${sign}${text}`;
 }
 
@@ -932,6 +933,112 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
   }
 }
 
+// Bangun payload sebentuk print-data TANPA insert ke tabel sertifikat dan
+// TANPA syarat approval — dipakai tombol "Preview Certificate" agar teknisi bisa
+// melihat gambaran sertifikat sebelum approval Manager selesai (feedback LMS
+// TIMBANGAN.docx: "Sheet Certificate tidak dapat diklik pratinjau sertifikat").
+// Read-only: hanya baca sesi + hasil hitung yang sudah ada, meniru bentuk
+// publishToSertifikat tapi tidak pernah menulis ke T_Kalibrasi_Sertifikat_Timbangan*.
+async function buildDraftPrintData(sessionId) {
+  const session = await repo.getSessionById(sessionId);
+  if (!session) throw httpError(`Session ${sessionId} not found.`, 404);
+
+  const results = await repo.getResults(sessionId);
+  if (!results.length) {
+    throw httpError(
+      'Belum ada hasil perhitungan untuk sesi ini. Jalankan "Hitung" terlebih dahulu untuk melihat pratinjau sertifikat.',
+      422,
+      [{ field: 'status', message: 'Tabel hasil (timbangan_results) masih kosong.' }]
+    );
+  }
+
+  const unit = String(session.unit || 'kg');
+  const [summary, preadjustRows, repeatabilityRows, eccentricityRows] = await Promise.all([
+    repo.getSummary(sessionId),
+    repo.listPreadjust(sessionId),
+    repo.listRepeatability(sessionId),
+    repo.listEccentricity(sessionId),
+  ]);
+
+  const preadjust = formula.computePreadjust(preadjustRows, unit);
+  const preAdj = preadjustRows.length
+    ? [{
+        Pembacaan_standar: fixedNumberToLabel(preadjust.mass, unit),
+        Pembacaan_Alat: fixedNumberToLabel(preadjust.result, unit),
+        Error: fixedNumberToLabel(preadjust.error, unit, { signed: true }),
+      }]
+    : [];
+
+  const resolusi = toNumberOrNull(session.resolusi) ?? 0;
+  const rep = formula.computeRepeatability(repeatabilityRows, resolusi);
+  const dayaUlang = [];
+  if (repeatabilityRows.some((r) => r.half_reading !== null && r.half_reading !== undefined)) {
+    dayaUlang.push({
+      Massa_standar: numberToLabel(rep.avgHalfReading, unit),
+      Standar_deviasi: numberToLabel(rep.srHalf, unit),
+    });
+  }
+  if (repeatabilityRows.some((r) => r.max_reading !== null && r.max_reading !== undefined)) {
+    dayaUlang.push({
+      Massa_standar: numberToLabel(rep.avgMaxReading, unit),
+      Standar_deviasi: numberToLabel(rep.srMax, unit),
+    });
+  }
+
+  const sorted = [...results].sort((a, b) => Number(a.point_order) - Number(b.point_order));
+  const massaStd = sorted.map((row) => ({
+    Konvensional_standar: fixedNumberToLabel(row.konv_mass, unit),
+    Pembacaan_Alat: fixedNumberToLabel(row.reading, unit),
+    Error: fixedNumberToLabel(row.error, unit, { signed: true }),
+    Ketidakpastian: fixedNumberToLabel(row.u_expanded, unit),
+  }));
+
+  const eccentricity = formula.computeEccentricity(eccentricityRows);
+  const pusatPan = eccentricityRows.length
+    ? [{
+        Massa: numberToLabel(session.eccentricity_nominal_mass, unit),
+        Massa_0: numberToLabel(eccentricity.diffs?.[0], unit),
+        Massa_1: numberToLabel(eccentricity.diffs?.[1], unit),
+        Massa_2: numberToLabel(eccentricity.diffs?.[2], unit),
+        Massa_3: numberToLabel(eccentricity.diffs?.[3], unit),
+        Massa_4: numberToLabel(eccentricity.diffs?.[4], unit),
+        Perbedaan_Max: numberToLabel(eccentricity.maxDiff, unit),
+      }]
+    : [];
+
+  return {
+    is_draft: true,
+    id_no_sertifikat: session.id_no_sertifikat || '(draft)',
+    qa_id: session.qa_id || '',
+    header: {
+      Assm_nama_instrumen: session.instrument_name || '',
+      Assm_No_identitas_kalibrasi: session.instrument_code || '',
+      Assm_Merk: session.merk_tipe || '',
+      SERIAL_NUMBER: session.no_seri || '',
+      Assm_Kapasitas: session.kapasitas_resolusi || '',
+      Assm_Lokasi: session.lokasi || '',
+      Nama: session.std_nama || '',
+      No_Ident_No_batch: session.std_no_identitas || '',
+      No_Sertifikat: session.std_no_sertifikat || '',
+      Tertelusur_melalui: session.std_tertelusur || '',
+      Rekalibrasi: session.std_rekalibrasi || '',
+      Tgl_kalibrasi: toDateOrNull(session.calibration_date),
+      Interval: toPositiveIntegerOrNull(session.interval_bulan) || 12,
+      Metode_kalibrasi: session.metode_kalibrasi || 'Kalibrasi Timbangan - Workbook',
+      Suhu_Kelembaban: buildSuhuKelembabanText(session),
+      Catatan: session.keterangan || '',
+      BATAS_UNJUK_KERJA: summary && summary.lop !== null && summary.lop !== undefined
+        ? `±${numberToLabel(summary.lop, unit)}`
+        : '',
+    },
+    pre_adj: preAdj,
+    daya_ulang: dayaUlang,
+    massa_std: massaStd,
+    pusat_pan: pusatPan,
+    approver: null,
+  };
+}
+
 module.exports = {
   EVALUATION_OPTIONS,
   normalizeEvaluationResult,
@@ -948,4 +1055,5 @@ module.exports = {
   lookupAt,
   listDaCandidates,
   publishToSertifikat,
+  buildDraftPrintData,
 };

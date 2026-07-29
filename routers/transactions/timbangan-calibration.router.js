@@ -34,5 +34,6 @@ router.get('/timbangan-at-standards/:noId', controller.lookupAt);
 // Certificate
 router.get('/timbangan-da-candidates', controller.listDaCandidates);
 router.post('/timbangan-sessions/:sessionId/publish-sertifikat', controller.publishSertifikat);
+router.get('/timbangan-sessions/:sessionId/print-data-draft', controller.getDraftPrintData);
 
 module.exports = router;

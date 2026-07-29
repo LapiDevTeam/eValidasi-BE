@@ -243,6 +243,17 @@ async function publishSertifikat(req, res, next) {
   }
 }
 
+// Pratinjau sertifikat sebelum Manager approve — read-only, tidak menulis apapun.
+async function getDraftPrintData(req, res, next) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const data = await calc.buildDraftPrintData(sessionId);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return sendError(res, next, error);
+  }
+}
+
 module.exports = {
   listSessions,
   getPublishedHysteresisByCertificate,
@@ -260,4 +271,5 @@ module.exports = {
   lookupAt,
   listDaCandidates,
   publishSertifikat,
+  getDraftPrintData,
 };
