@@ -1265,6 +1265,18 @@ const generateDA = async (req, res, next) => {
       });
     }
 
+    // Re-Kalibrasi wajib punya QA_ID_rekalibrasi sebagai acuan, karena QA_ID
+    // permohonan diisi dari nilai itu. Tanpa penjagaan ini permohonan akan
+    // di-update dengan QA_ID kosong padahal baris DA-nya sudah terlanjur dibuat,
+    // dan guard "Sudah Generate" di atas jadi tidak pernah aktif sehingga
+    // Generate DA bisa diulang dan menghasilkan baris DA ganda.
+    if (V_kategori_permohonan === 'Re-Kalibrasi' && V_QA_ID_rekalibrasi === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Permohonan Re-Kalibrasi belum punya QA ID rekalibrasi. Lengkapi dulu data rekalibrasi sebelum Generate DA.'
+      });
+    }
+
     let SQL_Insert = '';
     let SQL_Update = '';
     let Auto_QA_ID = '';
@@ -1283,7 +1295,7 @@ const generateDA = async (req, res, next) => {
         Auto_QA_ID = qaIdResult[0].QA_ID;
 
         SQL_Insert = `Insert into T_Kalibrasi_DA_Thermohygro (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                      SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,
+                      SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,
                               Assm_nama_instrumen,
                               Assm_No_identitas_Istrumen,
                               Assm_No_identitas_kalibrasi,
@@ -1291,9 +1303,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              GETDATE() as tgl_kalibrasi,
+                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                               Parameter_Interval,
-                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1312,7 +1324,7 @@ const generateDA = async (req, res, next) => {
         Auto_QA_ID = qaIdResult[0].QA_ID;
 
         SQL_Insert = `Insert into T_Kalibrasi_DA_Anak_Timbangan (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                      SELECT (select dbo.fnGetKal_DA_AT_No_ID()) as QA_ID, Jenis_kalibrasi,
+                      SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,
                               Assm_nama_instrumen,
                               Assm_No_identitas_Istrumen,
                               Assm_No_identitas_kalibrasi,
@@ -1320,9 +1332,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              GETDATE() as tgl_kalibrasi,
+                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                               Parameter_Interval,
-                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1344,7 +1356,7 @@ const generateDA = async (req, res, next) => {
                                 Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
                        Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-                                Parameter_Kalibrasi, Assm_Lokasi, getdate() as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,GETDATE()) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Parameter_Kalibrasi, Assm_Lokasi, ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
                                 from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
 
@@ -1361,7 +1373,7 @@ const generateDA = async (req, res, next) => {
         Auto_QA_ID = qaIdResult[0].QA_ID;
 
         SQL_Insert = `Insert into T_Kalibrasi_DA_Bagian (QA_ID,Jenis_kalibrasi,Parameter_Sertifikasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                      SELECT (select dbo.fnGetKal_DA_BA_No_ID()) as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
+                      SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
                               Assm_nama_instrumen,
                               Assm_No_identitas_Istrumen,
                               Assm_No_identitas_kalibrasi,
@@ -1369,9 +1381,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              GETDATE() as tgl_kalibrasi,
+                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                               Parameter_Interval,
-                              DATEADD(MONTH,12,GETDATE()) as kalibrasi_selanjutnya,
+                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1401,7 +1413,7 @@ const generateDA = async (req, res, next) => {
         if (jumRow <= 0) {
           // Insert karena tidak ada
           SQL_Insert = `Insert into T_Kalibrasi_DA_Thermohygro (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                        SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,
+                        SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,
                                 Assm_nama_instrumen,
                                 Assm_No_identitas_Istrumen,
                                 Assm_No_identitas_kalibrasi,
@@ -1409,9 +1421,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                GETDATE() as tgl_kalibrasi,
+                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                                 Parameter_Interval,
-                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1429,9 +1441,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=getdate() ,
+                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
                           Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1452,7 +1464,7 @@ const generateDA = async (req, res, next) => {
         if (jumRow <= 0) {
           // Insert karena tidak ada
           SQL_Insert = `Insert into T_Kalibrasi_DA_Anak_Timbangan (QA_ID,Jenis_kalibrasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                        SELECT (select dbo.fnGetKal_DA_AT_No_ID()) as QA_ID, Jenis_kalibrasi,
+                        SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,
                                 Assm_nama_instrumen,
                                 Assm_No_identitas_Istrumen,
                                 Assm_No_identitas_kalibrasi,
@@ -1460,9 +1472,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                GETDATE() as tgl_kalibrasi,
+                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                                 Parameter_Interval,
-                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1480,9 +1492,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=getdate() ,
+                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
                           Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1506,7 +1518,7 @@ const generateDA = async (req, res, next) => {
                                 Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
                          Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-                                Parameter_Kalibrasi, Assm_Lokasi, getdate() as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,GETDATE()) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Parameter_Kalibrasi, Assm_Lokasi, ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
                                 from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
         } else {
@@ -1522,9 +1534,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas=A.Assm_Kapasitas,
                                 Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                                 Assm_Lokasi=A.Assm_Lokasi,
-                                Tgl_kalibrasi=getdate(),
+                                Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()),
                                 Interval=12,
-                                Kalibrasi_selanjutnya=DATEADD(month,12,getdate() ),
+                                Kalibrasi_selanjutnya=DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
                                 Catatan=A.Keterangan,
                                 Parameter_No_id_anak_timbang=A.Parameter_No_id_anak_timbang,
                                 Parameter_Interval=A.Parameter_Interval,
@@ -1552,7 +1564,7 @@ const generateDA = async (req, res, next) => {
         if (jumRow <= 0) {
           // Insert karena tidak ada
           SQL_Insert = `Insert into [T_Kalibrasi_DA_Bagian] (QA_ID,Jenis_kalibrasi,Parameter_Sertifikasi,  Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas, Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Parameter_Interval, Kalibrasi_selanjutnya, Catatan, UserID, Delegated_To, Process_date)
-                        SELECT (select dbo.fnGetKal_DA_TH_No_ID()) as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
+                        SELECT '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi,Parameter_Sertifikasi,
                                 Assm_nama_instrumen,
                                 Assm_No_identitas_Istrumen,
                                 Assm_No_identitas_kalibrasi,
@@ -1560,9 +1572,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                GETDATE() as tgl_kalibrasi,
+                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
                                 Parameter_Interval,
-                                DATEADD(MONTH,1,GETDATE()) as kalibrasi_selanjutnya,
+                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1581,9 +1593,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=getdate() ,
+                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
                           Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,getdate() ),
+                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1600,6 +1612,21 @@ const generateDA = async (req, res, next) => {
           message: 'Generate lain-lain'
         });
       }
+    }
+
+    // Jaring pengaman: jangan pernah commit kalau QA_ID hasilnya kosong.
+    // Tanpa ini, baris DA tetap terbuat tapi T_Kalibrasi_Permohonan.QA_ID diisi
+    // string kosong, sehingga permohonan tampak sudah di-approve tanpa ID sistem.
+    if (!Auto_QA_ID || String(Auto_QA_ID).trim() === '') {
+      console.error('generateDA: Auto_QA_ID kosong, generate dibatalkan', {
+        no_permohonan,
+        kategori_permohonan: V_kategori_permohonan,
+        parameter_sertifikasi: V_Parameter_Sertifikasi
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal menentukan QA ID, Generate DA dibatalkan. Hubungi tim IT.'
+      });
     }
 
     // Execute the queries
@@ -1708,6 +1735,16 @@ const generateSertifikat = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: `Sudah Generate Sertifikat atau DA : ${V_ID_No_sertifikat}`
+      });
+    }
+
+    // Sama seperti generateDA: Re-Kalibrasi mengambil QA_ID dari QA_ID_rekalibrasi,
+    // jadi kalau acuannya kosong baris sertifikat dan permohonan sama-sama terisi
+    // QA_ID kosong. Lihat catatan pada generateDA.
+    if (V_kategori_permohonan === 'Re-Kalibrasi' && V_QA_ID_rekalibrasi === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Permohonan Re-Kalibrasi belum punya QA ID rekalibrasi. Lengkapi dulu data rekalibrasi sebelum Generate Sertifikat.'
       });
     }
 
@@ -1853,6 +1890,19 @@ const generateSertifikat = async (req, res, next) => {
           message: `Tidak dapat generate Sertifikat untuk Parameter Sertifikasi : ${V_Parameter_Sertifikasi}`
         });
       }
+    }
+
+    // Jaring pengaman: jangan commit kalau QA_ID hasilnya kosong (lihat generateDA).
+    if (!Auto_QA_ID || String(Auto_QA_ID).trim() === '') {
+      console.error('generateSertifikat: Auto_QA_ID kosong, generate dibatalkan', {
+        no_permohonan,
+        kategori_permohonan: V_kategori_permohonan,
+        parameter_sertifikasi: V_Parameter_Sertifikasi
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal menentukan QA ID, Generate Sertifikat dibatalkan. Hubungi tim IT.'
+      });
     }
 
     // Execute queries in transaction - matches VBA Execute with SQL_Delimiter
