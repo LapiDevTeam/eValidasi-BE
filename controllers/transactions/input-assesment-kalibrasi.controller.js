@@ -71,6 +71,7 @@ const searchPermohonanAssesment = async (req, res, next) => {
         A.tgl_butuh,
         A.no_sertifikat_terakhir,
         A.RENCANA_EKSEKUSI,
+        A.Interval_Bulan,
         A.Jenis_kalibrasi,
         A.Jenis_External,
         A.Program_verifikasi,
@@ -154,6 +155,7 @@ const getPermohonanAssesmentDetail = async (req, res, next) => {
         Assm_Kapasitas,
         Assm_Lokasi,
         RENCANA_EKSEKUSI,
+        Interval_Bulan,
         ISNULL(Jenis_kalibrasi, 0) as Jenis_kalibrasi,
         Jenis_External,
         ISNULL(Program_verifikasi, 0) as Program_verifikasi,
@@ -259,6 +261,7 @@ const getAssesmentList = async (req, res, next) => {
         Keterangan,
         QA_ID,
         ID_No_Sertifikat,
+        Interval_Bulan,
         dbo.fnGetNamaKaryawan(B.User_ID) as UserAppr2,
         CONVERT(varchar(20), B.Process_Date, 13) as Appr2Date
       FROM T_Kalibrasi_Permohonan as A
@@ -763,6 +766,39 @@ const approvePermohonanAssesment = async (req, res, next) => {
       });
     }
 
+    // Approve = alat masuk jadwal. Baris DA-nya digenerate otomatis di bawah, dan
+    // Calibration Plan tidak bisa disimpan lagi setelah approve, jadi Interval
+    // (Bulan) harus sudah terisi sekarang — kalau tidak, alat tidak akan pernah
+    // muncul di AWP dan tidak ada jalan untuk memperbaikinya.
+    const planQuery = `
+      SELECT QA_Id, Interval_Bulan
+      FROM T_Kalibrasi_Permohonan
+      WHERE No_Permohonan = :no_permohonan
+    `;
+
+    const planResults = await sequelizeMSQL.query(planQuery, {
+      replacements: { no_permohonan },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    if (planResults.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Permohonan not found'
+      });
+    }
+
+    const planData = planResults[0];
+    const planQaId = String(planData.QA_Id || '').trim();
+    const planInterval = Math.round(Number(planData.Interval_Bulan));
+
+    if (planQaId === '' && (!Number.isFinite(planInterval) || planInterval <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Interval (Bulan) belum diisi pada Calibration Plan. Lengkapi Interval dulu sebelum Approve, karena dipakai untuk menghitung Tanggal Kalibrasi dan menempatkan alat di AWP/MAP.'
+      });
+    }
+
     // Get approver identity
     const approverIdentityQuery = `
       SELECT Appr_Identity
@@ -814,6 +850,21 @@ const approvePermohonanAssesment = async (req, res, next) => {
       type: Sequelize.QueryTypes.INSERT,
     });
 
+    // Generate DA otomatis supaya alat langsung masuk AWP (tahun Due Date) dan
+    // MAP (bulan Due Date, Internal/External sesuai Jenis Kalibrasi). Kegagalan
+    // di sini tidak membatalkan approval — tombol Generate DA tetap tersedia.
+    let daResult = { ok: false, code: 'SKIPPED', message: '' };
+    try {
+      daResult = await performGenerateDA({ no_permohonan, user_id, delegated_to });
+    } catch (generateError) {
+      console.error('Error auto generate DA after approve:', generateError);
+      daResult = {
+        ok: false,
+        code: 'ERROR',
+        message: 'Approve berhasil, tetapi Generate DA otomatis gagal. Silakan jalankan Generate DA manual.'
+      };
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Data has been approved successfully',
@@ -821,7 +872,11 @@ const approvePermohonanAssesment = async (req, res, next) => {
         no_permohonan,
         approver_no: 2,
         user_id,
-        delegated_to
+        delegated_to,
+        da_generated: daResult.ok,
+        da_code: daResult.code,
+        da_message: daResult.message,
+        qa_id: daResult?.data?.qa_id || planQaId || ''
       }
     });
 
@@ -1084,8 +1139,8 @@ const generatePrint = async (req, res, next) => {
       txt_20_rencana_eksekusi: data.RENCANA_EKSEKUSI || '',
 
       // Jenis kalibrasi - checkbox values
-      txt_21A_Jenis_kalibrasi: data.Jenis_kalibrasi === 1 ? 1 : 0, // Internal
-      txt_21B_Jenis_kalibrasi: data.Jenis_kalibrasi === 2 ? 1 : 0, // External
+      txt_21A_Jenis_kalibrasi: data.Jenis_kalibrasi == 1 ? 1 : 0, // Internal
+      txt_21B_Jenis_kalibrasi: data.Jenis_kalibrasi == 2 ? 1 : 0, // External
 
       // Sub External - checkbox values
       txt_22A_Sub_jenis_kal: data.Jenis_External === 'Insitu' ? 1 : 0,
@@ -1093,8 +1148,8 @@ const generatePrint = async (req, res, next) => {
       txt_22C_Sub_jenis_kal: data.Jenis_External === 'Kontrak Suplier' ? 1 : 0,
 
       // Program Verifikasi - checkbox values
-      txt_23A_Prog_Verifikasi: data.Program_verifikasi === 1 ? 1 : 0, // Ya
-      txt_23B_Prog_Verifikasi: data.Program_verifikasi === 2 ? 1 : 0, // Tidak
+      txt_23A_Prog_Verifikasi: data.Program_verifikasi == 1 ? 1 : 0, // Ya
+      txt_23B_Prog_Verifikasi: data.Program_verifikasi == 2 ? 1 : 0, // Tidak
 
       txt_24_Titik_pengukuran: data.Titik_pengukuran_kalibrasi || '',
       txt_25_Keterangan: data.Keterangan || '',
@@ -1199,25 +1254,30 @@ const executeMultipleQueries = async (sqlString, transaction = null) => {
   }
 };
 
-const generateDA = async (req, res, next) => {
-  try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { no_permohonan } = req.body;
-
+/**
+ * Core Generate DA (dipakai oleh endpoint /generate-da dan otomatis saat Approve).
+ * Mengembalikan { ok, status, message, code, data } tanpa menyentuh res, supaya
+ * pemanggil bisa memutuskan sendiri cara melaporkan hasilnya.
+ */
+const performGenerateDA = async ({ no_permohonan, user_id, delegated_to }) => {
     if (!no_permohonan) {
-      return res.status(400).json({
-        success: false,
+      return {
+        ok: false,
+        status: 400,
+        code: 'NO_PERMOHONAN',
         message: 'Harap pilih no Permohonan!'
-      });
+      };
     }
 
     // Check if approved
     const isApproved = await checkIsApprovedForGenerate(no_permohonan);
     if (!isApproved) {
-      return res.status(400).json({
-        success: false,
+      return {
+        ok: false,
+        status: 400,
+        code: 'NOT_APPROVED',
         message: 'Data belum approve, tidak bisa Generate Sertifikat!'
-      });
+      };
     }
 
     // Get Data
@@ -1230,6 +1290,7 @@ const generateDA = async (req, res, next) => {
         QA_Id,
         ID_no_sertifikat,
         QA_ID_rekalibrasi,
+        Interval_Bulan,
         ISNULL(Jenis_kalibrasi, 1) as Jenis_kalibrasi
       FROM T_Kalibrasi_Permohonan
       WHERE No_Permohonan = :no_permohonan
@@ -1241,10 +1302,12 @@ const generateDA = async (req, res, next) => {
     });
 
     if (dataResults.length === 0) {
-      return res.status(404).json({
-        success: false,
+      return {
+        ok: false,
+        status: 404,
+        code: 'NOT_FOUND',
         message: 'Permohonan not found'
-      });
+      };
     }
 
     const data = dataResults[0];
@@ -1259,11 +1322,37 @@ const generateDA = async (req, res, next) => {
 
     // Check if already generated
     if (V_QA_ID !== '') {
-      return res.status(400).json({
-        success: false,
-        message: `Sudah Generate Sertifikat atau DA ${V_QA_ID}`
-      });
+      return {
+        ok: false,
+        status: 400,
+        code: 'ALREADY_GENERATED',
+        message: `Sudah Generate Sertifikat atau DA ${V_QA_ID}`,
+        data: { no_permohonan, qa_id: V_QA_ID }
+      };
     }
+
+    // Interval (Bulan) wajib: dipakai untuk menghitung Tgl_kalibrasi dan menjadi
+    // Parameter_Interval baris DA. AWP hanya mengambil baris dengan interval > 0,
+    // jadi tanpa nilai ini alat tidak akan pernah muncul di AWP.
+    const V_Interval_Bulan = Math.round(Number(data.Interval_Bulan));
+    if (!Number.isFinite(V_Interval_Bulan) || V_Interval_Bulan <= 0) {
+      return {
+        ok: false,
+        status: 400,
+        code: 'NO_INTERVAL',
+        message: 'Interval (Bulan) belum diisi pada Calibration Plan. Lengkapi Interval dulu, karena dipakai untuk menghitung Tanggal Kalibrasi dan menempatkan alat di AWP/MAP.'
+      };
+    }
+
+    // Penjadwalan AWP/MAP dibaca dari baris DA:
+    //   Kalibrasi_selanjutnya (Due Date) = RENCANA_EKSEKUSI  -> tahun AWP & bulan MAP
+    //   Tgl_kalibrasi                    = Due Date - Interval (Bulan)
+    // Contoh: Rencana Eksekusi 07 Aug 2026, interval 12 -> AWP 2026, MAP Aug 2026,
+    // Tgl_kalibrasi 07 Aug 2025.
+    const DUE_DATE_SQL = 'ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())';
+    const DUE_DATE_SQL_A = 'ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE())';
+    const CALIBRATION_DATE_SQL = `DATEADD(MONTH, -${V_Interval_Bulan}, ${DUE_DATE_SQL})`;
+    const CALIBRATION_DATE_SQL_A = `DATEADD(MONTH, -${V_Interval_Bulan}, ${DUE_DATE_SQL_A})`;
 
     // Re-Kalibrasi wajib punya QA_ID_rekalibrasi sebagai acuan, karena QA_ID
     // permohonan diisi dari nilai itu. Tanpa penjagaan ini permohonan akan
@@ -1271,10 +1360,12 @@ const generateDA = async (req, res, next) => {
     // dan guard "Sudah Generate" di atas jadi tidak pernah aktif sehingga
     // Generate DA bisa diulang dan menghasilkan baris DA ganda.
     if (V_kategori_permohonan === 'Re-Kalibrasi' && V_QA_ID_rekalibrasi === '') {
-      return res.status(400).json({
-        success: false,
+      return {
+        ok: false,
+        status: 400,
+        code: 'NO_QA_ID_REKALIBRASI',
         message: 'Permohonan Re-Kalibrasi belum punya QA ID rekalibrasi. Lengkapi dulu data rekalibrasi sebelum Generate DA.'
-      });
+      };
     }
 
     let SQL_Insert = '';
@@ -1303,9 +1394,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                              Parameter_Interval,
-                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                              ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                              ${V_Interval_Bulan} as Parameter_Interval,
+                              ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1332,9 +1423,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                              Parameter_Interval,
-                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                              ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                              ${V_Interval_Bulan} as Parameter_Interval,
+                              ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1356,7 +1447,7 @@ const generateDA = async (req, res, next) => {
                                 Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
                        Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-                                Parameter_Kalibrasi, Assm_Lokasi, ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Parameter_Kalibrasi, Assm_Lokasi, ${CALIBRATION_DATE_SQL} as Tgl_kalibrasi, ${V_Interval_Bulan} as Interval, ${DUE_DATE_SQL} as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
                                 from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
 
@@ -1381,9 +1472,9 @@ const generateDA = async (req, res, next) => {
                               Assm_Kapasitas,
                               Parameter_Kalibrasi,
                               Assm_Lokasi,
-                              ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                              Parameter_Interval,
-                              DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                              ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                              ${V_Interval_Bulan} as Parameter_Interval,
+                              ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                               Keterangan as catatan,
                               '${user_id}' as UserID,
                               '${delegated_to}' as Delegated_To,
@@ -1394,10 +1485,12 @@ const generateDA = async (req, res, next) => {
         SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
 
       } else {
-        return res.status(400).json({
-          success: false,
+        return {
+          ok: false,
+          status: 400,
+          code: 'UNSUPPORTED_PARAMETER',
           message: 'Generate lain-lain belum ada function'
-        });
+        };
       }
 
     } else if (V_kategori_permohonan === 'Re-Kalibrasi') {
@@ -1421,9 +1514,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                                Parameter_Interval,
-                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                                ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                                ${V_Interval_Bulan} as Parameter_Interval,
+                                ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1441,9 +1534,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
-                          Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
+                          Tgl_kalibrasi=${CALIBRATION_DATE_SQL_A},
+                          Parameter_Interval=${V_Interval_Bulan},
+                          Kalibrasi_selanjutnya = ${DUE_DATE_SQL_A},
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1472,9 +1565,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                                Parameter_Interval,
-                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                                ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                                ${V_Interval_Bulan} as Parameter_Interval,
+                                ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1492,9 +1585,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
-                          Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
+                          Tgl_kalibrasi=${CALIBRATION_DATE_SQL_A},
+                          Parameter_Interval=${V_Interval_Bulan},
+                          Kalibrasi_selanjutnya = ${DUE_DATE_SQL_A},
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1518,7 +1611,7 @@ const generateDA = async (req, res, next) => {
                                 Parameter_Kalibrasi, Assm_Lokasi, Tgl_kalibrasi, Interval, Kalibrasi_selanjutnya, Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  UserID, Delegated_To, Process_date)
                          Select '${Auto_QA_ID}' as QA_ID, Jenis_kalibrasi, Program_verifikasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi, Group_Da_Dept, Assm_Kapasitas,
-                                Parameter_Kalibrasi, Assm_Lokasi, ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as Tgl_kalibrasi, 12 as Interval,DATEADD(MONTH,12,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+                                Parameter_Kalibrasi, Assm_Lokasi, ${CALIBRATION_DATE_SQL} as Tgl_kalibrasi, ${V_Interval_Bulan} as Interval, ${DUE_DATE_SQL} as Kalibrasi_selanjutnya, Keterangan as Catatan, Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
                                 Pelaksana_Verifikasi, Titik_verifikasi,  '${user_id}' as UserID, '${delegated_to}' as Delegated_To, getdate() as Process_date
                                 from T_Kalibrasi_Permohonan where (No_Permohonan = '${no_permohonan}') `;
         } else {
@@ -1534,9 +1627,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas=A.Assm_Kapasitas,
                                 Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                                 Assm_Lokasi=A.Assm_Lokasi,
-                                Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()),
-                                Interval=12,
-                                Kalibrasi_selanjutnya=DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
+                                Tgl_kalibrasi=${CALIBRATION_DATE_SQL_A},
+                                Interval=${V_Interval_Bulan},
+                                Kalibrasi_selanjutnya=${DUE_DATE_SQL_A},
                                 Catatan=A.Keterangan,
                                 Parameter_No_id_anak_timbang=A.Parameter_No_id_anak_timbang,
                                 Parameter_Interval=A.Parameter_Interval,
@@ -1552,10 +1645,30 @@ const generateDA = async (req, res, next) => {
 
         SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
 
-      } else if (V_Parameter_Sertifikasi === 'Tekanan' || V_Parameter_Sertifikasi === 'Timer' ||
-                 V_Parameter_Sertifikasi === 'Temperatur' || V_Parameter_Sertifikasi === 'Volume' ||
-                 V_Parameter_Sertifikasi === 'Dimensi' || V_Parameter_Sertifikasi === 'Lain-Lain') {
-        // Check if exists in DA BA
+      } else if (
+  [
+    'Tekanan',
+    'Volume',
+    'Dimensi',
+    'Timer',
+    'Temperatur',
+    'Enclosures',
+    'Dissolution Tester',
+    'Disintegration Tester',
+    'Friability Tester',
+    'Moisture Analyzer',
+    'RPM',
+    'pH, Redoks, dan Conductivity',
+    'Indikator Suhu dan Simulasi Kelistrikan',
+    'Torque',
+    'Hardness Tester',
+    'Melting Point',
+    'Leak Tester',
+    'Tapped Volumeter',
+    'Lain-Lain'
+  ].includes(V_Parameter_Sertifikasi)
+) {
+  // Check if exists in DA BA
         Auto_QA_ID = V_QA_ID_rekalibrasi;
         const checkQuery = `SELECT count(*) as JumRow FROM T_Kalibrasi_DA_Bagian WHERE QA_ID = '${V_QA_ID_rekalibrasi}'`;
         const checkResult = await sequelizeMSQL.query(checkQuery, { type: Sequelize.QueryTypes.SELECT });
@@ -1572,9 +1685,9 @@ const generateDA = async (req, res, next) => {
                                 Assm_Kapasitas,
                                 Parameter_Kalibrasi,
                                 Assm_Lokasi,
-                                ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE()) as tgl_kalibrasi,
-                                Parameter_Interval,
-                                DATEADD(MONTH,1,ISNULL(CAST(RENCANA_EKSEKUSI AS DATETIME), GETDATE())) as kalibrasi_selanjutnya,
+                                ${CALIBRATION_DATE_SQL} as tgl_kalibrasi,
+                                ${V_Interval_Bulan} as Parameter_Interval,
+                                ${DUE_DATE_SQL} as kalibrasi_selanjutnya,
                                 Keterangan as catatan,
                                 '${user_id}' as UserID,
                                 '${delegated_to}' as Delegated_To,
@@ -1593,9 +1706,9 @@ const generateDA = async (req, res, next) => {
                           Assm_Kapasitas=A.Assm_Kapasitas,
                           Parameter_Kalibrasi=A.Parameter_Kalibrasi,
                           Assm_Lokasi=A.Assm_Lokasi,
-                          Tgl_kalibrasi=ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ,
-                          Parameter_Interval=12,
-                          Kalibrasi_selanjutnya = DATEADD(month,12,ISNULL(CAST(A.RENCANA_EKSEKUSI AS DATETIME), GETDATE()) ),
+                          Tgl_kalibrasi=${CALIBRATION_DATE_SQL_A},
+                          Parameter_Interval=${V_Interval_Bulan},
+                          Kalibrasi_selanjutnya = ${DUE_DATE_SQL_A},
                           Catatan=A.Keterangan,
                           UserID='${user_id}',
                           Delegated_To='${delegated_to}',
@@ -1607,10 +1720,12 @@ const generateDA = async (req, res, next) => {
         SQL_Update = ` update T_Kalibrasi_Permohonan set QA_ID='${Auto_QA_ID}', UserID='${user_id}', Delegated_To='${delegated_to}', Process_date = GETDATE() where No_Permohonan = '${no_permohonan}' `;
 
       } else {
-        return res.status(400).json({
-          success: false,
+        return {
+          ok: false,
+          status: 400,
+          code: 'UNSUPPORTED_PARAMETER',
           message: 'Generate lain-lain'
-        });
+        };
       }
     }
 
@@ -1623,10 +1738,12 @@ const generateDA = async (req, res, next) => {
         kategori_permohonan: V_kategori_permohonan,
         parameter_sertifikasi: V_Parameter_Sertifikasi
       });
-      return res.status(500).json({
-        success: false,
+      return {
+        ok: false,
+        status: 500,
+        code: 'NO_QA_ID',
         message: 'Gagal menentukan QA ID, Generate DA dibatalkan. Hubungi tim IT.'
-      });
+      };
     }
 
     // Execute the queries
@@ -1634,23 +1751,41 @@ const generateDA = async (req, res, next) => {
       const combinedSQL = SQL_Insert + SQL_DELIMITER + SQL_Update;
       await executeMultipleQueries(combinedSQL);
 
-      return res.status(200).json({
-        success: true,
+      return {
+        ok: true,
+        status: 200,
+        code: 'GENERATED',
         message: `Sukses Generate DA ${V_Parameter_Sertifikasi}!`,
         data: {
           no_permohonan,
           qa_id: Auto_QA_ID,
           parameter_sertifikasi: V_Parameter_Sertifikasi,
-          kategori_permohonan: V_kategori_permohonan
+          kategori_permohonan: V_kategori_permohonan,
+          interval_bulan: V_Interval_Bulan
         }
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Unable to generate DA queries'
-      });
+      };
     }
 
+    return {
+      ok: false,
+      status: 400,
+      code: 'NO_QUERY',
+      message: 'Unable to generate DA queries'
+    };
+};
+
+const generateDA = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to } = req.user;
+    const { no_permohonan } = req.body;
+
+    const result = await performGenerateDA({ no_permohonan, user_id, delegated_to });
+
+    return res.status(result.status).json({
+      success: result.ok,
+      message: result.message,
+      ...(result.data ? { data: result.data } : {})
+    });
   } catch (error) {
     console.error('Error in generateDA:', error);
     next(error);
