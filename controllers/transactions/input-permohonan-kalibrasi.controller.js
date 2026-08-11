@@ -1581,15 +1581,54 @@ const deletePermohonanKalibrasi = async (req, res, next) => {
       });
     }
 
-    // Delete query - exact match to VBA
-    const deleteQuery = `
-      DELETE FROM T_Kalibrasi_Permohonan
-      WHERE No_Permohonan = :no_permohonan
-    `;
+    // VBA asli hanya menghapus baris parent, karena waktu itu belum ada tabel anak.
+    // Sekarang RA_CalibrationAssessment punya FK ke No_Permohonan (tanpa ON DELETE),
+    // jadi parent tidak bisa dihapus selama masih ada baris RA yang menunjuk ke sini.
+    // Ketiga langkah di bawah harus atomic supaya tidak ada baris RA yang terlepas
+    // dari permohonannya kalau DELETE-nya gagal.
+    await sequelizeMSQL.transaction(async (transaction) => {
+      // Lepas kaitannya saja, jangan dihapus: assessment bisa dibuat lebih dulu lewat
+      // modul Risk Assessment lalu dipilih dari lookup saat input permohonan
+      // (saveRiskAssessmentRecord jalur assessmentId > 0). Menghapusnya berarti
+      // memusnahkan record GxP yang mungkin masih dipakai permohonan lain.
+      const detachRiskAssessmentQuery = `
+        UPDATE RA_CalibrationAssessment
+        SET No_Permohonan = NULL
+        WHERE No_Permohonan = :no_permohonan
+      `;
 
-    await sequelizeMSQL.query(deleteQuery, {
-      replacements: { no_permohonan },
-      type: Sequelize.QueryTypes.DELETE,
+      await sequelizeMSQL.query(detachRiskAssessmentQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.UPDATE,
+        transaction,
+      });
+
+      // Defensif: t_Kalibrasi_Status tidak punya FK, jadi barisnya tidak ikut terhapus
+      // dan tidak memblokir apa pun. Normalnya nol baris di titik ini (delete sudah
+      // diblokir kalau Approver_No = 1 ada, dan reject menghapus semua status), tapi
+      // Approve-2 lewat API langsung bisa menyisakan baris tanpa Approve-1.
+      const deleteStatusQuery = `
+        DELETE FROM t_Kalibrasi_Status
+        WHERE No_Permohonan = :no_permohonan
+      `;
+
+      await sequelizeMSQL.query(deleteStatusQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.DELETE,
+        transaction,
+      });
+
+      // Delete query - exact match to VBA
+      const deleteQuery = `
+        DELETE FROM T_Kalibrasi_Permohonan
+        WHERE No_Permohonan = :no_permohonan
+      `;
+
+      await sequelizeMSQL.query(deleteQuery, {
+        replacements: { no_permohonan },
+        type: Sequelize.QueryTypes.DELETE,
+        transaction,
+      });
     });
 
     return res.status(200).json({
