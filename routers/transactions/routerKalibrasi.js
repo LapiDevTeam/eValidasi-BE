@@ -11,6 +11,7 @@ const {
 const { checkFileSizePublic } = require("../../middlewares/upload.middleware");
 const {
   getPermohonanKalibrasiList,
+  checkIdentitasKalibrasiPending,
   getPermohonanDetail,
   searchInstrumen,
   countInstrumen,
@@ -161,6 +162,8 @@ const {
 
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
 router.get("/permohonan/detail", authentication, getPermohonanDetail);
+// Cek apakah No. Identitas Kalibrasi masih dipakai permohonan yang approval-nya belum lengkap
+router.get("/permohonan/check-id-kalibrasi", authentication, checkIdentitasKalibrasiPending);
 router.get("/instrumen/search", authentication, searchInstrumen);
 router.get("/instrumen/count", authentication, countInstrumen);
 router.get("/dashboard/summary", authentication, getDashboardSummary);

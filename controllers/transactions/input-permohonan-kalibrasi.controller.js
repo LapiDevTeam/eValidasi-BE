@@ -529,6 +529,100 @@ const getPermohonanKalibrasiList = async (req, res, next) => {
 };
 
 /**
+ * Check No. Identitas Kalibrasi before creating a new Permohonan.
+ * Lists every permohonan (all years, all departments) using the same
+ * No_identitas_kalibrasi whose approval chain is not complete — missing the
+ * Manager Bagian approval (Approver_No = 1) and/or the Manager VN approval
+ * (Approver_No = 2). While such a permohonan exists the ID may not be reused;
+ * once both approvals are in, the ID can be requested again freely.
+ *
+ * Query params: no_identitas_kalibrasi (required), exclude_no_permohonan (optional)
+ */
+const checkIdentitasKalibrasiPending = async (req, res, next) => {
+  try {
+    const { no_identitas_kalibrasi, exclude_no_permohonan } = req.query;
+
+    const idKalibrasi = String(no_identitas_kalibrasi || '').trim();
+
+    if (!idKalibrasi) {
+      return res.status(400).json({
+        success: false,
+        message: 'No. Identitas Kalibrasi harus diisi!',
+      });
+    }
+
+    const query = `
+      SELECT
+        A.No_Permohonan,
+        YEAR(A.tanggal) AS tahun,
+        CONVERT(varchar(20), A.tanggal, 13) AS tanggal,
+        A.bagian,
+        A.pemohon,
+        A.No_identitas_kalibrasi,
+        dbo.fnGetNamaKaryawan(B.USER_ID) AS Approver_Identity,
+        dbo.fnGetNamaKaryawan(C.USER_ID) AS Approver_MgrQA,
+        CASE WHEN B.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrBagian,
+        CASE WHEN C.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrQA
+      FROM T_Kalibrasi_Permohonan AS A
+      LEFT JOIN (
+        SELECT * FROM t_Kalibrasi_Status
+        WHERE Approver_No = 1 AND (isReject = 0 OR isReject IS NULL)
+      ) AS B ON A.No_Permohonan = B.No_Permohonan
+      LEFT JOIN (
+        SELECT * FROM t_Kalibrasi_Status
+        WHERE Approver_No = 2 AND (isReject = 0 OR isReject IS NULL)
+      ) AS C ON A.No_Permohonan = C.No_Permohonan
+      WHERE LTRIM(RTRIM(ISNULL(A.No_identitas_kalibrasi, ''))) = :idKalibrasi
+        AND (B.No_Permohonan IS NULL OR C.No_Permohonan IS NULL)
+        AND (:excludeNoPermohonan = '' OR A.No_Permohonan <> :excludeNoPermohonan)
+      ORDER BY A.tanggal DESC
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: {
+        idKalibrasi,
+        excludeNoPermohonan: String(exclude_no_permohonan || '').trim(),
+      },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const items = results.map((row) => {
+      // Status approval dibaca dari hasil join, bukan dari nama karyawan —
+      // baris approval yang nama-nya gagal di-lookup tetap terhitung approve.
+      const missing = [];
+      if (!row.HasApprMgrBagian) missing.push('Mgr Bagian');
+      if (!row.HasApprMgrQA) missing.push('Mgr VN');
+
+      return {
+        no_permohonan: row.No_Permohonan,
+        tahun: row.tahun,
+        tanggal: row.tanggal || '',
+        bagian: row.bagian || '',
+        pemohon: row.pemohon || '',
+        no_identitas_kalibrasi: row.No_identitas_kalibrasi || '',
+        approver_mgr_bagian: row.Approver_Identity || '',
+        approver_mgr_vn: row.Approver_MgrQA || '',
+        missing_approval: missing,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        no_identitas_kalibrasi: idKalibrasi,
+        has_pending: items.length > 0,
+        count: items.length,
+        items,
+      },
+    });
+  } catch (error) {
+    console.error('Error in checkIdentitasKalibrasiPending:', error);
+    next(error);
+  }
+};
+
+/**
  * Get Permohonan Kalibrasi Detail (grid_Head_DblClick)
  * Retrieves single calibration request detail by No_Permohonan
  * Based on VBA grid_Head_DblClick function
@@ -1982,6 +2076,7 @@ const deleteFileKalibrasi = async (req, res, next) => {
 
 module.exports = {
   getPermohonanKalibrasiList,
+  checkIdentitasKalibrasiPending,
   getPermohonanDetail,
   searchInstrumen,
   countInstrumen,
