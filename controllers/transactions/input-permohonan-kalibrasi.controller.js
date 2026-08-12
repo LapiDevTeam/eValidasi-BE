@@ -402,6 +402,29 @@ async function getRiskAssessmentById(assessmentId, transaction) {
   return rows[0] || null;
 }
 
+/**
+ * Risk Assessment yang masih aktif untuk sebuah permohonan.
+ * Relasi permohonan : risk assessment adalah 1 : 1, jadi query ini yang
+ * menentukan apakah sebuah permohonan sudah punya RA atau belum.
+ */
+async function getRiskAssessmentByNoPermohonan(noPermohonan, transaction) {
+  if (!noPermohonan) return null;
+
+  const rows = await sequelizeMSQL.query(`
+    SELECT TOP 1 ${riskAssessmentSelectColumns}
+    FROM RA_CalibrationAssessment
+    WHERE No_Permohonan = :noPermohonan
+      AND IsDeleted = 0
+    ORDER BY AssessmentID
+  `, {
+    replacements: { noPermohonan },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+
+  return rows[0] || null;
+}
+
 async function saveRiskAssessmentRecord(user, body, noPermohonan, transaction) {
   const assessmentId = Number(body.assessmentId || body.AssessmentID || 0);
   const errors = validateAssessmentBody(body);
@@ -450,12 +473,48 @@ async function saveRiskAssessmentRecord(user, body, noPermohonan, transaction) {
     No_Permohonan: payload.noPermohonan,
   };
 
+  // Satu permohonan hanya boleh punya satu Risk Assessment. Kalau permohonan ini
+  // sudah punya RA, baris itulah yang di-update — jangan pernah insert RA kedua.
+  const existingForPermohonan = await getRiskAssessmentByNoPermohonan(
+    noPermohonan,
+    transaction
+  );
+
   if (assessmentId > 0) {
     const existing = await getRiskAssessmentById(assessmentId, transaction);
     if (!existing) {
       throw createHttpError(404, 'Assessment not found.');
     }
 
+    const ownerNoPermohonan = String(existing.No_Permohonan || '').trim();
+
+    // RA milik permohonan lain tidak boleh dipindah ke permohonan ini — kalau
+    // dibiarkan, permohonan asalnya kehilangan RA-nya.
+    if (ownerNoPermohonan && noPermohonan && ownerNoPermohonan !== noPermohonan) {
+      throw createHttpError(
+        400,
+        `Risk Assessment #${assessmentId} sudah milik permohonan ${ownerNoPermohonan}, tidak bisa dipakai untuk permohonan ${noPermohonan}. Satu permohonan hanya punya satu Risk Assessment.`
+      );
+    }
+
+    if (
+      existingForPermohonan &&
+      Number(existingForPermohonan.AssessmentID) !== assessmentId
+    ) {
+      throw createHttpError(
+        400,
+        `Permohonan ${noPermohonan} sudah punya Risk Assessment #${existingForPermohonan.AssessmentID}. Satu permohonan hanya punya satu Risk Assessment.`
+      );
+    }
+  }
+
+  // Insert hanya kalau permohonan ini benar-benar belum punya RA.
+  const targetAssessmentId =
+    assessmentId > 0
+      ? assessmentId
+      : Number(existingForPermohonan?.AssessmentID || 0);
+
+  if (targetAssessmentId > 0) {
     await sequelizeMSQL.query(`
       UPDATE RA_CalibrationAssessment
       SET
@@ -492,12 +551,12 @@ async function saveRiskAssessmentRecord(user, body, noPermohonan, transaction) {
       WHERE AssessmentID = :AssessmentID
         AND IsDeleted = 0
     `, {
-      replacements: { ...replacements, AssessmentID: assessmentId },
+      replacements: { ...replacements, AssessmentID: targetAssessmentId },
       type: Sequelize.QueryTypes.UPDATE,
       transaction,
     });
 
-    return getRiskAssessmentById(assessmentId, transaction);
+    return getRiskAssessmentById(targetAssessmentId, transaction);
   }
 
   const insertResult = await sequelizeMSQL.query(`
@@ -749,8 +808,12 @@ const getPermohonanDetail = async (req, res, next) => {
         RA.Parameter_Kalibrasi as RiskParameter_Kalibrasi
       FROM T_Kalibrasi_Permohonan A
       LEFT JOIN RA_CalibrationAssessment RA
-        ON RA.No_Permohonan = A.No_Permohonan
-       AND RA.IsDeleted = 0
+        ON RA.AssessmentID = (
+          SELECT MIN(RA2.AssessmentID)
+          FROM RA_CalibrationAssessment RA2
+          WHERE RA2.No_Permohonan = A.No_Permohonan
+            AND RA2.IsDeleted = 0
+        )
       WHERE A.No_Permohonan = :no_permohonan
     `;
 

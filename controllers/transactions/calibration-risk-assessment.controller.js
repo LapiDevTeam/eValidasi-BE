@@ -91,6 +91,19 @@ const createAssessment = async (req, res, next) => {
     payload.status    = 'Draft';
     payload.createdBy = user_id;
 
+    // Relasi permohonan : risk assessment = 1 : 1. Kalau permohonan-nya sudah
+    // punya RA aktif, pakai Update pada RA itu, bukan bikin RA baru.
+    if (payload.noPermohonan) {
+      const existing = await repo.findByNoPermohonan(payload.noPermohonan);
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Permohonan ${payload.noPermohonan} sudah punya Risk Assessment #${existing.AssessmentID}. Satu permohonan hanya punya satu Risk Assessment.`,
+          data: { AssessmentID: existing.AssessmentID, No_Permohonan: existing.No_Permohonan },
+        });
+      }
+    }
+
     const newId = await repo.create(payload);
     const created = await repo.findById(newId);
 
@@ -191,6 +204,18 @@ const updateAssessment = async (req, res, next) => {
       payload.noPermohonan = existing.No_Permohonan || null;
     }
     payload.updatedBy = user_id;
+
+    // Jaga relasi 1 : 1 — RA ini tidak boleh dipindah ke permohonan yang sudah
+    // punya RA lain.
+    if (payload.noPermohonan && payload.noPermohonan !== existing.No_Permohonan) {
+      const occupant = await repo.findByNoPermohonan(payload.noPermohonan);
+      if (occupant && Number(occupant.AssessmentID) !== Number(id)) {
+        return res.status(400).json({
+          success: false,
+          message: `Permohonan ${payload.noPermohonan} sudah punya Risk Assessment #${occupant.AssessmentID}. Satu permohonan hanya punya satu Risk Assessment.`,
+        });
+      }
+    }
 
     await repo.update(id, payload);
     const updated = await repo.findById(id);
