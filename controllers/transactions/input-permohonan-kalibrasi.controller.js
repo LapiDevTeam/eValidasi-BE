@@ -86,6 +86,68 @@ function validatePermohonanPayload(body) {
   }
 }
 
+/**
+ * Normalisasi No. Identitas Kalibrasi untuk perbandingan: buang semua spasi
+ * (termasuk spasi ganda di tengah) lalu samakan jadi huruf besar, supaya
+ * "at 002", "AT  002", dan "AT002" dianggap ID yang sama.
+ */
+const normalizeIdKalibrasi = (value) =>
+  String(value || '').replace(/\s+/g, '').toUpperCase();
+
+const NORMALIZED_ID_KALIBRASI_SQL =
+  "UPPER(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(ISNULL(A.No_identitas_kalibrasi, ''))), CHAR(9), ''), CHAR(160), ''), ' ', ''))";
+
+/**
+ * Cari permohonan lain yang memakai No. Identitas Kalibrasi yang sama dan
+ * approval-nya belum lengkap — belum di-approve Mgr Bagian (Approver_No = 1)
+ * dan/atau Mgr VN (Approver_No = 2). Lintas tahun dan lintas bagian.
+ */
+async function findPendingPermohonanByIdKalibrasi(
+  idKalibrasi,
+  excludeNoPermohonan = '',
+  transaction = null
+) {
+  const normalizedId = normalizeIdKalibrasi(idKalibrasi);
+
+  if (!normalizedId) return [];
+
+  const query = `
+    SELECT
+      A.No_Permohonan,
+      YEAR(A.tanggal) AS tahun,
+      CONVERT(varchar(20), A.tanggal, 13) AS tanggal,
+      A.bagian,
+      A.pemohon,
+      A.No_identitas_kalibrasi,
+      dbo.fnGetNamaKaryawan(B.USER_ID) AS Approver_Identity,
+      dbo.fnGetNamaKaryawan(C.USER_ID) AS Approver_MgrQA,
+      CASE WHEN B.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrBagian,
+      CASE WHEN C.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrQA
+    FROM T_Kalibrasi_Permohonan AS A
+    LEFT JOIN (
+      SELECT * FROM t_Kalibrasi_Status
+      WHERE Approver_No = 1 AND (isReject = 0 OR isReject IS NULL)
+    ) AS B ON A.No_Permohonan = B.No_Permohonan
+    LEFT JOIN (
+      SELECT * FROM t_Kalibrasi_Status
+      WHERE Approver_No = 2 AND (isReject = 0 OR isReject IS NULL)
+    ) AS C ON A.No_Permohonan = C.No_Permohonan
+    WHERE ${NORMALIZED_ID_KALIBRASI_SQL} = :normalizedId
+      AND (B.No_Permohonan IS NULL OR C.No_Permohonan IS NULL)
+      AND (:excludeNoPermohonan = '' OR A.No_Permohonan <> :excludeNoPermohonan)
+    ORDER BY A.tanggal DESC
+  `;
+
+  return sequelizeMSQL.query(query, {
+    replacements: {
+      normalizedId,
+      excludeNoPermohonan: String(excludeNoPermohonan || '').trim(),
+    },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction,
+  });
+}
+
 async function savePermohonanRecord(user, body, transaction) {
   const { user_id, delegated_to, bagian_user } = user;
   const {
@@ -112,6 +174,32 @@ async function savePermohonanRecord(user, body, transaction) {
 
   const formattedTglButuh = moment(tgl_butuh).format('YYYY/MM/DD');
   const isNew = !no_permohonan || no_permohonan === 'Auto' || no_permohonan === '';
+
+  if (isNew) {
+    // Permohonan baru tidak boleh memakai No. Identitas Kalibrasi yang masih
+    // menggantung di permohonan lain — gate ini di server supaya tetap berlaku
+    // walau dipanggil dari luar UI atau UI-nya belum ter-update.
+    if (!no_identitas_kalibrasi || String(no_identitas_kalibrasi).trim() === '') {
+      throw createHttpError(400, 'No. Identitas Kalibrasi harus di isi!');
+    }
+
+    const pendingRows = await findPendingPermohonanByIdKalibrasi(
+      no_identitas_kalibrasi,
+      '',
+      transaction
+    );
+
+    if (pendingRows.length > 0) {
+      const detail = pendingRows
+        .map((row) => `${row.No_Permohonan} (${row.tahun})`)
+        .join(', ');
+
+      throw createHttpError(
+        400,
+        `No. Identitas Kalibrasi ${String(no_identitas_kalibrasi).trim()} masih dipakai permohonan yang approval-nya belum lengkap: ${detail}. Selesaikan approval Mgr Bagian dan Mgr VN dulu.`
+      );
+    }
+  }
 
   if (isNew) {
     const autoNumResults = await sequelizeMSQL.query(
@@ -551,40 +639,10 @@ const checkIdentitasKalibrasiPending = async (req, res, next) => {
       });
     }
 
-    const query = `
-      SELECT
-        A.No_Permohonan,
-        YEAR(A.tanggal) AS tahun,
-        CONVERT(varchar(20), A.tanggal, 13) AS tanggal,
-        A.bagian,
-        A.pemohon,
-        A.No_identitas_kalibrasi,
-        dbo.fnGetNamaKaryawan(B.USER_ID) AS Approver_Identity,
-        dbo.fnGetNamaKaryawan(C.USER_ID) AS Approver_MgrQA,
-        CASE WHEN B.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrBagian,
-        CASE WHEN C.No_Permohonan IS NULL THEN 0 ELSE 1 END AS HasApprMgrQA
-      FROM T_Kalibrasi_Permohonan AS A
-      LEFT JOIN (
-        SELECT * FROM t_Kalibrasi_Status
-        WHERE Approver_No = 1 AND (isReject = 0 OR isReject IS NULL)
-      ) AS B ON A.No_Permohonan = B.No_Permohonan
-      LEFT JOIN (
-        SELECT * FROM t_Kalibrasi_Status
-        WHERE Approver_No = 2 AND (isReject = 0 OR isReject IS NULL)
-      ) AS C ON A.No_Permohonan = C.No_Permohonan
-      WHERE LTRIM(RTRIM(ISNULL(A.No_identitas_kalibrasi, ''))) = :idKalibrasi
-        AND (B.No_Permohonan IS NULL OR C.No_Permohonan IS NULL)
-        AND (:excludeNoPermohonan = '' OR A.No_Permohonan <> :excludeNoPermohonan)
-      ORDER BY A.tanggal DESC
-    `;
-
-    const results = await sequelizeMSQL.query(query, {
-      replacements: {
-        idKalibrasi,
-        excludeNoPermohonan: String(exclude_no_permohonan || '').trim(),
-      },
-      type: Sequelize.QueryTypes.SELECT,
-    });
+    const results = await findPendingPermohonanByIdKalibrasi(
+      idKalibrasi,
+      exclude_no_permohonan
+    );
 
     const items = results.map((row) => {
       // Status approval dibaca dari hasil join, bukan dari nama karyawan —
@@ -1359,6 +1417,28 @@ const savePermohonanKalibrasi = async (req, res, next) => {
     const isNew = !no_permohonan || no_permohonan === 'Auto' || no_permohonan === '';
 
     if (isNew) {
+      // Gate yang sama dengan savePermohonanRecord: ID kalibrasi tidak boleh
+      // dipakai ulang selama permohonan sebelumnya belum lengkap approval-nya.
+      if (!no_identitas_kalibrasi || String(no_identitas_kalibrasi).trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'No. Identitas Kalibrasi harus di isi!'
+        });
+      }
+
+      const pendingRows = await findPendingPermohonanByIdKalibrasi(no_identitas_kalibrasi);
+
+      if (pendingRows.length > 0) {
+        const detail = pendingRows
+          .map((row) => `${row.No_Permohonan} (${row.tahun})`)
+          .join(', ');
+
+        return res.status(400).json({
+          success: false,
+          message: `No. Identitas Kalibrasi ${String(no_identitas_kalibrasi).trim()} masih dipakai permohonan yang approval-nya belum lengkap: ${detail}. Selesaikan approval Mgr Bagian dan Mgr VN dulu.`
+        });
+      }
+
       // INSERT NEW RECORD
       // Get auto number using fnGet_NO_Kal_mohon function
       const autoNumQuery = `SELECT dbo.fnGet_NO_Kal_mohon(:bagian_user) as autoNum`;
