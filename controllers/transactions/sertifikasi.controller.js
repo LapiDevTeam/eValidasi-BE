@@ -2390,18 +2390,21 @@ border-left: 0; border-right:0;
 
       `;
 
+      // Form baru (PK.VN.000046.00.T08): footer hanya menyisakan kotak Nomor
+      // dan Halaman. Sel Tanggal & Revisi tetap ada supaya lebar kolom lain
+      // tidak bergeser, tetapi tanpa garis dan tanpa isi.
       let footerLandscape =
       `
-        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border-collapse: collapse; table-layout: fixed; font-family: Verdana, sans-serif;">
   <tr>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Nomor</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${noDoc}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Tanggal</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${tanggal}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Revisi</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${revisi}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Halaman</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 14%;">Nomor</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 22%;">${noDoc}</td>
+    <td style="width: 8%;"></td>
+    <td style="width: 13%;"></td>
+    <td style="width: 10%;"></td>
+    <td style="width: 8%;"></td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 13%;">Halaman</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 12%;">
       <span class="pageNumber"></span> dari <span class="totalPages"></span>
     </td>
   </tr>
@@ -2483,7 +2486,7 @@ border-left: 0; border-right:0;
           : 'NA'
       );
       const printDate = escapeHtml(printDateRaw || 'NA');
-      const oocNoDoc = escapeHtml(noDoc || 'FO.VN.000002');
+      const oocNoDoc = escapeHtml(noDoc || 'PK.VN.000046.00.T11');
       // Label 'ooc' (unit tidak siap dikalibrasi) tetap memakai teks lama
       // "JANGAN DIGUNAKAN"; 'hasil-ooc' memakai "OUT OF CALIBRATION".
       const oocTitle = isResultOocLabel ? resolvedJudul : 'JANGAN DIGUNAKAN';
@@ -2528,6 +2531,9 @@ border-left: 0; border-right:0;
                 width: 100%;
                 height: 100%;
                 border: 0.25mm solid #000;
+                /* Garis bawah disuplai oleh sel footer, bukan frame, supaya
+                   kolom Tanggal & Revisi yang dikosongkan benar-benar polos. */
+                border-bottom: 0;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
@@ -2593,7 +2599,6 @@ border-left: 0; border-right:0;
               .footer {
                 flex: 0 0 3.2mm;
                 height: 3.2mm;
-                border-top: 0.25mm solid #000;
               }
 
               .footer table {
@@ -2607,16 +2612,25 @@ border-left: 0; border-right:0;
               }
 
               .footer td {
-                padding: 0;
+                padding: 0 0.4mm;
                 vertical-align: middle;
                 white-space: nowrap;
                 overflow: hidden;
               }
 
               /* Mengikuti form baru: kolom Tanggal dan Revisi dipertahankan agar
-                 lebar kolom lain tidak bergeser, tetapi garis dan isinya
-                 dihilangkan sehingga hanya Nomor dan Halaman yang terlihat. */
-              .footer td.ruled {
+                 lebar kolom lain tidak bergeser, tetapi seluruh garisnya
+                 dihilangkan sehingga hanya kotak Nomor dan Halaman terlihat. */
+              .footer td.boxed {
+                border-top: 0.25mm solid #000;
+                border-bottom: 0.25mm solid #000;
+              }
+
+              .footer td.rule-left {
+                border-left: 0.25mm solid #000;
+              }
+
+              .footer td.rule-right {
                 border-right: 0.25mm solid #000;
               }
             </style>
@@ -2653,14 +2667,14 @@ border-left: 0; border-right:0;
                   <table>
                     <tbody>
                       <tr>
-                        <td class="ruled" style="width:13%;">Nomor</td>
-                        <td class="ruled" style="width:25%;">${oocNoDoc}</td>
-                        <td style="width:8%;"></td>
-                        <td style="width:12%;"></td>
-                        <td style="width:8%;"></td>
-                        <td class="ruled" style="width:5%;"></td>
-                        <td class="ruled" style="width:16%;">Halaman</td>
-                        <td style="width:13%;">1 dari 1</td>
+                        <td class="boxed rule-right" style="width:12%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:37%;">${oocNoDoc}</td>
+                        <td style="width:6%;"></td>
+                        <td style="width:5%;"></td>
+                        <td style="width:6%;"></td>
+                        <td style="width:4%;"></td>
+                        <td class="boxed rule-left rule-right" style="width:15%;">Halaman</td>
+                        <td class="boxed" style="width:15%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
