@@ -2234,6 +2234,22 @@ function sanitizeCssColor(value, fallback = '#000000') {
   return fallback;
 }
 
+// Ukuran fisik stiker label kalibrasi: 5,4cm x 2,4cm.
+// Dipakai untuk semua jenis label: Terkalibrasi, Out of Calibration, dan
+// Jangan Digunakan.
+const LABEL_WIDTH = '5.4cm';
+const LABEL_HEIGHT = '2.4cm';
+
+// Judul label bersifat dinamis, jadi ukuran fontnya menyesuaikan panjang teks
+// supaya tetap muat satu baris di dalam header (~38mm).
+function labelTitleFontSize(title) {
+  const length = String(title || '').trim().length;
+  if (length <= 12) return '10pt';
+  if (length <= 16) return '8pt';
+  if (length <= 22) return '6.5pt';
+  return '5.5pt';
+}
+
  const  printHeaderThermo = async (req, res, next) => {
   const { link, noDoc, tanggal, revisi, judul, landscape = "", font = false } = req.query;
 
@@ -2374,18 +2390,21 @@ border-left: 0; border-right:0;
 
       `;
 
+      // Form baru (PK.VN.000046.00.T08): footer hanya menyisakan kotak Nomor
+      // dan Halaman. Sel Tanggal & Revisi tetap ada supaya lebar kolom lain
+      // tidak bergeser, tetapi tanpa garis dan tanpa isi.
       let footerLandscape =
       `
-        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border-collapse: collapse; table-layout: fixed; font-family: Verdana, sans-serif;">
   <tr>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Nomor</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${noDoc}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Tanggal</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${tanggal}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Revisi</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${revisi}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Halaman</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 14%;">Nomor</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 22%;">${noDoc}</td>
+    <td style="width: 8%;"></td>
+    <td style="width: 13%;"></td>
+    <td style="width: 10%;"></td>
+    <td style="width: 8%;"></td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 13%;">Halaman</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 12%;">
       <span class="pageNumber"></span> dari <span class="totalPages"></span>
     </td>
   </tr>
@@ -2458,13 +2477,21 @@ border-left: 0; border-right:0;
     const logoBase64 = getBase64Image(logoPath);
 
     if (isOutOfCalibration) {
-      const noIdentitas = escapeHtml(req.query.sertif || linkedParams.get('sertif') || '');
-      const approvedBy = escapeHtml(req.query.apv || linkedParams.get('apv') || '');
-      const printDate = escapeHtml(req.query.pdt || linkedParams.get('pdt') || '');
-      const parafTanggal = [approvedBy, printDate].filter(Boolean).join(' / ');
-      const oocNoDoc = escapeHtml(noDoc || 'FO.VN.000002');
-      const oocTanggal = escapeHtml(tanggal || '30/10/2025');
-      const oocRevisi = escapeHtml(revisi || '00');
+      const noIdentitas = escapeHtml(req.query.sertif || linkedParams.get('sertif') || 'NA');
+      const approvedByRaw = String(req.query.apv || linkedParams.get('apv') || '').trim();
+      const printDateRaw = String(req.query.pdt || linkedParams.get('pdt') || '').trim();
+      const approvedBy = escapeHtml(
+        approvedByRaw
+          ? (/^approved by/i.test(approvedByRaw) ? approvedByRaw : 'Approved by ' + approvedByRaw)
+          : 'NA'
+      );
+      const printDate = escapeHtml(printDateRaw || 'NA');
+      const oocNoDoc = escapeHtml(noDoc || 'PK.VN.000046.00.T11');
+      // Label 'ooc' (unit tidak siap dikalibrasi) tetap memakai teks lama
+      // "JANGAN DIGUNAKAN"; 'hasil-ooc' memakai "OUT OF CALIBRATION".
+      const oocTitle = isResultOocLabel ? resolvedJudul : 'JANGAN DIGUNAKAN';
+      const oocTitleFontSize = labelTitleFontSize(oocTitle);
+      const escapedOocTitle = escapeHtml(oocTitle);
 
       await page.setContent(`
         <!doctype html>
@@ -2473,7 +2500,7 @@ border-left: 0; border-right:0;
             <meta charset="utf-8" />
             <style>
               @page {
-                size: 47mm 36mm;
+                size: ${LABEL_WIDTH} ${LABEL_HEIGHT};
                 margin: 0;
               }
 
@@ -2485,90 +2512,93 @@ border-left: 0; border-right:0;
 
               html,
               body {
-                width: 47mm;
-                height: 36mm;
+                width: ${LABEL_WIDTH};
+                height: ${LABEL_HEIGHT};
                 margin: 0;
                 padding: 0;
                 font-family: Verdana, sans-serif;
                 color: #000;
-                background: transparent;
+                background: #fff;
               }
 
               .label-page {
-                width: 47mm;
-                height: 36mm;
-                padding: 2.5mm 3mm 2.5mm 2mm;
+                width: ${LABEL_WIDTH};
+                height: ${LABEL_HEIGHT};
+                padding: 0.3mm;
               }
 
               .label {
-                width: 42mm;
-                height: 31mm;
+                width: 100%;
+                height: 100%;
                 border: 0.25mm solid #000;
+                /* Garis bawah disuplai oleh sel footer, bukan frame, supaya
+                   kolom Tanggal & Revisi yang dikosongkan benar-benar polos. */
+                border-bottom: 0;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
               }
 
               .header {
-                flex: 0 0 15mm;
+                flex: 0 0 5.6mm;
+                height: 5.6mm;
                 display: flex;
                 border-bottom: 0.25mm solid #000;
               }
 
               .logo-cell {
-                width: 11mm;
-                height: 15mm;
+                width: 15mm;
                 border-right: 0.25mm solid #000;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 1mm;
+                padding: 0.4mm;
               }
 
               .logo-cell img {
-                width: 8.8mm;
-                max-height: 8mm;
+                max-width: 100%;
+                max-height: 4.4mm;
                 object-fit: contain;
                 filter: grayscale(100%) contrast(140%);
               }
 
               .title-cell {
-                width: 30.5mm;
-                height: 15mm;
+                flex: 1;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                font-size: 9pt;
+                font-size: ${oocTitleFontSize};
                 font-weight: 700;
-                line-height: 1.08;
+                line-height: 1.05;
                 white-space: nowrap;
+                overflow: hidden;
+                color: ${judulColor};
               }
 
               .body {
                 flex: 1;
                 min-height: 0;
-                font-size: 6pt;
+                padding: 0.6mm 1mm;
+                font-size: 6.5pt;
                 line-height: 1.2;
+                overflow: hidden;
               }
 
+              /* Kolom label dan titik dua dikunci lebarnya supaya sejajar. */
               .body-row {
                 display: grid;
-                grid-template-columns: 13mm 2mm 1fr;
+                grid-template-columns: 19mm 2mm 1fr;
                 align-items: start;
-                min-height: 4.8mm;
               }
 
-              .body-label,
-              .body-colon,
               .body-value {
-                font-weight: 400;
                 overflow-wrap: anywhere;
               }
 
               .footer {
-                flex: 0 0 3mm;
-                border-top: 0.25mm solid #000;
+                flex: 0 0 3.2mm;
+                height: 3.2mm;
               }
 
               .footer table {
@@ -2577,20 +2607,31 @@ border-left: 0; border-right:0;
                 border-collapse: collapse;
                 table-layout: fixed;
                 text-align: center;
-                font-size: 3pt;
+                font-size: 4.5pt;
                 line-height: 1;
               }
 
               .footer td {
-                border-right: 0.25mm solid #000;
-                padding: 0;
+                padding: 0 0.4mm;
                 vertical-align: middle;
                 white-space: nowrap;
                 overflow: hidden;
               }
 
-              .footer td:last-child {
-                border-right: 0;
+              /* Mengikuti form baru: kolom Tanggal dan Revisi dipertahankan agar
+                 lebar kolom lain tidak bergeser, tetapi seluruh garisnya
+                 dihilangkan sehingga hanya kotak Nomor dan Halaman terlihat. */
+              .footer td.boxed {
+                border-top: 0.25mm solid #000;
+                border-bottom: 0.25mm solid #000;
+              }
+
+              .footer td.rule-left {
+                border-left: 0.25mm solid #000;
+              }
+
+              .footer td.rule-right {
+                border-right: 0.25mm solid #000;
               }
             </style>
           </head>
@@ -2601,21 +2642,24 @@ border-left: 0; border-right:0;
                   <div class="logo-cell">
                     <img src="${logoBase64}" alt="Lapi" />
                   </div>
-                  <div class="title-cell">
-                    JANGAN DIGUNAKAN
+                  <div class="title-cell" data-print-label-title>
+                    ${escapedOocTitle}
                   </div>
                 </div>
 
                 <div class="body">
                   <div class="body-row">
-                    <div class="body-label">No ID</div>
-                    <div class="body-colon">:</div>
+                    <div>No. ID</div>
+                    <div>:</div>
                     <div class="body-value">${noIdentitas}</div>
                   </div>
                   <div class="body-row">
-                    <div class="body-label">Paraf/Tgl</div>
-                    <div class="body-colon">:</div>
-                    <div class="body-value">${parafTanggal}</div>
+                    <div>Paraf</div>
+                    <div>:</div>
+                    <div class="body-value">
+                      <div>${approvedBy}</div>
+                      <div>${printDate}</div>
+                    </div>
                   </div>
                 </div>
 
@@ -2623,14 +2667,14 @@ border-left: 0; border-right:0;
                   <table>
                     <tbody>
                       <tr>
-                        <td style="width:10%;">Nomor</td>
-                        <td style="width:20%;">${oocNoDoc}</td>
-                        <td style="width:12%;">Tanggal</td>
-                        <td style="width:18%;">${oocTanggal}</td>
-                        <td style="width:9%;">Revisi</td>
-                        <td style="width:7%;">${oocRevisi}</td>
-                        <td style="width:12%;">Halaman</td>
-                        <td style="width:11%;">1 dari 1</td>
+                        <td class="boxed rule-right" style="width:12%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:37%;">${oocNoDoc}</td>
+                        <td style="width:6%;"></td>
+                        <td style="width:5%;"></td>
+                        <td style="width:6%;"></td>
+                        <td style="width:4%;"></td>
+                        <td class="boxed rule-left rule-right" style="width:15%;">Halaman</td>
+                        <td class="boxed" style="width:15%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2642,8 +2686,8 @@ border-left: 0; border-right:0;
       `, { waitUntil: 'networkidle0' });
 
       const pdfBuffer = await page.pdf({
-        width: '47mm',
-        height: '36mm',
+        width: LABEL_WIDTH,
+        height: LABEL_HEIGHT,
         displayHeaderFooter: false,
         printBackground: true,
         preferCSSPageSize: true,
@@ -2669,43 +2713,38 @@ border-left: 0; border-right:0;
     // Wait for content to be loaded using a promise-based timeout
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    await page.evaluate(({ labelTitleText, labelTitleColor }) => {
+    await page.evaluate(({ labelTitleText, labelTitleColor, labelTitleSize }) => {
       document.documentElement.style.setProperty('--label-title-color', labelTitleColor);
       const titleElement = document.querySelector('[data-print-label-title]');
       if (titleElement) {
         titleElement.textContent = labelTitleText;
         titleElement.style.color = labelTitleColor;
+        // Judul di-override dari sini, jadi ukuran fontnya ikut disesuaikan
+        // dengan panjang teks yang benar-benar dicetak.
+        titleElement.style.fontSize = labelTitleSize;
       }
     }, {
       labelTitleText: resolvedJudul,
       labelTitleColor: judulColor,
+      labelTitleSize: labelTitleFontSize(resolvedJudul),
     });
 
+    // Ukuran font diatur oleh halaman label (PrintTerkalibrasiThermo). Jangan
+    // memaksa font-size global di sini: `* { font-size: 6px }` dulu membuat
+    // judul dan isi label ikut mengecil semua.
     await page.addStyleTag({
       content: `
+        html,
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff;
+        }
+
         * {
-          font-size: 6px !important;
           font-family: Verdana, sans-serif;
-        }
-
-         h1 {
-          font-size: 7px !important;
-          font-family: Verdana, sans-serif;
-          color: ${judulColor} !important;
-        }
-
-         h4 {
-          font-size: 5px !important;
-          font-family: Verdana, sans-serif;
-        }
-
-
-        .print-component {
-          margin-top: 7px !important;
-        }
-
-        table table {
-          margin-top: 0 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
         [data-print-label-title] {
@@ -2751,10 +2790,10 @@ border-left: 0; border-right:0;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      height: '0.9in', // 2.3 cm ≈ 0.9 in
-      width: '2.24in', // 5.7 cm ≈ 2.24 in
+      width: LABEL_WIDTH,
+      height: LABEL_HEIGHT,
       displayHeaderFooter: false,
-      landscape: true,
+      landscape: false,
       printBackground: true,
       footerTemplate: "<div></div>",
       headerTemplate: "<div></div>",
