@@ -737,6 +737,14 @@ const uploadSertifikatVendor = async (req, res, next) => {
 
     const filePath = buildFtpStoredPath(filename);
 
+    // Bersihkan riwayat approval lama (mis. sisa REJECT sebelum upload ulang)
+    // supaya alur approval mulai lagi dari approver_no = 1 dan record muncul
+    // kembali di daftar pending approval.
+    await sequelizeMSQL.query(
+      `DELETE FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
+    );
+
     await sequelizeMSQL.query(
       `UPDATE T_Kalibrasi_Eksternal
        SET sertifikat_vendor_filename = :filename,
