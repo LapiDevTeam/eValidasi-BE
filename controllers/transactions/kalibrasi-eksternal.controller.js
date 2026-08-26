@@ -212,6 +212,12 @@ const getKalibrasiEksternalList = async (req, res, next) => {
     if (status && status !== 'SEMUA') {
       if (status === 'PENDING') {
         query += ` AND e.ekst_id IS NULL`;
+      } else if (status === 'TIDAK_DAPAT_REJECTED') {
+        // Ditolak MGR: status record sudah dikembalikan ke TIDAK_DAPAT, penandanya
+        // baris approval REJECT. TIDAK_DAPAT_REJECTED tetap dicek untuk data lama.
+        query += ` AND (e.status = 'TIDAK_DAPAT_REJECTED' OR (e.status = 'TIDAK_DAPAT' AND s.status = 'REJECT'))`;
+      } else if (status === 'TIDAK_DAPAT') {
+        query += ` AND e.status = 'TIDAK_DAPAT' AND (s.status IS NULL OR s.status <> 'REJECT')`;
       } else {
         query += ` AND e.status = :status`;
         replacements.status = status;
@@ -1316,7 +1322,8 @@ const downloadSertifikatVendor = async (req, res, next) => {
  * POST /save-tidak-dapat
  * Create or update a "unit tidak siap dikalibrasi" record.
  * New record: creates T_Kalibrasi_Eksternal with is_tidak_dapat=1, status=TIDAK_DAPAT.
- * Update: allowed when status=TIDAK_DAPAT or TIDAK_DAPAT_REJECTED (revisi setelah ditolak MGR).
+ * Update: allowed when status=TIDAK_DAPAT (termasuk setelah ditolak MGR) atau legacy
+ *         TIDAK_DAPAT_REJECTED. Jejak penolakan dibuang supaya masuk antrian MGR lagi.
  * Body: schedule_detail_id, ekst_id (null = create), alasan_tidak_dapat, kondisi_alat
  */
 const saveTidakDapat = async (req, res, next) => {
@@ -1421,14 +1428,13 @@ const saveTidakDapat = async (req, res, next) => {
         return;
       }
 
-      // Revisi setelah ditolak MGR: buang jejak penolakan lalu kembalikan ke
-      // TIDAK_DAPAT supaya masuk lagi ke antrian approval.
-      if (statusCheck[0]?.status === 'TIDAK_DAPAT_REJECTED') {
-        await sequelizeMSQL.query(
-          `DELETE FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id AND approver_no = 1`,
-          { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
-        );
-      }
+      // Revisi setelah ditolak MGR: buang jejak penolakan supaya catatan lama
+      // tidak ikut tampil dan record masuk lagi ke antrian approval MGR.
+      await sequelizeMSQL.query(
+        `DELETE FROM T_Kalibrasi_Eksternal_Status
+         WHERE ekst_id = :ekst_id AND approver_no = 1 AND status = 'REJECT'`,
+        { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
+      );
 
       await sequelizeMSQL.query(
         `UPDATE T_Kalibrasi_Eksternal
@@ -1461,8 +1467,9 @@ const saveTidakDapat = async (req, res, next) => {
  * POST /approve-tidak-dapat
  * Approve or reject a "tidak dapat dikalibrasi" record.
  * approve: INSERT T_Kalibrasi_Eksternal_Status (DELETE first to allow retry), status → TIDAK_DAPAT_APPROVED
- * reject : INSERT T_Kalibrasi_Eksternal_Status status='REJECT' + catatan, status → TIDAK_DAPAT_REJECTED
- *          (baris status dihapus lagi ketika FA merevisi via saveTidakDapat)
+ * reject : INSERT T_Kalibrasi_Eksternal_Status status='REJECT' + catatan, status main record
+ *          dikembalikan ke step sebelumnya (TIDAK_DAPAT) — pola sama dengan "lampiran dihapus".
+ *          Baris REJECT dihapus lagi ketika FA merevisi via saveTidakDapat.
  * Body: ekst_id, action ('approve'|'reject'), catatan
  */
 const approveTidakDapat = async (req, res, next) => {
@@ -1556,6 +1563,24 @@ const approveTidakDapat = async (req, res, next) => {
       return;
     }
 
+    // Sudah pernah ditolak → tunggu FA merevisi dulu (saveTidakDapat yang
+    // membuang jejak penolakannya), jangan bisa di-approve/tolak ulang.
+    const existingStatus = await sequelizeMSQL.query(
+      `SELECT status FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id AND approver_no = :appr_no`,
+      { replacements: { ekst_id, appr_no }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (existingStatus[0]?.status === 'REJECT') {
+      const err = new Error('Data sudah ditolak — menunggu revisi dari FA');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
     // Always delete existing status record first (idempotent, handles retry)
     await sequelizeMSQL.query(
       `DELETE FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id AND approver_no = :appr_no`,
@@ -1564,11 +1589,12 @@ const approveTidakDapat = async (req, res, next) => {
 
     const isApprove = action === 'approve';
     const approveStatus = isApprove ? 'APPROVE' : 'REJECT';
-    const newStatus = isApprove ? 'TIDAK_DAPAT_APPROVED' : 'TIDAK_DAPAT_REJECTED';
-
-    // Reject harus tetap menyimpan jejak approval (catatan penolakan) supaya FA
-    // bisa melihat alasan MGR menolak. Record dibersihkan lagi saat FA merevisi
-    // lewat saveTidakDapat (status kembali ke TIDAK_DAPAT).
+    // Reject mengikuti pola "lampiran dihapus": status record dikembalikan ke
+    // step sebelumnya (TIDAK_DAPAT) supaya FA langsung bisa merevisi, bukan
+    // berhenti di status penolakan. Jejak penolakan + catatan MGR disimpan di
+    // T_Kalibrasi_Eksternal_Status (status='REJECT') dan baru dibuang saat FA
+    // menyimpan revisinya lewat saveTidakDapat.
+    const newStatus = isApprove ? 'TIDAK_DAPAT_APPROVED' : 'TIDAK_DAPAT';
     await sequelizeMSQL.query(
       `INSERT INTO T_Kalibrasi_Eksternal_Status
          (ekst_id, approver_no, USER_ID, nama_approver, status, catatan, process_date, created_by, created_date)

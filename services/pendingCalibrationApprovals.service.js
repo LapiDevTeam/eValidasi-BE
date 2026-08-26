@@ -2423,7 +2423,10 @@ async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
     throw err;
   }
 
-  const newMainStatus = currentStatus === 'UPLOADED' ? 'REJECTED' : 'TIDAK_DAPAT_REJECTED';
+  // Alur unit tidak siap: penolakan mengembalikan record ke step sebelumnya
+  // (TIDAK_DAPAT) — jejak + catatan penolakan tersimpan di baris status REJECT
+  // di bawah, sama seperti pola "lampiran dihapus".
+  const newMainStatus = currentStatus === 'UPLOADED' ? 'REJECTED' : 'TIDAK_DAPAT';
 
   await sequelizeMSQL.query(
     `
