@@ -75,6 +75,7 @@ const {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
+  printFormPdf,
   printDAThermo,
   printHapusAlat
 } = require("../../controllers/transactions/sertifikasi.controller");
@@ -229,6 +230,9 @@ router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
 router.post("/sertifikat/print-data", generateSertifikatPDF);
 router.get("/sertifikat/print", printHeaderThermo);
 router.get("/sertifikat/print-terkalibrasi", printTerkalibrasi)
+// Cetak PDF dari HTML form yang dirakit di klien (EVALUASI HASIL KALIBRASI).
+// POST + authentication karena isinya data kalibrasi, bukan sekadar link.
+router.post("/sertifikat/print-form-pdf", authentication, printFormPdf)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
 router.get("/sertifikat/print-da-thermo", printDAThermo);
 router.get("/sertifikat/print-hapus-alat", printHapusAlat);

@@ -2815,6 +2815,135 @@ border-left: 0; border-right:0;
   }
 }
 
+// Render dokumen form yang sudah dirakit di sisi klien menjadi PDF.
+//
+// Dipakai oleh cetakan EVALUASI HASIL KALIBRASI: HTML-nya dibangun dari data
+// workbook yang ada di memori halaman (butuh token sesi dan terlalu besar untuk
+// dikirim lewat query string), jadi puppeteer tidak bisa sekadar page.goto ke
+// route FE seperti cetakan sertifikat. Klien mengirim HTML-nya lewat POST, lalu
+// kop dan footer disuplai di sini sebagai header/footer template supaya berulang
+// di setiap halaman lengkap dengan nomor halaman asli dari Chrome.
+const printFormPdf = async (req, res) => {
+  const html = typeof req.body?.html === "string" ? req.body.html : "";
+  const title = escapeHtml(String(req.body?.title || "").trim().slice(0, 160));
+  const docNumber = escapeHtml(String(req.body?.docNumber || "").trim().slice(0, 60));
+  const landscape = req.body?.landscape === true || req.body?.landscape === "true";
+
+  if (!html.trim()) {
+    return res.status(400).send({ message: "Body 'html' wajib diisi." });
+  }
+  if (html.length > 8000000) {
+    return res.status(413).send({ message: "Dokumen terlalu besar untuk dicetak." });
+  }
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
+    const page = await browser.newPage();
+
+    // HTML datang dari klien, jadi halaman tidak boleh menarik apa pun dari
+    // luar: tanpa ini sebuah dokumen bisa menyuruh browser headless membaca
+    // berkas lokal (file://) atau alamat internal. Aset yang sah sudah inline
+    // (SVG grafik) atau disuplai dari sisi server (logo pada kop).
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url.startsWith("about:")) request.continue();
+      else request.abort();
+    });
+
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+
+    // Kop dan footer versi dokumen hanya untuk pratinjau di layar; pada PDF
+    // keduanya digantikan header/footer template agar berulang tiap halaman.
+    await page.addStyleTag({
+      content: `
+        .toolbar,
+        .doc-header,
+        .doc-footer {
+          display: none !important;
+        }
+        body {
+          background: #fff !important;
+        }
+        .page {
+          width: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      `,
+    });
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    const headerTemplate = `
+      <div style="width:100%; padding:0 34px; box-sizing:border-box; font-family:Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <tbody>
+            <tr>
+              <td style="border:1.2px solid #000; width:22%; text-align:center; padding:4px 8px; vertical-align:middle;">
+                <img src="${logoBase64}" style="max-width:100%; max-height:44px; object-fit:contain;" />
+              </td>
+              <td style="border:1.2px solid #000; text-align:center; font-size:15px; font-weight:700; padding:8px; vertical-align:middle;">
+                ${title}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Footer form: hanya kotak Nomor dan Halaman, bagian tengah dibiarkan
+    // kosong tanpa garis.
+    const footerTemplate = `
+      <div style="width:100%; padding:0 34px; box-sizing:border-box; font-family:Arial, Helvetica, sans-serif;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed; font-size:9px;">
+          <tbody>
+            <tr>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:14%;">Nomor</td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:20%;">${docNumber}</td>
+              <td style="width:40%;"></td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:13%;">Halaman</td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:13%;">
+                <span class="pageNumber"></span> dari <span class="totalPages"></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      landscape,
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      margin: { top: "92px", bottom: "58px", left: "34px", right: "34px" },
+    });
+
+    await browser.close();
+    browser = null;
+
+    res.setHeader("Content-Type", "application/pdf");
+    return res.end(pdfBuffer);
+  } catch (error) {
+    console.error("Error during printFormPdf:", error);
+    if (browser) await browser.close();
+    return res.status(500).send({ error: "An error occurred during PDF generation." });
+  }
+};
+
 const printDAThermo = async (req, res) => {
   const { link, type, kode = '-', revisi = '', judul = '', landscape = 0 } = req.query;
 
@@ -3049,6 +3178,7 @@ module.exports = {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
+  printFormPdf,
   printDAThermo,
   printHapusAlat
 };
