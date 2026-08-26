@@ -676,7 +676,9 @@ async function syncThermoCertificateResultRows({
     calculationResult?.suhu || calculationResult?.rh
   );
 
-  if (!hasCertificateIdentity || !hasCalculatedResults) return false;
+  if (!hasCertificateIdentity || !hasCalculatedResults) {
+    return { synced: false, suhuRowCount: 0, rhRowCount: 0 };
+  }
 
   const suhuRows = buildThermoResultRows(calculationResult.suhu);
   const rhRows = buildThermoResultRows(calculationResult.rh);
@@ -701,7 +703,7 @@ async function syncThermoCertificateResultRows({
     transaction,
   });
 
-  return true;
+  return { synced: true, suhuRowCount: suhuRows.length, rhRowCount: rhRows.length };
 }
 
 async function fetchSessionById(sessionId) {
@@ -1508,7 +1510,7 @@ const generateSertifikatFromSession = async (req, res, next) => {
       });
     }
 
-    await syncThermoCertificateResultRows({
+    const syncResult = await syncThermoCertificateResultRows({
       qaId,
       idNoSertifikat,
       calculationResult,
@@ -1582,8 +1584,8 @@ const generateSertifikatFromSession = async (req, res, next) => {
         qa_id: qaId,
         id_no_sertifikat: idNoSertifikat,
         session_id: sessionId,
-        suhu_rows: suhuRows.length,
-        rh_rows: rhRows.length,
+        suhu_rows: syncResult.suhuRowCount,
+        rh_rows: syncResult.rhRowCount,
       },
     });
   } catch (error) {
