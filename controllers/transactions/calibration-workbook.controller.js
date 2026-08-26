@@ -436,9 +436,13 @@ function mapSessionPayload(body, isUpdate = false) {
       field: 'notes',
       maxLength: 1000,
     }),
+    // 50, bukan 500: kolom Metode_kalibrasi di T_Kalibrasi_Sertifikat_Bagian
+    // dibatasi 50 oleh validatePublishLengths() (src/services/calibrationCalculation.service.js).
+    // Kalau di sini dibiarkan 500, sesi tersimpan normal tapi baru gagal saat
+    // approval Manager menerbitkan sertifikat — jadi ditolak lebih awal di sini.
     metode_kalibrasi: normalizeLimitedString(body.metode_kalibrasi ?? body.metodeKalibrasi, {
       field: 'metode_kalibrasi',
-      maxLength: 500,
+      maxLength: 50,
     }),
     created_by: normalizeLimitedString(body.created_by, {
       field: 'created_by',

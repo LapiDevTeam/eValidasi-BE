@@ -358,62 +358,6 @@ async function createSession(body, createdBy) {
  * @param {object} body
  * @returns {Promise<{ count: number }>}
  */
-/**
- * Update Tanggal Kalibrasi / Interval / Metode Kalibrasi of an existing session.
- * Fields not present in the body are left untouched (existing data preserved).
- */
-async function updateSessionHeader(sessionId, body = {}) {
-  const errors = [];
-  const patch = {};
-
-  if (body.calibrationDate !== undefined || body.calibration_date !== undefined) {
-    const raw = body.calibrationDate !== undefined ? body.calibrationDate : body.calibration_date;
-    if (!raw) {
-      errors.push('calibrationDate is required.');
-    } else {
-      patch.calibrationDate = raw;
-    }
-  }
-
-  if (body.intervalBulan !== undefined || body.interval_bulan !== undefined) {
-    const raw = body.intervalBulan !== undefined ? body.intervalBulan : body.interval_bulan;
-    if (raw !== null && raw !== '') {
-      const interval = Number(raw);
-      if (!Number.isFinite(interval) || interval <= 0 || !Number.isInteger(interval)) {
-        errors.push('intervalBulan must be a positive whole number of months.');
-      }
-    }
-    patch.intervalBulan = normalizeIntervalBulanInput(raw);
-  }
-
-  if (body.metodeKalibrasi !== undefined || body.metode_kalibrasi !== undefined) {
-    const raw = body.metodeKalibrasi !== undefined ? body.metodeKalibrasi : body.metode_kalibrasi;
-    if (raw !== null && String(raw).trim().length > METODE_KALIBRASI_MAX_LENGTH) {
-      errors.push(`metodeKalibrasi must be ${METODE_KALIBRASI_MAX_LENGTH} characters or fewer.`);
-    }
-    patch.metodeKalibrasi = normalizeMetodeKalibrasiInput(raw);
-  }
-
-  if (errors.length) {
-    const err = new Error(errors.join(' '));
-    err.statusCode = 400;
-    throw err;
-  }
-
-  if (Object.keys(patch).length === 0) {
-    return { sessionId, updated: false };
-  }
-
-  const ok = await repo.updateSessionHeader(sessionId, patch);
-  if (!ok) {
-    const err = new Error(`Session ${sessionId} not found.`);
-    err.statusCode = 404;
-    throw err;
-  }
-
-  return { sessionId, updated: true, ...patch };
-}
-
 async function saveReadings(sessionId, body) {
   const errors = validateReadingsInput(body);
   if (errors.length) {
@@ -880,7 +824,6 @@ async function getResult(sessionId, options = {}) {
 
 module.exports = {
   createSession,
-  updateSessionHeader,
   saveReadings,
   calculate,
   getResult,

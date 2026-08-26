@@ -606,27 +606,6 @@ const getSession = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/pressure-calibration/sessions/:sessionId/header
- * Body: { calibrationDate?, intervalBulan?, metodeKalibrasi? }
- *
- * Updates the editable calibration header (Tanggal Kalibrasi / Interval /
- * Metode Kalibrasi) of an existing session, mirroring the Thermohygrometer
- * workbook header which stays editable after the session exists.
- */
-const updateSessionHeader = async (req, res, next) => {
-  try {
-    const sessionId = parseInt(req.params.sessionId, 10);
-    if (Number.isNaN(sessionId)) return res.status(400).json({ message: 'Invalid session id.' });
-
-    const result = await calSvc.updateSessionHeader(sessionId, req.body || {});
-    res.status(200).json(result);
-  } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ message: err.message });
-    next(err);
-  }
-};
-
 // Manual evaluation verdict — three canonical options (same wording as the
 // Thermohygrometer workbook). Picked manually by the technician.
 const EVALUATION_OPTIONS = [
@@ -756,7 +735,6 @@ module.exports = {
   listSessions,
   createSession,
   getSession,
-  updateSessionHeader,
   saveReadings,
   getReadings,
   calculate,

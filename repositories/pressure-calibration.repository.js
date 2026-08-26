@@ -1781,34 +1781,6 @@ async function getSessionById(sessionId) {
   return result.recordset[0] || null;
 }
 
-/**
- * Update the editable calibration header fields of a session.
- * Only Tanggal Kalibrasi / Interval / Metode Kalibrasi are writable here —
- * mirrors the Thermohygrometer workbook header, which stays editable after the
- * session row exists. Any field left undefined is not touched (COALESCE guard),
- * so existing data is preserved.
- */
-async function updateSessionHeader(sessionId, data = {}) {
-  const pool = await getPool();
-  const result = await pool.request()
-    .input('SessionId',       sql.Int,          sessionId)
-    .input('CalibrationDate', sql.Date,         data.calibrationDate === undefined ? null : data.calibrationDate)
-    .input('IntervalBulan',   sql.VarChar(50),  data.intervalBulan   === undefined ? null : (data.intervalBulan   || null))
-    .input('MetodeKalibrasi', sql.VarChar(500), data.metodeKalibrasi === undefined ? null : (data.metodeKalibrasi || null))
-    .input('TouchDate',       sql.Bit,          data.calibrationDate === undefined ? 0 : 1)
-    .input('TouchInterval',   sql.Bit,          data.intervalBulan   === undefined ? 0 : 1)
-    .input('TouchMetode',     sql.Bit,          data.metodeKalibrasi === undefined ? 0 : 1)
-    .query(`
-      UPDATE [dbo].[calibration_sessions]
-      SET
-        calibration_date = CASE WHEN @TouchDate     = 1 THEN @CalibrationDate ELSE calibration_date END,
-        interval_bulan   = CASE WHEN @TouchInterval = 1 THEN @IntervalBulan   ELSE interval_bulan   END,
-        metode_kalibrasi = CASE WHEN @TouchMetode   = 1 THEN @MetodeKalibrasi ELSE metode_kalibrasi END
-      WHERE session_id = @SessionId AND is_deleted = 0
-    `);
-  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
-}
-
 async function updateSessionManualUncertainties(
   sessionId,
   standardUncertainty,
@@ -2050,7 +2022,6 @@ module.exports = {
   updateSessionManualUncertainties,
   updateSessionStatus,
   updateSessionEvaluationResult,
-  updateSessionHeader,
   // readings
   upsertReadings,
   getReadingsBySession,
