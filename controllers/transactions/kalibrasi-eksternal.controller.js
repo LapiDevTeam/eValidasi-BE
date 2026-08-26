@@ -6,12 +6,46 @@ const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
 const { getApproverIdentity, formatDateForSQL } = require('../../helpers/kalibrasi.helper');
+const {
+  uploadFileToFTP,
+  downloadFileFromFTP,
+  deleteFileFromFTP,
+  FTP_CONFIG,
+} = require('../../helpers/ftp.helper');
 
 const PROGRAM_NAME = 'KalibrasiEksternal';
 const APP_CODE = 'KAL_Eksternal';
 
-// Base directory used by uploadPublicV2 (controllers/v2/upload.controller.js)
+// Base directory used by uploadPublicV2 (controllers/v2/upload.controller.js).
+// Sejak sertifikat disimpan di FTP, folder ini hanya dipakai sebagai staging
+// sementara oleh multer sebelum file dikirim ke FTP.
 const UPLOAD_BASE_DIR = path.join('C:', 'publicuploads', PROGRAM_NAME);
+
+// Folder tmp untuk menampung file yang di-GET dari FTP sebelum dikirim ke browser.
+const TEMP_DOWNLOAD_DIR = path.join(__dirname, '../../tmp');
+
+// Penanda di kolom sertifikat_vendor_path bahwa file berada di FTP, bukan di disk lokal.
+// Record lama (sebelum fix ini) menyimpan path lokal absolut, jadi keduanya harus didukung.
+const FTP_PATH_PREFIX = 'ftp://';
+
+const isFtpStoredPath = (storedPath) =>
+  typeof storedPath === 'string' && storedPath.toLowerCase().startsWith(FTP_PATH_PREFIX);
+
+const buildFtpStoredPath = (remoteFileName) =>
+  `${FTP_PATH_PREFIX}${FTP_CONFIG.host}/${FTP_CONFIG.folder}/${remoteFileName}`;
+
+/**
+ * Nama file di FTP dibuat deterministik per record supaya:
+ *  - mudah ditelusuri manual di server FTP (tidak berupa hash md5 seperti sebelumnya),
+ *  - upload ulang menimpa file lama, tidak menumpuk sampah.
+ * Contoh: EKST_1042_QA-01-123.pdf
+ */
+const buildRemoteFileName = (ekstId, qaId, originalFileName) => {
+  const ext = (path.extname(originalFileName || '') || '.pdf').toLowerCase();
+  const safeQaId = String(qaId || 'NOQA').replace(/[^A-Za-z0-9._-]/g, '_');
+
+  return `EKST_${ekstId}_${safeQaId}${ext}`;
+};
 
 // Status yang sudah final — sertifikat tidak boleh dihapus lagi
 const LOCKED_STATUSES = ['APPROVED', 'TIDAK_DAPAT_APPROVED', 'LABEL_TEMPEL'];
@@ -42,6 +76,27 @@ const removeUploadedFile = async (filePath) => {
     // ENOENT = file sudah tidak ada, bukan kondisi error untuk user
     if (error.code !== 'ENOENT') {
       console.error('removeUploadedFile error:', error);
+    }
+
+    return false;
+  }
+};
+
+/**
+ * Best-effort cleanup untuk file tmp hasil download dari FTP.
+ */
+const removeTempDownload = async (filePath) => {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    await fs.promises.unlink(filePath);
+
+    return true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('removeTempDownload error:', error);
     }
 
     return false;
@@ -553,6 +608,10 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
  * Upload vendor certificate file for an eksternal record.
  * Multer middleware runs before this handler (via router).
  * Body (after multer): ekst_id, file path set by uploadPublicV2
+ *
+ * Alur: multer simpan sementara di UPLOAD_BASE_DIR -> kirim ke FTP (folder eKalibrasi)
+ * -> hapus file sementara -> simpan nama file FTP di DB.
+ * Sama dengan modul kalibrasi lain (permohonan, DA, dst) yang memang bertumpu ke FTP.
  */
 const uploadSertifikatVendor = async (req, res, next) => {
   try {
@@ -597,17 +656,23 @@ const uploadSertifikatVendor = async (req, res, next) => {
       return;
     }
 
+    // File sementara hasil multer (nama file = hash md5, tanpa ekstensi asli)
     const ext = path.extname(req.file.originalname);
-    const filename = req.file.filename + ext;
-    const filePath = req.body.path || req.file.path;
+    const stagedFilePath = path.resolve(req.body.path || req.file.path);
 
     // Verify the record exists and is editable
     const statusCheck = await sequelizeMSQL.query(
-      `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
+      `SELECT e.status, d.QA_ID AS qa_id
+       FROM T_Kalibrasi_Eksternal e
+       LEFT JOIN T_Monthly_Schedule_External_Detail d
+         ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+       WHERE e.ekst_id = :ekst_id`,
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
 
     if (!statusCheck.length) {
+      await removeUploadedFile(stagedFilePath);
+
       const err = new Error('Data tidak ditemukan');
 
       err.statusCode = 404;
@@ -619,6 +684,8 @@ const uploadSertifikatVendor = async (req, res, next) => {
       return;
     }
     if (statusCheck[0]?.status === 'APPROVED') {
+      await removeUploadedFile(stagedFilePath);
+
       const err = new Error('Data yang sudah disetujui tidak dapat diubah');
 
       err.statusCode = 400;
@@ -629,6 +696,46 @@ const uploadSertifikatVendor = async (req, res, next) => {
 
       return;
     }
+
+    if (!fs.existsSync(stagedFilePath)) {
+      const err = new Error('File hasil unggahan tidak ditemukan di server');
+
+      err.statusCode = 500;
+
+      res.status(500).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Kirim ke FTP — inilah langkah yang sebelumnya hilang sehingga file
+    // hanya menumpuk di disk lokal server dan tidak pernah muncul di FTP.
+    const filename = buildRemoteFileName(ekst_id, statusCheck[0]?.qa_id, req.file.originalname);
+    const uploadResult = await uploadFileToFTP(stagedFilePath, filename);
+
+    // Staging file selalu dibersihkan, sukses maupun gagal.
+    await removeUploadedFile(stagedFilePath);
+
+    if (!uploadResult.success) {
+      const err = new Error(
+        uploadResult.message
+          ? `Gagal mengunggah sertifikat ke server FTP: ${uploadResult.message}`
+          : 'Gagal mengunggah sertifikat ke server FTP'
+      );
+
+      err.statusCode = 502;
+
+      // DB tidak diubah supaya status tidak terlanjur jadi UPLOADED
+      // padahal file-nya tidak ada di FTP.
+      res.status(502).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const filePath = buildFtpStoredPath(filename);
 
     await sequelizeMSQL.query(
       `UPDATE T_Kalibrasi_Eksternal
@@ -646,10 +753,20 @@ const uploadSertifikatVendor = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Sertifikat berhasil diunggah',
-      data: { filename, filePath },
+      message: 'Sertifikat berhasil diunggah ke server FTP',
+      data: {
+        filename,
+        filePath,
+        originalFilename: req.file.originalname,
+        extension: ext,
+      },
     });
   } catch (error) {
+    // Jangan tinggalkan file sampah di staging kalau terjadi error tak terduga.
+    if (req.file) {
+      await removeUploadedFile(path.resolve(req.body?.path || req.file.path));
+    }
+
     console.error('Error in uploadSertifikatVendor:', error);
     next(error);
   }
@@ -753,7 +870,22 @@ const deleteSertifikatVendor = async (req, res, next) => {
       }
     );
 
-    const fileRemoved = await removeUploadedFile(sertifikat_vendor_path);
+    // File FTP dihapus di server FTP, record lama dihapus dari disk lokal.
+    let fileRemoved = false;
+
+    if (isFtpStoredPath(sertifikat_vendor_path)) {
+      const ftpDeleteResult = await deleteFileFromFTP(sertifikat_vendor_filename);
+
+      fileRemoved = ftpDeleteResult.success;
+
+      if (!ftpDeleteResult.success) {
+        // Referensi DB sudah dibersihkan, jadi user tetap bisa upload ulang.
+        // Sisa file di FTP akan tertimpa saat upload berikutnya (nama deterministik).
+        console.warn('FTP delete warning:', ftpDeleteResult.message);
+      }
+    } else {
+      fileRemoved = await removeUploadedFile(sertifikat_vendor_path);
+    }
 
     return res.status(200).json({
       success: true,
@@ -1055,6 +1187,8 @@ const approveKalibrasiEksternal = async (req, res, next) => {
 /**
  * GET /download-sertifikat
  * Serves the uploaded vendor certificate file.
+ * File diambil dari FTP (folder eKalibrasi) ke tmp lalu di-stream ke browser.
+ * Record lama yang masih menyimpan path lokal absolut tetap dilayani dari disk.
  * Query params: ekst_id (required)
  */
 const downloadSertifikatVendor = async (req, res, next) => {
@@ -1107,7 +1241,62 @@ const downloadSertifikatVendor = async (req, res, next) => {
       return;
     }
 
-    return res.sendFile(result[0].sertifikat_vendor_path);
+    const storedPath = result[0].sertifikat_vendor_path;
+    const fileName = result[0].sertifikat_vendor_filename || path.basename(storedPath);
+
+    // Record lama: file masih ada di disk lokal server.
+    if (!isFtpStoredPath(storedPath)) {
+      if (!fs.existsSync(storedPath)) {
+        const err = new Error('File tidak ditemukan di server');
+
+        err.statusCode = 404;
+
+        res.status(404).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
+      }
+
+      return res.download(storedPath, fileName);
+    }
+
+    // Record baru: ambil dari FTP ke tmp lalu kirim ke browser.
+    await fs.promises.mkdir(TEMP_DOWNLOAD_DIR, { recursive: true });
+
+    // Prefix unik supaya download paralel tidak saling menimpa file tmp.
+    const localFilePath = path.join(
+      TEMP_DOWNLOAD_DIR,
+      `${Date.now()}_${process.pid}_${fileName}`
+    );
+
+    const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
+
+    if (!downloadResult.success) {
+      await removeTempDownload(localFilePath);
+
+      const err = new Error(
+        downloadResult.message
+          ? `Gagal mengunduh sertifikat dari server FTP: ${downloadResult.message}`
+          : 'Gagal mengunduh sertifikat dari server FTP'
+      );
+
+      err.statusCode = 502;
+
+      res.status(502).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    return res.download(localFilePath, fileName, async (sendErr) => {
+      await removeTempDownload(localFilePath);
+
+      if (sendErr) {
+        console.error('Error sending sertifikat file:', sendErr);
+      }
+    });
   } catch (error) {
     console.error('Error in downloadSertifikatVendor:', error);
     next(error);
