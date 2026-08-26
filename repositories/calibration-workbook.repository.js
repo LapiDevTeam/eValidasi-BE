@@ -45,12 +45,14 @@ async function listSessions(filters = {}) {
       cs.instrument_code,
       cs.instrument_name,
       cs.calibration_date,
+      cs.interval_bulan,
       cs.unit_mode,
       cs.status,
       cs.pic,
       cs.temperature,
       cs.humidity,
       cs.notes,
+      cs.metode_kalibrasi,
       cs.evaluation_result,
       cs.approved_by_admin,
       cs.approved_by_admin_date,
@@ -95,12 +97,14 @@ async function getSessionById(sessionId, transaction) {
         instrument_code,
         instrument_name,
         calibration_date,
+        interval_bulan,
         unit_mode,
         status,
         pic,
         temperature,
         humidity,
         notes,
+        metode_kalibrasi,
         evaluation_result,
         approved_by_admin,
         approved_by_admin_date,
@@ -130,12 +134,14 @@ async function createSession(payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
+    .input('IntervalBulan', sql.VarChar(50), toDbNull(payload.interval_bulan))
     .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status || 'DRAFT')
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
+    .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by))
     .query(`
     INSERT INTO [dbo].[calibration_sessions]
@@ -145,12 +151,14 @@ async function createSession(payload, transaction) {
       instrument_code,
       instrument_name,
       calibration_date,
+      interval_bulan,
       unit_mode,
       status,
       pic,
       temperature,
       humidity,
       notes,
+      metode_kalibrasi,
       created_by
     )
     VALUES
@@ -160,12 +168,14 @@ async function createSession(payload, transaction) {
       @InstrumentCode,
       @InstrumentName,
       @CalibrationDate,
+      @IntervalBulan,
       @UnitMode,
       @Status,
       @Pic,
       @Temperature,
       @Humidity,
       @Notes,
+      @MetodeKalibrasi,
       @CreatedBy
     );
     SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
@@ -183,12 +193,14 @@ async function updateSession(sessionId, payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
+    .input('IntervalBulan', sql.VarChar(50), toDbNull(payload.interval_bulan))
     .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status)
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
+    .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
     .input('UpdatedBy', sql.VarChar(100), toDbNull(payload.updated_by))
     .query(`
     UPDATE [dbo].[calibration_sessions]
@@ -198,12 +210,14 @@ async function updateSession(sessionId, payload, transaction) {
       instrument_code  = @InstrumentCode,
       instrument_name  = @InstrumentName,
       calibration_date = @CalibrationDate,
+      interval_bulan   = @IntervalBulan,
       unit_mode        = @UnitMode,
       status           = @Status,
       pic              = @Pic,
       temperature      = @Temperature,
       humidity         = @Humidity,
       notes            = @Notes,
+      metode_kalibrasi = @MetodeKalibrasi,
       updated_by       = @UpdatedBy,
       updated_at       = GETDATE()
     WHERE session_id = @SessionId

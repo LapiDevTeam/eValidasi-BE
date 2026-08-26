@@ -221,6 +221,17 @@ function normalizeInteger(
   return numeric;
 }
 
+// Interval kalibrasi dalam bulan; 1-36 sesuai opsi Interval pada Sertifikat Bagian.
+function normalizeIntervalBulan(value) {
+  const numeric = normalizeInteger(value, {
+    required: false,
+    field: 'interval_bulan',
+    min: 1,
+    max: 36,
+  });
+  return numeric === null ? null : String(numeric);
+}
+
 function normalizeUnitMode(value) {
   const unit = String(value || '').trim();
   if (unit.length > 20) {
@@ -397,6 +408,10 @@ function mapSessionPayload(body, isUpdate = false) {
     calibration_date: normalizeDateInput(body.calibration_date ?? body.calibrationDate, {
       field: 'calibration_date',
     }),
+    // Interval kalibrasi (bulan). Rentang 1-36 mengikuti dropdown Interval di
+    // Sertifikat Bagian. Disimpan sebagai string agar konsisten dengan kolom
+    // interval_bulan (VARCHAR) di modul kalibrasi lain (rpm_sessions, dst.).
+    interval_bulan: normalizeIntervalBulan(body.interval_bulan ?? body.intervalBulan),
     unit_mode: normalizeUnitMode(body.unit_mode ?? body.unitMode),
     status: isUpdate
       ? normalizeStatus(body.status || 'DRAFT')
@@ -420,6 +435,10 @@ function mapSessionPayload(body, isUpdate = false) {
     notes: normalizeLimitedString(body.notes, {
       field: 'notes',
       maxLength: 1000,
+    }),
+    metode_kalibrasi: normalizeLimitedString(body.metode_kalibrasi ?? body.metodeKalibrasi, {
+      field: 'metode_kalibrasi',
+      maxLength: 500,
     }),
     created_by: normalizeLimitedString(body.created_by, {
       field: 'created_by',

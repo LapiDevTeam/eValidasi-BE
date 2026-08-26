@@ -51,6 +51,7 @@ router.post('/standards/:id/points',  ctrl.addStandardPoint);
 // GET  /pressure-calibration/sessions                              – List sessions (session selector)
 // POST /pressure-calibration/sessions                              – Create session
 // GET  /pressure-calibration/sessions/:sessionId                   – Get session
+// PUT  /pressure-calibration/sessions/:sessionId/header            – Update Tgl/Interval/Metode Kalibrasi
 // POST /pressure-calibration/sessions/:sessionId/readings          – Save readings
 // GET  /pressure-calibration/sessions/:sessionId/readings          – Get readings
 // POST /pressure-calibration/sessions/:sessionId/calculate         – Run calculation
@@ -58,6 +59,7 @@ router.post('/standards/:id/points',  ctrl.addStandardPoint);
 router.get('/sessions',                           ctrl.listSessions);
 router.post('/sessions',                          ctrl.createSession);
 router.get('/sessions/:sessionId',                ctrl.getSession);
+router.put('/sessions/:sessionId/header',         ctrl.updateSessionHeader);
 router.post('/sessions/:sessionId/readings',      ctrl.saveReadings);
 router.get('/sessions/:sessionId/readings',       ctrl.getReadings);
 router.post('/sessions/:sessionId/calculate',     ctrl.calculate);

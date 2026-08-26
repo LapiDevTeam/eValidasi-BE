@@ -714,9 +714,15 @@ async function publishSessionToSertifikatBagian(
     const requestedInterval = toPositiveIntegerOrNull(
       publishOptions.interval ?? publishOptions.parameter_interval
     );
+    // Interval yang diisi teknisi di header workbook (Pressure Calibration /
+    // Calibration Workbook) menang atas nilai lama di DA, sama seperti
+    // tgl_kalibrasi di bawah — supaya input baru benar-benar terbawa ke
+    // sertifikat saat approval Manager (final) menerbitkan sertifikat.
+    const sessionInterval = toPositiveIntegerOrNull(session.interval_bulan);
     const existingDaInterval = toPositiveIntegerOrNull(existingDa?.Parameter_Interval);
     const qaCandidateInterval = toPositiveIntegerOrNull(qaCandidate?.Parameter_Interval);
-    const finalInterval = requestedInterval || existingDaInterval || qaCandidateInterval || 12;
+    const finalInterval =
+      requestedInterval || sessionInterval || existingDaInterval || qaCandidateInterval || 12;
 
     const requestedTgl = toDateOrNull(
       publishOptions.tgl_kalibrasi || publishOptions.tglKalibrasi
@@ -881,6 +887,7 @@ async function publishSessionToSertifikatBagian(
       interval: finalInterval,
       metode_kalibrasi:
         publishOptions.metode_kalibrasi
+        ?? session.metode_kalibrasi
         ?? header.Metode_kalibrasi
         ?? 'Kalibrasi Tekanan - Workbook',
       suhu_kelembaban: buildSuhuKelembabanText(
