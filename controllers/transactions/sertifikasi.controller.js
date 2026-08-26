@@ -3105,7 +3105,7 @@ const printHapusAlat = async (req, res) => {
       <td style="border: 1px solid black;">
         <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
           <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 14px;">
-            <span>${judul || "LAPORAN MANHOURS PRODUKSI"}</span>
+            <span>${"PERMOHONAN PENGHAPUSAN ALAT DARI DAFTAR <br/> ALAT UKUR YANG DIKALIBRASI"}</span>
           </h3>
         </div>
       </td>
@@ -3137,7 +3137,7 @@ const printHapusAlat = async (req, res) => {
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
-      footerTemplate: footerLandscape,
+      footerTemplate: "<div></div>",
       headerTemplate:headerLandscape,
       margin: { bottom: '60px', top: '70px', left: '0.5cm', right: '0.5cm' },
       landscape: false,

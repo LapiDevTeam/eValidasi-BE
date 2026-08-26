@@ -2252,7 +2252,7 @@ function getBase64Image(filePath) {
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
-      footerTemplate: footerLandscape,
+      footerTemplate: "<div></div>",
       headerTemplate:headerLandscape,
       margin: { bottom: '60px', top: '200px', left: '18px', right: '17px' },
       landscape: !landscape ? false : true,
