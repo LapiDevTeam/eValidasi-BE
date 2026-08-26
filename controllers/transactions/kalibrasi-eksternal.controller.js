@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
@@ -8,6 +9,44 @@ const { getApproverIdentity, formatDateForSQL } = require('../../helpers/kalibra
 
 const PROGRAM_NAME = 'KalibrasiEksternal';
 const APP_CODE = 'KAL_Eksternal';
+
+// Base directory used by uploadPublicV2 (controllers/v2/upload.controller.js)
+const UPLOAD_BASE_DIR = path.join('C:', 'publicuploads', PROGRAM_NAME);
+
+// Status yang sudah final — sertifikat tidak boleh dihapus lagi
+const LOCKED_STATUSES = ['APPROVED', 'TIDAK_DAPAT_APPROVED', 'LABEL_TEMPEL'];
+
+/**
+ * Best-effort physical file removal.
+ * Only removes files that live inside UPLOAD_BASE_DIR (guards against path traversal
+ * and against deleting legacy paths pointing elsewhere on the server).
+ */
+const removeUploadedFile = async (filePath) => {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    const resolved = path.resolve(filePath);
+    const base = path.resolve(UPLOAD_BASE_DIR);
+
+    if (resolved.toLowerCase().indexOf(base.toLowerCase() + path.sep) !== 0) {
+      console.warn('removeUploadedFile: skipped file outside upload dir ->', resolved);
+      return false;
+    }
+
+    await fs.promises.unlink(resolved);
+
+    return true;
+  } catch (error) {
+    // ENOENT = file sudah tidak ada, bukan kondisi error untuk user
+    if (error.code !== 'ENOENT') {
+      console.error('removeUploadedFile error:', error);
+    }
+
+    return false;
+  }
+};
 
 /**
  * Resolves the owning department for a Kalibrasi Eksternal record.
@@ -612,6 +651,117 @@ const uploadSertifikatVendor = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in uploadSertifikatVendor:', error);
+    next(error);
+  }
+};
+
+/**
+ * DELETE /delete-sertifikat
+ * Menghapus file sertifikat vendor yang sudah terunggah selama record BELUM di-approve.
+ * Berguna kalau user salah upload file.
+ * Status record dikembalikan ke DRAFT sehingga user bisa upload ulang.
+ * Query params: ekst_id (required)
+ */
+const deleteSertifikatVendor = async (req, res, next) => {
+  try {
+    const { user_id, bagian_user } = req.user;
+    const ekst_id = req.query.ekst_id || req.body?.ekst_id;
+
+    if (!ekst_id) {
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const record = await sequelizeMSQL.query(
+      `SELECT status, sertifikat_vendor_filename, sertifikat_vendor_path
+       FROM T_Kalibrasi_Eksternal
+       WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
+    );
+
+    if (!record.length) {
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const { status, sertifikat_vendor_filename, sertifikat_vendor_path } = record[0];
+
+    if (LOCKED_STATUSES.includes(status)) {
+      const err = new Error('Sertifikat yang sudah disetujui tidak dapat dihapus');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    if (!sertifikat_vendor_filename && !sertifikat_vendor_path) {
+      const err = new Error('Belum ada sertifikat yang diunggah');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Bersihkan referensi di DB dulu, lalu hapus file fisik (best effort)
+    await sequelizeMSQL.query(
+      `UPDATE T_Kalibrasi_Eksternal
+       SET sertifikat_vendor_filename = NULL,
+           sertifikat_vendor_path = NULL,
+           status = 'DRAFT',
+           updated_by = :updated_by,
+           updated_date = SYSDATETIME()
+       WHERE ekst_id = :ekst_id`,
+      {
+        replacements: { ekst_id, updated_by: user_id },
+        type: Sequelize.QueryTypes.UPDATE,
+      }
+    );
+
+    const fileRemoved = await removeUploadedFile(sertifikat_vendor_path);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Sertifikat berhasil dihapus. Silakan unggah ulang file yang benar.',
+      data: { filename: sertifikat_vendor_filename, fileRemoved },
+    });
+  } catch (error) {
+    console.error('Error in deleteSertifikatVendor:', error);
     next(error);
   }
 };
@@ -1331,6 +1481,7 @@ module.exports = {
   saveKalibrasiEksternal,
   deleteKalibrasiEksternal,
   uploadSertifikatVendor,
+  deleteSertifikatVendor,
   getCurrentApprove,
   checkApproveButton,
   getApproverIdentityEksternal,
