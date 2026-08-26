@@ -141,7 +141,8 @@ const getOwningDepartment = async (identifier, bagian_user) => {
 /**
  * GET /list
  * Lists instruments from APPROVED external schedules, joined with execution status.
- * Query params: tahun, bulan (optional), status (optional: DRAFT|UPLOADED|APPROVED|REJECTED|PENDING)
+ * Query params: tahun, bulan (optional), status (optional: DRAFT|UPLOADED|APPROVED|REJECTED|
+ *               TIDAK_DAPAT|TIDAK_DAPAT_REJECTED|TIDAK_DAPAT_APPROVED|LABEL_TEMPEL|PENDING)
  */
 const getKalibrasiEksternalList = async (req, res, next) => {
   try {
@@ -1315,7 +1316,7 @@ const downloadSertifikatVendor = async (req, res, next) => {
  * POST /save-tidak-dapat
  * Create or update a "unit tidak siap dikalibrasi" record.
  * New record: creates T_Kalibrasi_Eksternal with is_tidak_dapat=1, status=TIDAK_DAPAT.
- * Update: only allowed when status=TIDAK_DAPAT.
+ * Update: allowed when status=TIDAK_DAPAT or TIDAK_DAPAT_REJECTED (revisi setelah ditolak MGR).
  * Body: schedule_detail_id, ekst_id (null = create), alasan_tidak_dapat, kondisi_alat
  */
 const saveTidakDapat = async (req, res, next) => {
@@ -1408,8 +1409,8 @@ const saveTidakDapat = async (req, res, next) => {
 
         return;
       }
-      if (statusCheck[0]?.status !== 'TIDAK_DAPAT') {
-        const err = new Error('Hanya data berstatus TIDAK_DAPAT yang dapat diubah');
+      if (!['TIDAK_DAPAT', 'TIDAK_DAPAT_REJECTED'].includes(statusCheck[0]?.status)) {
+        const err = new Error('Hanya data berstatus TIDAK_DAPAT atau TIDAK_DAPAT_REJECTED yang dapat diubah');
 
         err.statusCode = 400;
 
@@ -1420,10 +1421,20 @@ const saveTidakDapat = async (req, res, next) => {
         return;
       }
 
+      // Revisi setelah ditolak MGR: buang jejak penolakan lalu kembalikan ke
+      // TIDAK_DAPAT supaya masuk lagi ke antrian approval.
+      if (statusCheck[0]?.status === 'TIDAK_DAPAT_REJECTED') {
+        await sequelizeMSQL.query(
+          `DELETE FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id AND approver_no = 1`,
+          { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
+        );
+      }
+
       await sequelizeMSQL.query(
         `UPDATE T_Kalibrasi_Eksternal
          SET alasan_tidak_dapat = :alasan_tidak_dapat,
              kondisi_alat       = :kondisi_alat,
+             status             = 'TIDAK_DAPAT',
              updated_by         = :updated_by,
              updated_date       = SYSDATETIME()
          WHERE ekst_id = :ekst_id`,
@@ -1450,7 +1461,8 @@ const saveTidakDapat = async (req, res, next) => {
  * POST /approve-tidak-dapat
  * Approve or reject a "tidak dapat dikalibrasi" record.
  * approve: INSERT T_Kalibrasi_Eksternal_Status (DELETE first to allow retry), status → TIDAK_DAPAT_APPROVED
- * reject : DELETE T_Kalibrasi_Eksternal_Status (allows re-approval after FA edits), status stays TIDAK_DAPAT
+ * reject : INSERT T_Kalibrasi_Eksternal_Status status='REJECT' + catatan, status → TIDAK_DAPAT_REJECTED
+ *          (baris status dihapus lagi ketika FA merevisi via saveTidakDapat)
  * Body: ekst_id, action ('approve'|'reject'), catatan
  */
 const approveTidakDapat = async (req, res, next) => {
@@ -1550,37 +1562,37 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { ekst_id, appr_no }, type: Sequelize.QueryTypes.DELETE }
     );
 
-    if (action === 'approve') {
-      await sequelizeMSQL.query(
-        `INSERT INTO T_Kalibrasi_Eksternal_Status
-           (ekst_id, approver_no, USER_ID, nama_approver, status, catatan, process_date, created_by, created_date)
-         VALUES
-           (:ekst_id, :appr_no, :user_id, :nama_user, 'APPROVE', :catatan, SYSDATETIME(), :user_id, SYSDATETIME())`,
-        {
-          replacements: { ekst_id, appr_no, user_id, nama_user, catatan: catatan || null },
-          type: Sequelize.QueryTypes.INSERT,
-        }
-      );
+    const isApprove = action === 'approve';
+    const approveStatus = isApprove ? 'APPROVE' : 'REJECT';
+    const newStatus = isApprove ? 'TIDAK_DAPAT_APPROVED' : 'TIDAK_DAPAT_REJECTED';
 
-      await sequelizeMSQL.query(
-        `UPDATE T_Kalibrasi_Eksternal
-         SET status = 'TIDAK_DAPAT_APPROVED', updated_by = :user_id, updated_date = SYSDATETIME()
-         WHERE ekst_id = :ekst_id`,
-        { replacements: { ekst_id, user_id }, type: Sequelize.QueryTypes.UPDATE }
-      );
+    // Reject harus tetap menyimpan jejak approval (catatan penolakan) supaya FA
+    // bisa melihat alasan MGR menolak. Record dibersihkan lagi saat FA merevisi
+    // lewat saveTidakDapat (status kembali ke TIDAK_DAPAT).
+    await sequelizeMSQL.query(
+      `INSERT INTO T_Kalibrasi_Eksternal_Status
+         (ekst_id, approver_no, USER_ID, nama_approver, status, catatan, process_date, created_by, created_date)
+       VALUES
+         (:ekst_id, :appr_no, :user_id, :nama_user, :approveStatus, :catatan, SYSDATETIME(), :user_id, SYSDATETIME())`,
+      {
+        replacements: { ekst_id, appr_no, user_id, nama_user, approveStatus, catatan: catatan?.trim() || null },
+        type: Sequelize.QueryTypes.INSERT,
+      }
+    );
 
-      return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi telah disetujui oleh Validation MGR' });
-    } else {
-      // reject: status record was deleted above, main record stays TIDAK_DAPAT
-      await sequelizeMSQL.query(
-        `UPDATE T_Kalibrasi_Eksternal
-         SET updated_by = :user_id, updated_date = SYSDATETIME()
-         WHERE ekst_id = :ekst_id`,
-        { replacements: { ekst_id, user_id }, type: Sequelize.QueryTypes.UPDATE }
-      );
+    await sequelizeMSQL.query(
+      `UPDATE T_Kalibrasi_Eksternal
+       SET status = :newStatus, updated_by = :user_id, updated_date = SYSDATETIME()
+       WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id, newStatus, user_id }, type: Sequelize.QueryTypes.UPDATE }
+    );
 
-      return res.status(200).json({ success: true, message: 'Data dikembalikan ke FA untuk revisi' });
-    }
+    return res.status(200).json({
+      success: true,
+      message: isApprove
+        ? 'Data tidak dapat dikalibrasi telah disetujui oleh Validation MGR'
+        : 'Data ditolak dan dikembalikan ke FA untuk revisi',
+    });
   } catch (error) {
     console.error('Error in approveTidakDapat:', error);
     next(error);

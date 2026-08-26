@@ -115,6 +115,9 @@ const migrationOrder = [
   { dir: 'migrations', file: 'gap3-tidak-dapat-label-tempel.sql' },
   { dir: 'migrations', file: 'gap3-fix-status-check-constraint.sql' },
 
+  // Status TIDAK_DAPAT_REJECTED (penolakan MGR pada alur unit tidak siap)
+  { dir: 'migrations', file: 'add-tidak-dapat-rejected-status.sql' },
+
   // ---------------------------------------------------------------------------
   // Triggers (must run after their base tables)
   // ---------------------------------------------------------------------------

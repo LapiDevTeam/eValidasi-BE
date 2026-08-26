@@ -2383,6 +2383,7 @@ async function approveKalibrasiEksternalFromPending(ekstId, user) {
 
 async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
   const userId = user?.user_id || user?.log_NIK || '';
+  const namaUser = user?.nama_user || userId;
 
   if (!ekstId || ekstId === '') {
     const err = new Error('Data belum di pilih');
@@ -2422,6 +2423,8 @@ async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
     throw err;
   }
 
+  const newMainStatus = currentStatus === 'UPLOADED' ? 'REJECTED' : 'TIDAK_DAPAT_REJECTED';
+
   await sequelizeMSQL.query(
     `
       DELETE FROM T_Kalibrasi_Eksternal_Status
@@ -2433,21 +2436,51 @@ async function rejectKalibrasiEksternalFromPending(ekstId, user, reason) {
     }
   );
 
-  if (currentStatus === 'UPLOADED') {
-    await sequelizeMSQL.query(
-      `
-        UPDATE T_Kalibrasi_Eksternal
-        SET status = 'REJECTED',
-            updated_by = :userId,
-            updated_date = GETDATE()
-        WHERE ekst_id = :ekstId
-      `,
-      {
-        replacements: { ekstId, userId },
-        type: Sequelize.QueryTypes.UPDATE,
-      }
-    );
-  }
+  // Simpan jejak penolakan + alasannya supaya catatan MGR tampil di layar FA.
+  await sequelizeMSQL.query(
+    `
+      INSERT INTO T_Kalibrasi_Eksternal_Status (
+        ekst_id,
+        approver_no,
+        USER_ID,
+        nama_approver,
+        status,
+        catatan,
+        process_date,
+        created_by,
+        created_date
+      )
+      VALUES (
+        :ekstId,
+        1,
+        :userId,
+        :namaUser,
+        'REJECT',
+        :catatan,
+        GETDATE(),
+        :userId,
+        GETDATE()
+      )
+    `,
+    {
+      replacements: { ekstId, userId, namaUser, catatan: (reason || '').trim() || null },
+      type: Sequelize.QueryTypes.INSERT,
+    }
+  );
+
+  await sequelizeMSQL.query(
+    `
+      UPDATE T_Kalibrasi_Eksternal
+      SET status = :newStatus,
+          updated_by = :userId,
+          updated_date = GETDATE()
+      WHERE ekst_id = :ekstId
+    `,
+    {
+      replacements: { ekstId, newStatus: newMainStatus, userId },
+      type: Sequelize.QueryTypes.UPDATE,
+    }
+  );
 
   return {
     module: 'kalibrasi-eksternal',
