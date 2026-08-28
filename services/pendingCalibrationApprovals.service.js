@@ -88,6 +88,7 @@ function normalizeLabelReprintRow(raw) {
     sessionId: String(raw.request_id),
     qaId,
     idNoSertifikat,
+    calibrationId: normalizeValue(raw.instrument_code),
     instrumentName: normalizeValue(raw.instrument_name),
     calibrationDate: '',
     requester: normalizeValue(raw.requested_by),
@@ -342,6 +343,7 @@ const BAGIAN_CERTIFICATE_DETAIL_APPLY = `
   OUTER APPLY (
     SELECT TOP 1
       C.Assm_nama_instrumen,
+      C.Assm_No_identitas_kalibrasi,
       C.Tgl_kalibrasi
     FROM dbo.T_Kalibrasi_Sertifikat_Bagian AS C
     WHERE C.QA_ID = S.QA_ID
@@ -359,6 +361,7 @@ function bagianWorkbookConfig({
     table,
     idColumn: 'Session_ID',
     instrumentNameColumn: 'CertificateBagian.Assm_nama_instrumen',
+    calibrationIdColumn: 'CertificateBagian.Assm_No_identitas_kalibrasi',
     calibrationDateColumn: 'CertificateBagian.Tgl_kalibrasi',
     qaIdColumn: 'QA_ID',
     idNoSertifikatColumn: 'ID_No_Sertifikat',
@@ -386,6 +389,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.T_Kalibrasi_Thermohygro_Workbook_Session',
     idColumn: 'Session_ID',
     instrumentNameColumn: 'ThermoDa.Assm_nama_instrumen',
+    calibrationIdColumn: 'ThermoDa.Assm_No_identitas_kalibrasi',
     calibrationDateColumn: 'ThermoDa.Tgl_kalibrasi',
     qaIdColumn: 'QA_ID',
     idNoSertifikatColumn: 'ID_No_Sertifikat',
@@ -400,6 +404,7 @@ const MODULE_REGISTRY = {
       OUTER APPLY (
         SELECT TOP 1
           D.Assm_nama_instrumen,
+          D.Assm_No_identitas_kalibrasi,
           D.Tgl_kalibrasi
         FROM dbo.T_Kalibrasi_DA_Thermohygro AS D
         WHERE D.QA_ID = S.QA_ID
@@ -472,6 +477,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.timer_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -498,6 +504,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.timbangan_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -524,6 +531,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.temperature_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -550,6 +558,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.disintegration_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -576,6 +585,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.rpm_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -602,6 +612,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.tapped_volumeter_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: 'qa_id',
     idNoSertifikatColumn: 'id_no_sertifikat',
@@ -628,6 +639,7 @@ const MODULE_REGISTRY = {
     table: 'dbo.calibration_sessions',
     idColumn: 'session_id',
     instrumentNameColumn: 'instrument_name',
+    calibrationIdColumn: 'instrument_code',
     calibrationDateColumn: 'calibration_date',
     qaIdColumn: null,
     idNoSertifikatColumn: null,
@@ -804,6 +816,7 @@ async function scanModule(config, filters = {}) {
     columnOrNull(config.qaIdColumn, 'qaId'),
     columnOrNull(config.idNoSertifikatColumn, 'idNoSertifikat'),
     columnOrNull(config.instrumentNameColumn, 'instrumentName'),
+    columnOrNull(config.calibrationIdColumn, 'calibrationId'),
     columnOrNull(config.calibrationDateColumn, 'calibrationDate'),
     `${requesterExpr} AS requester`,
     columnOrNull(config.updateDateColumn, 'updateDate'),
@@ -892,6 +905,7 @@ function normalizeRow(config, moduleKey, raw) {
     sessionId: raw.id,
     qaId,
     idNoSertifikat,
+    calibrationId: normalizeValue(raw.calibrationId),
     instrumentName: normalizeValue(raw.instrumentName),
     calibrationDate: normalizeDate(raw.calibrationDate),
     requester: normalizeValue(raw.requester),
@@ -2765,6 +2779,7 @@ function normalizeUnitTidakSiapRow(tipe, raw) {
     sessionId: `${tipe}:${qaId}~${idNoSertifikat}`,
     qaId,
     idNoSertifikat,
+    calibrationId: normalizeValue(raw.Assm_No_identitas_kalibrasi),
     instrumentName: normalizeValue(raw.Assm_nama_instrumen),
     calibrationDate: normalizeDate(raw.Tgl_kalibrasi),
     requester: normalizeValue(raw.requester),
@@ -2814,6 +2829,7 @@ async function scanUnitTidakSiapPendingForTipe(tipe, filters = {}) {
       M.QA_ID,
       M.ID_No_Sertifikat,
       M.Assm_nama_instrumen,
+      M.Assm_No_identitas_kalibrasi,
       M.Tgl_kalibrasi,
       M.tanggal_label_OOC,
       M.tgl,
