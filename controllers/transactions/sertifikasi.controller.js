@@ -12,6 +12,14 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
 
+// Logo hitam berlatar TEMBUS, khusus label yang dicetak di atas stiker berwarna.
+//
+// LapiLogo.jpg tidak bisa dipakai di sana: JPEG tidak punya kanal alpha, jadi
+// latar putihnya ikut tercetak sebagai kotak dan menutupi warna stikernya.
+// Berkas ini dibuat dari JPEG yang sama dengan mengubah kecerahan menjadi
+// ketebalan tinta (alpha = 255 - luminance, RGB = hitam).
+const logoMonoPath = path.resolve(__dirname, '../../assets/LapiLogo-mono.png');
+
 /**
  * Search Sertifikat Thermohygro
  * Based on VBA cmd_Cari_Sertifikat_Click function
@@ -2208,9 +2216,23 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     next(error);
   }
 };
+// MIME diambil dari ekstensi, bukan dipatok 'image/jpeg'. Logo berlatar tembus
+// harus PNG (JPEG tidak punya kanal alpha), dan PNG yang diaku sebagai JPEG
+// bergantung pada tebakan browser — di Puppeteer kegagalannya berupa logo yang
+// hilang begitu saja dari label, tanpa pesan error apa pun.
+const IMAGE_MIME_BY_EXT = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
+
 function getBase64Image(filePath) {
   const image = fs.readFileSync(filePath);
-  return `data:image/jpeg;base64,${image.toString('base64')}`;
+  const mime = IMAGE_MIME_BY_EXT[path.extname(filePath).toLowerCase()] || 'image/jpeg';
+  return `data:${mime};base64,${image.toString('base64')}`;
 }
 
 function escapeHtml(value) {
@@ -2242,6 +2264,45 @@ const LABEL_WIDTH = '5.4cm';
 // Verdana dulu; sisanya padanan metrik untuk host render tanpa Verdana.
 const LABEL_FONT = 'Verdana, Tahoma, "DejaVu Sans", Geneva, sans-serif';
 const LABEL_HEIGHT = '2.4cm';
+
+// Stiker "JANGAN DIGUNAKAN" / OOC memakai ukuran yang BERBEDA: lebih sempit
+// tapi jauh lebih tinggi. Label ini dirakit di sini (bukan lewat halaman React
+// PrintTerkalibrasiThermo), jadi ukurannya harus dinyatakan ulang di file ini —
+// perubahan di sisi front-end tidak berpengaruh pada jalur OOC.
+const OOC_LABEL_WIDTH = '4.2cm';
+const OOC_LABEL_HEIGHT = '3.1cm';
+
+/**
+ * Jarak aman cetak, sama seperti di PrintTerkalibrasiThermo: bingkai sengaja
+ * TIDAK dibuat sebesar halaman. Sisi kiri diberi jarak paling besar karena
+ * keluaran printer melenceng ke kiri, dan sisi bawah dilebihkan karena garis
+ * bawahlah yang pertama hilang saat kertas berhenti sedikit lebih awal.
+ */
+const OOC_SAFE_PADDING = '0.5mm 0.5mm 1.3mm 1.6mm';
+
+/**
+ * Ukuran judul untuk label OOC, yang judulnya BOLEH turun ke baris kedua.
+ *
+ * Stikernya 7mm lebih tinggi daripada label biasa, jadi ketinggian itu dipakai
+ * untuk membungkus judul alih-alih mengecilkan hurufnya sampai sepadan dengan
+ * teks body — dipaksa satu baris, "JANGAN DIGUNAKAN" harus turun ke ~5,5pt dan
+ * tidak lagi terbaca sebagai judul.
+ *
+ * Yang menentukan muat atau tidak adalah KATA TERPANJANG, bukan panjang seluruh
+ * teks. Faktor 0,9 adalah margin terhadap huruf lebar Verdana (G, M, U bisa
+ * mencapai ~0,85em sementara rata-ratanya 0,78em).
+ */
+function oocLabelTitleFontSize(title, areaMm = 26) {
+  const longestWord = String(title || '')
+    .trim()
+    .split(/\s+/)
+    .reduce((longest, word) => Math.max(longest, word.length), 0);
+
+  if (longestWord === 0) return '10pt';
+
+  const fit = (areaMm * 0.9) / (longestWord * 0.78 * 0.3528);
+  return `${Math.max(4.5, Math.min(10, Math.floor(fit * 2) / 2))}pt`;
+}
 
 // Judul label bersifat dinamis, jadi ukuran fontnya menyesuaikan panjang teks
 // supaya tetap muat satu baris di dalam header (~38mm).
@@ -2493,8 +2554,11 @@ border-left: 0; border-right:0;
       // Label 'ooc' (unit tidak siap dikalibrasi) tetap memakai teks lama
       // "JANGAN DIGUNAKAN"; 'hasil-ooc' memakai "OUT OF CALIBRATION".
       const oocTitle = isResultOocLabel ? resolvedJudul : 'JANGAN DIGUNAKAN';
-      const oocTitleFontSize = labelTitleFontSize(oocTitle);
+      const oocTitleFontSize = oocLabelTitleFontSize(oocTitle);
       const escapedOocTitle = escapeHtml(oocTitle);
+      // Stiker OOC sudah berwarna secara fisik, jadi logonya harus berlatar
+      // tembus — bukan LapiLogo.jpg yang membawa kotak putih.
+      const oocLogoBase64 = getBase64Image(logoMonoPath);
 
       await page.setContent(`
         <!doctype html>
@@ -2503,7 +2567,7 @@ border-left: 0; border-right:0;
             <meta charset="utf-8" />
             <style>
               @page {
-                size: ${LABEL_WIDTH} ${LABEL_HEIGHT};
+                size: ${OOC_LABEL_WIDTH} ${OOC_LABEL_HEIGHT};
                 margin: 0;
               }
 
@@ -2515,42 +2579,50 @@ border-left: 0; border-right:0;
 
               html,
               body {
-                width: ${LABEL_WIDTH};
-                height: ${LABEL_HEIGHT};
+                width: ${OOC_LABEL_WIDTH};
+                height: ${OOC_LABEL_HEIGHT};
                 margin: 0;
                 padding: 0;
                 font-family: ${LABEL_FONT};
                 color: #000;
-                background: #fff;
+                /* Stikernya SUDAH berwarna secara fisik. Latar dibiarkan tembus
+                   supaya tidak ada blok putih yang menimpa warnanya — perhatikan
+                   print-color-adjust: exact di atas memang memaksa warna latar
+                   ikut tercetak. */
+                background: transparent;
               }
 
               .label-page {
-                width: ${LABEL_WIDTH};
-                height: ${LABEL_HEIGHT};
-                padding: 0.3mm;
+                width: ${OOC_LABEL_WIDTH};
+                height: ${OOC_LABEL_HEIGHT};
+                /* Isinya sengaja TIDAK dibuat pas 4,2 x 3,1cm: bingkai yang
+                   menyentuh tepi halaman adalah bingkai yang tepinya hilang
+                   saat dicetak. */
+                padding: ${OOC_SAFE_PADDING};
               }
 
               .label {
                 width: 100%;
                 height: 100%;
+                /* Persegi panjang luar UTUH di keempat sisi. Garis bawahnya
+                   datang dari sini, bukan dari sel footer — hanya bingkai yang
+                   membentang penuh selebar label, sehingga celah kosong di
+                   footer tetap tertutup tanpa harus diberi garis sendiri. */
                 border: 0.25mm solid #000;
-                /* Garis bawah disuplai oleh sel footer, bukan frame, supaya
-                   kolom Tanggal & Revisi yang dikosongkan benar-benar polos. */
-                border-bottom: 0;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
               }
 
               .header {
-                flex: 0 0 5.6mm;
-                height: 5.6mm;
+                flex: 0 0 8.5mm;
+                height: 8.5mm;
                 display: flex;
                 border-bottom: 0.25mm solid #000;
               }
 
               .logo-cell {
-                width: 15mm;
+                width: 12mm;
                 border-right: 0.25mm solid #000;
                 display: flex;
                 align-items: center;
@@ -2560,9 +2632,10 @@ border-left: 0; border-right:0;
 
               .logo-cell img {
                 max-width: 100%;
-                max-height: 4.4mm;
+                max-height: 6.5mm;
                 object-fit: contain;
-                filter: grayscale(100%) contrast(140%);
+                /* Tanpa filter: berkas mono-nya memang sudah hitam murni, dan
+                   filter hanya akan menebalkan tepi halusnya. */
               }
 
               .title-cell {
@@ -2573,8 +2646,10 @@ border-left: 0; border-right:0;
                 text-align: center;
                 font-size: ${oocTitleFontSize};
                 font-weight: 700;
-                line-height: 1.05;
-                white-space: nowrap;
+                line-height: 1.15;
+                /* Stikernya lebih tinggi, jadi judul boleh turun ke baris kedua
+                   alih-alih mengecil sampai sepadan dengan teks body. */
+                white-space: normal;
                 overflow: hidden;
                 color: ${judulColor};
               }
@@ -2618,7 +2693,9 @@ border-left: 0; border-right:0;
                 border-collapse: collapse;
                 table-layout: fixed;
                 text-align: center;
-                font-size: 4.5pt;
+                /* Stiker ini 12mm lebih sempit daripada label biasa, sementara
+                   isi footernya sama panjang. */
+                font-size: 4pt;
                 line-height: 1;
               }
 
@@ -2629,12 +2706,12 @@ border-left: 0; border-right:0;
                 overflow: hidden;
               }
 
-              /* Mengikuti form baru: kolom Tanggal dan Revisi dipertahankan agar
-                 lebar kolom lain tidak bergeser, tetapi seluruh garisnya
-                 dihilangkan sehingga hanya kotak Nomor dan Halaman terlihat. */
+              /* Hanya kotak Nomor dan Halaman yang bergaris ATAS; celah di
+                 tengah tetap polos. Garis BAWAH tidak ada di sini — yang
+                 menutup sisi bawah adalah bingkai .label, supaya garisnya
+                 membentang penuh dan persegi panjang luar tidak terputus. */
               .footer td.boxed {
                 border-top: 0.25mm solid #000;
-                border-bottom: 0.25mm solid #000;
               }
 
               .footer td.rule-left {
@@ -2651,7 +2728,7 @@ border-left: 0; border-right:0;
               <div class="label">
                 <div class="header">
                   <div class="logo-cell">
-                    <img src="${logoBase64}" alt="Lapi" />
+                    <img src="${oocLogoBase64}" alt="Lapi" />
                   </div>
                   <div class="title-cell" data-print-label-title>
                     ${escapedOocTitle}
@@ -2678,14 +2755,18 @@ border-left: 0; border-right:0;
                   <table>
                     <tbody>
                       <tr>
-                        <td class="boxed rule-right" style="width:13%;">Nomor</td>
-                        <td class="boxed rule-right" style="width:37%;">${oocNoDoc}</td>
-                        <td style="width:4%;"></td>
-                        <td style="width:4%;"></td>
-                        <td style="width:5%;"></td>
-                        <td style="width:3%;"></td>
-                        <td class="boxed rule-left rule-right" style="width:17%;">Halaman</td>
-                        <td class="boxed" style="width:17%;">1 dari 1</td>
+                        <!-- Lebar kolom berasal dari PENGUKURAN Verdana, bukan
+                             taksiran: pada lebar isi 39,4mm dan font 4pt, teks
+                             plus padding 0,5mm kiri-kanan menuntut Nomor
+                             5,74mm, nomor dokumen 16,73mm, Halaman 7,25mm, dan
+                             "1 dari 1" 6,50mm. Sel kosong Tanggal & Revisi
+                             dihapus dan lebarnya dibagi ke empat kotak yang
+                             benar-benar berisi — pada stiker sesempit ini
+                             geometri kolom label lebar sudah tidak muat. -->
+                        <td class="boxed rule-right" style="width:16%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:45%;">${oocNoDoc}</td>
+                        <td class="boxed rule-left rule-right" style="width:20%;">Halaman</td>
+                        <td class="boxed" style="width:19%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2697,8 +2778,11 @@ border-left: 0; border-right:0;
       `, { waitUntil: 'networkidle0' });
 
       const pdfBuffer = await page.pdf({
-        width: LABEL_WIDTH,
-        height: LABEL_HEIGHT,
+        // Ukuran stiker OOC, bukan ukuran label biasa. Tanpa ini isi setinggi
+        // 3,1cm dipaksa masuk halaman 2,4cm dan bagian bawahnya — termasuk
+        // garis bawah bingkai — terpotong.
+        width: OOC_LABEL_WIDTH,
+        height: OOC_LABEL_HEIGHT,
         displayHeaderFooter: false,
         printBackground: true,
         preferCSSPageSize: true,
