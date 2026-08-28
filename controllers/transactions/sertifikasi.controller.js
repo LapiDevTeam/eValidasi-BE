@@ -2238,6 +2238,9 @@ function sanitizeCssColor(value, fallback = '#000000') {
 // Dipakai untuk semua jenis label: Terkalibrasi, Out of Calibration, dan
 // Jangan Digunakan.
 const LABEL_WIDTH = '5.4cm';
+
+// Verdana dulu; sisanya padanan metrik untuk host render tanpa Verdana.
+const LABEL_FONT = 'Verdana, Tahoma, "DejaVu Sans", Geneva, sans-serif';
 const LABEL_HEIGHT = '2.4cm';
 
 // Judul label bersifat dinamis, jadi ukuran fontnya menyesuaikan panjang teks
@@ -2516,7 +2519,7 @@ border-left: 0; border-right:0;
                 height: ${LABEL_HEIGHT};
                 margin: 0;
                 padding: 0;
-                font-family: Verdana, sans-serif;
+                font-family: ${LABEL_FONT};
                 color: #000;
                 background: #fff;
               }
@@ -2580,16 +2583,24 @@ border-left: 0; border-right:0;
                 flex: 1;
                 min-height: 0;
                 padding: 0.6mm 1mm;
-                font-size: 6.5pt;
-                line-height: 1.2;
+                font-size: 5.5pt;
+                font-weight: 700;
+                line-height: 1.3;
                 overflow: hidden;
+                display: grid;
+                grid-template-columns: max-content 1.5mm 1fr;
+                align-content: start;
               }
 
-              /* Kolom label dan titik dua dikunci lebarnya supaya sejajar. */
+              /* Semua baris berbagi satu grid supaya ":" sejajar antar baris,
+                 sementara kolom label tetap melar mengikuti teks terpanjang. */
               .body-row {
-                display: grid;
-                grid-template-columns: 19mm 2mm 1fr;
-                align-items: start;
+                display: contents;
+              }
+
+              .body-row > div:first-child {
+                padding-right: 1mm;
+                white-space: nowrap;
               }
 
               .body-value {
@@ -2612,7 +2623,7 @@ border-left: 0; border-right:0;
               }
 
               .footer td {
-                padding: 0 0.4mm;
+                padding: 0 0.5mm;
                 vertical-align: middle;
                 white-space: nowrap;
                 overflow: hidden;
@@ -2667,14 +2678,14 @@ border-left: 0; border-right:0;
                   <table>
                     <tbody>
                       <tr>
-                        <td class="boxed rule-right" style="width:12%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:13%;">Nomor</td>
                         <td class="boxed rule-right" style="width:37%;">${oocNoDoc}</td>
-                        <td style="width:6%;"></td>
-                        <td style="width:5%;"></td>
-                        <td style="width:6%;"></td>
                         <td style="width:4%;"></td>
-                        <td class="boxed rule-left rule-right" style="width:15%;">Halaman</td>
-                        <td class="boxed" style="width:15%;">1 dari 1</td>
+                        <td style="width:4%;"></td>
+                        <td style="width:5%;"></td>
+                        <td style="width:3%;"></td>
+                        <td class="boxed rule-left rule-right" style="width:17%;">Halaman</td>
+                        <td class="boxed" style="width:17%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2742,7 +2753,7 @@ border-left: 0; border-right:0;
         }
 
         * {
-          font-family: Verdana, sans-serif;
+          font-family: ${LABEL_FONT} !important;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
