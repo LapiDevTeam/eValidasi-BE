@@ -2614,15 +2614,31 @@ border-left: 0; border-right:0;
                 overflow: hidden;
               }
 
+              /*
+               * Tinggi mengacu label FISIK: header 15mm, isi 14mm, footer 2mm —
+               * totalnya PAS 31mm, artinya label contoh itu tidak menyisakan
+               * jarak aman cetak sama sekali.
+               *
+               * Di sini tersisa 28,7mm (31 - 0,5 atas - 1,3 bawah - 0,5 garis
+               * bingkai), jadi perbandingan 15:14 dipertahankan dan keduanya
+               * diperkecil dengan faktor yang sama (0,921). Yang dikorbankan
+               * ukuran mutlaknya, bukan proporsinya — dan jarak aman itulah yang
+               * menjaga garis bingkai tidak terpotong printer.
+               *
+               * Isi (.body) tidak dipatok: sisa ruang setelah header dan footer
+               * memang tepat 12,9mm, dan membiarkannya flex membuat ketiganya
+               * selalu berjumlah pas walau salah satu angka diubah.
+               */
               .header {
-                flex: 0 0 8.5mm;
-                height: 8.5mm;
+                flex: 0 0 13.8mm;
+                height: 13.8mm;
                 display: flex;
                 border-bottom: 0.25mm solid #000;
               }
 
               .logo-cell {
-                width: 12mm;
+                /* 11mm, mengikuti label fisik. */
+                width: 11mm;
                 border-right: 0.25mm solid #000;
                 display: flex;
                 align-items: center;
@@ -2675,6 +2691,7 @@ border-left: 0; border-right:0;
 
               .body-row > div:first-child {
                 padding-right: 1mm;
+                padding-bottom: 3mm;
                 white-space: nowrap;
               }
 
@@ -2683,8 +2700,8 @@ border-left: 0; border-right:0;
               }
 
               .footer {
-                flex: 0 0 3.2mm;
-                height: 3.2mm;
+                flex: 0 0 2mm;
+                height: 2mm;
               }
 
               .footer table {
@@ -2693,9 +2710,16 @@ border-left: 0; border-right:0;
                 border-collapse: collapse;
                 table-layout: fixed;
                 text-align: center;
-                /* Stiker ini 12mm lebih sempit daripada label biasa, sementara
-                   isi footernya sama panjang. */
-                font-size: 4pt;
+                /*
+                 * 3,5pt, bukan 4pt. Pada 4pt keempat kotak memakan 36,2mm dari
+                 * 39,4mm dan footernya penuh sesak dari tepi ke tepi; pada 3,5pt
+                 * hanya 32,2mm, menyisakan celah kosong di tengah seperti label
+                 * TERKALIBRASI. Di label lebar celahnya 21,6% dari lebar footer,
+                 * di sini 12% — sengaja tidak dibuat sama persis karena kotaknya
+                 * masih perlu ruang cadangan untuk nomor dokumen yang lebih
+                 * panjang.
+                 */
+                font-size: 3.5pt;
                 line-height: 1;
               }
 
@@ -2756,17 +2780,18 @@ border-left: 0; border-right:0;
                     <tbody>
                       <tr>
                         <!-- Lebar kolom berasal dari PENGUKURAN Verdana, bukan
-                             taksiran: pada lebar isi 39,4mm dan font 4pt, teks
-                             plus padding 0,5mm kiri-kanan menuntut Nomor
-                             5,74mm, nomor dokumen 16,73mm, Halaman 7,25mm, dan
-                             "1 dari 1" 6,50mm. Sel kosong Tanggal & Revisi
-                             dihapus dan lebarnya dibagi ke empat kotak yang
-                             benar-benar berisi — pada stiker sesempit ini
-                             geometri kolom label lebar sudah tidak muat. -->
-                        <td class="boxed rule-right" style="width:16%;">Nomor</td>
-                        <td class="boxed rule-right" style="width:45%;">${oocNoDoc}</td>
-                        <td class="boxed rule-left rule-right" style="width:20%;">Halaman</td>
-                        <td class="boxed" style="width:19%;">1 dari 1</td>
+                             taksiran: pada lebar isi 39,4mm dan font 3,5pt,
+                             teks plus padding 0,5mm kiri-kanan menuntut Nomor
+                             5,15mm, nomor dokumen 14,76mm, Halaman 6,47mm, dan
+                             "1 dari 1" 5,81mm. Tiap kotak diberi ~0,5mm ruang
+                             cadangan, sisanya menjadi celah kosong di tengah —
+                             posisinya sama seperti label TERKALIBRASI, yaitu
+                             antara nomor dokumen dan kotak Halaman. -->
+                        <td class="boxed rule-right" style="width:14%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:40%;">${oocNoDoc}</td>
+                        <td style="width:12%;"></td>
+                        <td class="boxed rule-left rule-right" style="width:18%;">Halaman</td>
+                        <td class="boxed" style="width:16%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
