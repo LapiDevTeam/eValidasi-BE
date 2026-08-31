@@ -2269,16 +2269,28 @@ const LABEL_HEIGHT = '2.4cm';
 // tapi jauh lebih tinggi. Label ini dirakit di sini (bukan lewat halaman React
 // PrintTerkalibrasiThermo), jadi ukurannya harus dinyatakan ulang di file ini —
 // perubahan di sisi front-end tidak berpengaruh pada jalur OOC.
-const OOC_LABEL_WIDTH = '4.2cm';
+const OOC_LABEL_WIDTH = '4.7cm';
 const OOC_LABEL_HEIGHT = '3.1cm';
 
 /**
  * Jarak aman cetak, sama seperti di PrintTerkalibrasiThermo: bingkai sengaja
- * TIDAK dibuat sebesar halaman. Sisi kiri diberi jarak paling besar karena
- * keluaran printer melenceng ke kiri, dan sisi bawah dilebihkan karena garis
- * bawahlah yang pertama hilang saat kertas berhenti sedikit lebih awal.
+ * TIDAK dibuat sebesar halaman.
+ *
+ * Label TERKALIBRASI memakai jarak aman yang SAMA (0,5/0,5/1,3/1,6mm) dan tercetak
+ * utuh, sementara label ini terpotong — bedanya cuma ukuran halaman yang dulu
+ * 42mm padahal stikernya 47mm. Jadi penyebab utamanya ketidakcocokan ukuran itu,
+ * bukan area tak tercetak milik printer.
+ *
+ * Angka kiri & atas tetap dinaikkan sebagai cadangan: pada 1,6mm kiri, sekitar
+ * 0,8mm masih terpotong — garis bingkai kiri hilang dan "Nomor" tercetak "omor".
+ * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
+ * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
  */
-const OOC_SAFE_PADDING = '0.5mm 0.5mm 1.3mm 1.6mm';
+const OOC_SAFE_PADDING = '2mm 2mm 1.3mm 3mm';
+// Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
+const OOC_SAFE_PADDING_X_MM = 5;
+// Lebar sel logo pada label OOC, mengikuti label fisik.
+const OOC_LOGO_CELL_MM = 11;
 
 /**
  * Ukuran judul untuk label OOC, yang judulnya BOLEH turun ke baris kedua.
@@ -2554,7 +2566,11 @@ border-left: 0; border-right:0;
       // Label 'ooc' (unit tidak siap dikalibrasi) tetap memakai teks lama
       // "JANGAN DIGUNAKAN"; 'hasil-ooc' memakai "OUT OF CALIBRATION".
       const oocTitle = isResultOocLabel ? resolvedJudul : 'JANGAN DIGUNAKAN';
-      const oocTitleFontSize = oocLabelTitleFontSize(oocTitle);
+      // Lebar area judul = lebar stiker - jarak aman kiri/kanan - garis bingkai
+      // - sel logo, dihitung dari konstanta supaya ikut kalau ukurannya berubah.
+      const oocTitleAreaMm =
+        parseFloat(OOC_LABEL_WIDTH) * 10 - OOC_SAFE_PADDING_X_MM - 0.5 - OOC_LOGO_CELL_MM;
+      const oocTitleFontSize = oocLabelTitleFontSize(oocTitle, oocTitleAreaMm);
       const escapedOocTitle = escapeHtml(oocTitle);
       // Stiker OOC sudah berwarna secara fisik, jadi logonya harus berlatar
       // tembus — bukan LapiLogo.jpg yang membawa kotak putih.
@@ -2595,7 +2611,7 @@ border-left: 0; border-right:0;
               .label-page {
                 width: ${OOC_LABEL_WIDTH};
                 height: ${OOC_LABEL_HEIGHT};
-                /* Isinya sengaja TIDAK dibuat pas 4,2 x 3,1cm: bingkai yang
+                /* Isinya sengaja TIDAK dibuat pas 4,7 x 3,1cm: bingkai yang
                    menyentuh tepi halaman adalah bingkai yang tepinya hilang
                    saat dicetak. */
                 padding: ${OOC_SAFE_PADDING};
@@ -2630,8 +2646,11 @@ border-left: 0; border-right:0;
                * selalu berjumlah pas walau salah satu angka diubah.
                */
               .header {
-                flex: 0 0 13.8mm;
-                height: 13.8mm;
+                /* 12,5mm, bukan 13,8mm: jarak aman atas dinaikkan jadi 2mm dan
+                   tingginya diambil dari header, supaya isi (.body) tidak menyempit.
+                   Judul dua baris hanya butuh ~7mm, jadi sisanya masih longgar. */
+                flex: 0 0 12.5mm;
+                height: 12.5mm;
                 display: flex;
                 border-bottom: 0.25mm solid #000;
               }
