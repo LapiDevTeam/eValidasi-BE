@@ -138,6 +138,68 @@ const getOwningDepartment = async (identifier, bagian_user) => {
   return result[0]?.Department || null;
 };
 
+// DA tables + status tables (QA_ID unik per instrumen di salah satu tabel ini)
+const DA_TABLES = [
+  { table: 'T_Kalibrasi_DA_Thermohygro', statusTable: 'T_Kalibrasi_DA_Thermohygro_status' },
+  { table: 'T_Kalibrasi_DA_Anak_Timbangan', statusTable: 'T_Kalibrasi_DA_Anak_Timbangan_status' },
+  { table: 'T_Kalibrasi_DA_Timbangan', statusTable: 'T_Kalibrasi_DA_Timbangan_status' },
+  { table: 'T_Kalibrasi_DA_Bagian', statusTable: 'T_Kalibrasi_DA_Bagian_status' },
+];
+
+/**
+ * Mirror approval kalibrasi eksternal ke DA master:
+ * - Catatan DA (Keterangan) diisi catatan eksternal
+ * - Status DA di-approve (insert Approver_No = 1) mengikuti pola
+ *   ensureDaApproved di calibrationManagerFinalization.service
+ * No-op jika QA_ID tidak punya row DA atau DA sudah approved.
+ */
+const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
+  const rows = await sequelizeMSQL.query(
+    `SELECT d.QA_ID
+     FROM T_Kalibrasi_Eksternal e
+     INNER JOIN T_Monthly_Schedule_External_Detail d
+       ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+     WHERE e.ekst_id = :ekst_id`,
+    { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  const qaId = rows[0]?.QA_ID;
+  if (!qaId) return;
+
+  for (const da of DA_TABLES) {
+    const daRow = await sequelizeMSQL.query(
+      `SELECT QA_ID FROM ${da.table} WHERE QA_ID = :qaId`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (!daRow.length) continue;
+
+    // Share Keterangan
+    if (catatan) {
+      await sequelizeMSQL.query(
+        `UPDATE ${da.table} SET Catatan = :catatan WHERE QA_ID = :qaId`,
+        { replacements: { qaId, catatan }, type: Sequelize.QueryTypes.UPDATE }
+      );
+    }
+
+    // Share approval status (skip jika sudah approved)
+    const approved = await sequelizeMSQL.query(
+      `SELECT COUNT(*) AS cnt FROM ${da.statusTable} WHERE QA_ID = :qaId AND Approver_No = 1`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if ((approved[0]?.cnt || 0) === 0) {
+      await sequelizeMSQL.query(
+        `INSERT INTO ${da.statusTable}
+           (QA_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+         VALUES
+           (:qaId, 1, 0, 0, GETDATE(), :user_id, :user_id, NULL)`,
+        { replacements: { qaId, user_id }, type: Sequelize.QueryTypes.INSERT }
+      );
+    }
+
+    return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
 /**
  * GET /list
  * Lists instruments from APPROVED external schedules, joined with execution status.
@@ -1103,7 +1165,7 @@ const approveKalibrasiEksternal = async (req, res, next) => {
 
     // Verify record status allows approval
     const ekstRecord = await sequelizeMSQL.query(
-      `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
+      `SELECT status, catatan FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
 
@@ -1202,6 +1264,11 @@ const approveKalibrasiEksternal = async (req, res, next) => {
        WHERE ekst_id = :ekst_id`,
       { replacements: { ekst_id, newStatus, user_id }, type: Sequelize.QueryTypes.UPDATE }
     );
+
+    // Approve → mirror Keterangan + status approval ke DA master (jika alat punya DA)
+    if (action === 'approve') {
+      await mirrorDaApprovalEksternal(ekst_id, ekstRecord[0]?.catatan || catatan || null, user_id);
+    }
 
     const message = action === 'approve'
       ? 'Sertifikat kalibrasi eksternal telah disetujui'
