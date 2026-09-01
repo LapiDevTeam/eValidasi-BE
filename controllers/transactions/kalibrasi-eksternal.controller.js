@@ -146,14 +146,16 @@ const DA_TABLES = [
   { table: 'T_Kalibrasi_DA_Bagian', statusTable: 'T_Kalibrasi_DA_Bagian_status' },
 ];
 
-/**
- * Mirror approval kalibrasi eksternal ke DA master:
- * - Catatan DA (Keterangan) diisi catatan eksternal
- * - Status DA di-approve (insert Approver_No = 1) mengikuti pola
- *   ensureDaApproved di calibrationManagerFinalization.service
- * No-op jika QA_ID tidak punya row DA atau DA sudah approved.
- */
-const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
+// Resolve QA_ID dari ekst_id atau schedule_detail_id
+const resolveQaIdEksternal = async ({ ekst_id, schedule_detail_id }) => {
+  if (schedule_detail_id) {
+    const rows = await sequelizeMSQL.query(
+      `SELECT QA_ID FROM T_Monthly_Schedule_External_Detail WHERE Schedule_External_Detail_ID = :schedule_detail_id`,
+      { replacements: { schedule_detail_id }, type: Sequelize.QueryTypes.SELECT }
+    );
+    return rows[0]?.QA_ID || null;
+  }
+
   const rows = await sequelizeMSQL.query(
     `SELECT d.QA_ID
      FROM T_Kalibrasi_Eksternal e
@@ -162,9 +164,38 @@ const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
      WHERE e.ekst_id = :ekst_id`,
     { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
   );
+  return rows[0]?.QA_ID || null;
+};
 
-  const qaId = rows[0]?.QA_ID;
+/**
+ * Mirror Keterangan ke DA master (kolom Catatan) by QA_ID.
+ * No-op jika QA_ID tidak punya row DA.
+ */
+const mirrorDaCatatanEksternal = async (qaId, catatan) => {
+  if (!qaId || !catatan) return;
+
+  for (const da of DA_TABLES) {
+    const result = await sequelizeMSQL.query(
+      `UPDATE ${da.table} SET Catatan = :catatan WHERE QA_ID = :qaId`,
+      { replacements: { qaId, catatan }, type: Sequelize.QueryTypes.UPDATE }
+    );
+    const affected = Array.isArray(result) ? result[1] : 0;
+    if (affected > 0) return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
+/**
+ * Mirror approval kalibrasi eksternal ke DA master:
+ * - Catatan DA (Keterangan) diisi catatan eksternal
+ * - Status DA di-approve (insert Approver_No = 1) mengikuti pola
+ *   ensureDaApproved di calibrationManagerFinalization.service
+ * No-op jika QA_ID tidak punya row DA atau DA sudah approved.
+ */
+const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
+  const qaId = await resolveQaIdEksternal({ ekst_id });
   if (!qaId) return;
+
+  await mirrorDaCatatanEksternal(qaId, catatan);
 
   for (const da of DA_TABLES) {
     const daRow = await sequelizeMSQL.query(
@@ -172,14 +203,6 @@ const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
       { replacements: { qaId }, type: Sequelize.QueryTypes.SELECT }
     );
     if (!daRow.length) continue;
-
-    // Share Keterangan
-    if (catatan) {
-      await sequelizeMSQL.query(
-        `UPDATE ${da.table} SET Catatan = :catatan WHERE QA_ID = :qaId`,
-        { replacements: { qaId, catatan }, type: Sequelize.QueryTypes.UPDATE }
-      );
-    }
 
     // Share approval status (skip jika sudah approved)
     const approved = await sequelizeMSQL.query(
@@ -1538,6 +1561,10 @@ const saveTidakDapat = async (req, res, next) => {
       );
     }
 
+    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master
+    const qaId = await resolveQaIdEksternal({ ekst_id, schedule_detail_id });
+    await mirrorDaCatatanEksternal(qaId, alasan_tidak_dapat.trim());
+
     return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi berhasil disimpan' });
   } catch (error) {
     console.error('Error in saveTidakDapat:', error);
@@ -1694,6 +1721,11 @@ const approveTidakDapat = async (req, res, next) => {
        WHERE ekst_id = :ekst_id`,
       { replacements: { ekst_id, newStatus, user_id }, type: Sequelize.QueryTypes.UPDATE }
     );
+
+    // Approve → mirror status approval ke DA master (Catatan sudah diisi saat saveTidakDapat)
+    if (isApprove) {
+      await mirrorDaApprovalEksternal(ekst_id, null, user_id);
+    }
 
     return res.status(200).json({
       success: true,
