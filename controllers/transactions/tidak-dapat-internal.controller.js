@@ -9,18 +9,21 @@ const TIPE_CONFIG = {
     statusTable: 'T_Kalibrasi_Sertifikat_Bagian_Status',
     applicationCode: 'KAL_Sert_Bagian',
     daTable: 'T_Kalibrasi_DA_Bagian',
+    intervalCols: ['Parameter_Interval'],
   },
   thermohygro: {
     mainTable: 'T_Kalibrasi_Sertifikat_Thermohygro',
     statusTable: 'T_Kalibrasi_Sertifikat_Thermohygro_Status',
     applicationCode: 'KAL_Sert_Thermo',
     daTable: 'T_Kalibrasi_DA_Thermohygro',
+    intervalCols: ['Parameter_Interval'],
   },
   timbangan: {
     mainTable: 'T_Kalibrasi_Sertifikat_Timbangan',
     statusTable: 'T_Kalibrasi_Sertifikat_Timbangan_Status',
     applicationCode: 'KAL_Sert_Timbangan',
     daTable: 'T_Kalibrasi_DA_Timbangan',
+    intervalCols: ['Interval', 'Parameter_Interval'],
   },
 };
 
@@ -230,6 +233,17 @@ const saveTidakDapat = async (req, res, next) => {
 
     // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master
     await mirrorDaCatatan(cfg, qa_id, id_no_sertifikat, alasan_tidak_dapat);
+
+    // Unit tidak siap → interval DA menjadi 0 (alat tidak dijadwalkan ulang)
+    const setIntervalNol = cfg.intervalCols.map((c) => `${c} = 0`).join(', ');
+    await sequelizeMSQL.query(`
+      UPDATE ${cfg.daTable}
+      SET ${setIntervalNol}
+      WHERE QA_ID = :qa_id
+    `, {
+      replacements: { qa_id },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
 
     return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi berhasil disimpan' });
   } catch (error) {

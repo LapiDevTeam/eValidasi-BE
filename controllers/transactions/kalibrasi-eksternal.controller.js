@@ -140,10 +140,10 @@ const getOwningDepartment = async (identifier, bagian_user) => {
 
 // DA tables + status tables (QA_ID unik per instrumen di salah satu tabel ini)
 const DA_TABLES = [
-  { table: 'T_Kalibrasi_DA_Thermohygro', statusTable: 'T_Kalibrasi_DA_Thermohygro_status' },
-  { table: 'T_Kalibrasi_DA_Anak_Timbangan', statusTable: 'T_Kalibrasi_DA_Anak_Timbangan_status' },
-  { table: 'T_Kalibrasi_DA_Timbangan', statusTable: 'T_Kalibrasi_DA_Timbangan_status' },
-  { table: 'T_Kalibrasi_DA_Bagian', statusTable: 'T_Kalibrasi_DA_Bagian_status' },
+  { table: 'T_Kalibrasi_DA_Thermohygro', statusTable: 'T_Kalibrasi_DA_Thermohygro_status', intervalCols: ['Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Anak_Timbangan', statusTable: 'T_Kalibrasi_DA_Anak_Timbangan_status', intervalCols: ['Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Timbangan', statusTable: 'T_Kalibrasi_DA_Timbangan_status', intervalCols: ['Interval', 'Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Bagian', statusTable: 'T_Kalibrasi_DA_Bagian_status', intervalCols: ['Parameter_Interval'] },
 ];
 
 // Resolve QA_ID dari ekst_id atau schedule_detail_id
@@ -178,6 +178,24 @@ const mirrorDaCatatanEksternal = async (qaId, catatan) => {
     const result = await sequelizeMSQL.query(
       `UPDATE ${da.table} SET Catatan = :catatan WHERE QA_ID = :qaId`,
       { replacements: { qaId, catatan }, type: Sequelize.QueryTypes.UPDATE }
+    );
+    const affected = Array.isArray(result) ? result[1] : 0;
+    if (affected > 0) return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
+/**
+ * Unit tidak siap → set interval DA menjadi 0 (alat tidak dijadwalkan ulang).
+ * No-op jika QA_ID tidak punya row DA.
+ */
+const setDaIntervalNolEksternal = async (qaId) => {
+  if (!qaId) return;
+
+  for (const da of DA_TABLES) {
+    const setClause = da.intervalCols.map((c) => `${c} = 0`).join(', ');
+    const result = await sequelizeMSQL.query(
+      `UPDATE ${da.table} SET ${setClause} WHERE QA_ID = :qaId`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.UPDATE }
     );
     const affected = Array.isArray(result) ? result[1] : 0;
     if (affected > 0) return; // QA_ID hanya ada di satu tabel DA
@@ -1561,9 +1579,10 @@ const saveTidakDapat = async (req, res, next) => {
       );
     }
 
-    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master
+    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master + interval DA → 0
     const qaId = await resolveQaIdEksternal({ ekst_id, schedule_detail_id });
     await mirrorDaCatatanEksternal(qaId, alasan_tidak_dapat.trim());
+    await setDaIntervalNolEksternal(qaId);
 
     return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi berhasil disimpan' });
   } catch (error) {
