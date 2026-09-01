@@ -2286,9 +2286,9 @@ const OOC_LABEL_HEIGHT = '3.1cm';
  * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
  * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
  */
-const OOC_SAFE_PADDING = '1mm';
+const OOC_SAFE_PADDING = '0.8mm';
 // Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
-const OOC_SAFE_PADDING_X_MM = 2;
+const OOC_SAFE_PADDING_X_MM = 1;
 // Lebar sel logo pada label OOC, mengikuti label fisik.
 const OOC_LOGO_CELL_MM = 11;
 
