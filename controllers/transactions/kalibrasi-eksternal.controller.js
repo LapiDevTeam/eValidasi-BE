@@ -158,6 +158,7 @@ const getKalibrasiEksternalList = async (req, res, next) => {
         d.Schedule_Period_Year         AS tahun,
         d.Schedule_Period_Month        AS bulan,
         d.QA_ID                        AS qa_id,
+        da.id_kalibrasi,
         d.Instrument_Name              AS nama_alat,
         d.Instrument_ID                AS instrument_id,
         d.Department                   AS departemen,
@@ -188,6 +189,20 @@ const getKalibrasiEksternalList = async (req, res, next) => {
       INNER JOIN T_Monthly_Schedule_External_Header h
         ON d.Schedule_External_Header_ID = h.Schedule_External_Header_ID
         AND h.Status = 'APPROVED'
+      -- ID kalibrasi diambil dari tabel DA (QA_ID unik per instrumen)
+      LEFT JOIN (
+        SELECT QA_ID, MAX(Assm_No_identitas_kalibrasi) AS id_kalibrasi
+        FROM (
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Thermohygro
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Anak_Timbangan
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Timbangan
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Bagian
+        ) u
+        GROUP BY QA_ID
+      ) da ON da.QA_ID = d.QA_ID
       LEFT JOIN T_Kalibrasi_Eksternal e
         ON e.schedule_detail_id = d.Schedule_External_Detail_ID
       LEFT JOIN T_Kalibrasi_Master_Vendor v
