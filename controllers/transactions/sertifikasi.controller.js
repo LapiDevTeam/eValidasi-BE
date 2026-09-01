@@ -2286,9 +2286,9 @@ const OOC_LABEL_HEIGHT = '3.1cm';
  * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
  * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
  */
-const OOC_SAFE_PADDING = '2mm 2mm 1.3mm 3mm';
+const OOC_SAFE_PADDING = '1mm';
 // Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
-const OOC_SAFE_PADDING_X_MM = 5;
+const OOC_SAFE_PADDING_X_MM = 2;
 // Lebar sel logo pada label OOC, mengikuti label fisik.
 const OOC_LOGO_CELL_MM = 11;
 
@@ -2646,11 +2646,10 @@ border-left: 0; border-right:0;
                * selalu berjumlah pas walau salah satu angka diubah.
                */
               .header {
-                /* 12,5mm, bukan 13,8mm: jarak aman atas dinaikkan jadi 2mm dan
-                   tingginya diambil dari header, supaya isi (.body) tidak menyempit.
-                   Judul dua baris hanya butuh ~7mm, jadi sisanya masih longgar. */
-                flex: 0 0 12.5mm;
-                height: 12.5mm;
+                /* Kembali 13,8mm: jarak aman turun ke 1mm sehingga ruang vertikal
+                   yang sempat dipinjam dari header bisa dikembalikan. */
+                flex: 0 0 13.8mm;
+                height: 13.8mm;
                 display: flex;
                 border-bottom: 0.25mm solid #000;
               }
