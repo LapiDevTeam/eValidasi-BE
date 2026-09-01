@@ -8,16 +8,19 @@ const TIPE_CONFIG = {
     mainTable: 'T_Kalibrasi_Sertifikat_Bagian',
     statusTable: 'T_Kalibrasi_Sertifikat_Bagian_Status',
     applicationCode: 'KAL_Sert_Bagian',
+    daTable: 'T_Kalibrasi_DA_Bagian',
   },
   thermohygro: {
     mainTable: 'T_Kalibrasi_Sertifikat_Thermohygro',
     statusTable: 'T_Kalibrasi_Sertifikat_Thermohygro_Status',
     applicationCode: 'KAL_Sert_Thermo',
+    daTable: 'T_Kalibrasi_DA_Thermohygro',
   },
   timbangan: {
     mainTable: 'T_Kalibrasi_Sertifikat_Timbangan',
     statusTable: 'T_Kalibrasi_Sertifikat_Timbangan_Status',
     applicationCode: 'KAL_Sert_Timbangan',
+    daTable: 'T_Kalibrasi_DA_Timbangan',
   },
 };
 
@@ -30,6 +33,41 @@ function getConfig(tipe) {
   if (!cfg) return null;
   return cfg;
 }
+
+/**
+ * Mirror alasan OOC ke kolom Catatan tabel DA (keyed by QA_ID).
+ * Mengikuti pola mirror Catatan sertifikat normal di
+ * calibrationManagerFinalization.service (ensureDaThermoGenerated).
+ * Jika catatan = null → kembalikan Catatan DA ke Catatan sertifikat
+ * (dipakai saat MGR reject / reset flow tidak-dapat).
+ * No-op jika row DA belum ada.
+ */
+const mirrorDaCatatan = async (cfg, qa_id, id_no_sertifikat, catatan) => {
+  if (catatan === null || catatan === undefined) {
+    await sequelizeMSQL.query(`
+      UPDATE DA
+      SET Catatan = S.Catatan
+      FROM ${cfg.daTable} AS DA
+      INNER JOIN ${cfg.mainTable} AS S
+        ON S.QA_ID = DA.QA_ID
+      WHERE DA.QA_ID = :qa_id
+        AND S.ID_No_Sertifikat = :id_no_sertifikat
+    `, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+    return;
+  }
+
+  await sequelizeMSQL.query(`
+    UPDATE ${cfg.daTable}
+    SET Catatan = :catatan
+    WHERE QA_ID = :qa_id
+  `, {
+    replacements: { qa_id, catatan },
+    type: Sequelize.QueryTypes.UPDATE,
+  });
+};
 
 // ============================================================
 // GET STATUS
@@ -189,6 +227,9 @@ const saveTidakDapat = async (req, res, next) => {
       replacements: { qa_id, id_no_sertifikat, alasan_tidak_dapat, kondisi_alat: kondisi_alat || null },
       type: Sequelize.QueryTypes.UPDATE,
     });
+
+    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master
+    await mirrorDaCatatan(cfg, qa_id, id_no_sertifikat, alasan_tidak_dapat);
 
     return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi berhasil disimpan' });
   } catch (error) {
@@ -461,6 +502,8 @@ const approveTidakDapatMGR = async (req, res, next) => {
         replacements: { qa_id, id_no_sertifikat },
         type: Sequelize.QueryTypes.UPDATE,
       });
+      // Kembalikan Catatan DA ke Catatan sertifikat (hapus alasan OOC yang di-mirror)
+      await mirrorDaCatatan(cfg, qa_id, id_no_sertifikat, null);
       return res.status(200).json({ success: true, message: 'Ditolak oleh MGR — FA dapat merevisi data dari awal' });
     }
   } catch (error) {
