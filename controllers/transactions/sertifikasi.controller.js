@@ -2265,12 +2265,22 @@ const LABEL_WIDTH = '5.4cm';
 const LABEL_FONT = 'Verdana, Tahoma, "DejaVu Sans", Geneva, sans-serif';
 const LABEL_HEIGHT = '2.4cm';
 
+// KOMPENSASI PRINTER — bukan ukuran stiker sebenarnya.
+//
+// Stiker fisiknya 47 x 31mm, tapi printer mengecilkan halaman ke sekitar 88%
+// dan menempelkannya di kiri-atas: pada halaman 47mm, jarak kiri tercetak ~2mm
+// (sesuai desain) sementara sisa kanannya ~6mm. Halaman sengaja dibuat 3mm
+// lebih besar di tiap sisi supaya hasil cetaknya mendekati penuh.
+//
+// Kalau penskalaan di driver printer nanti diperbaiki, angka ini HARUS
+// dikembalikan ke 4.7cm x 3.1cm — kalau tidak, isinya akan melewati stiker.
+//
 // Stiker "JANGAN DIGUNAKAN" / OOC memakai ukuran yang BERBEDA: lebih sempit
 // tapi jauh lebih tinggi. Label ini dirakit di sini (bukan lewat halaman React
 // PrintTerkalibrasiThermo), jadi ukurannya harus dinyatakan ulang di file ini —
 // perubahan di sisi front-end tidak berpengaruh pada jalur OOC.
-const OOC_LABEL_WIDTH = '4.7cm';
-const OOC_LABEL_HEIGHT = '3.1cm';
+const OOC_LABEL_WIDTH = '5cm';
+const OOC_LABEL_HEIGHT = '3.4cm';
 
 /**
  * Jarak aman cetak, sama seperti di PrintTerkalibrasiThermo: bingkai sengaja
@@ -2620,11 +2630,15 @@ border-left: 0; border-right:0;
               .label {
                 width: 100%;
                 height: 100%;
-                /* Persegi panjang luar UTUH di keempat sisi. Garis bawahnya
-                   datang dari sini, bukan dari sel footer — hanya bingkai yang
-                   membentang penuh selebar label, sehingga celah kosong di
-                   footer tetap tertutup tanpa harus diberi garis sendiri. */
+                /* Garis bawah TIDAK digambar di sini melainkan oleh sel footer.
+                   Dulu bingkai yang menggambarnya supaya celah kosong di tengah
+                   footer ikut tertutup, tapi akibatnya garis tegak antar kotak
+                   berhenti sedikit sebelum garis bawah dan sudutnya terlihat
+                   tidak menyambung. Sekarang celah itu sudah dilepas dan keempat
+                   kotak mengisi penuh, jadi selnya bisa menggambar garis bawah
+                   yang menyambung sekaligus menutup tiap kotak. */
                 border: 0.25mm solid #000;
+                border-bottom: 0;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
@@ -2760,6 +2774,7 @@ border-left: 0; border-right:0;
                  membentang penuh dan persegi panjang luar tidak terputus. */
               .footer td.boxed {
                 border-top: 0.25mm solid #000;
+                border-bottom: 0.25mm solid #000;
               }
 
               .footer td.rule-left {
