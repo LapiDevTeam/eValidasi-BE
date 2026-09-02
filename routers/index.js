@@ -20,6 +20,9 @@ const routerDissolutionTesterCalibration = require("../routers/transactions/diss
 const routerFriabilityCalibration = require("../routers/transactions/friability-calibration.router");
 const routerMoistureCalibration = require("../routers/transactions/moisture-calibration.router");
 const routerLeakTestCalibration = require("../routers/transactions/leak-test-calibration.router");
+const routerHardnessTesterCalibration = require("../routers/transactions/hardness-tester-calibration.router");
+const routerTemperatureControlCalibration = require("../routers/transactions/temperature-control-calibration.router");
+const routerEnclosuresCalibration = require("../routers/transactions/enclosures-calibration.router");
 const routerDisintegrationCalibration = require("../routers/transactions/disintegration-calibration.router");
 const routerRpmCalibration = require("../routers/transactions/rpm-calibration.router");
 const routerTemperatureCalibration = require("../routers/transactions/temperature-calibration.router");
@@ -30,6 +33,8 @@ const routerMasterVendor = require("../routers/transactions/master-vendor.router
 const routerKalibrasiEksternal = require("../routers/transactions/kalibrasi-eksternal.router");
 const routerCmsDashboard = require("../routers/cms/dashboard.router");
 const routerPendingCalibrationApprovals = require("../routers/reports/pending-calibration-approvals.router");
+const routerApproverProfile = require("../routers/transactions/approver-profile.router");
+const routerLabelReprintRequests = require("../routers/transactions/label-reprint-requests.router");
 
 router.get("/current-user", authentication, (req, res) => {
   try {
@@ -66,6 +71,9 @@ router.use("/dissolution-tester-calibration", routerDissolutionTesterCalibration
 router.use("/friability-calibration", routerFriabilityCalibration);
 router.use("/moisture-calibration", routerMoistureCalibration);
 router.use("/leak-test-calibration", routerLeakTestCalibration);
+router.use("/hardness-tester-calibration", routerHardnessTesterCalibration);
+router.use("/temperature-control-calibration", routerTemperatureControlCalibration);
+router.use("/enclosures-calibration", routerEnclosuresCalibration);
 router.use("/api", routerTimerCalibration);
 router.use("/api", routerTimbanganCalibration);
 router.use("/api", routerDisintegrationCalibration);
@@ -77,8 +85,15 @@ router.use("/transactions/master-vendor", routerMasterVendor);
 router.use("/transactions/kalibrasi-eksternal", routerKalibrasiEksternal);
 router.use("/cms/dashboard", routerCmsDashboard);
 router.use("/reports/pending-calibration-approvals", routerPendingCalibrationApprovals);
+router.use("/transactions/approver-profiles", routerApproverProfile);
+router.use("/transactions/kalibrasi/label-reprint-requests", routerLabelReprintRequests);
 
 module.exports = router;
+
+
+
+
+
 
 
 

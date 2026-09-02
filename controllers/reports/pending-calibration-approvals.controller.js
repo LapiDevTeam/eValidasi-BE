@@ -14,14 +14,35 @@ function normalizeSearch(search) {
   return text && text !== '%' ? text : '';
 }
 
+function normalizeRequester(requester) {
+  const text = String(requester || '').trim();
+  return text && text !== '%' ? text : '';
+}
+
 function getUser(req) {
   return req?.user || {};
 }
 
-const BAGIAN_MODULES = new Set(['da-bagian', 'sertifikat-bagian']);
+const BAGIAN_MODULES = new Set([
+  'da-bagian',
+  'sertifikat-bagian',
+  'da-thermo',
+  'sertifikat-thermo',
+  'kalibrasi-eksternal',
+]);
+
+const MASTER_MODULES = new Set([
+  'master-awp',
+  'master-map-internal',
+  'master-map-external',
+]);
 
 function isBagianModule(module) {
   return BAGIAN_MODULES.has(String(module || '').toLowerCase());
+}
+
+function isMasterModule(module) {
+  return MASTER_MODULES.has(String(module || '').toLowerCase());
 }
 
 function validateSessionId(module, sessionId) {
@@ -39,12 +60,14 @@ const listPendingApprovals = async (req, res, next) => {
     const user = getUser(req);
     const moduleFilter = req.query.module || '';
     const search = normalizeSearch(req.query.search);
+    const requester = normalizeRequester(req.query.requester);
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
-    const data = await service.listPendingApprovals({
-      userJobLevel: user.joblevel_id_user,
+    const { results: data, scanErrors } = await service.listPendingApprovals({
+      bagian_user: user.bagian_user,
       moduleFilter,
       search,
+      requester,
       limit,
     });
 
@@ -52,6 +75,7 @@ const listPendingApprovals = async (req, res, next) => {
       success: true,
       count: data.length,
       data,
+      scanErrors,
     });
   } catch (error) {
     console.error('Error in listPendingApprovals:', error);
@@ -79,11 +103,16 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const result = await service.approveSession(moduleSlug, sessionId, user);
+    const result = await service.approveSession(
+      moduleSlug,
+      sessionId,
+      user,
+      req.body || {}
+    );
 
     return res.status(200).json({
       success: true,
-      message: isBagianModule(moduleSlug)
+      message: isBagianModule(moduleSlug) || isMasterModule(moduleSlug)
         ? 'Item approved successfully'
         : `Workbook approved by ${result.approvedByLabel}`,
       data: result,
@@ -130,7 +159,7 @@ const rejectSession = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: isBagianModule(moduleSlug)
+      message: isBagianModule(moduleSlug) || isMasterModule(moduleSlug)
         ? 'Item rejected successfully'
         : 'Workbook rejected successfully',
       data: result,

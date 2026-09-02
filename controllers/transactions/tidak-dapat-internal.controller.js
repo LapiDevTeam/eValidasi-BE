@@ -8,16 +8,22 @@ const TIPE_CONFIG = {
     mainTable: 'T_Kalibrasi_Sertifikat_Bagian',
     statusTable: 'T_Kalibrasi_Sertifikat_Bagian_Status',
     applicationCode: 'KAL_Sert_Bagian',
+    daTable: 'T_Kalibrasi_DA_Bagian',
+    intervalCols: ['Parameter_Interval'],
   },
   thermohygro: {
     mainTable: 'T_Kalibrasi_Sertifikat_Thermohygro',
     statusTable: 'T_Kalibrasi_Sertifikat_Thermohygro_Status',
     applicationCode: 'KAL_Sert_Thermo',
+    daTable: 'T_Kalibrasi_DA_Thermohygro',
+    intervalCols: ['Parameter_Interval'],
   },
   timbangan: {
     mainTable: 'T_Kalibrasi_Sertifikat_Timbangan',
     statusTable: 'T_Kalibrasi_Sertifikat_Timbangan_Status',
     applicationCode: 'KAL_Sert_Timbangan',
+    daTable: 'T_Kalibrasi_DA_Timbangan',
+    intervalCols: ['Interval', 'Parameter_Interval'],
   },
 };
 
@@ -30,6 +36,41 @@ function getConfig(tipe) {
   if (!cfg) return null;
   return cfg;
 }
+
+/**
+ * Mirror alasan OOC ke kolom Catatan tabel DA (keyed by QA_ID).
+ * Mengikuti pola mirror Catatan sertifikat normal di
+ * calibrationManagerFinalization.service (ensureDaThermoGenerated).
+ * Jika catatan = null → kembalikan Catatan DA ke Catatan sertifikat
+ * (dipakai saat MGR reject / reset flow tidak-dapat).
+ * No-op jika row DA belum ada.
+ */
+const mirrorDaCatatan = async (cfg, qa_id, id_no_sertifikat, catatan) => {
+  if (catatan === null || catatan === undefined) {
+    await sequelizeMSQL.query(`
+      UPDATE DA
+      SET Catatan = S.Catatan
+      FROM ${cfg.daTable} AS DA
+      INNER JOIN ${cfg.mainTable} AS S
+        ON S.QA_ID = DA.QA_ID
+      WHERE DA.QA_ID = :qa_id
+        AND S.ID_No_Sertifikat = :id_no_sertifikat
+    `, {
+      replacements: { qa_id, id_no_sertifikat },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+    return;
+  }
+
+  await sequelizeMSQL.query(`
+    UPDATE ${cfg.daTable}
+    SET Catatan = :catatan
+    WHERE QA_ID = :qa_id
+  `, {
+    replacements: { qa_id, catatan },
+    type: Sequelize.QueryTypes.UPDATE,
+  });
+};
 
 // ============================================================
 // GET STATUS
@@ -44,9 +85,19 @@ const getTidakDapatStatus = async (req, res, next) => {
     const { tipe, qa_id, id_no_sertifikat } = req.query;
 
     const cfg = getConfig(tipe);
-    if (!cfg) return res.status(400).json({ success: false, message: 'tipe tidak valid' });
+    if (!cfg) {
+      const err = new Error('tipe tidak valid');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'qa_id dan id_no_sertifikat wajib diisi' });
+      const err = new Error('qa_id dan id_no_sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const mainResult = await sequelizeMSQL.query(`
@@ -66,7 +117,11 @@ const getTidakDapatStatus = async (req, res, next) => {
     });
 
     if (mainResult.length === 0) {
-      return res.status(404).json({ success: false, message: 'Data sertifikat tidak ditemukan' });
+      const err = new Error('Data sertifikat tidak ditemukan');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Cek approval SPV (Approver_No = 10) dan MGR (Approver_No = 11)
@@ -120,12 +175,26 @@ const saveTidakDapat = async (req, res, next) => {
     const { tipe, qa_id, id_no_sertifikat, alasan_tidak_dapat, kondisi_alat } = req.body;
 
     const cfg = getConfig(tipe);
-    if (!cfg) return res.status(400).json({ success: false, message: 'tipe tidak valid' });
+    if (!cfg) {
+      const err = new Error('tipe tidak valid');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'qa_id dan id_no_sertifikat wajib diisi' });
+      const err = new Error('qa_id dan id_no_sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!alasan_tidak_dapat) {
-      return res.status(400).json({ success: false, message: 'Alasan tidak dapat dikalibrasi wajib diisi' });
+      const err = new Error('Alasan tidak dapat dikalibrasi wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: SPV belum approve — tidak boleh revisi jika sudah lewat step SPV
@@ -141,10 +210,11 @@ const saveTidakDapat = async (req, res, next) => {
     });
 
     if ((spvCheck[0]?.cnt || 0) > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tidak dapat diubah — sudah direview oleh SPV/OFC',
-      });
+      const err = new Error('Tidak dapat diubah — sudah direview oleh SPV/OFC');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -158,6 +228,20 @@ const saveTidakDapat = async (req, res, next) => {
         AND ID_No_Sertifikat = :id_no_sertifikat
     `, {
       replacements: { qa_id, id_no_sertifikat, alasan_tidak_dapat, kondisi_alat: kondisi_alat || null },
+      type: Sequelize.QueryTypes.UPDATE,
+    });
+
+    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master
+    await mirrorDaCatatan(cfg, qa_id, id_no_sertifikat, alasan_tidak_dapat);
+
+    // Unit tidak siap → interval DA menjadi 0 (alat tidak dijadwalkan ulang)
+    const setIntervalNol = cfg.intervalCols.map((c) => `${c} = 0`).join(', ');
+    await sequelizeMSQL.query(`
+      UPDATE ${cfg.daTable}
+      SET ${setIntervalNol}
+      WHERE QA_ID = :qa_id
+    `, {
+      replacements: { qa_id },
       type: Sequelize.QueryTypes.UPDATE,
     });
 
@@ -184,12 +268,26 @@ const approveTidakDapatSPV = async (req, res, next) => {
     const { tipe, qa_id, id_no_sertifikat, action } = req.body;
 
     const cfg = getConfig(tipe);
-    if (!cfg) return res.status(400).json({ success: false, message: 'tipe tidak valid' });
+    if (!cfg) {
+      const err = new Error('tipe tidak valid');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'qa_id dan id_no_sertifikat wajib diisi' });
+      const err = new Error('qa_id dan id_no_sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus approve atau reject' });
+      const err = new Error('action harus approve atau reject');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: user harus ada di m_approver_lines untuk tipe ini
@@ -205,7 +303,11 @@ const approveTidakDapatSPV = async (req, res, next) => {
     });
 
     if (approverCheck.length === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak untuk mereview tidak dapat ini' });
+      const err = new Error('Anda tidak memiliki hak untuk mereview tidak dapat ini');
+      err.statusCode = 403;
+      res.status(403).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: is_tidak_dapat harus = 1
@@ -218,10 +320,18 @@ const approveTidakDapatSPV = async (req, res, next) => {
     });
 
     if (mainCheck.length === 0) {
-      return res.status(404).json({ success: false, message: 'Data sertifikat tidak ditemukan' });
+      const err = new Error('Data sertifikat tidak ditemukan');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!mainCheck[0].is_tidak_dapat) {
-      return res.status(400).json({ success: false, message: 'Status tidak dapat dikalibrasi belum diisi oleh FA' });
+      const err = new Error('Status tidak dapat dikalibrasi belum diisi oleh FA');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Cek apakah SPV sudah approve
@@ -238,7 +348,11 @@ const approveTidakDapatSPV = async (req, res, next) => {
 
     if (action === 'approve') {
       if (alreadyApproved) {
-        return res.status(400).json({ success: false, message: 'Sudah direview oleh SPV/OFC' });
+        const err = new Error('Sudah direview oleh SPV/OFC');
+        err.statusCode = 400;
+        res.status(400).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
       const apprIdentity = approverCheck[0].Appr_Identity || 0;
       await sequelizeMSQL.query(`
@@ -254,7 +368,11 @@ const approveTidakDapatSPV = async (req, res, next) => {
     } else {
       // reject: hapus SPV approval record → FA bisa revisi & set is_tidak_dapat=0 lagi atau ubah alasan
       if (!alreadyApproved) {
-        return res.status(400).json({ success: false, message: 'Belum ada review SPV yang bisa di-reject' });
+        const err = new Error('Belum ada review SPV yang bisa di-reject');
+        err.statusCode = 400;
+        res.status(400).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
       await sequelizeMSQL.query(`
         DELETE FROM ${cfg.statusTable}
@@ -288,12 +406,26 @@ const approveTidakDapatMGR = async (req, res, next) => {
     const { tipe, qa_id, id_no_sertifikat, action } = req.body;
 
     const cfg = getConfig(tipe);
-    if (!cfg) return res.status(400).json({ success: false, message: 'tipe tidak valid' });
+    if (!cfg) {
+      const err = new Error('tipe tidak valid');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'qa_id dan id_no_sertifikat wajib diisi' });
+      const err = new Error('qa_id dan id_no_sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus approve atau reject' });
+      const err = new Error('action harus approve atau reject');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: user harus ada di m_approver_lines untuk tipe ini
@@ -309,7 +441,11 @@ const approveTidakDapatMGR = async (req, res, next) => {
     });
 
     if (approverCheck.length === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak untuk menyetujui tidak dapat ini' });
+      const err = new Error('Anda tidak memiliki hak untuk menyetujui tidak dapat ini');
+      err.statusCode = 403;
+      res.status(403).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: SPV harus sudah approve (Approver_No=10 harus ada)
@@ -323,7 +459,11 @@ const approveTidakDapatMGR = async (req, res, next) => {
     });
 
     if ((spvCheck[0]?.cnt || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Belum direview oleh SPV/OFC' });
+      const err = new Error('Belum direview oleh SPV/OFC');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Cek apakah MGR sudah approve
@@ -340,7 +480,11 @@ const approveTidakDapatMGR = async (req, res, next) => {
 
     if (action === 'approve') {
       if (alreadyApproved) {
-        return res.status(400).json({ success: false, message: 'Sudah disetujui oleh MGR' });
+        const err = new Error('Sudah disetujui oleh MGR');
+        err.statusCode = 400;
+        res.status(400).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
       const apprIdentity = approverCheck[0].Appr_Identity || 0;
       await sequelizeMSQL.query(`
@@ -372,6 +516,8 @@ const approveTidakDapatMGR = async (req, res, next) => {
         replacements: { qa_id, id_no_sertifikat },
         type: Sequelize.QueryTypes.UPDATE,
       });
+      // Kembalikan Catatan DA ke Catatan sertifikat (hapus alasan OOC yang di-mirror)
+      await mirrorDaCatatan(cfg, qa_id, id_no_sertifikat, null);
       return res.status(200).json({ success: true, message: 'Ditolak oleh MGR — FA dapat merevisi data dari awal' });
     }
   } catch (error) {
@@ -396,9 +542,19 @@ const konfirmasiLabelTidakDapat = async (req, res, next) => {
     const { tipe, qa_id, id_no_sertifikat } = req.body;
 
     const cfg = getConfig(tipe);
-    if (!cfg) return res.status(400).json({ success: false, message: 'tipe tidak valid' });
+    if (!cfg) {
+      const err = new Error('tipe tidak valid');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'qa_id dan id_no_sertifikat wajib diisi' });
+      const err = new Error('qa_id dan id_no_sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: MGR harus sudah approve
@@ -412,7 +568,11 @@ const konfirmasiLabelTidakDapat = async (req, res, next) => {
     });
 
     if ((mgrCheck[0]?.cnt || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Belum disetujui oleh MGR' });
+      const err = new Error('Belum disetujui oleh MGR');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: jangan overwrite jika sudah ada tgl_label_tempel
@@ -425,7 +585,11 @@ const konfirmasiLabelTidakDapat = async (req, res, next) => {
     });
 
     if (labelCheck[0]?.tgl_label_tempel) {
-      return res.status(400).json({ success: false, message: 'Label sudah pernah dikonfirmasi' });
+      const err = new Error('Label sudah pernah dikonfirmasi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`

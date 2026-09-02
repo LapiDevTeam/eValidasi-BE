@@ -318,6 +318,77 @@ const checkApproveButton = async (req, res, next) => {
 };
 
 /**
+ * GET /pending-mgr-approval
+ * Lists penghapusan alat requests belonging to a department that are still
+ * waiting for the Manager Bagian approval (no T_Kalibrasi_Penghapusan_status
+ * row with approver_no = 1). Used to block the department from creating a new
+ * Permohonan Kalibrasi while those approvals are still outstanding.
+ *
+ * Query params: bagian (optional – defaults to user's department)
+ */
+const getPendingMgrApproval = async (req, res, next) => {
+  try {
+    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    const { bagian } = req.query;
+
+    const deptToFilter = bagian || bagian_user || '';
+
+    // Without a department there is nothing to scope the check to – never block.
+    if (!deptToFilter) {
+      return res.status(200).json({
+        success: true,
+        message: 'Data fetched successfully',
+        data: { bagian: '', has_pending: false, count: 0, items: [] },
+      });
+    }
+
+    const query = `
+      SELECT
+        A.no_penghapusan,
+        A.tanggal,
+        YEAR(A.tanggal) AS tahun,
+        A.pemohon,
+        A.bagian
+      FROM T_Kalibrasi_Penghapusan AS A
+      LEFT JOIN (
+        SELECT DISTINCT no_penghapusan
+        FROM T_Kalibrasi_Penghapusan_status
+        WHERE approver_no = 1
+      ) AS B ON A.no_penghapusan = B.no_penghapusan
+      WHERE B.no_penghapusan IS NULL
+        AND A.bagian LIKE :bagianFilter
+      ORDER BY A.tanggal DESC
+    `;
+
+    const results = await sequelizeMSQL.query(query, {
+      replacements: { bagianFilter: `${deptToFilter}%` },
+      type: Sequelize.QueryTypes.SELECT,
+    });
+
+    const items = results.map((item) => ({
+      ...item,
+      tanggal: item.tanggal
+        ? moment(item.tanggal).utcOffset(7).format('DD-MMM-YYYY')
+        : '',
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Data fetched successfully',
+      data: {
+        bagian: deptToFilter,
+        has_pending: items.length > 0,
+        count: items.length,
+        items,
+      },
+    });
+  } catch (error) {
+    console.error('Error in getPendingMgrApproval:', error);
+    next(error);
+  }
+};
+
+/**
  * GET /browse-da
  * VBA: cmd_browse_DA_Click
  * Searches available DA instruments (across all DA tables) that are NOT already
@@ -1092,6 +1163,7 @@ module.exports = {
   getPenghapusanDetailItems,
   getCurrentApprove,
   checkApproveButton,
+  getPendingMgrApproval,
   browseDaInstruments,
   getApproverIdentityPenghapusan,
   savePenghapusan,

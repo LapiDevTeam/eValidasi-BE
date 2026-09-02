@@ -90,11 +90,15 @@ const getDaBagianList = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getDaBagianList:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching DA Bagian list');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching DA Bagian list',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -109,10 +113,14 @@ const getDaBagianDetail = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const query = `
@@ -141,10 +149,14 @@ const getDaBagianDetail = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({
         success: false,
-        message: 'Data not found',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     return res.status(200).json({
@@ -153,11 +165,15 @@ const getDaBagianDetail = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getDaBagianDetail:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching DA Bagian detail');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching DA Bagian detail',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -318,11 +334,15 @@ const getDaBagianForExport = async (req, res, next) => {
     return res.send(buffer);
   } catch (error) {
     console.error('Error in getDaBagianForExport:', error);
-    return res.status(500).json({
+    const err = new Error('Error exporting DA Bagian to Excel');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error exporting DA Bagian to Excel',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -336,10 +356,14 @@ const getPrintData = async (req, res, next) => {
     const { bagian } = req.query;
 
     if (!bagian) {
-      return res.status(400).json({
+      const err = new Error('Bagian is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Bagian is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const query = `
@@ -370,11 +394,15 @@ const getPrintData = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getPrintData:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching print data');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching print data',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -389,10 +417,14 @@ const getLabelData = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const query = `
@@ -423,10 +455,14 @@ const getLabelData = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({
         success: false,
-        message: 'Data not found',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const data = results[0];
@@ -438,10 +474,14 @@ const getLabelData = async (req, res, next) => {
     const isLainLain = parameterSertifikasi.startsWith('LAIN');
 
     if (!isExternal && !isLainLain) {
-      return res.status(400).json({
+      const err = new Error('Tombol ini khusus Label terkalibrasi External dan Internal dengan parameter sertifikasi lain-lain !');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tombol ini khusus Label terkalibrasi External dan Internal dengan parameter sertifikasi lain-lain !',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // VBA parity: stamp print metadata once when first print happens.
@@ -476,11 +516,15 @@ const getLabelData = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getLabelData:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching label data');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching label data',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -495,10 +539,14 @@ const getFileName = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const query = `
@@ -518,11 +566,15 @@ const getFileName = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getFileName:', error);
-    return res.status(500).json({
+    const err = new Error('Error getting file name');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error getting file name',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -537,10 +589,14 @@ const getNextCalibrationDate = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const query = `
@@ -560,11 +616,15 @@ const getNextCalibrationDate = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getNextCalibrationDate:', error);
-    return res.status(500).json({
+    const err = new Error('Error getting next calibration date');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error getting next calibration date',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -579,10 +639,14 @@ const checkIsApproved = async (req, res, next) => {
     const { qa_id, approver_level } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const apprLevel = approver_level || '1';
@@ -605,11 +669,15 @@ const checkIsApproved = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in checkIsApproved:', error);
-    return res.status(500).json({
+    const err = new Error('Error checking approval status');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error checking approval status',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -630,10 +698,14 @@ const checkApproveButton = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id) {
-      return res.status(400).json({
+      const err = new Error('QA_ID is required');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'QA_ID is required',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // 1# Check if user is an approver for KAL_DA_Bagian
@@ -694,11 +766,15 @@ const checkApproveButton = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in checkApproveButton:', error);
-    return res.status(500).json({
+    const err = new Error('Error checking approve button status');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error checking approve button status',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -735,11 +811,15 @@ const getApprIdentity = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getApprIdentity:', error);
-    return res.status(500).json({
+    const err = new Error('Error getting approver identity');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error getting approver identity',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -772,11 +852,15 @@ const checkAllowInput = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in checkAllowInput:', error);
-    return res.status(500).json({
+    const err = new Error('Error checking allow input permission');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error checking allow input permission',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -806,11 +890,15 @@ const getDepartments = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getDepartments:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching departments');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching departments',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -839,11 +927,15 @@ const getBagianList = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in getBagianList:', error);
-    return res.status(500).json({
+    const err = new Error('Error fetching bagian list');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error fetching bagian list',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -874,26 +966,38 @@ const saveDaBagian = async (req, res, next) => {
 
     const hasInputPermission = await hasAllowInputPermission(user_id);
     if (!hasInputPermission) {
-      return res.status(403).json({
+      const err = new Error('User tidak memiliki akses input data');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User tidak memiliki akses input data',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Validate tgl_kalibrasi
     if (!tgl_kalibrasi || tgl_kalibrasi === '') {
-      return res.status(400).json({
+      const err = new Error('Tanggal kalibrasi harus isi');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tanggal kalibrasi harus isi',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Validate interval is numeric
     if (parameter_interval === undefined || parameter_interval === null || parameter_interval === '' || isNaN(parameter_interval)) {
-      return res.status(400).json({
+      const err = new Error('Interval harus isi numeric');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Interval harus isi numeric',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // If editing existing record, check not already approved
@@ -909,10 +1013,14 @@ const saveDaBagian = async (req, res, next) => {
         type: Sequelize.QueryTypes.SELECT,
       });
       if (approvedResults.length > 0) {
-        return res.status(400).json({
+        const err = new Error('Tidak bisa simpan, karena data sudah approve!');
+        err.statusCode = 400;
+        res.status(400).json({
           success: false,
-          message: 'Tidak bisa simpan, karena data sudah approve!',
+          message: err.message,
         });
+        next(err);
+        return;
       }
     }
 
@@ -1050,11 +1158,15 @@ const saveDaBagian = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in saveDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error saving DA Bagian');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error saving DA Bagian',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -1074,24 +1186,36 @@ const approveDaBagian = async (req, res, next) => {
     ]);
 
     if (!hasInputPermission) {
-      return res.status(403).json({
+      const err = new Error('User tidak memiliki akses input data');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User tidak memiliki akses input data',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!isApprover) {
-      return res.status(403).json({
+      const err = new Error('User bukan approver KAL_DA_Bagian level 1');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User bukan approver KAL_DA_Bagian level 1',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!qa_id || qa_id === '') {
-      return res.status(400).json({
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Data belum di pilih',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Check if already approved - cannot approve again
@@ -1106,10 +1230,14 @@ const approveDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (approvedResults.length > 0) {
-      return res.status(400).json({
+      const err = new Error('Tidak bisa simpan, karena data sudah approve!');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tidak bisa simpan, karena data sudah approve!',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Get approver identity: fnApprIdentity(gstrUserName, 1) with code 'KAL_DA_Bagian'
@@ -1168,11 +1296,15 @@ const approveDaBagian = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in approveDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error approving DA Bagian');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error approving DA Bagian',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -1192,24 +1324,36 @@ const rejectDaBagian = async (req, res, next) => {
     ]);
 
     if (!hasInputPermission) {
-      return res.status(403).json({
+      const err = new Error('User tidak memiliki akses input data');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User tidak memiliki akses input data',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!isApprover) {
-      return res.status(403).json({
+      const err = new Error('User bukan approver KAL_DA_Bagian level 1');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User bukan approver KAL_DA_Bagian level 1',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!qa_id || qa_id === '') {
-      return res.status(400).json({
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Data belum di pilih',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Must be approved to be able to reject
@@ -1224,10 +1368,14 @@ const rejectDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (approvedResults.length === 0) {
-      return res.status(400).json({
+      const err = new Error('Tidak bisa reject karena belum approve!');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tidak bisa reject karena belum approve!',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Delete approval record - exact match to VBA cmd_reject_Click
@@ -1248,11 +1396,15 @@ const rejectDaBagian = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in rejectDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error rejecting DA Bagian');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error rejecting DA Bagian',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -1269,17 +1421,25 @@ const uploadFileDaBagian = async (req, res, next) => {
 
     const hasInputPermission = await hasAllowInputPermission(user_id);
     if (!hasInputPermission) {
-      return res.status(403).json({
+      const err = new Error('User tidak memiliki akses input data');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User tidak memiliki akses input data',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!qa_id || qa_id === '') {
-      return res.status(400).json({
+      const err = new Error('DA belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'DA belum di pilih',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Check not already approved
@@ -1294,10 +1454,14 @@ const uploadFileDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (approvedResults.length > 0) {
-      return res.status(400).json({
+      const err = new Error('Tidak bisa upload file, karena data sudah approve!');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tidak bisa upload file, karena data sudah approve!',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Check no existing file (must delete first)
@@ -1311,17 +1475,25 @@ const uploadFileDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (fileResults.length > 0 && fileResults[0].f_fileName) {
-      return res.status(400).json({
+      const err = new Error('Hapus file dahulu jika ingin upload file');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Hapus file dahulu jika ingin upload file',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({
+      const err = new Error('Harap browse file yang akan di upload!');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Harap browse file yang akan di upload!',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const localFilePath = path.resolve(req.file.path);
@@ -1338,10 +1510,14 @@ const uploadFileDaBagian = async (req, res, next) => {
     }
 
     if (!uploadResult.success) {
-      return res.status(500).json({
+      const err = new Error(uploadResult.message || 'Error uploading file to FTP');
+      err.statusCode = 500;
+      res.status(500).json({
         success: false,
         message: uploadResult.message || 'Error uploading file to FTP',
       });
+      next(err);
+      return;
     }
 
     // Update DB - exact match to VBA f_GMP1_upl_Click
@@ -1369,11 +1545,15 @@ const uploadFileDaBagian = async (req, res, next) => {
       fs.unlinkSync(req.file.path);
     }
     console.error('Error in uploadFileDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error uploading file');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error uploading file',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -1388,10 +1568,14 @@ const downloadFileDaBagian = async (req, res, next) => {
     const { qa_id } = req.query;
 
     if (!qa_id || qa_id === '') {
-      return res.status(400).json({
+      const err = new Error('DA belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'DA belum di pilih',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Get file name from DB
@@ -1406,10 +1590,14 @@ const downloadFileDaBagian = async (req, res, next) => {
     });
 
     if (fileResults.length === 0 || !fileResults[0].f_fileName) {
-      return res.status(404).json({
+      const err = new Error('File not found');
+      err.statusCode = 404;
+      res.status(404).json({
         success: false,
-        message: 'File not found',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     const fileName = fileResults[0].f_fileName;
@@ -1422,10 +1610,14 @@ const downloadFileDaBagian = async (req, res, next) => {
 
     const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
     if (!downloadResult.success) {
-      return res.status(500).json({
+      const err = new Error(downloadResult.message || 'Error downloading file from FTP');
+      err.statusCode = 500;
+      res.status(500).json({
         success: false,
         message: downloadResult.message || 'Error downloading file from FTP',
       });
+      next(err);
+      return;
     }
 
     res.download(localFilePath, fileName, (err) => {
@@ -1434,17 +1626,25 @@ const downloadFileDaBagian = async (req, res, next) => {
       }
       if (err && !res.headersSent) {
         console.error('Error sending file:', err);
-        return res.status(500).json({ success: false, message: 'Error sending file' });
+        const err = new Error('Error sending file');
+        err.statusCode = 500;
+        res.status(500).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
     });
 
   } catch (error) {
     console.error('Error in downloadFileDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error downloading file');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error downloading file',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 
@@ -1460,17 +1660,25 @@ const deleteFileDaBagian = async (req, res, next) => {
 
     const hasInputPermission = await hasAllowInputPermission(user_id);
     if (!hasInputPermission) {
-      return res.status(403).json({
+      const err = new Error('User tidak memiliki akses input data');
+      err.statusCode = 403;
+      res.status(403).json({
         success: false,
-        message: 'User tidak memiliki akses input data',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     if (!qa_id || qa_id === '') {
-      return res.status(400).json({
+      const err = new Error('DA belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'DA belum di pilih',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Check file exists
@@ -1484,10 +1692,14 @@ const deleteFileDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (fileResults.length === 0 || !fileResults[0].f_fileName) {
-      return res.status(400).json({
+      const err = new Error('File not found');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'File not found',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Check not already approved
@@ -1502,10 +1714,14 @@ const deleteFileDaBagian = async (req, res, next) => {
       type: Sequelize.QueryTypes.SELECT,
     });
     if (approvedResults.length > 0) {
-      return res.status(400).json({
+      const err = new Error('Tidak bisa hapus file, karena data sudah approve!');
+      err.statusCode = 400;
+      res.status(400).json({
         success: false,
-        message: 'Tidak bisa hapus file, karena data sudah approve!',
+        message: err.message,
       });
+      next(err);
+      return;
     }
 
     // Remove file reference from DB - exact match to VBA f_GMP1_del_Click
@@ -1530,11 +1746,15 @@ const deleteFileDaBagian = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in deleteFileDaBagian:', error);
-    return res.status(500).json({
+    const err = new Error('Error deleting file');
+    err.statusCode = 500;
+    res.status(500).json({
       success: false,
-      message: 'Error deleting file',
+      message: err.message,
       error: error.message,
     });
+    next(err);
+    return;
   }
 };
 

@@ -20,7 +20,8 @@ async function createRequest(transaction) {
 }
 
 function toDbNull(value) {
-  return value === undefined ? null : value;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
 }
 
 async function listSessions(filters = {}) {
@@ -32,7 +33,7 @@ async function listSessions(filters = {}) {
     where.push('cs.status = @Status');
   }
   if (filters.unitMode) {
-    request.input('UnitMode', sql.VarChar(20), String(filters.unitMode).toUpperCase());
+    request.input('UnitMode', sql.NVarChar(20), String(filters.unitMode));
     where.push('cs.unit_mode = @UnitMode');
   }
 
@@ -44,12 +45,14 @@ async function listSessions(filters = {}) {
       cs.instrument_code,
       cs.instrument_name,
       cs.calibration_date,
+      cs.interval_bulan,
       cs.unit_mode,
       cs.status,
       cs.pic,
       cs.temperature,
       cs.humidity,
       cs.notes,
+      cs.metode_kalibrasi,
       cs.evaluation_result,
       cs.approved_by_admin,
       cs.approved_by_admin_date,
@@ -94,12 +97,14 @@ async function getSessionById(sessionId, transaction) {
         instrument_code,
         instrument_name,
         calibration_date,
+        interval_bulan,
         unit_mode,
         status,
         pic,
         temperature,
         humidity,
         notes,
+        metode_kalibrasi,
         evaluation_result,
         approved_by_admin,
         approved_by_admin_date,
@@ -129,12 +134,14 @@ async function createSession(payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
-    .input('UnitMode', sql.VarChar(20), payload.unit_mode)
+    .input('IntervalBulan', sql.VarChar(50), toDbNull(payload.interval_bulan))
+    .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status || 'DRAFT')
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
+    .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by))
     .query(`
     INSERT INTO [dbo].[calibration_sessions]
@@ -144,15 +151,16 @@ async function createSession(payload, transaction) {
       instrument_code,
       instrument_name,
       calibration_date,
+      interval_bulan,
       unit_mode,
       status,
       pic,
       temperature,
       humidity,
       notes,
+      metode_kalibrasi,
       created_by
     )
-    OUTPUT INSERTED.session_id
     VALUES
     (
       @SessionCode,
@@ -160,14 +168,17 @@ async function createSession(payload, transaction) {
       @InstrumentCode,
       @InstrumentName,
       @CalibrationDate,
+      @IntervalBulan,
       @UnitMode,
       @Status,
       @Pic,
       @Temperature,
       @Humidity,
       @Notes,
+      @MetodeKalibrasi,
       @CreatedBy
-    )
+    );
+    SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
   `);
 
   return result.recordset[0].session_id;
@@ -182,12 +193,14 @@ async function updateSession(sessionId, payload, transaction) {
     .input('InstrumentCode', sql.VarChar(100), toDbNull(payload.instrument_code))
     .input('InstrumentName', sql.VarChar(255), toDbNull(payload.instrument_name))
     .input('CalibrationDate', sql.Date, toDbNull(payload.calibration_date))
-    .input('UnitMode', sql.VarChar(20), payload.unit_mode)
+    .input('IntervalBulan', sql.VarChar(50), toDbNull(payload.interval_bulan))
+    .input('UnitMode', sql.NVarChar(20), payload.unit_mode)
     .input('Status', sql.VarChar(30), payload.status)
     .input('Pic', sql.VarChar(100), toDbNull(payload.pic))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
+    .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
     .input('UpdatedBy', sql.VarChar(100), toDbNull(payload.updated_by))
     .query(`
     UPDATE [dbo].[calibration_sessions]
@@ -197,12 +210,14 @@ async function updateSession(sessionId, payload, transaction) {
       instrument_code  = @InstrumentCode,
       instrument_name  = @InstrumentName,
       calibration_date = @CalibrationDate,
+      interval_bulan   = @IntervalBulan,
       unit_mode        = @UnitMode,
       status           = @Status,
       pic              = @Pic,
       temperature      = @Temperature,
       humidity         = @Humidity,
       notes            = @Notes,
+      metode_kalibrasi = @MetodeKalibrasi,
       updated_by       = @UpdatedBy,
       updated_at       = GETDATE()
     WHERE session_id = @SessionId
@@ -406,7 +421,7 @@ async function createPoint(sessionId, payload, transaction) {
     .input('SessionId', sql.Int, sessionId)
     .input('PointOrder', sql.Int, payload.point_order)
     .input('NominalValue', sql.Decimal(18, 10), payload.nominal_value)
-    .input('Unit', sql.VarChar(20), payload.unit)
+    .input('Unit', sql.NVarChar(20), payload.unit)
     .input('IsActive', sql.Bit, payload.is_active === undefined ? 1 : payload.is_active ? 1 : 0)
     .query(`
       INSERT INTO [dbo].[calibration_nominal_points]
@@ -425,7 +440,7 @@ async function updatePoint(pointId, payload, transaction) {
     .input('PointId', sql.Int, pointId)
     .input('PointOrder', sql.Int, payload.point_order)
     .input('NominalValue', sql.Decimal(18, 10), payload.nominal_value)
-    .input('Unit', sql.VarChar(20), payload.unit)
+    .input('Unit', sql.NVarChar(20), payload.unit)
     .input('IsActive', sql.Bit, payload.is_active === undefined ? 1 : payload.is_active ? 1 : 0)
     .query(`
       UPDATE [dbo].[calibration_nominal_points]
@@ -798,7 +813,7 @@ async function upsertLevelCorrection(sessionId, payload, transaction) {
         sql.Decimal(18, 10),
         toDbNull(payload.correction_session_unit)
       )
-      .input('SessionUnit', sql.VarChar(20), payload.session_unit)
+      .input('SessionUnit', sql.NVarChar(20), payload.session_unit)
       .query(`
         INSERT INTO [dbo].[calibration_level_corrections]
         (
@@ -838,7 +853,7 @@ async function upsertLevelCorrection(sessionId, payload, transaction) {
       sql.Decimal(18, 10),
       toDbNull(payload.correction_session_unit)
     )
-    .input('SessionUnit', sql.VarChar(20), payload.session_unit)
+    .input('SessionUnit', sql.NVarChar(20), payload.session_unit)
     .query(`
       UPDATE [dbo].[calibration_level_corrections]
       SET
@@ -1067,7 +1082,7 @@ async function insertResults(rows, transaction) {
       .input('PointId', sql.Int, row.point_id)
       .input('PointOrder', sql.Int, row.point_order)
       .input('NominalValue', sql.Decimal(18, 10), row.nominal_value)
-      .input('Unit', sql.VarChar(20), row.unit)
+      .input('Unit', sql.NVarChar(20), row.unit)
       .input('IncStandardAvg', sql.Decimal(18, 10), toDbNull(row.inc_standard_avg))
       .input('IncUutAvg', sql.Decimal(18, 10), toDbNull(row.inc_uut_avg))
       .input('IncError', sql.Decimal(18, 10), toDbNull(row.inc_error))
@@ -1132,7 +1147,7 @@ async function insertUncertaintyComponents(rows, transaction) {
       .input('SessionId', sql.Int, row.session_id)
       .input('ComponentOrder', sql.Int, row.component_order)
       .input('ComponentName', sql.VarChar(255), row.component_name)
-      .input('Unit', sql.VarChar(20), toDbNull(row.unit))
+      .input('Unit', sql.NVarChar(20), toDbNull(row.unit))
       .input('UncertaintyType', sql.VarChar(10), toDbNull(row.uncertainty_type))
       .input('Distribution', sql.VarChar(30), toDbNull(row.distribution))
       .input('UValue', sql.Decimal(18, 10), toDbNull(row.u_value))
@@ -1468,7 +1483,7 @@ async function upsertTemplate(template, transaction) {
     await request
       .input('TemplateId', sql.Int, existing.template_id)
       .input('TemplateName', sql.VarChar(255), template.template_name)
-      .input('UnitMode', sql.VarChar(20), template.unit_mode)
+      .input('UnitMode', sql.NVarChar(20), template.unit_mode)
       .query(`
         UPDATE [dbo].[calibration_point_templates]
         SET template_name = @TemplateName, unit_mode = @UnitMode
@@ -1481,7 +1496,7 @@ async function upsertTemplate(template, transaction) {
   const result = await request
     .input('TemplateCode', sql.VarChar(100), template.template_code)
     .input('TemplateName', sql.VarChar(255), template.template_name)
-    .input('UnitMode', sql.VarChar(20), template.unit_mode)
+    .input('UnitMode', sql.NVarChar(20), template.unit_mode)
     .query(`
       INSERT INTO [dbo].[calibration_point_templates]
       (template_code, template_name, unit_mode)
@@ -1796,10 +1811,25 @@ async function getNextCertificateNumberByCode(code, transaction) {
   }
   // `normalized` sudah ter-whitelist (hanya A-Z dari daftar kode), aman diinterpolasi.
   const request = await createRequest(transaction);
-  const result = await request.query(`
-    SELECT dbo.fnGetKal_Ser_${normalized}_No_ID() AS id_no_sertifikat
-  `);
-  return result.recordset[0]?.id_no_sertifikat || null;
+  try {
+    const result = await request.query(`
+      SELECT dbo.fnGetKal_Ser_${normalized}_No_ID() AS id_no_sertifikat
+    `);
+    return result.recordset[0]?.id_no_sertifikat || null;
+  } catch (err) {
+    const message = err?.message || String(err);
+    if (/conversion failed.*nvarchar.*int/i.test(message)) {
+      const wrapped = new Error(
+        `Generator nomor sertifikat dbo.fnGetKal_Ser_${normalized}_No_ID() gagal karena konversi data di SQL Server. ` +
+          `Kemungkinan: kolom Group_Da_Dept / kode departemen pada T_Kalibrasi_DA_Bagian mengandung nilai non-numerik (mis. 'Q00') ` +
+          `sedang fungsi SQL mencoba mengubahnya ke INT. Periksa dan perbaiki definisi fungsi SQL, atau isi id_no_sertifikat manual lewat request.`
+      );
+      wrapped.statusCode = 500;
+      wrapped.originalError = err;
+      throw wrapped;
+    }
+    throw err;
+  }
 }
 
 async function createSertifikatBagianDraftFromDa(
@@ -1906,6 +1936,58 @@ async function updateSertifikatBagianHeader(payload, transaction) {
     `);
 
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .input('IsOoc', sql.Bit, isOoc ? 1 : 0)
+    .query(`
+      UPDATE T_Kalibrasi_Sertifikat_Bagian
+      SET
+        is_ooc = @IsOoc,
+        tanggal_ooc = CASE WHEN @IsOoc = 1 THEN GETDATE() ELSE NULL END
+      WHERE QA_ID = @QaId
+        AND ID_No_Sertifikat = @IdNoSertifikat
+    `);
+
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function isSertifikatBagianApproved(qaId, idNoSertifikat, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT COUNT(*) AS jumRow
+      FROM T_Kalibrasi_Sertifikat_Bagian_Status
+      WHERE QA_ID = @QaId
+        AND ID_No_Sertifikat = @IdNoSertifikat
+        AND Approver_No = 1
+    `);
+
+  return (result.recordset[0]?.jumRow || 0) > 0;
+}
+
+async function insertSertifikatBagianStatus(payload, transaction) {
+  const request = await createRequest(transaction);
+  await request
+    .input('QaId', sql.VarChar(50), payload.qa_id)
+    .input('IdNoSertifikat', sql.VarChar(50), payload.id_no_sertifikat)
+    .input('ApproverNo', sql.Int, payload.approver_no)
+    .input('IsReject', sql.Bit, payload.is_reject ? 1 : 0)
+    .input('ApproverIdentity', sql.VarChar(100), payload.approver_identity)
+    .input('UserId', sql.VarChar(100), toDbNull(payload.user_id))
+    .input('DelegatedTo', sql.VarChar(100), toDbNull(payload.delegated_to))
+    .query(`
+      INSERT INTO T_Kalibrasi_Sertifikat_Bagian_Status
+        (QA_ID, ID_No_Sertifikat, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+      VALUES
+        (@QaId, @IdNoSertifikat, @ApproverNo, @IsReject, @ApproverIdentity, GETDATE(), @UserId, @DelegatedTo, NULL)
+    `);
 }
 
 async function replaceSertifikatBagianHasilKalRows(
@@ -2033,5 +2115,8 @@ module.exports = {
   getNextCertificateNumberByCode,
   createSertifikatBagianDraftFromDa,
   updateSertifikatBagianHeader,
+  updateSertifikatBagianOOC,
+  isSertifikatBagianApproved,
+  insertSertifikatBagianStatus,
   replaceSertifikatBagianHasilKalRows,
 };

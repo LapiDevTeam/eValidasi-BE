@@ -221,10 +221,21 @@ function normalizeInteger(
   return numeric;
 }
 
+// Interval kalibrasi dalam bulan; 1-36 sesuai opsi Interval pada Sertifikat Bagian.
+function normalizeIntervalBulan(value) {
+  const numeric = normalizeInteger(value, {
+    required: false,
+    field: 'interval_bulan',
+    min: 1,
+    max: 36,
+  });
+  return numeric === null ? null : String(numeric);
+}
+
 function normalizeUnitMode(value) {
-  const unit = String(value || '').trim().toUpperCase();
-  if (!['PA', 'BAR'].includes(unit)) {
-    throwValidation('unit_mode', 'Unit mode must be PA or BAR.');
+  const unit = String(value || '').trim();
+  if (unit.length > 20) {
+    throwValidation('unit_mode', 'Unit mode cannot exceed 20 characters.');
   }
   return unit;
 }
@@ -294,32 +305,35 @@ function getChangedBy(req) {
   return req?.user?.user_id || req?.user?.log_NIK || req?.body?.changedBy || null;
 }
 
-function sendError(res, error) {
+function sendError(res, next, error) {
   // Always log full error details for debugging.
   console.error('[calibration-workbook ERROR]', error);
   if (error.stack) {
     console.error('[calibration-workbook STACK]', error.stack);
   }
 
+  let response;
   if (error.statusCode && error.validation) {
-    return res.status(error.statusCode).json({
+    response = res.status(error.statusCode).json({
       success: false,
       message: 'Validation failed',
       errors: error.validation,
     });
-  }
-
-  if (error.statusCode) {
-    return res.status(error.statusCode).json({
+  } else if (error.statusCode) {
+    response = res.status(error.statusCode).json({
       success: false,
       message: error.message,
     });
+  } else {
+    response = res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
   }
 
-  return res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-  });
+  // Propagate to global error middleware so the mutation error logger can record it.
+  next(error);
+  return response;
 }
 
 async function writeAuditSafe(payload) {
@@ -394,6 +408,10 @@ function mapSessionPayload(body, isUpdate = false) {
     calibration_date: normalizeDateInput(body.calibration_date ?? body.calibrationDate, {
       field: 'calibration_date',
     }),
+    // Interval kalibrasi (bulan). Rentang 1-36 mengikuti dropdown Interval di
+    // Sertifikat Bagian. Disimpan sebagai string agar konsisten dengan kolom
+    // interval_bulan (VARCHAR) di modul kalibrasi lain (rpm_sessions, dst.).
+    interval_bulan: normalizeIntervalBulan(body.interval_bulan ?? body.intervalBulan),
     unit_mode: normalizeUnitMode(body.unit_mode ?? body.unitMode),
     status: isUpdate
       ? normalizeStatus(body.status || 'DRAFT')
@@ -417,6 +435,14 @@ function mapSessionPayload(body, isUpdate = false) {
     notes: normalizeLimitedString(body.notes, {
       field: 'notes',
       maxLength: 1000,
+    }),
+    // 50, bukan 500: kolom Metode_kalibrasi di T_Kalibrasi_Sertifikat_Bagian
+    // dibatasi 50 oleh validatePublishLengths() (src/services/calibrationCalculation.service.js).
+    // Kalau di sini dibiarkan 500, sesi tersimpan normal tapi baru gagal saat
+    // approval Manager menerbitkan sertifikat — jadi ditolak lebih awal di sini.
+    metode_kalibrasi: normalizeLimitedString(body.metode_kalibrasi ?? body.metodeKalibrasi, {
+      field: 'metode_kalibrasi',
+      maxLength: 50,
     }),
     created_by: normalizeLimitedString(body.created_by, {
       field: 'created_by',
@@ -538,7 +564,7 @@ function mapPublishPayload(body = {}) {
   };
 }
 
-async function listCalibrationSessions(req, res) {
+async function listCalibrationSessions(req, res, next) {
   try {
     const data = await repo.listSessions({
       status: normalizeString(req.query.status),
@@ -546,11 +572,11 @@ async function listCalibrationSessions(req, res) {
     });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getCalibrationSession(req, res) {
+async function getCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await repo.getSessionById(sessionId);
@@ -579,11 +605,11 @@ async function getCalibrationSession(req, res) {
       },
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createCalibrationSession(req, res) {
+async function createCalibrationSession(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -650,11 +676,11 @@ async function createCalibrationSession(req, res) {
     } catch (_) {
       // ignore rollback error
     }
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateCalibrationSession(req, res) {
+async function updateCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await repo.getSessionById(sessionId);
@@ -706,11 +732,11 @@ async function updateCalibrationSession(req, res) {
 
     return res.status(200).json({ success: true, data: { session_id: sessionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteCalibrationSession(req, res) {
+async function deleteCalibrationSession(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
@@ -742,43 +768,43 @@ async function deleteCalibrationSession(req, res) {
     } catch (_) {
       // ignore rollback error
     }
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function finalizeCalibrationSession(req, res) {
+async function finalizeCalibrationSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const changedBy = getChangedBy(req);
     const data = await calcSvc.finalizeSession(sessionId, changedBy);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function approveSession(req, res) {
+async function approveSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calcSvc.approveSession(sessionId, req.user);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function rejectSession(req, res) {
+async function rejectSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const { reason } = req.body || {};
     const data = await calcSvc.rejectSession(sessionId, req.user, reason);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function publishSertifikatBagian(req, res) {
+async function publishSertifikatBagian(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const changedBy = getChangedBy(req);
@@ -794,21 +820,21 @@ async function publishSertifikatBagian(req, res) {
 
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function listNominalPoints(req, res) {
+async function listNominalPoints(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listPoints(sessionId, { includeInactive: false });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createNominalPoint(req, res) {
+async function createNominalPoint(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
@@ -841,11 +867,11 @@ async function createNominalPoint(req, res) {
 
     return res.status(201).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateNominalPoint(req, res) {
+async function updateNominalPoint(req, res, next) {
   try {
     const pointId = parseIntParam(req.params.pointId, 'pointId');
     const current = await repo.getPointById(pointId);
@@ -886,11 +912,11 @@ async function updateNominalPoint(req, res) {
 
     return res.status(200).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteNominalPoint(req, res) {
+async function deleteNominalPoint(req, res, next) {
   try {
     const pointId = parseIntParam(req.params.pointId, 'pointId');
     const current = await repo.getPointById(pointId);
@@ -914,7 +940,7 @@ async function deleteNominalPoint(req, res) {
 
     return res.status(200).json({ success: true, data: { point_id: pointId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
@@ -943,24 +969,23 @@ function mapReadingPayload(body) {
   };
 }
 
-async function listReadings(req, res) {
+async function listReadings(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listReadings(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createReading(req, res) {
+async function createReading(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
     const payload = mapReadingPayload(req.body);
-    await ensurePointBelongsToSession(payload.point_id, sessionId);
-    const readingId = await repo.createReading(sessionId, payload);
 
+    const readingId = await repo.createReading(sessionId, payload);
     await writeAuditSafe({
       session_id: sessionId,
       entity_name: 'calibration_readings',
@@ -973,19 +998,19 @@ async function createReading(req, res) {
 
     return res.status(201).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateReading(req, res) {
+async function updateReading(req, res, next) {
   try {
     const readingId = parseIntParam(req.params.readingId, 'readingId');
     const current = await repo.getReadingById(readingId);
     if (!current) {
       return res.status(404).json({ success: false, message: 'Reading not found.' });
     }
+
     const payload = mapReadingPayload(req.body);
-    await ensurePointBelongsToSession(payload.point_id, current.session_id);
     const updated = await repo.updateReading(readingId, payload);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Reading not found.' });
@@ -1003,18 +1028,17 @@ async function updateReading(req, res) {
 
     return res.status(200).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteReading(req, res) {
+async function deleteReading(req, res, next) {
   try {
     const readingId = parseIntParam(req.params.readingId, 'readingId');
     const current = await repo.getReadingById(readingId);
     if (!current) {
       return res.status(404).json({ success: false, message: 'Reading not found.' });
     }
-
     const deleted = await repo.deleteReading(readingId);
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Reading not found.' });
@@ -1026,148 +1050,149 @@ async function deleteReading(req, res) {
       entity_id: readingId,
       action_type: 'DELETE',
       old_value: JSON.stringify(current),
-      new_value: null,
+      new_value: JSON.stringify({ deleted: true }),
       changed_by: getChangedBy(req),
     });
 
     return res.status(200).json({ success: true, data: { reading_id: readingId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function bulkUpsertReadings(req, res) {
+async function bulkUpsertReadings(req, res, next) {
   const pool = await repo.getPool();
   const transaction = new sql.Transaction(pool);
 
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
-    if (!Array.isArray(req.body.readings)) {
-      throwValidation('readings', 'Readings must be an array.');
+
+    const rows = Array.isArray(req.body) ? req.body : req.body?.readings;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throwValidation('readings', 'An array of readings is required.');
     }
 
-    const rows = req.body.readings.map((row) => ({
-      reading_id:
-        row.reading_id === undefined || row.reading_id === null || row.reading_id === ''
-          ? null
-          : normalizeInteger(row.reading_id, {
-            field: 'reading_id',
-            min: 1,
-          }),
-      ...mapReadingPayload(row),
-    }));
-
-    validateNoDuplicateReadingKeys(rows);
-    for (const row of rows) {
-      await ensurePointBelongsToSession(row.point_id, sessionId);
-    }
+    const payloads = rows.map(mapReadingPayload);
+    validateNoDuplicateReadingKeys(payloads);
 
     await transaction.begin();
-    const result = await repo.bulkUpsertReadings(sessionId, rows, transaction);
-
-    await repo.insertAuditLog(
-      {
-        session_id: sessionId,
-        entity_name: 'calibration_readings',
-        entity_id: null,
-        action_type: 'UPDATE',
-        old_value: null,
-        new_value: JSON.stringify({ bulk_upsert: result, count: rows.length }),
-        changed_by: getChangedBy(req),
-      },
-      transaction
-    );
-
+    await repo.bulkUpsertReadings(sessionId, payloads, transaction);
     await transaction.commit();
-    return res.status(200).json({ success: true, data: result });
+
+    await writeAuditSafe({
+      session_id: sessionId,
+      entity_name: 'calibration_readings',
+      entity_id: sessionId,
+      action_type: 'BULK_UPSERT',
+      old_value: null,
+      new_value: JSON.stringify(payloads),
+      changed_by: getChangedBy(req),
+    });
+
+    return res.status(200).json({ success: true, data: { session_id: sessionId } });
   } catch (error) {
     try {
       await transaction.rollback();
     } catch (_) {
       // ignore rollback error
     }
-    console.log(error);
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-function mapRegressionPayload(body) {
-  const direction = normalizeDirection(body.direction, null);
-  return {
-    point_id:
-      body.point_id === null || body.point_id === undefined || body.point_id === ''
-        ? null
-        : normalizeInteger(body.point_id ?? body.pointId, {
-          field: 'point_id',
-          min: 1,
-        }),
-    direction,
-    x_variable: normalizeDecimal(body.x_variable ?? body.xVariable, {
-      required: true,
-      field: 'x_variable',
-      precision: 18,
-      scale: 12,
-    }),
-    intercept: normalizeDecimal(body.intercept, {
-      required: true,
-      field: 'intercept',
-      precision: 18,
-      scale: 12,
-    }),
-    source_type: normalizeSourceType(body.source_type ?? body.sourceType),
-  };
-}
-
-async function listRegressionInputs(req, res) {
+async function listRegressionInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.listRegressionInputs(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createRegressionInput(req, res) {
+async function createRegressionInput(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
-    const payload = mapRegressionPayload(req.body);
+    const payload = {
+      point_id: normalizeInteger(req.body.point_id ?? req.body.pointId, {
+        required: false,
+        field: 'point_id',
+        min: 1,
+      }),
+      direction: normalizeDirection(req.body.direction, null),
+      x_variable: normalizeDecimal(req.body.x_variable ?? req.body.xVariable, {
+        required: true,
+        field: 'x_variable',
+        precision: 18,
+        scale: 12,
+      }),
+      intercept: normalizeDecimal(req.body.intercept, {
+        required: true,
+        field: 'intercept',
+        precision: 18,
+        scale: 12,
+      }),
+      source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
+    };
+
     if (payload.point_id !== null) {
       await ensurePointBelongsToSession(payload.point_id, sessionId);
     }
-    const regressionId = await repo.createRegressionInput(sessionId, payload);
 
+    const inputId = await repo.createRegressionInput(sessionId, payload);
     await writeAuditSafe({
       session_id: sessionId,
       entity_name: 'calibration_regression_inputs',
-      entity_id: regressionId,
+      entity_id: inputId,
       action_type: 'CREATE',
       old_value: null,
       new_value: JSON.stringify(payload),
       changed_by: getChangedBy(req),
     });
 
-    return res.status(201).json({ success: true, data: { regression_id: regressionId } });
+    return res.status(201).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateRegressionInput(req, res) {
+async function updateRegressionInput(req, res, next) {
   try {
-    const regressionId = parseIntParam(req.params.regressionId, 'regressionId');
-    const current = await repo.getRegressionInputById(regressionId);
+    const inputId = parseIntParam(req.params.regressionId, 'regressionId');
+    const current = await repo.getRegressionInputById(inputId);
     if (!current) {
       return res.status(404).json({ success: false, message: 'Regression input not found.' });
     }
 
-    const payload = mapRegressionPayload(req.body);
+    const payload = {
+      point_id: normalizeInteger(req.body.point_id ?? req.body.pointId, {
+        required: false,
+        field: 'point_id',
+        min: 1,
+      }),
+      direction: normalizeDirection(req.body.direction, null),
+      x_variable: normalizeDecimal(req.body.x_variable ?? req.body.xVariable, {
+        required: true,
+        field: 'x_variable',
+        precision: 18,
+        scale: 12,
+      }),
+      intercept: normalizeDecimal(req.body.intercept, {
+        required: true,
+        field: 'intercept',
+        precision: 18,
+        scale: 12,
+      }),
+      source_type: normalizeSourceType(req.body.source_type ?? req.body.sourceType),
+    };
+
     if (payload.point_id !== null) {
       await ensurePointBelongsToSession(payload.point_id, current.session_id);
     }
-    const updated = await repo.updateRegressionInput(regressionId, payload);
+
+    const updated = await repo.updateRegressionInput(inputId, payload);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Regression input not found.' });
     }
@@ -1175,28 +1200,27 @@ async function updateRegressionInput(req, res) {
     await writeAuditSafe({
       session_id: current.session_id,
       entity_name: 'calibration_regression_inputs',
-      entity_id: regressionId,
+      entity_id: inputId,
       action_type: 'UPDATE',
       old_value: JSON.stringify(current),
       new_value: JSON.stringify(payload),
       changed_by: getChangedBy(req),
     });
 
-    return res.status(200).json({ success: true, data: { regression_id: regressionId } });
+    return res.status(200).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteRegressionInput(req, res) {
+async function deleteRegressionInput(req, res, next) {
   try {
-    const regressionId = parseIntParam(req.params.regressionId, 'regressionId');
-    const current = await repo.getRegressionInputById(regressionId);
+    const inputId = parseIntParam(req.params.regressionId, 'regressionId');
+    const current = await repo.getRegressionInputById(inputId);
     if (!current) {
       return res.status(404).json({ success: false, message: 'Regression input not found.' });
     }
-
-    const deleted = await repo.deleteRegressionInput(regressionId);
+    const deleted = await repo.deleteRegressionInput(inputId);
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Regression input not found.' });
     }
@@ -1204,118 +1228,108 @@ async function deleteRegressionInput(req, res) {
     await writeAuditSafe({
       session_id: current.session_id,
       entity_name: 'calibration_regression_inputs',
-      entity_id: regressionId,
+      entity_id: inputId,
       action_type: 'DELETE',
       old_value: JSON.stringify(current),
-      new_value: null,
+      new_value: JSON.stringify({ deleted: true }),
       changed_by: getChangedBy(req),
     });
 
-    return res.status(200).json({ success: true, data: { regression_id: regressionId } });
+    return res.status(200).json({ success: true, data: { input_id: inputId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getLevelCorrection(req, res) {
+async function getLevelCorrection(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.getLevelCorrection(sessionId);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Level correction not found.' });
+    }
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateLevelCorrection(req, res) {
+async function updateLevelCorrection(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const session = await repo.getSessionById(sessionId);
-    if (!session) {
-      return res.status(404).json({ success: false, message: 'Session not found.' });
-    }
+    await ensureSessionExists(sessionId);
 
-    const deltaH = normalizeDecimal(req.body.delta_h ?? req.body.deltaH, {
-      required: true,
-      field: 'delta_h',
-      precision: 18,
-      scale: 10,
-    });
-    const mediaDensity = normalizeDecimal(req.body.media_density ?? req.body.mediaDensity, {
-      required: true,
-      field: 'media_density',
-      precision: 18,
-      scale: 10,
-    });
-    const gravity = normalizeDecimal(req.body.gravity, {
-      required: true,
-      field: 'gravity',
-      precision: 18,
-      scale: 10,
+    const payload = {
+      delta_h: normalizeDecimal(req.body.delta_h ?? req.body.deltaH, {
+        required: false,
+        field: 'delta_h',
+        precision: 10,
+        scale: 4,
+      }),
+      media_density: normalizeDecimal(req.body.media_density ?? req.body.mediaDensity, {
+        required: false,
+        field: 'media_density',
+        precision: 10,
+        scale: 4,
+      }),
+      gravity: normalizeDecimal(req.body.gravity, {
+        required: false,
+        field: 'gravity',
+        precision: 10,
+        scale: 4,
+      }),
+    };
+
+    const unitMode = (await repo.getSessionById(sessionId))?.unit_mode || 'PA';
+
+    const values = formulaSvc.calculateLevelCorrection({
+      delta_h: payload.delta_h ?? 0.02,
+      media_density: payload.media_density ?? 1.2,
+      gravity: payload.gravity ?? 9.78,
+      unit_mode: unitMode,
     });
 
-    const calculated = formulaSvc.calculateLevelCorrection({
-      delta_h: deltaH,
-      media_density: mediaDensity,
-      gravity,
-      unit_mode: session.unit_mode,
-    });
-
-    await repo.upsertLevelCorrection(sessionId, {
-      delta_h: deltaH,
-      media_density: mediaDensity,
-      gravity,
-      correction_pascal: calculated.correction_pascal,
-      correction_session_unit: calculated.correction_session_unit,
-      session_unit: session.unit_mode,
+    const updated = await repo.upsertLevelCorrection(sessionId, {
+      ...payload,
+      correction_pascal: values.correction_pascal,
+      correction_session_unit: values.correction_session_unit,
+      session_unit: unitMode,
     });
 
     await writeAuditSafe({
       session_id: sessionId,
-      entity_name: 'calibration_level_corrections',
-      entity_id: null,
+      entity_name: 'calibration_level_correction',
+      entity_id: sessionId,
       action_type: 'UPDATE',
       old_value: null,
-      new_value: JSON.stringify({
-        delta_h: deltaH,
-        media_density: mediaDensity,
-        gravity,
-        correction_pascal: calculated.correction_pascal,
-        correction_session_unit: calculated.correction_session_unit,
-      }),
+      new_value: JSON.stringify(payload),
       changed_by: getChangedBy(req),
     });
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        delta_h: deltaH,
-        media_density: mediaDensity,
-        gravity,
-        correction_pascal: calculated.correction_pascal,
-        correction_session_unit: calculated.correction_session_unit,
-        session_unit: session.unit_mode,
-      },
-    });
+    return res.status(200).json({ success: true, data: updated });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getUncertaintyInputs(req, res) {
+async function getUncertaintyInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await repo.getUncertaintyInputs(sessionId);
+    if (!data) {
+      return res.status(404).json({ success: false, message: 'Uncertainty inputs not found.' });
+    }
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateUncertaintyInputs(req, res) {
+async function updateUncertaintyInputs(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     await ensureSessionExists(sessionId);
+
     const payload = {
       standard_uncertainty: normalizeDecimal(req.body.standard_uncertainty ?? req.body.standardUncertainty, {
         required: false,
@@ -1339,157 +1353,176 @@ async function updateUncertaintyInputs(req, res) {
       analog_resolution_factor: normalizeDecimal(req.body.analog_resolution_factor ?? req.body.analogResolutionFactor, {
         required: false,
         field: 'analog_resolution_factor',
-        precision: 18,
-        scale: 10,
-      }) ?? 0.2,
+        precision: 5,
+        scale: 2,
+      }),
       digital_resolution_factor: normalizeDecimal(req.body.digital_resolution_factor ?? req.body.digitalResolutionFactor, {
         required: false,
         field: 'digital_resolution_factor',
+        precision: 5,
+        scale: 2,
+      }),
+      standard_sensitivity_coefficient: normalizeDecimal(req.body.standard_sensitivity_coefficient ?? req.body.standardSensitivityCoefficient, {
+        required: false,
+        field: 'standard_sensitivity_coefficient',
         precision: 18,
         scale: 10,
-      }) ?? 0.5,
-      standard_sensitivity_coefficient: normalizeDecimal(
-        req.body.standard_sensitivity_coefficient ?? req.body.standardSensitivityCoefficient,
-        {
-          required: false,
-          field: 'standard_sensitivity_coefficient',
-          precision: 18,
-          scale: 10,
-        }
-      ),
-      metal_rule_sensitivity_coefficient: normalizeDecimal(
-        req.body.metal_rule_sensitivity_coefficient ?? req.body.metalRuleSensitivityCoefficient,
-        {
-          required: false,
-          field: 'metal_rule_sensitivity_coefficient',
-          precision: 18,
-          scale: 10,
-        }
-      ),
+      }),
+      metal_rule_sensitivity_coefficient: normalizeDecimal(req.body.metal_rule_sensitivity_coefficient ?? req.body.metalRuleSensitivityCoefficient, {
+        required: false,
+        field: 'metal_rule_sensitivity_coefficient',
+        precision: 18,
+        scale: 10,
+      }),
     };
 
-    await repo.upsertUncertaintyInputs(sessionId, payload);
+    const updated = await repo.upsertUncertaintyInputs(sessionId, payload);
 
     await writeAuditSafe({
       session_id: sessionId,
       entity_name: 'calibration_uncertainty_inputs',
-      entity_id: null,
+      entity_id: sessionId,
       action_type: 'UPDATE',
       old_value: null,
       new_value: JSON.stringify(payload),
       changed_by: getChangedBy(req),
     });
 
-    return res.status(200).json({ success: true, data: payload });
+    return res.status(200).json({ success: true, data: updated });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function calculateSession(req, res) {
+async function calculateSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const changedBy = getChangedBy(req);
-    const data = await calcSvc.calculateSession(sessionId, changedBy);
+    const data = await calcSvc.calculateSession(sessionId);
     return res.status(200).json(data);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getResults(req, res) {
+async function getResults(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const data = await calcSvc.getSessionResultBundle(sessionId);
-    return res.status(200).json({ success: true, data: data.results, certificate_rows: data.certificate_rows });
-  } catch (error) {
-    return sendError(res, error);
-  }
-}
-
-async function getSummary(req, res) {
-  try {
-    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
-    const data = await calcSvc.getSessionResultBundle(sessionId);
+    const bundle = await calcSvc.getSessionResultBundle(sessionId);
     return res.status(200).json({
       success: true,
-      data: data.summary,
-      uncertainty_components: data.uncertainty_components,
+      data: bundle.results,
+      certificate_rows: bundle.certificate_rows,
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function listPressureConversions(req, res) {
+async function getSummary(req, res, next) {
   try {
-    const data = await repo.listPressureConversions();
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const bundle = await calcSvc.getSessionResultBundle(sessionId);
+    return res.status(200).json({
+      success: true,
+      data: bundle.summary,
+      uncertainty_components: bundle.uncertainty_components,
+    });
+  } catch (error) {
+    return sendError(res, next, error);
+  }
+}
+
+async function listPressureConversions(req, res, next) {
+  try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    const data = await repo.listPressureConversions(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createPressureConversion(req, res) {
+async function createPressureConversion(req, res, next) {
   try {
+    const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
+    await ensureSessionExists(sessionId);
     const payload = {
-      from_unit: normalizeLimitedString(req.body.from_unit ?? req.body.fromUnit, {
-        field: 'from_unit',
+      pascal_value: normalizeDecimal(req.body.pascal_value ?? req.body.pascalValue, {
         required: true,
-        maxLength: 20,
-      })?.toUpperCase(),
-      to_unit: normalizeLimitedString(req.body.to_unit ?? req.body.toUnit, {
-        field: 'to_unit',
+        field: 'pascal_value',
+        precision: 18,
+        scale: 10,
+      }),
+      session_unit_value: normalizeDecimal(req.body.session_unit_value ?? req.body.sessionUnitValue, {
         required: true,
-        maxLength: 20,
-      })?.toUpperCase(),
-      factor: normalizeDecimal(req.body.factor, {
-        required: true,
-        field: 'factor',
-        precision: 24,
-        scale: 12,
+        field: 'session_unit_value',
+        precision: 18,
+        scale: 10,
       }),
     };
 
-    const conversionId = await repo.createPressureConversion(payload);
+    const conversionId = await repo.createPressureConversion(sessionId, payload);
+    await writeAuditSafe({
+      session_id: sessionId,
+      entity_name: 'calibration_pressure_conversions',
+      entity_id: conversionId,
+      action_type: 'CREATE',
+      old_value: null,
+      new_value: JSON.stringify(payload),
+      changed_by: getChangedBy(req),
+    });
+
     return res.status(201).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updatePressureConversion(req, res) {
+async function updatePressureConversion(req, res, next) {
   try {
     const conversionId = parseIntParam(req.params.conversionId, 'conversionId');
+    const current = await repo.getPressureConversionById(conversionId);
+    if (!current) {
+      return res.status(404).json({ success: false, message: 'Conversion not found.' });
+    }
+
     const payload = {
-      from_unit: normalizeLimitedString(req.body.from_unit ?? req.body.fromUnit, {
-        field: 'from_unit',
+      pascal_value: normalizeDecimal(req.body.pascal_value ?? req.body.pascalValue, {
         required: true,
-        maxLength: 20,
-      })?.toUpperCase(),
-      to_unit: normalizeLimitedString(req.body.to_unit ?? req.body.toUnit, {
-        field: 'to_unit',
+        field: 'pascal_value',
+        precision: 18,
+        scale: 10,
+      }),
+      session_unit_value: normalizeDecimal(req.body.session_unit_value ?? req.body.sessionUnitValue, {
         required: true,
-        maxLength: 20,
-      })?.toUpperCase(),
-      factor: normalizeDecimal(req.body.factor, {
-        required: true,
-        field: 'factor',
-        precision: 24,
-        scale: 12,
+        field: 'session_unit_value',
+        precision: 18,
+        scale: 10,
       }),
     };
+
     const updated = await repo.updatePressureConversion(conversionId, payload);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Conversion not found.' });
     }
+
+    await writeAuditSafe({
+      session_id: current.session_id,
+      entity_name: 'calibration_pressure_conversions',
+      entity_id: conversionId,
+      action_type: 'UPDATE',
+      old_value: JSON.stringify(current),
+      new_value: JSON.stringify(payload),
+      changed_by: getChangedBy(req),
+    });
+
     return res.status(200).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deletePressureConversion(req, res) {
+async function deletePressureConversion(req, res, next) {
   try {
     const conversionId = parseIntParam(req.params.conversionId, 'conversionId');
     const deleted = await repo.deletePressureConversion(conversionId);
@@ -1498,11 +1531,11 @@ async function deletePressureConversion(req, res) {
     }
     return res.status(200).json({ success: true, data: { conversion_id: conversionId } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateEvaluationResult(req, res) {
+async function updateEvaluationResult(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const session = await ensureSessionExists(sessionId);
@@ -1535,7 +1568,7 @@ async function updateEvaluationResult(req, res) {
       data: { session_id: sessionId, evaluation_result: evaluationResult },
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 

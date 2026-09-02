@@ -14,7 +14,8 @@ const workbookRepo = require('./calibration-workbook.repository');
 const { getPool, createRequest } = workbookRepo;
 
 function toDbNull(value) {
-  return value === undefined ? null : value;
+  if (value === undefined || value === null || value === '') return null;
+  return value;
 }
 
 function boolBit(value, fallback = 1) {
@@ -54,7 +55,7 @@ const SESSION_COLUMNS = `
   session_id, session_code, instrument_id, instrument_code, instrument_name,
   merk_tipe, no_seri, kapasitas_ukur, kapasitas_alat, unit, resolusi, kapasitas_resolusi,
   lokasi, calibration_date, interval_bulan, metode_kalibrasi, keterangan,
-  temperature, humidity,
+  temperature, humidity, eccentricity_nominal_mass,
   std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
   qa_id, id_no_sertifikat, status, pic, conclusion, evaluation_result,
   approved_by_admin, approved_by_admin_date,
@@ -69,6 +70,34 @@ async function getSessionById(sessionId, transaction) {
   const result = await request
     .input('SessionId', sql.Int, sessionId)
     .query(`SELECT ${SESSION_COLUMNS} FROM [dbo].[timbangan_sessions] WHERE session_id = @SessionId`);
+  return result.recordset[0] || null;
+}
+
+async function getPublishedHysteresisByCertificate({ qa_id: qaId, id_no_sertifikat: idNoSertifikat }, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT TOP 1
+        s.session_id,
+        s.qa_id,
+        s.id_no_sertifikat,
+        s.instrument_id,
+        s.instrument_code,
+        s.instrument_name,
+        s.calibration_date,
+        s.status,
+        summary.summary_id,
+        summary.hysteresis
+      FROM [dbo].[timbangan_sessions] s
+      INNER JOIN [dbo].[timbangan_result_summary] summary
+        ON summary.session_id = s.session_id
+      WHERE LTRIM(RTRIM(s.qa_id)) = @QaId
+        AND LTRIM(RTRIM(s.id_no_sertifikat)) = @IdNoSertifikat
+        AND s.status = 'PUBLISHED'
+      ORDER BY s.session_id DESC, summary.summary_id DESC
+    `);
   return result.recordset[0] || null;
 }
 
@@ -92,6 +121,7 @@ function bindSessionInputs(request, payload) {
     .input('Keterangan', sql.VarChar(1000), toDbNull(payload.keterangan))
     .input('Temperature', sql.Decimal(18, 6), toDbNull(payload.temperature))
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
+    .input('EccentricityNominalMass', sql.Decimal(18, 6), toDbNull(payload.eccentricity_nominal_mass))
     .input('StdNama', sql.VarChar(255), toDbNull(payload.std_nama))
     .input('StdNoIdentitas', sql.VarChar(500), toDbNull(payload.std_no_identitas))
     .input('StdNoSertifikat', sql.VarChar(1000), toDbNull(payload.std_no_sertifikat))
@@ -109,25 +139,29 @@ async function createSession(payload, transaction) {
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by));
 
   const result = await request.query(`
+    DECLARE @out TABLE (session_id INT);
+
     INSERT INTO [dbo].[timbangan_sessions]
     (
       session_code, instrument_id, instrument_code, instrument_name,
       merk_tipe, no_seri, kapasitas_ukur, kapasitas_alat, unit, resolusi, kapasitas_resolusi,
       lokasi, calibration_date, interval_bulan, metode_kalibrasi, keterangan,
-      temperature, humidity,
+      temperature, humidity, eccentricity_nominal_mass,
       std_nama, std_no_identitas, std_no_sertifikat, std_tertelusur, std_rekalibrasi,
       qa_id, status, pic, evaluation_result, created_by
     )
-    OUTPUT INSERTED.session_id
+    OUTPUT INSERTED.session_id INTO @out
     VALUES
     (
       @SessionCode, @InstrumentId, @InstrumentCode, @InstrumentName,
       @MerkTipe, @NoSeri, @KapasitasUkur, @KapasitasAlat, @Unit, @Resolusi, @KapasitasResolusi,
       @Lokasi, @CalibrationDate, @IntervalBulan, @MetodeKalibrasi, @Keterangan,
-      @Temperature, @Humidity,
+      @Temperature, @Humidity, @EccentricityNominalMass,
       @StdNama, @StdNoIdentitas, @StdNoSertifikat, @StdTertelusur, @StdRekalibrasi,
       @QaId, @Status, @Pic, @EvaluationResult, @CreatedBy
     )
+
+    SELECT session_id FROM @out;
   `);
   return result.recordset[0].session_id;
 }
@@ -146,7 +180,7 @@ async function updateSession(sessionId, payload, transaction) {
       kapasitas_alat = @KapasitasAlat, unit = @Unit, resolusi = @Resolusi,
       kapasitas_resolusi = @KapasitasResolusi, lokasi = @Lokasi, calibration_date = @CalibrationDate,
       interval_bulan = @IntervalBulan, metode_kalibrasi = @MetodeKalibrasi, keterangan = @Keterangan,
-      temperature = @Temperature, humidity = @Humidity,
+      temperature = @Temperature, humidity = @Humidity, eccentricity_nominal_mass = @EccentricityNominalMass,
       std_nama = @StdNama, std_no_identitas = @StdNoIdentitas, std_no_sertifikat = @StdNoSertifikat,
       std_tertelusur = @StdTertelusur, std_rekalibrasi = @StdRekalibrasi,
       qa_id = @QaId, pic = @Pic, evaluation_result = @EvaluationResult,
@@ -411,9 +445,13 @@ async function createPoint(sessionId, payload, transaction) {
     .input('Unit', sql.VarChar(10), payload.unit || 'kg')
     .input('IsActive', sql.Bit, boolBit(payload.is_active))
     .query(`
+      DECLARE @out TABLE (point_id INT);
+
       INSERT INTO [dbo].[timbangan_points] (session_id, point_order, unit, is_active)
-      OUTPUT INSERTED.point_id
+      OUTPUT INSERTED.point_id INTO @out
       VALUES (@SessionId, @PointOrder, @Unit, @IsActive)
+
+      SELECT point_id FROM @out;
     `);
   return result.recordset[0].point_id;
 }
@@ -662,6 +700,11 @@ async function getMetodeKalibrasi(transaction) {
 // DA CANDIDATES (search-based browse — no hardcoded parameter filter)
 // ---------------------------------------------------------------------------
 
+// Sumber DA yang benar untuk Timbangan adalah T_Kalibrasi_DA_Timbangan (data
+// produksi asli, parameter Timbangan) — BUKAN T_Kalibrasi_DA_Bagian (tabel
+// generik, cuma berisi baris mock buatan seeder). Publish sertifikat juga
+// harus resolve QA_ID dari sini (lihat createTimbanganCertDraftFromDa) supaya
+// header Assm_Merk/SERIAL_NUMBER/dll konsisten dengan DA aslinya.
 async function listTimbanganDaCandidates(filters = {}, transaction) {
   const request = await createRequest(transaction);
   const where = [];
@@ -692,10 +735,10 @@ async function listTimbanganDaCandidates(filters = {}, transaction) {
 
   const result = await request.query(`
     SELECT TOP 100
-      A.QA_ID, A.Jenis_kalibrasi, A.Parameter_Sertifikasi, A.Assm_nama_instrumen,
+      A.QA_ID, A.Jenis_kalibrasi, 'Timbangan' AS Parameter_Sertifikasi, A.Assm_nama_instrumen,
       A.Assm_No_identitas_Istrumen, A.Assm_No_identitas_kalibrasi, A.Group_Da_Dept,
       A.Assm_Kapasitas, A.Parameter_Kalibrasi, A.Assm_Lokasi, A.Parameter_Interval, A.Catatan
-    FROM T_Kalibrasi_DA_Bagian AS A
+    FROM T_Kalibrasi_DA_Timbangan AS A
     ${whereSql}
     ORDER BY A.QA_ID ASC
   `);
@@ -727,12 +770,298 @@ async function createSertifikatBagianDraftFromTimbanganDa(qaId, idNoSertifikat, 
   return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
 }
 
+// ---------------------------------------------------------------------------
+// LEGACY CERTIFICATE — T_Kalibrasi_Sertifikat_Timbangan (+ 4 detail tables)
+//
+// Unlike the generic Sertifikat-Bagian tables, the Timbangan-specific tables
+// have dedicated columns for Pre-Adjustment / Daya Ulang / Massa Standar /
+// Pusat Pan, matching what PrintMassa.jsx renders. The workbook publish flow
+// targets these instead of Sertifikat-Bagian so no calculated section is
+// silently dropped.
+// ---------------------------------------------------------------------------
+
+/** Look up a Timbangan DA candidate by QA_ID (T_Kalibrasi_DA_Timbangan, not DA_Bagian). */
+async function getTimbanganDaByQaId(qaId, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .query(`
+      SELECT TOP 1 QA_ID, Jenis_kalibrasi, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi, Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept,
+        Parameter_Kalibrasi, Parameter_No_id_anak_timbang, Parameter_Interval,
+        Parameter_kriteria, Pelaksana_Verifikasi, Titik_verifikasi, Catatan
+      FROM T_Kalibrasi_DA_Timbangan
+      WHERE QA_ID = @QaId
+    `);
+  return result.recordset[0] || null;
+}
+
+async function getTimbanganCertHeader(qaId, idNoSertifikat, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT TOP 1
+        QA_ID, ID_No_Sertifikat, Assm_nama_instrumen, Assm_No_identitas_Istrumen,
+        Assm_No_identitas_kalibrasi, Assm_Merk, SERIAL_NUMBER, Assm_Kapasitas, Assm_Lokasi,
+        Nama, No_Ident_No_batch, No_Sertifikat, Tertelusur_melalui, Rekalibrasi,
+        Tgl_kalibrasi, Interval, Metode_kalibrasi, Suhu_Kelembaban, Catatan,
+        Group_Da_Dept, Parameter_Kalibrasi, BATAS_UNJUK_KERJA
+      FROM T_Kalibrasi_Sertifikat_Timbangan
+      WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat
+    `);
+  return result.recordset[0] || null;
+}
+
+/** Draft a Sertifikat-Timbangan header from a T_Kalibrasi_DA_Timbangan record. */
+async function createTimbanganCertDraftFromDa(qaId, idNoSertifikat, userId, delegatedTo, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .input('UserId', sql.VarChar(100), toDbNull(userId))
+    .input('DelegatedTo', sql.VarChar(100), toDbNull(delegatedTo))
+    .query(`
+      INSERT INTO T_Kalibrasi_Sertifikat_Timbangan
+        (QA_ID, ID_No_Sertifikat, Jenis_kalibrasi, isSert_Manual, tgl,
+         Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi,
+         Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+         Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+         Pelaksana_Verifikasi, Titik_verifikasi,
+         UserID, Delegated_To, Process_date)
+      SELECT
+        QA_ID, @IdNoSertifikat, Jenis_kalibrasi, 1, GETDATE(),
+        Assm_nama_instrumen, Assm_No_identitas_Istrumen, Assm_No_identitas_kalibrasi,
+        Assm_Kapasitas, Assm_Lokasi, Group_Da_Dept, Parameter_Kalibrasi,
+        Parameter_No_id_anak_timbang, Parameter_Interval, Parameter_kriteria,
+        Pelaksana_Verifikasi, Titik_verifikasi,
+        @UserId, @DelegatedTo, GETDATE()
+      FROM T_Kalibrasi_DA_Timbangan
+      WHERE QA_ID = @QaId
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function updateTimbanganCertHeader(payload, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), payload.qa_id)
+    .input('IdNoSertifikat', sql.VarChar(50), payload.id_no_sertifikat)
+    .input('AssmNamaInstrumen', sql.VarChar(2000), toDbNull(payload.assm_nama_instrumen))
+    .input('AssmNoIdentitasKalibrasi', sql.VarChar(50), toDbNull(payload.assm_no_identitas_kalibrasi))
+    .input('AssmMerk', sql.VarChar(50), toDbNull(payload.assm_merk))
+    .input('SerialNumber', sql.VarChar(50), toDbNull(payload.serial_number))
+    .input('AssmKapasitas', sql.VarChar(50), toDbNull(payload.assm_kapasitas))
+    .input('AssmLokasi', sql.VarChar(2000), toDbNull(payload.assm_lokasi))
+    .input('Nama', sql.VarChar(2000), toDbNull(payload.nama))
+    .input('NoIdentNoBatch', sql.VarChar(50), toDbNull(payload.no_ident_no_batch))
+    .input('NoSertifikat', sql.VarChar(50), toDbNull(payload.no_sertifikat))
+    .input('TertelusurMelalui', sql.VarChar(50), toDbNull(payload.tertelusur_melalui))
+    .input('Rekalibrasi', sql.VarChar(50), toDbNull(payload.rekalibrasi))
+    .input('TglKalibrasi', sql.DateTime, toDbNull(payload.tgl_kalibrasi))
+    .input('IntervalValue', sql.Int, toDbNull(payload.interval))
+    .input('MetodeKalibrasi', sql.VarChar(50), toDbNull(payload.metode_kalibrasi))
+    .input('SuhuKelembaban', sql.VarChar(50), toDbNull(payload.suhu_kelembaban))
+    .input('Catatan', sql.VarChar(500), toDbNull(payload.catatan))
+    .input('BatasUnjukKerja', sql.VarChar(1000), toDbNull(payload.batas_unjuk_kerja))
+    .input('UserId', sql.VarChar(50), toDbNull(payload.user_id))
+    .input('DelegatedTo', sql.VarChar(50), toDbNull(payload.delegated_to))
+    .query(`
+      UPDATE T_Kalibrasi_Sertifikat_Timbangan
+      SET
+        Assm_nama_instrumen = @AssmNamaInstrumen,
+        Assm_No_identitas_kalibrasi = @AssmNoIdentitasKalibrasi,
+        Assm_Merk = @AssmMerk,
+        SERIAL_NUMBER = @SerialNumber,
+        Assm_Kapasitas = @AssmKapasitas,
+        Assm_Lokasi = @AssmLokasi,
+        Nama = @Nama,
+        No_Ident_No_batch = @NoIdentNoBatch,
+        No_Sertifikat = @NoSertifikat,
+        Tertelusur_melalui = @TertelusurMelalui,
+        Rekalibrasi = @Rekalibrasi,
+        Tgl_kalibrasi = @TglKalibrasi,
+        Interval = @IntervalValue,
+        Metode_kalibrasi = @MetodeKalibrasi,
+        Suhu_Kelembaban = @SuhuKelembaban,
+        Catatan = @Catatan,
+        BATAS_UNJUK_KERJA = @BatasUnjukKerja,
+        UserID = @UserId,
+        Delegated_To = @DelegatedTo,
+        Process_date = GETDATE()
+      WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function updateSertifikatTimbanganOOC(qaId, idNoSertifikat, isOoc, transaction) {
+  const request = await createRequest(transaction);
+  const result = await request
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .input('IsOoc', sql.Bit, isOoc ? 1 : 0)
+    .query(`
+      UPDATE T_Kalibrasi_Sertifikat_Timbangan
+      SET
+        is_ooc = @IsOoc,
+        tanggal_ooc = CASE WHEN @IsOoc = 1 THEN GETDATE() ELSE NULL END
+      WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat
+    `);
+  return (result.rowsAffected && result.rowsAffected[0] > 0) || false;
+}
+
+async function replaceTimbanganPreAdjRows(qaId, idNoSertifikat, rows, userId, delegatedTo, transaction) {
+  const del = await createRequest(transaction);
+  await del.input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`DELETE FROM T_Kalibrasi_Sertifikat_Timbangan_Pre_Adj WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat`);
+
+  for (const row of rows) {
+    const request = await createRequest(transaction);
+    await request
+      .input('QaId', sql.VarChar(50), qaId)
+      .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+      .input('SeqId', sql.Int, row.seq_id)
+      .input('PembacaanStandar', sql.VarChar(50), row.pembacaan_standar)
+      .input('PembacaanAlat', sql.VarChar(50), row.pembacaan_alat)
+      .input('ErrorValue', sql.VarChar(50), row.error)
+      .input('UserId', sql.VarChar(100), toDbNull(userId))
+      .input('DelegatedTo', sql.VarChar(100), toDbNull(delegatedTo))
+      .query(`
+        INSERT INTO T_Kalibrasi_Sertifikat_Timbangan_Pre_Adj
+          (QA_ID, ID_No_Sertifikat, Seq_ID, Pembacaan_standar, Pembacaan_Alat, Error, UserID, Delegated_To, Process_date)
+        VALUES
+          (@QaId, @IdNoSertifikat, @SeqId, @PembacaanStandar, @PembacaanAlat, @ErrorValue, @UserId, @DelegatedTo, GETDATE())
+      `);
+  }
+}
+
+async function replaceTimbanganDayaUlangRows(qaId, idNoSertifikat, rows, userId, delegatedTo, transaction) {
+  const del = await createRequest(transaction);
+  await del.input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`DELETE FROM T_Kalibrasi_Sertifikat_Timbangan_Daya_Ulang WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat`);
+
+  for (const row of rows) {
+    const request = await createRequest(transaction);
+    await request
+      .input('QaId', sql.VarChar(50), qaId)
+      .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+      .input('SeqId', sql.Int, row.seq_id)
+      .input('MassaStandar', sql.VarChar(50), row.massa_standar)
+      .input('StandarDeviasi', sql.VarChar(50), row.standar_deviasi)
+      .input('UserId', sql.VarChar(100), toDbNull(userId))
+      .input('DelegatedTo', sql.VarChar(100), toDbNull(delegatedTo))
+      .query(`
+        INSERT INTO T_Kalibrasi_Sertifikat_Timbangan_Daya_Ulang
+          (QA_ID, ID_No_Sertifikat, Seq_ID, Massa_standar, Standar_deviasi, UserID, Delegated_To, Process_date)
+        VALUES
+          (@QaId, @IdNoSertifikat, @SeqId, @MassaStandar, @StandarDeviasi, @UserId, @DelegatedTo, GETDATE())
+      `);
+  }
+}
+
+async function replaceTimbanganMassaStdRows(qaId, idNoSertifikat, rows, userId, delegatedTo, transaction) {
+  const del = await createRequest(transaction);
+  await del.input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`DELETE FROM T_Kalibrasi_Sertifikat_Timbangan_Massa_Std WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat`);
+
+  for (const row of rows) {
+    const request = await createRequest(transaction);
+    await request
+      .input('QaId', sql.VarChar(50), qaId)
+      .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+      .input('SeqId', sql.Int, row.seq_id)
+      .input('KonvensionalStandar', sql.VarChar(50), row.konvensional_standar)
+      .input('PembacaanAlat', sql.VarChar(50), row.pembacaan_alat)
+      .input('ErrorValue', sql.VarChar(50), row.error)
+      .input('Ketidakpastian', sql.VarChar(50), row.ketidakpastian)
+      .input('UserId', sql.VarChar(100), toDbNull(userId))
+      .input('DelegatedTo', sql.VarChar(100), toDbNull(delegatedTo))
+      .query(`
+        INSERT INTO T_Kalibrasi_Sertifikat_Timbangan_Massa_Std
+          (QA_ID, ID_No_Sertifikat, Seq_ID, Konvensional_standar, Pembacaan_Alat, Error, Ketidakpastian, UserID, Delegated_To, Process_date)
+        VALUES
+          (@QaId, @IdNoSertifikat, @SeqId, @KonvensionalStandar, @PembacaanAlat, @ErrorValue, @Ketidakpastian, @UserId, @DelegatedTo, GETDATE())
+      `);
+  }
+}
+
+async function replaceTimbanganPusatPanRows(qaId, idNoSertifikat, rows, userId, delegatedTo, transaction) {
+  const del = await createRequest(transaction);
+  await del.input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`DELETE FROM T_Kalibrasi_Sertifikat_Timbangan_Pusat_Pan WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat`);
+
+  for (const row of rows) {
+    const request = await createRequest(transaction);
+    await request
+      .input('QaId', sql.VarChar(50), qaId)
+      .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+      .input('SeqId', sql.Int, row.seq_id)
+      .input('Massa', sql.VarChar(50), row.massa)
+      .input('Massa0', sql.VarChar(50), row.massa_0)
+      .input('Massa1', sql.VarChar(50), row.massa_1)
+      .input('Massa2', sql.VarChar(50), row.massa_2)
+      .input('Massa3', sql.VarChar(50), row.massa_3)
+      .input('Massa4', sql.VarChar(50), row.massa_4)
+      .input('PerbedaanMax', sql.VarChar(50), row.perbedaan_max)
+      .input('UserId', sql.VarChar(100), toDbNull(userId))
+      .input('DelegatedTo', sql.VarChar(100), toDbNull(delegatedTo))
+      .query(`
+        INSERT INTO T_Kalibrasi_Sertifikat_Timbangan_Pusat_Pan
+          (QA_ID, ID_No_Sertifikat, Seq_ID, Massa, Massa_0, Massa_1, Massa_2, Massa_3, Massa_4, Perbedaan_Max, UserID, Delegated_To, Process_date)
+        VALUES
+          (@QaId, @IdNoSertifikat, @SeqId, @Massa, @Massa0, @Massa1, @Massa2, @Massa3, @Massa4, @PerbedaanMax, @UserId, @DelegatedTo, GETDATE())
+      `);
+  }
+}
+
+/**
+ * Auto-approve the legacy certificate (Approver_No = 1) once the session's
+ * role-based approval (admin+officer+manager) is complete. The old print-data
+ * endpoint (getPrintDataTimbangan) refuses to serve data without this row —
+ * it predates the workbook's admin/officer/manager approval flow, so there is
+ * no equivalent approver identity to carry over; Approver_Identity is a
+ * required legacy column not surfaced on the certificate, so it is stubbed.
+ */
+async function ensureTimbanganCertApproved(qaId, idNoSertifikat, userId, delegatedTo, transaction) {
+  const check = await createRequest(transaction);
+  const existing = await check
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .query(`
+      SELECT COUNT(*) AS n FROM T_Kalibrasi_Sertifikat_Timbangan_Status
+      WHERE QA_ID = @QaId AND ID_No_Sertifikat = @IdNoSertifikat AND Approver_No = 1
+    `);
+  if (existing.recordset[0]?.n > 0) return false;
+
+  // User_ID/Delegated_To di tabel ini NVARCHAR(10) — dirancang untuk NIK karyawan
+  // pendek (mis. "1526", "ASN"), bukan free-text actor ID seperti seeder/sistem.
+  const insert = await createRequest(transaction);
+  await insert
+    .input('QaId', sql.VarChar(50), qaId)
+    .input('IdNoSertifikat', sql.VarChar(50), idNoSertifikat)
+    .input('UserId', sql.VarChar(10), String(userId || '').slice(0, 10))
+    .input('DelegatedTo', sql.VarChar(10), String(delegatedTo || '').slice(0, 10))
+    .query(`
+      INSERT INTO T_Kalibrasi_Sertifikat_Timbangan_Status
+        (QA_ID, ID_No_Sertifikat, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To)
+      VALUES
+        (@QaId, @IdNoSertifikat, 1, 0, '0', GETDATE(), @UserId, @DelegatedTo)
+    `);
+  return true;
+}
+
 module.exports = {
   getPool,
   createRequest,
   // sessions
   listSessions,
   getSessionById,
+  getPublishedHysteresisByCertificate,
   createSession,
   updateSession,
   updateSessionStatus,
@@ -784,4 +1113,15 @@ module.exports = {
   updateSertifikatBagianHeader: workbookRepo.updateSertifikatBagianHeader,
   replaceSertifikatBagianHasilKalRows: workbookRepo.replaceSertifikatBagianHasilKalRows,
   insertAuditLog: workbookRepo.insertAuditLog,
+  // legacy Sertifikat-Timbangan (Pre-Adj / Daya Ulang / Massa Std / Pusat Pan)
+  getTimbanganDaByQaId,
+  getTimbanganCertHeader,
+  createTimbanganCertDraftFromDa,
+  updateTimbanganCertHeader,
+  updateSertifikatTimbanganOOC,
+  replaceTimbanganPreAdjRows,
+  replaceTimbanganDayaUlangRows,
+  replaceTimbanganMassaStdRows,
+  replaceTimbanganPusatPanRows,
+  ensureTimbanganCertApproved,
 };

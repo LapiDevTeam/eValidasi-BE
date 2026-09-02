@@ -276,13 +276,42 @@ async function approveSession(sessionId, user) {
   }
 
   const pendingRole = getPendingApprovalRole(session);
+  const isFinalApproval = pendingRole.key === 'manager';
+
+  if (isFinalApproval && !normalizeEvaluationResult(session.evaluation_result)) {
+    throw httpError(
+      'Hasil evaluasi (kesimpulan) belum dipilih. Approval Manager bersifat final dan akan otomatis menerbitkan serta menyetujui sertifikat, jadi pilih hasil evaluasi terlebih dahulu.',
+      422,
+      [{ field: 'evaluation_result', message: 'Hasil evaluasi manual belum dipilih.' }]
+    );
+  }
+
   await repo.updateSessionApproval(sessionId, { roleKey: pendingRole.key, userId });
 
-  return {
+  const result = {
     sessionId,
     approvedBy: pendingRole.key,
     approvedByLabel: pendingRole.label,
   };
+
+  if (isFinalApproval) {
+    try {
+      const publishResult = await publishToSertifikat(sessionId, userId, userId, {});
+      result.certificate = {
+        qa_id: publishResult.qa_id,
+        id_no_sertifikat: publishResult.id_no_sertifikat,
+        created_new_sertifikat: publishResult.created_new_sertifikat,
+        published_rows: publishResult.published_rows,
+        certificate_approved: publishResult.certificate_approved,
+        print_data_endpoint: publishResult.print_data_endpoint,
+      };
+    } catch (publishError) {
+      result.certificateError =
+        `Workbook approved, tetapi sertifikat gagal diterbitkan otomatis: ${publishError.message}`;
+    }
+  }
+
+  return result;
 }
 
 async function rejectSession(sessionId, user, reason = '') {
@@ -429,6 +458,9 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       delegated_to: delegatedActor,
     }, transaction);
 
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
+
     // Pemetaan baris hasil kalibrasi -> T_Kalibrasi_Sertifikat_Bagian_Hasil_Kal:
     //   pembacaan_alat   = rata-rata ketukan/menit (E_avg)
     //   pembacaan_standar = nominal target (250 ketukan/menit)
@@ -448,6 +480,21 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
 
     await repo.replaceSertifikatBagianHasilKalRows(qaId, idNoSertifikat, publishRows, actor, delegatedActor, transaction);
     await repo.updateSessionCertificate(sessionId, idNoSertifikat, qaId, transaction);
+
+    const certificateAlreadyApproved = await repo.isSertifikatBagianApproved(qaId, idNoSertifikat, transaction);
+    if (!certificateAlreadyApproved) {
+      const certApproverIdentity = (await repo.getApproverIdentity('KAL_Sert_Bagian', 1, actor, transaction)) || '0';
+      await repo.insertSertifikatBagianStatus({
+        qa_id: qaId,
+        id_no_sertifikat: idNoSertifikat,
+        approver_no: 1,
+        is_reject: 0,
+        approver_identity: certApproverIdentity,
+        user_id: actor,
+        delegated_to: delegatedActor,
+      }, transaction);
+    }
+
     await repo.updateSessionStatus(sessionId, 'PUBLISHED', actor, transaction);
     await repo.insertAuditLog({
       session_id: sessionId,
@@ -468,6 +515,7 @@ async function publishToSertifikat(sessionId, changedBy = null, delegatedTo = nu
       created_new_sertifikat: createdDraft,
       published_rows: publishRows.length,
       certificate_source: 'T_Kalibrasi_Sertifikat_Bagian',
+      certificate_approved: true,
       print_data_endpoint: `/transactions/kalibrasi/sertifikat-bagian/print-data?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
     };
   } catch (error) {

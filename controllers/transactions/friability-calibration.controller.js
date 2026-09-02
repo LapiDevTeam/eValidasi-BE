@@ -3,6 +3,20 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
+const {
+  assertWorkbookApproval,
+  getActorApprovalRole,
+  resolveTargetApprovalRole,
+} = require('../../services/calibrationWorkbookApproval.service');
+const {
+  finalizeManagerCalibrationApproval,
+} = require('../../services/calibrationManagerFinalization.service');
+const {
+  formatResultRows,
+  normalizeCalculationNumbers,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_Friability_Workbook_Session';
 
@@ -32,12 +46,7 @@ function parseJson(value, fallback) {
 }
 
 function parseNumberValue(value) {
-  if (value === undefined || value === null || value === '') return null;
-  const normalized = typeof value === 'string'
-    ? value.replace(',', '.').trim()
-    : value;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
+  return parseDotDecimal(value);
 }
 
 function parseCalibrationDate(value) {
@@ -214,7 +223,7 @@ async function fetchSessionById(sessionId) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -241,7 +250,7 @@ async function fetchLatestSessionByCertificate(qaId, idNoSertifikat) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -469,7 +478,7 @@ function normalizeSessionPayload(body) {
     header: body.header || null,
     workbook: body.workbook || null,
   };
-  const calculationResult = body.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(body.calculationResult || null);
 
   return {
     qaId: textValue(qaId),
@@ -624,7 +633,8 @@ const getSession = async (req, res, next) => {
 
 const getPrintData = async (req, res, next) => {
   try {
-    const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } = req.query;
+    const { qa_id: qaId, id_no_sertifikat: idNoSertifikat } =
+      normalizeCertificateQuery(req.query);
 
     if (!qaId || !idNoSertifikat) {
       return res.status(400).json({
@@ -702,8 +712,8 @@ const getPrintData = async (req, res, next) => {
       data: {
         header: headerResults[0],
         workbook: workbookPayload.workbook || null,
-        calculation: latestSession?.calculationResult || null,
-        hasil_kal: rows,
+        calculation: normalizeCalculationNumbers(latestSession?.calculationResult || null),
+        hasil_kal: formatResultRows(rows),
         approvalSignature: approverResults[0] || null,
       },
     });
@@ -760,13 +770,11 @@ const saveSession = async (req, res, next) => {
       }
 
       if (
-        existing.ApprovedByAdmin ||
-        existing.ApprovedByOfficer ||
         existing.ApprovedByManager
       ) {
         return res.status(403).json({
           success: false,
-          message: 'Tidak bisa simpan workbook karena sudah approve',
+          message: 'Tidak bisa simpan workbook karena sudah approve Manager',
         });
       }
 
@@ -886,8 +894,14 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const role = getWorkbookApprovalRole(req);
-    const orderMessage = assertWorkbookApprovalOrder(session, role);
+    const actorRole = getActorApprovalRole(req);
+    const role = resolveTargetApprovalRole(req);
+    const orderMessage = assertWorkbookApproval({
+      session,
+      actorRole,
+      targetRole: role,
+      certificateApprovedByManager: true,
+    });
     if (orderMessage) {
       return res.status(403).json({
         success: false,
@@ -895,25 +909,37 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    await sequelizeMSQL.query(
-      `
-        UPDATE ${SESSION_TABLE}
-        SET
-          ${role.column} = :userId,
-          ${role.dateColumn} = GETDATE(),
-          Status = :status,
-          Update_Date = GETDATE()
-        WHERE Session_ID = :sessionId
-      `,
-      {
-        replacements: {
-          userId: user_id,
-          status: role.status,
-          sessionId,
-        },
-        type: Sequelize.QueryTypes.UPDATE,
+    await sequelizeMSQL.transaction(async (transaction) => {
+      if (role.key === 'manager') {
+        await finalizeManagerCalibrationApproval({
+          certificateType: 'bagian',
+          session,
+          user: req.user,
+          transaction,
+        });
       }
-    );
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE ${SESSION_TABLE}
+          SET
+            ${role.column} = :userId,
+            ${role.dateColumn} = GETDATE(),
+            Status = :status,
+            Update_Date = GETDATE()
+          WHERE Session_ID = :sessionId
+        `,
+        {
+          replacements: {
+            userId: user_id,
+            status: role.status,
+            sessionId,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+    });
 
     const data = await fetchSessionById(sessionId);
     return res.status(200).json({
@@ -1029,7 +1055,9 @@ const generateFriabilitySertifikat = async (req, res, next) => {
       transaction,
     });
 
-    const calculationResult = body.calculationResult || session.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(
+      body.calculationResult || session.calculationResult || null
+    );
     const evaluationResult = normalizeEvaluationResult(
       pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
         session.Evaluation_Result

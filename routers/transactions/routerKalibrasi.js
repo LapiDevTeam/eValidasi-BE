@@ -11,6 +11,7 @@ const {
 const { checkFileSizePublic } = require("../../middlewares/upload.middleware");
 const {
   getPermohonanKalibrasiList,
+  checkIdentitasKalibrasiPending,
   getPermohonanDetail,
   searchInstrumen,
   countInstrumen,
@@ -74,6 +75,7 @@ const {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
+  printFormPdf,
   printDAThermo,
   printHapusAlat
 } = require("../../controllers/transactions/sertifikasi.controller");
@@ -161,6 +163,8 @@ const {
 
 router.get("/permohonan/list", authentication, getPermohonanKalibrasiList);
 router.get("/permohonan/detail", authentication, getPermohonanDetail);
+// Cek apakah No. Identitas Kalibrasi masih dipakai permohonan yang approval-nya belum lengkap
+router.get("/permohonan/check-id-kalibrasi", authentication, checkIdentitasKalibrasiPending);
 router.get("/instrumen/search", authentication, searchInstrumen);
 router.get("/instrumen/count", authentication, countInstrumen);
 router.get("/dashboard/summary", authentication, getDashboardSummary);
@@ -226,6 +230,9 @@ router.post("/sertifikat/resertifikasi", authentication, resertifikasi);
 router.post("/sertifikat/print-data", generateSertifikatPDF);
 router.get("/sertifikat/print", printHeaderThermo);
 router.get("/sertifikat/print-terkalibrasi", printTerkalibrasi)
+// Cetak PDF dari HTML form yang dirakit di klien (EVALUASI HASIL KALIBRASI).
+// POST + authentication karena isinya data kalibrasi, bukan sekadar link.
+router.post("/sertifikat/print-form-pdf", authentication, printFormPdf)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
 router.get("/sertifikat/print-da-thermo", printDAThermo);
 router.get("/sertifikat/print-hapus-alat", printHapusAlat);

@@ -3,6 +3,11 @@ const MyError = require("../helpers/errors");
 const isDev = process.env.NODE_ENV !== 'production';
 
 const handleError = async (err, req, res, _next) => {
+  // If a controller already sent a response, do not attempt to send again.
+  if (res.headersSent) {
+    return;
+  }
+
   // Always log full error details to server console.
   console.error('[ERROR]', err);
   if (err.stack) {

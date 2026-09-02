@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const FTP_CONFIG = {
-  host: 'web.lapilabs.co.id',
-  user: 'webattachnew',
+  host: '192.168.1.38',
+  user: 'Webattachnew',
   password: 'Web221124**',
   secure: false,
   folder: 'eKalibrasi'

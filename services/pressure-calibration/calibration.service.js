@@ -23,6 +23,9 @@ const stdCorrection = require('./standardCorrection.service');
 const uncertaintySvc = require('./uncertainty.service');
 
 const INDICATOR_TYPES = new Set(['Analog', 'Digital']);
+// Default Metode Kalibrasi, mengikuti pola modul workbook lain
+// (rpmCalculation: 'Kalibrasi RPM - Workbook', dst.)
+const DEFAULT_METODE_KALIBRASI = 'Kalibrasi Pressure - Workbook';
 
 function normalizeIndicatorType(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -123,11 +126,49 @@ function withWorkbookFormattedPayload(payload) {
 // Validators
 // ---------------------------------------------------------------------------
 
+// Interval kalibrasi (bulan). Disimpan sebagai string agar konsisten dengan
+// modul lain (rpm_sessions.interval_bulan VARCHAR), tapi tetap divalidasi angka.
+function normalizeIntervalBulanInput(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return String(Math.trunc(numeric));
+}
+
+// Batas 50 karakter mengikuti validatePublishLengths() di
+// src/services/calibrationCalculation.service.js — kolom Metode_kalibrasi pada
+// T_Kalibrasi_Sertifikat_Bagian dibatasi 50, jadi nilai yang lebih panjang akan
+// menggagalkan penerbitan sertifikat saat approval Manager.
+const METODE_KALIBRASI_MAX_LENGTH = 50;
+
+function normalizeMetodeKalibrasiInput(value) {
+  if (value === undefined || value === null) return null;
+  const text = String(value).trim();
+  return text.length ? text.slice(0, METODE_KALIBRASI_MAX_LENGTH) : null;
+}
+
 function validateSessionInput(body) {
   const errors = [];
   if (!body.instrumentId) errors.push('instrumentId is required.');
   if (!body.standardId)   errors.push('standardId is required.');
   if (!body.calibrationDate) errors.push('calibrationDate is required.');
+
+  const intervalInput = body.intervalBulan !== undefined ? body.intervalBulan : body.interval_bulan;
+  if (intervalInput !== undefined && intervalInput !== null && intervalInput !== '') {
+    const interval = Number(intervalInput);
+    if (!Number.isFinite(interval) || interval <= 0 || !Number.isInteger(Number(interval))) {
+      errors.push('intervalBulan must be a positive whole number of months.');
+    }
+  }
+
+  const metodeInput = body.metodeKalibrasi !== undefined ? body.metodeKalibrasi : body.metode_kalibrasi;
+  if (
+    metodeInput !== undefined
+    && metodeInput !== null
+    && String(metodeInput).trim().length > METODE_KALIBRASI_MAX_LENGTH
+  ) {
+    errors.push(`metodeKalibrasi must be ${METODE_KALIBRASI_MAX_LENGTH} characters or fewer.`);
+  }
 
   if (body.indicatorType !== undefined && body.indicatorType !== null && body.indicatorType !== '') {
     const indicatorType = normalizeIndicatorType(body.indicatorType);
@@ -275,10 +316,19 @@ async function createSession(body, createdBy) {
     'metalRuleUncertainty'
   );
 
+  const intervalBulan = normalizeIntervalBulanInput(
+    body.intervalBulan !== undefined ? body.intervalBulan : body.interval_bulan
+  );
+  const metodeKalibrasi = normalizeMetodeKalibrasiInput(
+    body.metodeKalibrasi !== undefined ? body.metodeKalibrasi : body.metode_kalibrasi
+  ) || DEFAULT_METODE_KALIBRASI;
+
   const sessionId = await repo.createSession({
     instrumentId:    body.instrumentId,
     standardId:      body.standardId,
     calibrationDate: body.calibrationDate,
+    intervalBulan,
+    metodeKalibrasi,
     temperature:     body.temperature    ?? null,
     humidity:        body.humidity       ?? null,
     pic:             body.pic            || null,

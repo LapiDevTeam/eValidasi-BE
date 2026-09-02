@@ -2,10 +2,23 @@ const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
 const { getDateTime, getEmployeeName } = require('../../helpers/kalibrasi.helper');
+const {
+  formatResultRows,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
 const logoPath = path.resolve(__dirname, '../../assets/LapiLogo.jpg');
+
+// Logo hitam berlatar TEMBUS, khusus label yang dicetak di atas stiker berwarna.
+//
+// LapiLogo.jpg tidak bisa dipakai di sana: JPEG tidak punya kanal alpha, jadi
+// latar putihnya ikut tercetak sebagai kotak dan menutupi warna stikernya.
+// Berkas ini dibuat dari JPEG yang sama dengan mengubah kecerahan menjadi
+// ketebalan tinta (alpha = 255 - luminance, RGB = hitam).
+const logoMonoPath = path.resolve(__dirname, '../../assets/LapiLogo-mono.png');
 
 /**
  * Search Sertifikat Thermohygro
@@ -147,7 +160,7 @@ const searchSertifikat = async (req, res, next) => {
 const getSertifikatDetail = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -226,7 +239,7 @@ const getSertifikatDetail = async (req, res, next) => {
 const getSuhuData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -259,7 +272,7 @@ const getSuhuData = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Data fetched successfully',
-      data: results,
+      data: formatResultRows(results),
       count: results.length
     });
 
@@ -277,7 +290,7 @@ const getSuhuData = async (req, res, next) => {
 const getKelembabanData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -310,7 +323,7 @@ const getKelembabanData = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: 'Data fetched successfully',
-      data: results,
+      data: formatResultRows(results),
       count: results.length
     });
 
@@ -328,7 +341,8 @@ const getKelembabanData = async (req, res, next) => {
 const checkIsApproved = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, approver_level } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { approver_level } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !approver_level) {
       return res.status(400).json({
@@ -421,7 +435,7 @@ const getApproverIdentity = async (req, res, next) => {
 const checkTglKalibrasi = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -660,6 +674,7 @@ const searchDAThermo = async (req, res, next) => {
         A.QA_ID LIKE :search
         OR Assm_nama_instrumen LIKE :search
         OR Assm_No_identitas_Istrumen LIKE :search
+        OR Assm_No_identitas_kalibrasi LIKE :search
       )
       ORDER BY Assm_nama_instrumen
     `;
@@ -699,7 +714,7 @@ const searchDAThermo = async (req, res, next) => {
 const checkApproveButton = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
       return res.status(400).json({
@@ -916,10 +931,26 @@ const saveSuhuData = async (req, res, next) => {
     }
 
     // Validate required fields
-    if (!pembacaan_alat || !pembacaan_standar || !error || !ketidakpastian) {
+    if ([pembacaan_alat, pembacaan_standar, error, ketidakpastian].some(
+      (value) => value === undefined || value === null || value === ''
+    )) {
       return res.status(400).json({
         success: false,
         message: 'Data harap di isi semua'
+      });
+    }
+
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal'
       });
     }
 
@@ -973,10 +1004,7 @@ const saveSuhuData = async (req, res, next) => {
           qa_id,
           id_no_sertifikat,
           seq_id: newSeqId,
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to
         },
@@ -1008,10 +1036,7 @@ const saveSuhuData = async (req, res, next) => {
 
       await sequelizeMSQL.query(updateQuery, {
         replacements: {
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to,
           qa_id,
@@ -1059,10 +1084,26 @@ const saveKelembabanData = async (req, res, next) => {
     }
 
     // Validate required fields
-    if (!pembacaan_alat || !pembacaan_standar || !error || !ketidakpastian) {
+    if ([pembacaan_alat, pembacaan_standar, error, ketidakpastian].some(
+      (value) => value === undefined || value === null || value === ''
+    )) {
       return res.status(400).json({
         success: false,
         message: 'Data harap di isi semua'
+      });
+    }
+
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal'
       });
     }
 
@@ -1116,10 +1157,7 @@ const saveKelembabanData = async (req, res, next) => {
           qa_id,
           id_no_sertifikat,
           seq_id: newSeqId,
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to
         },
@@ -1151,10 +1189,7 @@ const saveKelembabanData = async (req, res, next) => {
 
       await sequelizeMSQL.query(updateQuery, {
         replacements: {
-          pembacaan_alat,
-          pembacaan_standar,
-          error,
-          ketidakpastian,
+          ...numericRow,
           user_id,
           delegated_to,
           qa_id,
@@ -1184,7 +1219,8 @@ const saveKelembabanData = async (req, res, next) => {
 const deleteSuhuData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       return res.status(400).json({
@@ -1249,7 +1285,8 @@ const deleteSuhuData = async (req, res, next) => {
 const deleteKelembabanData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
       return res.status(400).json({
@@ -2015,8 +2052,8 @@ const generateSertifikatPDF = async (req, res, next) => {
       message: 'Data fetched successfully',
       data: {
         header: formattedHeader,
-        suhuData: suhuData,
-        kelembabanData: kelembabanData,
+        suhuData: formatResultRows(suhuData),
+        kelembabanData: formatResultRows(kelembabanData),
         approvalSignature: approvalSignature[0] || {}
       }
     });
@@ -2179,9 +2216,114 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     next(error);
   }
 };
+// MIME diambil dari ekstensi, bukan dipatok 'image/jpeg'. Logo berlatar tembus
+// harus PNG (JPEG tidak punya kanal alpha), dan PNG yang diaku sebagai JPEG
+// bergantung pada tebakan browser — di Puppeteer kegagalannya berupa logo yang
+// hilang begitu saja dari label, tanpa pesan error apa pun.
+const IMAGE_MIME_BY_EXT = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
+
 function getBase64Image(filePath) {
   const image = fs.readFileSync(filePath);
-  return `data:image/jpeg;base64,${image.toString('base64')}`;
+  const mime = IMAGE_MIME_BY_EXT[path.extname(filePath).toLowerCase()] || 'image/jpeg';
+  return `data:${mime};base64,${image.toString('base64')}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeCssColor(value, fallback = '#000000') {
+  const color = String(value || '').trim();
+  if (
+    /^#[0-9a-fA-F]{3,8}$/.test(color) ||
+    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(color) ||
+    /^[a-zA-Z]+$/.test(color)
+  ) {
+    return color;
+  }
+  return fallback;
+}
+
+// Ukuran fisik stiker label kalibrasi: 5,4cm x 2,4cm.
+// Dipakai untuk semua jenis label: Terkalibrasi, Out of Calibration, dan
+// Jangan Digunakan.
+const LABEL_WIDTH = '5.4cm';
+
+// Verdana dulu; sisanya padanan metrik untuk host render tanpa Verdana.
+const LABEL_FONT = 'Verdana, Tahoma, "DejaVu Sans", Geneva, sans-serif';
+const LABEL_HEIGHT = '2.4cm';
+
+// Stiker "JANGAN DIGUNAKAN" / OOC memakai ukuran yang BERBEDA: lebih sempit
+// tapi jauh lebih tinggi. Label ini dirakit di sini (bukan lewat halaman React
+// PrintTerkalibrasiThermo), jadi ukurannya harus dinyatakan ulang di file ini —
+// perubahan di sisi front-end tidak berpengaruh pada jalur OOC.
+const OOC_LABEL_WIDTH = '4.7cm';
+const OOC_LABEL_HEIGHT = '3.1cm';
+
+/**
+ * Jarak aman cetak, sama seperti di PrintTerkalibrasiThermo: bingkai sengaja
+ * TIDAK dibuat sebesar halaman.
+ *
+ * Label TERKALIBRASI memakai jarak aman yang SAMA (0,5/0,5/1,3/1,6mm) dan tercetak
+ * utuh, sementara label ini terpotong — bedanya cuma ukuran halaman yang dulu
+ * 42mm padahal stikernya 47mm. Jadi penyebab utamanya ketidakcocokan ukuran itu,
+ * bukan area tak tercetak milik printer.
+ *
+ * Angka kiri & atas tetap dinaikkan sebagai cadangan: pada 1,6mm kiri, sekitar
+ * 0,8mm masih terpotong — garis bingkai kiri hilang dan "Nomor" tercetak "omor".
+ * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
+ * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
+ */
+const OOC_SAFE_PADDING = '2mm 0.8mm 0.8mm 2mm';
+// Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
+const OOC_SAFE_PADDING_X_MM = 2.8;
+// Lebar sel logo pada label OOC, mengikuti label fisik.
+const OOC_LOGO_CELL_MM = 11;
+
+/**
+ * Ukuran judul untuk label OOC, yang judulnya BOLEH turun ke baris kedua.
+ *
+ * Stikernya 7mm lebih tinggi daripada label biasa, jadi ketinggian itu dipakai
+ * untuk membungkus judul alih-alih mengecilkan hurufnya sampai sepadan dengan
+ * teks body — dipaksa satu baris, "JANGAN DIGUNAKAN" harus turun ke ~5,5pt dan
+ * tidak lagi terbaca sebagai judul.
+ *
+ * Yang menentukan muat atau tidak adalah KATA TERPANJANG, bukan panjang seluruh
+ * teks. Faktor 0,9 adalah margin terhadap huruf lebar Verdana (G, M, U bisa
+ * mencapai ~0,85em sementara rata-ratanya 0,78em).
+ */
+function oocLabelTitleFontSize(title, areaMm = 26) {
+  const longestWord = String(title || '')
+    .trim()
+    .split(/\s+/)
+    .reduce((longest, word) => Math.max(longest, word.length), 0);
+
+  if (longestWord === 0) return '10pt';
+
+  const fit = (areaMm * 0.9) / (longestWord * 0.78 * 0.3528);
+  return `${Math.max(4.5, Math.min(10, Math.floor(fit * 2) / 2))}pt`;
+}
+
+// Judul label bersifat dinamis, jadi ukuran fontnya menyesuaikan panjang teks
+// supaya tetap muat satu baris di dalam header (~38mm).
+function labelTitleFontSize(title) {
+  const length = String(title || '').trim().length;
+  if (length <= 12) return '10pt';
+  if (length <= 16) return '8pt';
+  if (length <= 22) return '6.5pt';
+  return '5.5pt';
 }
 
  const  printHeaderThermo = async (req, res, next) => {
@@ -2189,7 +2331,18 @@ function getBase64Image(filePath) {
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
+    });
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
@@ -2208,6 +2361,33 @@ function getBase64Image(filePath) {
 
         table {
           margin-top: ${!landscape ? `10px` : `13px`} !important; /* Ensures margin applies to all tables */
+        }
+
+        .enclosures-certificate .result-table th {
+          font-size: ${!landscape ? `8px` : `9px`} !important;
+          line-height: 1.05 !important;
+          padding: 2px 3px !important;
+          white-space: normal !important;
+        }
+
+        .enclosures-certificate .result-table td {
+          font-size: ${!landscape ? `9px` : `10px`} !important;
+          line-height: 1.1 !important;
+          padding: 2px 3px !important;
+        }
+
+        .enclosures-certificate .uncertainty-head {
+          font-size: ${!landscape ? `7px` : `8px`} !important;
+          line-height: 1 !important;
+        }
+
+        .enclosures-certificate h5.calibration-note,
+        .enclosures-certificate .calibration-note {
+          font-size: ${!landscape ? `8px` : `9px`} !important;
+          line-height: 1.25 !important;
+          margin-top: 4px !important;
+          margin-bottom: 0 !important;
+          font-weight: 400 !important;
         }
       `,
     });
@@ -2286,18 +2466,21 @@ border-left: 0; border-right:0;
 
       `;
 
+      // Form baru (PK.VN.000046.00.T08): footer hanya menyisakan kotak Nomor
+      // dan Halaman. Sel Tanggal & Revisi tetap ada supaya lebar kolom lain
+      // tidak bergeser, tetapi tanpa garis dan tanpa isi.
       let footerLandscape =
       `
-        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border: 2px solid black; border-collapse: collapse; font-family: Verdana, sans-serif;">
+        <table style="width: ${!landscape ? '90%' : '97%'}; margin: 0 auto; font-size: 12px; border-collapse: collapse; table-layout: fixed; font-family: Verdana, sans-serif;">
   <tr>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Nomor</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${noDoc}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Tanggal</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${tanggal}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Revisi</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">${revisi}</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">Halaman</td>
-    <td style="border: 2px solid black; padding: 2px; text-align: center;">
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 14%;">Nomor</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 22%;">${noDoc}</td>
+    <td style="width: 8%;"></td>
+    <td style="width: 13%;"></td>
+    <td style="width: 10%;"></td>
+    <td style="width: 8%;"></td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 13%;">Halaman</td>
+    <td style="border: 2px solid black; padding: 2px; text-align: center; width: 12%;">
       <span class="pageNumber"></span> dari <span class="totalPages"></span>
     </td>
   </tr>
@@ -2311,7 +2494,7 @@ border-left: 0; border-right:0;
       printBackground: true,
       footerTemplate: footerLandscape,
       headerTemplate:headerLandscape,
-      margin: { bottom: '60px', top: '0px', left: '18px', right: '17px' },
+      margin: { bottom: '60px', top: '95px', left: '18px', right: '17px' },
       landscape: !landscape ? false : true,
     });
 
@@ -2329,14 +2512,342 @@ border-left: 0; border-right:0;
 }
 
  const  printTerkalibrasi = async (req, res, next) => {
-  const { link, noDoc, tanggal, revisi, judul} = req.query;
+  const { link, noDoc, tanggal, revisi, judul } = req.query;
+  const linkedParams = new URLSearchParams();
+  if (link) {
+    try {
+      const parsedLink = new URL(link);
+      parsedLink.searchParams.forEach((value, key) => linkedParams.set(key, value));
+    } catch (error) {
+      console.warn('Unable to parse print label link query:', error.message);
+    }
+  }
+
+  const requestedTitle = String(judul || linkedParams.get('judul') || '').trim();
+  const labelType = String(req.query.labelType || linkedParams.get('labelType') || '').trim().toLowerCase();
+  // 'ooc'      = label "Tidak Siap" lama (is_tidak_dapat — unit tidak bisa dikalibrasi
+  //              sama sekali). Nama historis, dipertahankan agar caller lama tidak pecah.
+  // 'hasil-ooc' = label OOC hasil kalibrasi (is_ooc — hasil kalibrasi gagal/di luar
+  //              toleransi). Lihat Process/2026-07-14-arsitektur-penyimpanan-ooc-tidak-siap.md.
+  const isTidakSiapLabel =
+    labelType === 'ooc' ||
+    ['TIDAK DAPAT DIGUNAKAN'].includes(requestedTitle.toUpperCase());
+  const isResultOocLabel =
+    labelType === 'hasil-ooc' ||
+    ['OUT OF CALIBRATION'].includes(requestedTitle.toUpperCase());
+  const isOutOfCalibration = isTidakSiapLabel || isResultOocLabel;
+  const resolvedJudul = isResultOocLabel
+    ? 'OUT OF CALIBRATION'
+    : (isTidakSiapLabel ? 'TIDAK DAPAT DIGUNAKAN' : (judul || "TERKALIBRASI"));
+  const judulColor = sanitizeCssColor(req.query.judulColor || req.query.titleColor || req.query.fontColor);
+  const labelTitle = escapeHtml(resolvedJudul);
+  const escapedNoDoc = escapeHtml(noDoc || '');
+  const escapedTanggal = escapeHtml(tanggal || '');
+  const escapedRevisi = escapeHtml(revisi || '');
 
   let browser;
   try {
-    const browser = await puppeteer.launch();
+    browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     const logoBase64 = getBase64Image(logoPath);
+
+    if (isOutOfCalibration) {
+      const noIdentitas = escapeHtml(req.query.sertif || linkedParams.get('sertif') || 'NA');
+      const approvedByRaw = String(req.query.apv || linkedParams.get('apv') || '').trim();
+      const printDateRaw = String(req.query.pdt || linkedParams.get('pdt') || '').trim();
+      const approvedBy = escapeHtml(
+        approvedByRaw
+          ? (/^approved by/i.test(approvedByRaw) ? approvedByRaw : 'Approved by ' + approvedByRaw)
+          : 'NA'
+      );
+      const printDate = escapeHtml(printDateRaw || 'NA');
+      const oocNoDoc = escapeHtml(noDoc || 'PK.VN.000046.00.T11');
+      // Label 'ooc' (unit tidak siap dikalibrasi) tetap memakai teks lama
+      // "JANGAN DIGUNAKAN"; 'hasil-ooc' memakai "OUT OF CALIBRATION".
+      const oocTitle = isResultOocLabel ? resolvedJudul : 'JANGAN DIGUNAKAN';
+      // Lebar area judul = lebar stiker - jarak aman kiri/kanan - garis bingkai
+      // - sel logo, dihitung dari konstanta supaya ikut kalau ukurannya berubah.
+      const oocTitleAreaMm =
+        parseFloat(OOC_LABEL_WIDTH) * 10 - OOC_SAFE_PADDING_X_MM - 0.5 - OOC_LOGO_CELL_MM;
+      const oocTitleFontSize = oocLabelTitleFontSize(oocTitle, oocTitleAreaMm);
+      const escapedOocTitle = escapeHtml(oocTitle);
+      // Stiker OOC sudah berwarna secara fisik, jadi logonya harus berlatar
+      // tembus — bukan LapiLogo.jpg yang membawa kotak putih.
+      const oocLogoBase64 = getBase64Image(logoMonoPath);
+
+      await page.setContent(`
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              @page {
+                size: ${OOC_LABEL_WIDTH} ${OOC_LABEL_HEIGHT};
+                margin: 0;
+              }
+
+              * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+
+              html,
+              body {
+                width: ${OOC_LABEL_WIDTH};
+                height: ${OOC_LABEL_HEIGHT};
+                margin: 0;
+                padding: 0;
+                font-family: ${LABEL_FONT};
+                color: #000;
+                /* Stikernya SUDAH berwarna secara fisik. Latar dibiarkan tembus
+                   supaya tidak ada blok putih yang menimpa warnanya — perhatikan
+                   print-color-adjust: exact di atas memang memaksa warna latar
+                   ikut tercetak. */
+                background: transparent;
+              }
+
+              .label-page {
+                width: ${OOC_LABEL_WIDTH};
+                height: ${OOC_LABEL_HEIGHT};
+                /* Isinya sengaja TIDAK dibuat pas 4,7 x 3,1cm: bingkai yang
+                   menyentuh tepi halaman adalah bingkai yang tepinya hilang
+                   saat dicetak. */
+                padding: ${OOC_SAFE_PADDING};
+              }
+
+              .label {
+                width: 100%;
+                height: 100%;
+                /* Persegi panjang luar UTUH di keempat sisi. Garis bawahnya
+                   datang dari sini, bukan dari sel footer — hanya bingkai yang
+                   membentang penuh selebar label, sehingga celah kosong di
+                   footer tetap tertutup tanpa harus diberi garis sendiri. */
+                border: 0.25mm solid #000;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+              }
+
+              /*
+               * Tinggi mengacu label FISIK: header 15mm, isi 14mm, footer 2mm —
+               * totalnya PAS 31mm, artinya label contoh itu tidak menyisakan
+               * jarak aman cetak sama sekali.
+               *
+               * Di sini tersisa 28,7mm (31 - 0,5 atas - 1,3 bawah - 0,5 garis
+               * bingkai), jadi perbandingan 15:14 dipertahankan dan keduanya
+               * diperkecil dengan faktor yang sama (0,921). Yang dikorbankan
+               * ukuran mutlaknya, bukan proporsinya — dan jarak aman itulah yang
+               * menjaga garis bingkai tidak terpotong printer.
+               *
+               * Isi (.body) tidak dipatok: sisa ruang setelah header dan footer
+               * memang tepat 12,9mm, dan membiarkannya flex membuat ketiganya
+               * selalu berjumlah pas walau salah satu angka diubah.
+               */
+              .header {
+                /* Kembali 13,8mm: jarak aman turun ke 1mm sehingga ruang vertikal
+                   yang sempat dipinjam dari header bisa dikembalikan. */
+                flex: 0 0 13.8mm;
+                height: 13.8mm;
+                display: flex;
+                border-bottom: 0.25mm solid #000;
+              }
+
+              .logo-cell {
+                /* 11mm, mengikuti label fisik. */
+                width: 11mm;
+                border-right: 0.25mm solid #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0.4mm;
+              }
+
+              .logo-cell img {
+                max-width: 100%;
+                max-height: 6.5mm;
+                object-fit: contain;
+                /* Tanpa filter: berkas mono-nya memang sudah hitam murni, dan
+                   filter hanya akan menebalkan tepi halusnya. */
+              }
+
+              .title-cell {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: ${oocTitleFontSize};
+                font-weight: 700;
+                line-height: 1.15;
+                /* Stikernya lebih tinggi, jadi judul boleh turun ke baris kedua
+                   alih-alih mengecil sampai sepadan dengan teks body. */
+                white-space: normal;
+                overflow: hidden;
+                color: ${judulColor};
+              }
+
+              .body {
+                flex: 1;
+                min-height: 0;
+                padding: 0.6mm 1mm;
+                font-size: 5.5pt;
+                font-weight: 700;
+                line-height: 1.3;
+                overflow: hidden;
+                display: grid;
+                grid-template-columns: max-content 1.5mm 1fr;
+                align-content: start;
+              }
+
+              /* Semua baris berbagi satu grid supaya ":" sejajar antar baris,
+                 sementara kolom label tetap melar mengikuti teks terpanjang. */
+              .body-row {
+                display: contents;
+              }
+
+              .body-row > div:first-child {
+                padding-right: 1mm;
+                padding-bottom: 3mm;
+                white-space: nowrap;
+              }
+
+              .body-value {
+                overflow-wrap: anywhere;
+              }
+
+              .footer {
+                /* 2,4mm, bukan 2mm: teks footer naik ke 4,5pt. */
+                flex: 0 0 2.4mm;
+                height: 2.4mm;
+              }
+
+              .footer table {
+                width: 100%;
+                height: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                text-align: center;
+                /*
+                 * Celah kosong di tengah footer sudah dilepas: pada label sekecil
+                 * ini celah itu memaksa font turun ke 3,5pt dan hasil cetaknya
+                 * tidak terbaca. Keempat kotak sekarang mengisi penuh lebar footer
+                 * sehingga fontnya bisa naik dari 3,5pt ke 4,25pt dan ditebalkan.
+                 *
+                 * 4,25pt, bukan 4,5pt: pada 4,5pt keempat teks butuh 42,7mm dari
+                 * 43,7mm yang tersedia — muat, tapi sisa 0,02mm di kotak terakhir
+                 * berarti sedikit saja perbedaan render sudah memotong teks.
+                 *
+                 * Bedanya dengan form: form punya celah di antara nomor dokumen dan
+                 * kotak Halaman. Keterbacaan didahulukan atas kemiripan celah itu.
+                 */
+                font-size: 4.25pt;
+                font-weight: 700;
+                line-height: 1;
+              }
+
+              .footer td {
+                padding: 0 0.5mm;
+                vertical-align: middle;
+                white-space: nowrap;
+                overflow: hidden;
+              }
+
+              /* Hanya kotak Nomor dan Halaman yang bergaris ATAS; celah di
+                 tengah tetap polos. Garis BAWAH tidak ada di sini — yang
+                 menutup sisi bawah adalah bingkai .label, supaya garisnya
+                 membentang penuh dan persegi panjang luar tidak terputus. */
+              .footer td.boxed {
+                border-top: 0.25mm solid #000;
+              }
+
+              .footer td.rule-left {
+                border-left: 0.25mm solid #000;
+              }
+
+              .footer td.rule-right {
+                border-right: 0.25mm solid #000;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="label-page">
+              <div class="label">
+                <div class="header">
+                  <div class="logo-cell">
+                    <img src="${oocLogoBase64}" alt="Lapi" />
+                  </div>
+                  <div class="title-cell" data-print-label-title>
+                    ${escapedOocTitle}
+                  </div>
+                </div>
+
+                <div class="body">
+                  <div class="body-row">
+                    <div>No. ID</div>
+                    <div>:</div>
+                    <div class="body-value">${noIdentitas}</div>
+                  </div>
+                  <div class="body-row">
+                    <div>Paraf</div>
+                    <div>:</div>
+                    <div class="body-value">
+                      <div>${approvedBy}</div>
+                      <div>${printDate}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="footer">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <!-- Lebar kolom berasal dari PENGUKURAN Verdana, bukan
+                             taksiran: pada lebar isi 39,4mm dan font 3,5pt,
+                             teks plus padding 0,5mm kiri-kanan menuntut Nomor
+                             5,15mm, nomor dokumen 14,76mm, Halaman 6,47mm, dan
+                             "1 dari 1" 5,81mm. Tiap kotak diberi ~0,5mm ruang
+                             cadangan, sisanya menjadi celah kosong di tengah —
+                             posisinya sama seperti label TERKALIBRASI, yaitu
+                             antara nomor dokumen dan kotak Halaman. -->
+                        <!-- Lebar diambil dari pengukuran teks pada 4,25pt tebal:
+                             6,0 / 18,5 / 7,4 / 6,5mm ditambah padding. -->
+                        <td class="boxed rule-right" style="width:16%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:46%;">${oocNoDoc}</td>
+                        <td class="boxed rule-right" style="width:20%;">Halaman</td>
+                        <td class="boxed" style="width:18%;">1 dari 1</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `, { waitUntil: 'networkidle0' });
+
+      const pdfBuffer = await page.pdf({
+        // Ukuran stiker OOC, bukan ukuran label biasa. Tanpa ini isi setinggi
+        // 3,1cm dipaksa masuk halaman 2,4cm dan bagian bawahnya — termasuk
+        // garis bawah bingkai — terpotong.
+        width: OOC_LABEL_WIDTH,
+        height: OOC_LABEL_HEIGHT,
+        displayHeaderFooter: false,
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: {
+          top: '0px',
+          bottom: '0px',
+          left: '0px',
+          right: '0px',
+        },
+      });
+
+      await browser.close();
+      res.setHeader('Content-Type', 'application/pdf');
+      return res.end(pdfBuffer);
+    }
 
     // Navigate to the page and wait for it to load
     await page.goto(link, {
@@ -2347,30 +2858,42 @@ border-left: 0; border-right:0;
     // Wait for content to be loaded using a promise-based timeout
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    await page.evaluate(({ labelTitleText, labelTitleColor, labelTitleSize }) => {
+      document.documentElement.style.setProperty('--label-title-color', labelTitleColor);
+      const titleElement = document.querySelector('[data-print-label-title]');
+      if (titleElement) {
+        titleElement.textContent = labelTitleText;
+        titleElement.style.color = labelTitleColor;
+        // Judul di-override dari sini, jadi ukuran fontnya ikut disesuaikan
+        // dengan panjang teks yang benar-benar dicetak.
+        titleElement.style.fontSize = labelTitleSize;
+      }
+    }, {
+      labelTitleText: resolvedJudul,
+      labelTitleColor: judulColor,
+      labelTitleSize: labelTitleFontSize(resolvedJudul),
+    });
+
+    // Ukuran font diatur oleh halaman label (PrintTerkalibrasiThermo). Jangan
+    // memaksa font-size global di sini: `* { font-size: 6px }` dulu membuat
+    // judul dan isi label ikut mengecil semua.
     await page.addStyleTag({
       content: `
+        html,
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff;
+        }
+
         * {
-          font-size: 6px !important;
-          font-family: Verdana, sans-serif;
+          font-family: ${LABEL_FONT} !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
-         h1 {
-          font-size: 7px !important;
-          font-family: Verdana, sans-serif;
-        }
-
-         h4 {
-          font-size: 5px !important;
-          font-family: Verdana, sans-serif;
-        }
-
-
-        .print-component {
-          margin-top: 7px !important;
-        }
-
-        table table {
-          margin-top: 0 !important;
+        [data-print-label-title] {
+          color: ${judulColor} !important;
         }
       `,
     });
@@ -2384,8 +2907,8 @@ border-left: 0; border-right:0;
           </td>
           <td style="border:1px solid #6b7280; padding:0;">
             <div style="text-align:center; line-height:1;">
-              <span style="font-weight:bold; font-size:7px;">
-                ${judul || "TERKALIBRASI"}
+              <span style="font-weight:bold; font-size:7px; color:${judulColor};">
+                ${labelTitle}
               </span>
             </div>
           </td>
@@ -2397,11 +2920,11 @@ border-left: 0; border-right:0;
     <table style="width:95%; margin:0 auto; border:1px solid black; border-collapse:collapse; font-family:Verdana, sans-serif; font-size:6px;">
       <tr style="height:14px;">
         <td style="border:1px solid black; padding:1px; text-align:center;">Nomor</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${noDoc}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedNoDoc}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Tanggal</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${tanggal}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedTanggal}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Revisi</td>
-        <td style="border:1px solid black; padding:1px; text-align:center;">${revisi}</td>
+        <td style="border:1px solid black; padding:1px; text-align:center;">${escapedRevisi}</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">Halaman</td>
         <td style="border:1px solid black; padding:1px; text-align:center;">
           <span class="pageNumber"></span>/<span class="totalPages"></span>
@@ -2412,10 +2935,10 @@ border-left: 0; border-right:0;
 
     // Membuat PDF dalam bentuk buffer
     const pdfBuffer = await page.pdf({
-      height: '0.9in', // 2.3 cm ≈ 0.9 in
-      width: '2.24in', // 5.7 cm ≈ 2.24 in
+      width: LABEL_WIDTH,
+      height: LABEL_HEIGHT,
       displayHeaderFooter: false,
-      landscape: true,
+      landscape: false,
       printBackground: true,
       footerTemplate: "<div></div>",
       headerTemplate: "<div></div>",
@@ -2428,6 +2951,7 @@ border-left: 0; border-right:0;
     });
 
     await browser.close();
+    res.setHeader('Content-Type', 'application/pdf');
     res.end(pdfBuffer);
   } catch (error) {
     console.error('Error during printBphp:', error);
@@ -2435,6 +2959,135 @@ border-left: 0; border-right:0;
     res.status(500).send({ error: 'An error occurred during PDF generation.' });
   }
 }
+
+// Render dokumen form yang sudah dirakit di sisi klien menjadi PDF.
+//
+// Dipakai oleh cetakan EVALUASI HASIL KALIBRASI: HTML-nya dibangun dari data
+// workbook yang ada di memori halaman (butuh token sesi dan terlalu besar untuk
+// dikirim lewat query string), jadi puppeteer tidak bisa sekadar page.goto ke
+// route FE seperti cetakan sertifikat. Klien mengirim HTML-nya lewat POST, lalu
+// kop dan footer disuplai di sini sebagai header/footer template supaya berulang
+// di setiap halaman lengkap dengan nomor halaman asli dari Chrome.
+const printFormPdf = async (req, res) => {
+  const html = typeof req.body?.html === "string" ? req.body.html : "";
+  const title = escapeHtml(String(req.body?.title || "").trim().slice(0, 160));
+  const docNumber = escapeHtml(String(req.body?.docNumber || "").trim().slice(0, 60));
+  const landscape = req.body?.landscape === true || req.body?.landscape === "true";
+
+  if (!html.trim()) {
+    return res.status(400).send({ message: "Body 'html' wajib diisi." });
+  }
+  if (html.length > 8000000) {
+    return res.status(413).send({ message: "Dokumen terlalu besar untuk dicetak." });
+  }
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
+    const page = await browser.newPage();
+
+    // HTML datang dari klien, jadi halaman tidak boleh menarik apa pun dari
+    // luar: tanpa ini sebuah dokumen bisa menyuruh browser headless membaca
+    // berkas lokal (file://) atau alamat internal. Aset yang sah sudah inline
+    // (SVG grafik) atau disuplai dari sisi server (logo pada kop).
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url.startsWith("about:")) request.continue();
+      else request.abort();
+    });
+
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+
+    // Kop dan footer versi dokumen hanya untuk pratinjau di layar; pada PDF
+    // keduanya digantikan header/footer template agar berulang tiap halaman.
+    await page.addStyleTag({
+      content: `
+        .toolbar,
+        .doc-header,
+        .doc-footer {
+          display: none !important;
+        }
+        body {
+          background: #fff !important;
+        }
+        .page {
+          width: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      `,
+    });
+
+    const logoBase64 = getBase64Image(logoPath);
+
+    const headerTemplate = `
+      <div style="width:100%; padding:0 34px; box-sizing:border-box; font-family:Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+          <tbody>
+            <tr>
+              <td style="border:1.2px solid #000; width:22%; text-align:center; padding:4px 8px; vertical-align:middle;">
+                <img src="${logoBase64}" style="max-width:100%; max-height:44px; object-fit:contain;" />
+              </td>
+              <td style="border:1.2px solid #000; text-align:center; font-size:15px; font-weight:700; padding:8px; vertical-align:middle;">
+                ${title}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Footer form: hanya kotak Nomor dan Halaman, bagian tengah dibiarkan
+    // kosong tanpa garis.
+    const footerTemplate = `
+      <div style="width:100%; padding:0 34px; box-sizing:border-box; font-family:Arial, Helvetica, sans-serif;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed; font-size:9px;">
+          <tbody>
+            <tr>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:14%;">Nomor</td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:20%;">${docNumber}</td>
+              <td style="width:40%;"></td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:13%;">Halaman</td>
+              <td style="border:1.2px solid #000; text-align:center; padding:3px 6px; width:13%;">
+                <span class="pageNumber"></span> dari <span class="totalPages"></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      landscape,
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      margin: { top: "92px", bottom: "58px", left: "34px", right: "34px" },
+    });
+
+    await browser.close();
+    browser = null;
+
+    res.setHeader("Content-Type", "application/pdf");
+    return res.end(pdfBuffer);
+  } catch (error) {
+    console.error("Error during printFormPdf:", error);
+    if (browser) await browser.close();
+    return res.status(500).send({ error: "An error occurred during PDF generation." });
+  }
+};
 
 const printDAThermo = async (req, res) => {
   const { link, type, kode = '-', revisi = '', judul = '', landscape = 0 } = req.query;
@@ -2597,7 +3250,7 @@ const printHapusAlat = async (req, res) => {
       <td style="border: 1px solid black;">
         <div style="font-size: 11px; padding-top: 0.1rem; padding-bottom: 0.1rem; text-align: center; display: flex; align-items: center; justify-content: center;">
           <h3 style="font-weight: bold; line-height: 1.1; margin: 0; font-size: 14px;">
-            <span>${judul || "LAPORAN MANHOURS PRODUKSI"}</span>
+            <span>${"PERMOHONAN PENGHAPUSAN ALAT DARI DAFTAR <br/> ALAT UKUR YANG DIKALIBRASI"}</span>
           </h3>
         </div>
       </td>
@@ -2629,7 +3282,7 @@ const printHapusAlat = async (req, res) => {
       format: 'A4',
       displayHeaderFooter: true,
       printBackground: true,
-      footerTemplate: footerLandscape,
+      footerTemplate: "<div></div>",
       headerTemplate:headerLandscape,
       margin: { bottom: '60px', top: '70px', left: '0.5cm', right: '0.5cm' },
       landscape: false,
@@ -2670,6 +3323,7 @@ module.exports = {
   printLabelTerkalibrasi,
   printHeaderThermo,
   printTerkalibrasi,
+  printFormPdf,
   printDAThermo,
   printHapusAlat
 };

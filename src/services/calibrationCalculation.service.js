@@ -15,6 +15,18 @@ function toNumberOrNull(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+// Manual evaluation verdict — same three canonical options as the other workbook modules.
+const EVALUATION_OPTIONS = [
+  'Layak digunakan',
+  'Tidak layak digunakan',
+  'Penggunaan faktor koreksi',
+];
+
+function normalizeEvaluationResult(value) {
+  const text = String(value ?? '').trim();
+  return EVALUATION_OPTIONS.includes(text) ? text : '';
+}
+
 function buildValidationError(errors) {
   const err = new Error('Validation failed');
   err.statusCode = 422;
@@ -144,13 +156,47 @@ async function approveSession(sessionId, user) {
   }
 
   const pendingRole = getPendingApprovalRole(session);
+  const isFinalApproval = pendingRole.key === 'manager';
+
+  if (isFinalApproval && !session.evaluation_result) {
+    const err = new Error(
+      'Hasil evaluasi (kesimpulan) belum dipilih. Approval Manager bersifat final dan akan otomatis menerbitkan serta menyetujui sertifikat, jadi pilih hasil evaluasi terlebih dahulu.'
+    );
+    err.statusCode = 422;
+    err.validation = [
+      { field: 'evaluation_result', message: 'Hasil evaluasi manual belum dipilih.' },
+    ];
+    throw err;
+  }
+
   await repo.updateSessionApproval(sessionId, { roleKey: pendingRole.key, userId });
 
-  return {
+  const result = {
     sessionId,
     approvedBy: pendingRole.key,
     approvedByLabel: pendingRole.label,
   };
+
+  if (isFinalApproval) {
+    try {
+      const publishResult = await publishSessionToSertifikatBagian(sessionId, userId, userId, {});
+      result.certificate = {
+        qa_id: publishResult.qa_id,
+        id_no_sertifikat: publishResult.id_no_sertifikat,
+        created_new_sertifikat: publishResult.created_new_sertifikat,
+        published_rows: publishResult.published_rows,
+        certificate_approved: publishResult.certificate_approved,
+        print_data_endpoint: publishResult.next?.print_data_endpoint,
+      };
+    } catch (publishError) {
+      // Manager approval is already committed at this point; surface the
+      // certificate failure as a warning instead of failing the approval call.
+      result.certificateError =
+        `Workbook approved, tetapi sertifikat & DA gagal diterbitkan otomatis: ${publishError.message}`;
+    }
+  }
+
+  return result;
 }
 
 async function rejectSession(sessionId, user, reason = '') {
@@ -289,11 +335,6 @@ function validateCalculationInputs({
       field: 'status',
       message: 'Session already FINALIZED and cannot be recalculated.',
     });
-  }
-
-  const unitMode = String(session.unit_mode || '').toUpperCase();
-  if (!['PA', 'BAR'].includes(unitMode)) {
-    errors.push({ field: 'unit_mode', message: 'Unit mode must be PA or BAR.' });
   }
 
   if (!Array.isArray(points) || points.length === 0) {
@@ -673,9 +714,15 @@ async function publishSessionToSertifikatBagian(
     const requestedInterval = toPositiveIntegerOrNull(
       publishOptions.interval ?? publishOptions.parameter_interval
     );
+    // Interval yang diisi teknisi di header workbook (Pressure Calibration /
+    // Calibration Workbook) menang atas nilai lama di DA, sama seperti
+    // tgl_kalibrasi di bawah — supaya input baru benar-benar terbawa ke
+    // sertifikat saat approval Manager (final) menerbitkan sertifikat.
+    const sessionInterval = toPositiveIntegerOrNull(session.interval_bulan);
     const existingDaInterval = toPositiveIntegerOrNull(existingDa?.Parameter_Interval);
     const qaCandidateInterval = toPositiveIntegerOrNull(qaCandidate?.Parameter_Interval);
-    const finalInterval = requestedInterval || existingDaInterval || qaCandidateInterval || 12;
+    const finalInterval =
+      requestedInterval || sessionInterval || existingDaInterval || qaCandidateInterval || 12;
 
     const requestedTgl = toDateOrNull(
       publishOptions.tgl_kalibrasi || publishOptions.tglKalibrasi
@@ -840,6 +887,7 @@ async function publishSessionToSertifikatBagian(
       interval: finalInterval,
       metode_kalibrasi:
         publishOptions.metode_kalibrasi
+        ?? session.metode_kalibrasi
         ?? header.Metode_kalibrasi
         ?? 'Kalibrasi Tekanan - Workbook',
       suhu_kelembaban: buildSuhuKelembabanText(
@@ -868,6 +916,9 @@ async function publishSessionToSertifikatBagian(
       err.statusCode = 500;
       throw err;
     }
+
+    const isOoc = normalizeEvaluationResult(session.evaluation_result) === 'Tidak layak digunakan';
+    await repo.updateSertifikatBagianOOC(qaId, idNoSertifikat, isOoc, transaction);
 
     const sortedResults = [...results].sort(
       (a, b) => Number(a.point_order) - Number(b.point_order)
@@ -911,6 +962,29 @@ async function publishSessionToSertifikatBagian(
       transaction
     );
 
+    const certificateAlreadyApproved = await repo.isSertifikatBagianApproved(
+      qaId,
+      idNoSertifikat,
+      transaction
+    );
+    if (!certificateAlreadyApproved) {
+      const certApproverIdentity =
+        (await repo.getApproverIdentity('KAL_Sert_Bagian', 1, actor, transaction))
+        || '0';
+      await repo.insertSertifikatBagianStatus(
+        {
+          qa_id: qaId,
+          id_no_sertifikat: idNoSertifikat,
+          approver_no: 1,
+          is_reject: 0,
+          approver_identity: certApproverIdentity,
+          user_id: actor,
+          delegated_to: delegatedActor,
+        },
+        transaction
+      );
+    }
+
     await repo.updateSessionStatus(sessionId, 'PUBLISHED', actor, transaction);
 
     await repo.insertAuditLog(
@@ -944,8 +1018,8 @@ async function publishSessionToSertifikatBagian(
       da_synced: true,
       da_status_approved: true,
       certificate_source: 'T_Kalibrasi_Sertifikat_Bagian',
+      certificate_approved: true,
       next: {
-        approve_endpoint: '/transactions/kalibrasi/sertifikat-bagian/approve',
         print_data_endpoint: `/transactions/kalibrasi/sertifikat-bagian/print-data?qa_id=${encodeURIComponent(qaId)}&id_no_sertifikat=${encodeURIComponent(idNoSertifikat)}`,
       },
     };
