@@ -2286,9 +2286,9 @@ const OOC_LABEL_HEIGHT = '3.1cm';
  * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
  * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
  */
-const OOC_SAFE_PADDING = '0.8mm';
+const OOC_SAFE_PADDING = '2mm 0.8mm 0.8mm 2mm';
 // Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
-const OOC_SAFE_PADDING_X_MM = 1;
+const OOC_SAFE_PADDING_X_MM = 2.8;
 // Lebar sel logo pada label OOC, mengikuti label fisik.
 const OOC_LOGO_CELL_MM = 11;
 
@@ -2718,8 +2718,9 @@ border-left: 0; border-right:0;
               }
 
               .footer {
-                flex: 0 0 2mm;
-                height: 2mm;
+                /* 2,4mm, bukan 2mm: teks footer naik ke 4,5pt. */
+                flex: 0 0 2.4mm;
+                height: 2.4mm;
               }
 
               .footer table {
@@ -2729,15 +2730,20 @@ border-left: 0; border-right:0;
                 table-layout: fixed;
                 text-align: center;
                 /*
-                 * 3,5pt, bukan 4pt. Pada 4pt keempat kotak memakan 36,2mm dari
-                 * 39,4mm dan footernya penuh sesak dari tepi ke tepi; pada 3,5pt
-                 * hanya 32,2mm, menyisakan celah kosong di tengah seperti label
-                 * TERKALIBRASI. Di label lebar celahnya 21,6% dari lebar footer,
-                 * di sini 12% — sengaja tidak dibuat sama persis karena kotaknya
-                 * masih perlu ruang cadangan untuk nomor dokumen yang lebih
-                 * panjang.
+                 * Celah kosong di tengah footer sudah dilepas: pada label sekecil
+                 * ini celah itu memaksa font turun ke 3,5pt dan hasil cetaknya
+                 * tidak terbaca. Keempat kotak sekarang mengisi penuh lebar footer
+                 * sehingga fontnya bisa naik dari 3,5pt ke 4,25pt dan ditebalkan.
+                 *
+                 * 4,25pt, bukan 4,5pt: pada 4,5pt keempat teks butuh 42,7mm dari
+                 * 43,7mm yang tersedia — muat, tapi sisa 0,02mm di kotak terakhir
+                 * berarti sedikit saja perbedaan render sudah memotong teks.
+                 *
+                 * Bedanya dengan form: form punya celah di antara nomor dokumen dan
+                 * kotak Halaman. Keterbacaan didahulukan atas kemiripan celah itu.
                  */
-                font-size: 3.5pt;
+                font-size: 4.25pt;
+                font-weight: 700;
                 line-height: 1;
               }
 
@@ -2805,11 +2811,12 @@ border-left: 0; border-right:0;
                              cadangan, sisanya menjadi celah kosong di tengah —
                              posisinya sama seperti label TERKALIBRASI, yaitu
                              antara nomor dokumen dan kotak Halaman. -->
-                        <td class="boxed rule-right" style="width:14%;">Nomor</td>
-                        <td class="boxed rule-right" style="width:40%;">${oocNoDoc}</td>
-                        <td style="width:12%;"></td>
-                        <td class="boxed rule-left rule-right" style="width:18%;">Halaman</td>
-                        <td class="boxed" style="width:16%;">1 dari 1</td>
+                        <!-- Lebar diambil dari pengukuran teks pada 4,25pt tebal:
+                             6,0 / 18,5 / 7,4 / 6,5mm ditambah padding. -->
+                        <td class="boxed rule-right" style="width:16%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:46%;">${oocNoDoc}</td>
+                        <td class="boxed rule-right" style="width:20%;">Halaman</td>
+                        <td class="boxed" style="width:18%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
