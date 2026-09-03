@@ -2296,9 +2296,9 @@ const OOC_LABEL_HEIGHT = '3.4cm';
  * Diukur dari lebar sel logo (11mm) pada foto hasil cetak. Sisi kanan dan bawah
  * punya sisa, jadi tambahannya diambil dari sana alih-alih memperkecil isi.
  */
-const OOC_SAFE_PADDING = '2mm 0.8mm 0.8mm 2mm';
+const OOC_SAFE_PADDING = '2mm 0.5mm 0.8mm 1mm';
 // Jumlah jarak aman kiri + kanan, dipakai untuk menghitung lebar area judul.
-const OOC_SAFE_PADDING_X_MM = 2.8;
+const OOC_SAFE_PADDING_X_MM = 1.5;
 // Lebar sel logo pada label OOC, mengikuti label fisik.
 const OOC_LOGO_CELL_MM = 11;
 
@@ -2762,7 +2762,7 @@ border-left: 0; border-right:0;
               }
 
               .footer td {
-                padding: 0 0.5mm;
+                padding: 0 0.3mm;
                 vertical-align: middle;
                 white-space: nowrap;
                 overflow: hidden;
@@ -2774,6 +2774,14 @@ border-left: 0; border-right:0;
                  membentang penuh dan persegi panjang luar tidak terputus. */
               .footer td.boxed {
                 border-top: 0.25mm solid #000;
+                border-bottom: 0.25mm solid #000;
+              }
+
+              /* Sel celah di tengah footer: tanpa garis atas maupun samping,
+                 tetapi alasnya tetap digambar. Tanpa ini garis bawah footer
+                 putus di tengah, karena bingkai sudah tidak lagi menggambar
+                 garis bawahnya sendiri. */
+              .footer td.rule-bottom {
                 border-bottom: 0.25mm solid #000;
               }
 
@@ -2827,11 +2835,15 @@ border-left: 0; border-right:0;
                              posisinya sama seperti label TERKALIBRASI, yaitu
                              antara nomor dokumen dan kotak Halaman. -->
                         <!-- Lebar diambil dari pengukuran teks pada 4,25pt tebal:
-                             6,0 / 18,5 / 7,4 / 6,5mm ditambah padding. -->
-                        <td class="boxed rule-right" style="width:16%;">Nomor</td>
-                        <td class="boxed rule-right" style="width:46%;">${oocNoDoc}</td>
-                        <td class="boxed rule-right" style="width:20%;">Halaman</td>
-                        <td class="boxed" style="width:18%;">1 dari 1</td>
+                             6,0 / 18,5 / 7,4 / 6,5mm ditambah padding. Sisanya jadi
+                             celah kosong di tengah seperti form (permintaan QS).
+                             Bingkai yang melebar membuat celah itu muat TANPA perlu
+                             mengecilkan font lagi: kotaknya makan 40,4mm dari 48mm. -->
+                        <td class="boxed rule-right" style="width:14%;">Nomor</td>
+                        <td class="boxed rule-right" style="width:41%;">${oocNoDoc}</td>
+                        <td class="rule-bottom" style="width:11%;"></td>
+                        <td class="boxed rule-left rule-right" style="width:18%;">Halaman</td>
+                        <td class="boxed" style="width:16%;">1 dari 1</td>
                       </tr>
                     </tbody>
                   </table>
