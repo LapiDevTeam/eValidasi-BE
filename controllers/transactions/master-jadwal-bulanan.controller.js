@@ -368,10 +368,16 @@ const getRequestJobDescription = (req = {}, field = null) => {
   ).trim();
 };
 
+// Tanggal + jam tanda tangan.
+//
+// moment.utc() DISENGAJA, bukan waktu lokal. Driver mssql (tedious) memakai
+// useUTC:true bawaannya, jadi kolom DATETIME polos dibaca sebagai UTC; membaca
+// ulang dengan .utc() mengembalikan jam yang persis tersimpan. Kalau .utc()
+// dilepas, jamnya akan bergeser sebesar offset zona waktu server.
 const formatSignatureDate = (value) => {
   if (!value) return '';
   const parsed = moment.utc(value);
-  return parsed.isValid() ? parsed.format('DD/MM/YY') : '';
+  return parsed.isValid() ? parsed.format('DD/MM/YY HH:mm:ss') : '';
 };
 
 const getPreparedByName = (header) =>
