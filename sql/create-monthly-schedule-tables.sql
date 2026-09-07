@@ -23,6 +23,10 @@ BEGIN
     Approved_By_Name NVARCHAR(255) NULL,
     Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
+    -- Nama orang yang mendelegasikan wewenangnya. NULL kalau penanda tangan
+    -- bertindak atas namanya sendiri.
+    Prepared_Delegate NVARCHAR(255) NULL,
+    Approved_Delegate NVARCHAR(255) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
     Remarks NVARCHAR(MAX) NULL,
@@ -138,6 +142,9 @@ BEGIN
     Approved_By_Name NVARCHAR(255) NULL,
     Approved_By_Title NVARCHAR(255) NULL,
     Approved_Date DATETIME2(0) NULL,
+    -- Lihat catatan pada T_Monthly_Schedule_Header.
+    Prepared_Delegate NVARCHAR(255) NULL,
+    Approved_Delegate NVARCHAR(255) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_Date DATETIME2(0) NULL,
     Remarks NVARCHAR(MAX) NULL,
@@ -411,5 +418,32 @@ IF NOT EXISTS (
 BEGIN
   CREATE INDEX IX_T_Monthly_Schedule_Detail_Source
     ON dbo.T_Monthly_Schedule_Detail (Schedule_Header_ID, Source_Key, Instrument_ID);
+END;
+GO
+
+-- Kolom delegasi: ditambahkan belakangan, jadi database lama pun ikut dapat.
+
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+END;
+GO
+IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_Delegate NVARCHAR(255) NULL;
+END;
+GO
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+END;
+GO
+IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_Delegate NVARCHAR(255) NULL;
 END;
 GO

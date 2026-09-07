@@ -16,6 +16,10 @@ BEGIN
     Approved_By_Name NVARCHAR(255) NULL,
     Approved_By_Title NVARCHAR(255) NULL,
     Approved_At DATETIME2(0) NULL,
+    -- Nama orang yang mendelegasikan wewenangnya. NULL kalau penanda tangan
+    -- bertindak atas namanya sendiri.
+    Prepared_Delegate NVARCHAR(255) NULL,
+    Approved_Delegate NVARCHAR(255) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_At DATETIME2(0) NULL,
     Notes NVARCHAR(MAX) NULL,
@@ -387,5 +391,20 @@ BEGIN
   CREATE INDEX IX_T_AWP_Detail_AWP_QA_ID
     ON dbo.T_AWP_Detail (AWP_ID, QA_ID)
     WHERE QA_ID IS NOT NULL;
+END;
+GO
+
+-- Kolom delegasi: ditambahkan belakangan, jadi database lama pun ikut dapat.
+
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+END;
+GO
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header ADD Approved_Delegate NVARCHAR(255) NULL;
 END;
 GO

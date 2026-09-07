@@ -115,6 +115,18 @@ const ensureMonthlyScheduleInternalSchema = async () => {
         END;
 
         IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Prepared_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_Header', 'Approved_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_Header ADD Approved_Delegate NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_Header', 'U') IS NOT NULL
           AND EXISTS (
             SELECT 1
             FROM sys.key_constraints
@@ -219,6 +231,18 @@ const ensureMonthlyScheduleExternalSchema = async () => {
           AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_By_Title') IS NULL
         BEGIN
           ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Prepared_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_Monthly_Schedule_External_Header', 'Approved_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_Monthly_Schedule_External_Header ADD Approved_Delegate NVARCHAR(255) NULL;
         END;
 
         IF OBJECT_ID('dbo.T_Monthly_Schedule_External_Header', 'U') IS NOT NULL
@@ -334,6 +358,34 @@ const getUserDisplayName = (user = {}) =>
       ''
   ).trim();
 
+/**
+ * Nama pemilik akun yang benar-benar menandatangani, HANYA saat ada delegasi.
+ *
+ * Perhatikan getUserDisplayName() di atas: fungsi itu MENDAHULUKAN
+ * delegatedTo.Nama, jadi Prepared_By_Name/Approved_By_Name sudah berisi nama
+ * pemberi delegasi (pemilik wewenangnya). Kolom delegasi ini melengkapinya
+ * dengan nama pelaksana, supaya cetakan bisa menulis
+ *   <pemberi wewenang>
+ *   an. <pelaksana>
+ * seperti pola pada PrintDataRD.
+ *
+ * Kosong kalau tidak ada delegasi — baris "an." memang tidak perlu muncul.
+ */
+const getUserDelegateName = (user = {}) => {
+  if (!user?.delegatedTo) return null;
+
+  const actor = String(
+    user?.user?.Nama ??
+      user?.user?.nama_user ??
+      user?.Nama ??
+      user?.nama_user ??
+      user?.user_id ??
+      ""
+  ).trim();
+
+  return actor || null;
+};
+
 const getUserJobDescription = (user = {}) =>
   String(
     user?.delegatedTo?.Jabatan ??
@@ -394,6 +446,21 @@ const getPreparedByDate = (header) =>
 const getApprovedByName = (header) =>
   header?.Approved_By_Name || header?.Approved_By || '';
 
+/**
+ * Baris delegasi pada blok tanda tangan Excel.
+ *
+ * Dikosongkan kalau tidak ada delegasi, atau kalau nama delegasinya sama
+ * dengan penanda tangannya — "an. <diri sendiri>" tidak ada artinya.
+ */
+const formatSignatureDelegate = (name, delegate) => {
+  const actor = String(delegate || "").trim();
+  if (!actor || actor.toLowerCase() === "null") return "";
+
+  const signer = String(name || "").trim();
+  if (actor.toLowerCase() === signer.toLowerCase()) return "";
+
+  return `an. ${actor}`;
+};
 const writeApprovalSignatureBlocks = (
   worksheet,
   {
@@ -405,9 +472,23 @@ const writeApprovalSignatureBlocks = (
     header,
   }
 ) => {
+  const preparedDelegateLine = formatSignatureDelegate(
+    getPreparedByName(header),
+    header?.Prepared_Delegate
+  );
+  const approvedDelegateLine = formatSignatureDelegate(
+    getApprovedByName(header),
+    header?.Approved_Delegate
+  );
+
   const signatureRows = [
     ['Prepared By :', 'Approved By :', true],
     [getPreparedByName(header), getApprovedByName(header), true],
+    // Baris delegasi hanya ditambahkan kalau memang ada, supaya ekspor yang
+    // tanpa delegasi tampil persis seperti sebelumnya.
+    ...(preparedDelegateLine || approvedDelegateLine
+      ? [[preparedDelegateLine, approvedDelegateLine, false]]
+      : []),
     [formatSignatureDate(getPreparedByDate(header)), formatSignatureDate(header?.Approved_Date), false],
     [header?.Prepared_By_Title || '', header?.Approved_By_Title || '', false],
   ];
@@ -1430,6 +1511,8 @@ const getLatestMonthlyScheduleHeaderByStatus = async (
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -1512,6 +1595,8 @@ const getMonthlyScheduleHeaderById = async (scheduleHeaderId, transaction = null
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -1594,6 +1679,8 @@ const mapMonthlyScheduleRevisionInfo = (header) => {
     approved_by_name: header.Approved_By_Name || header.Approved_By,
     approved_by_title: header.Approved_By_Title || '',
     approved_date: header.Approved_Date,
+    prepared_delegate: header.Prepared_Delegate || null,
+    approved_delegate: header.Approved_Delegate || null,
     rejected_by: header.Rejected_By,
     rejected_date: header.Rejected_Date,
     remarks: header.Remarks,
@@ -1638,6 +1725,8 @@ const getPreviousMonthlyScheduleHeader = async (
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -2260,6 +2349,7 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
     );
     const { user_id } = req.user || {};
     const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedDelegate = getUserDelegateName(req.user);
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
@@ -2351,6 +2441,7 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
             Prepared_By_Name = :preparedByName,
             Prepared_By_Title = :preparedByTitle,
             Prepared_Date = GETDATE(),
+            Prepared_Delegate = :preparedDelegate,
             Updated_By = :userId,
             Updated_Date = GETDATE()
           WHERE Schedule_Header_ID = :scheduleHeaderId
@@ -2361,6 +2452,7 @@ const saveMasterJadwalBulanan = async (req, res, next) => {
             userId: user_id,
             preparedByName,
             preparedByTitle,
+            preparedDelegate,
           },
           type: Sequelize.QueryTypes.UPDATE,
           transaction,
@@ -2402,6 +2494,7 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
     );
     const { user_id } = req.user || {};
     const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedDelegate = getUserDelegateName(req.user);
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
@@ -2574,6 +2667,7 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
               Prepared_By_Name,
               Prepared_By_Title,
               Prepared_Date,
+              Prepared_Delegate,
               Remarks,
               Created_By,
               Created_Date,
@@ -2628,6 +2722,7 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
               :preparedByName,
               :preparedByTitle,
               GETDATE(),
+              :preparedDelegate,
               :remarks,
               :userId,
               GETDATE(),
@@ -2679,6 +2774,7 @@ const requestMasterJadwalBulananApproval = async (req, res, next) => {
             userId: user_id,
             preparedByName,
             preparedByTitle,
+            preparedDelegate,
             remarks,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -2716,6 +2812,7 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
     const approvedByName = getUserDisplayName(req.user) || user_id;
+    const approvedDelegate = getUserDelegateName(req.user);
     const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
@@ -2810,6 +2907,7 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
             Approved_By_Name = :approvedByName,
             Approved_By_Title = :approvedByTitle,
             Approved_Date = GETDATE(),
+            Approved_Delegate = :approvedDelegate,
             Remarks = COALESCE(:remarks, Remarks),
             Updated_By = :userId,
             Updated_Date = GETDATE()
@@ -2821,6 +2919,7 @@ const approveMasterJadwalBulanan = async (req, res, next) => {
             userId: user_id,
             approvedByName,
             approvedByTitle,
+            approvedDelegate,
             remarks,
           },
           type: Sequelize.QueryTypes.UPDATE,
@@ -3222,6 +3321,8 @@ const getLatestExternalHeaderByStatus = async (
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -3300,6 +3401,8 @@ const getExternalHeaderById = async (scheduleHeaderId, transaction = null) => {
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -3373,6 +3476,8 @@ const mapExternalRevisionInfo = (header) => {
     approved_by_name: header.Approved_By_Name || header.Approved_By,
     approved_by_title: header.Approved_By_Title || '',
     approved_date: header.Approved_Date,
+    prepared_delegate: header.Prepared_Delegate || null,
+    approved_delegate: header.Approved_Delegate || null,
     rejected_by: header.Rejected_By,
     rejected_date: header.Rejected_Date,
     remarks: header.Remarks,
@@ -3413,6 +3518,8 @@ const getPreviousExternalHeader = async (
         Approved_By_Name,
         Approved_By_Title,
         Approved_Date,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_Date,
         Remarks,
@@ -3834,6 +3941,7 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
     );
     const { user_id } = req.user || {};
     const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedDelegate = getUserDelegateName(req.user);
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
@@ -3892,6 +4000,7 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
             Prepared_By_Name = :preparedByName,
             Prepared_By_Title = :preparedByTitle,
             Prepared_Date = GETDATE(),
+            Prepared_Delegate = :preparedDelegate,
             Updated_By = :userId,
             Updated_Date = GETDATE()
           WHERE Schedule_External_Header_ID = :scheduleHeaderId
@@ -3902,6 +4011,7 @@ const saveMasterJadwalBulananExternal = async (req, res, next) => {
             userId: user_id,
             preparedByName,
             preparedByTitle,
+            preparedDelegate,
           },
           type: Sequelize.QueryTypes.UPDATE,
           transaction,
@@ -4023,6 +4133,7 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
     const preparedByName = getUserDisplayName(req.user) || user_id;
+    const preparedDelegate = getUserDelegateName(req.user);
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear || !selectedMonth) {
@@ -4160,6 +4271,7 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
               Prepared_By_Name,
               Prepared_By_Title,
               Prepared_Date,
+              Prepared_Delegate,
               Remarks,
               Created_By,
               Created_Date,
@@ -4206,6 +4318,7 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
               :preparedByName,
               :preparedByTitle,
               GETDATE(),
+              :preparedDelegate,
               :remarks,
               :userId,
               GETDATE(),
@@ -4224,6 +4337,7 @@ const requestMasterJadwalBulananExternalApproval = async (req, res, next) => {
             userId: user_id,
             preparedByName,
             preparedByTitle,
+            preparedDelegate,
             remarks,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -4343,6 +4457,7 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
     const remarks = req.body?.remarks || null;
     const { user_id } = req.user || {};
     const approvedByName = getUserDisplayName(req.user) || user_id;
+    const approvedDelegate = getUserDelegateName(req.user);
     const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!scheduleHeaderId && (!selectedYear || !selectedMonth)) {
@@ -4430,6 +4545,7 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
             Approved_By_Name = :approvedByName,
             Approved_By_Title = :approvedByTitle,
             Approved_Date = GETDATE(),
+            Approved_Delegate = :approvedDelegate,
             Remarks = COALESCE(:remarks, Remarks),
             Updated_By = :userId,
             Updated_Date = GETDATE()
@@ -4441,6 +4557,7 @@ const approveMasterJadwalBulananExternal = async (req, res, next) => {
             userId: user_id,
             approvedByName,
             approvedByTitle,
+            approvedDelegate,
             remarks,
           },
           type: Sequelize.QueryTypes.UPDATE,

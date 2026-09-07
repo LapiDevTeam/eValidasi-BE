@@ -105,12 +105,47 @@ const getRequestJobDescription = (req = {}, field = null) => {
 // useUTC:true bawaannya, jadi kolom DATETIME polos dibaca sebagai UTC; membaca
 // ulang dengan .utc() mengembalikan jam yang persis tersimpan. Kalau .utc()
 // dilepas, jamnya akan bergeser sebesar offset zona waktu server.
+/**
+ * Nama pemilik akun yang benar-benar menandatangani, HANYA saat ada delegasi.
+ * Melengkapi Prepared_By_Name/Approved_By_Name yang berisi pemberi wewenang,
+ * supaya cetakan bisa menulis "<pemberi wewenang> / an. <pelaksana>".
+ */
+const getUserDelegateName = (user = {}) => {
+  if (!user?.delegatedTo) return null;
+
+  const actor = String(
+    user?.user?.Nama ??
+      user?.user?.nama_user ??
+      user?.Nama ??
+      user?.nama_user ??
+      user?.user_id ??
+      ""
+  ).trim();
+
+  return actor || null;
+};
+
 const formatSignatureDate = (value) => {
   if (!value) return '';
   const parsed = moment.utc(value);
   return parsed.isValid() ? parsed.format('DD/MM/YY HH:mm:ss') : '';
 };
 
+/**
+ * Baris delegasi pada blok tanda tangan Excel.
+ *
+ * Dikosongkan kalau tidak ada delegasi, atau kalau nama delegasinya sama
+ * dengan penanda tangannya — "an. <diri sendiri>" tidak ada artinya.
+ */
+const formatSignatureDelegate = (name, delegate) => {
+  const actor = String(delegate || "").trim();
+  if (!actor || actor.toLowerCase() === "null") return "";
+
+  const signer = String(name || "").trim();
+  if (actor.toLowerCase() === signer.toLowerCase()) return "";
+
+  return `an. ${actor}`;
+};
 const writeSignatureBlocks = (
   worksheet,
   {
@@ -122,14 +157,24 @@ const writeSignatureBlocks = (
     preparedByName,
     preparedByDate,
     preparedByTitle,
+    preparedDelegate,
     approvedByName,
     approvedByDate,
     approvedByTitle,
+    approvedDelegate,
   }
 ) => {
+  const preparedDelegateLine = formatSignatureDelegate(preparedByName, preparedDelegate);
+  const approvedDelegateLine = formatSignatureDelegate(approvedByName, approvedDelegate);
+
   const signatureRows = [
     ['Prepared By :', 'Approved By :', true],
     [preparedByName || '', approvedByName || '', true],
+    // Baris delegasi hanya ditambahkan kalau memang ada, supaya ekspor yang
+    // tanpa delegasi tampil persis seperti sebelumnya.
+    ...(preparedDelegateLine || approvedDelegateLine
+      ? [[preparedDelegateLine, approvedDelegateLine, false]]
+      : []),
     [formatSignatureDate(preparedByDate), formatSignatureDate(approvedByDate), false],
     [preparedByTitle || '', approvedByTitle || '', false],
   ];
@@ -182,6 +227,18 @@ const ensureAWPSignatureSchema = async () => {
           AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_By_Title') IS NULL
         BEGIN
           ALTER TABLE dbo.T_AWP_Header ADD Approved_By_Title NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+        END;
+
+        IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+          AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_Delegate') IS NULL
+        BEGIN
+          ALTER TABLE dbo.T_AWP_Header ADD Approved_Delegate NVARCHAR(255) NULL;
         END;
       `,
       { type: Sequelize.QueryTypes.RAW }
@@ -821,6 +878,8 @@ const getLatestAWPHeaderByStatus = async (
         Approved_By_Name,
         Approved_By_Title,
         Approved_At,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_At,
         Notes,
@@ -881,6 +940,8 @@ const getAWPSnapshotHeaderById = async (awpId, transaction = null) => {
         Approved_By_Name,
         Approved_By_Title,
         Approved_At,
+        Prepared_Delegate,
+        Approved_Delegate,
         Rejected_By,
         Rejected_At,
         Notes,
@@ -958,6 +1019,8 @@ const mapAWPRevisionInfo = (header) => {
     approved_by_name: header.Approved_By_Name || header.Approved_By,
     approved_by_title: header.Approved_By_Title || '',
     approved_at: header.Approved_At,
+    prepared_delegate: header.Prepared_Delegate || null,
+    approved_delegate: header.Approved_Delegate || null,
     notes: header.Notes,
     created_by: header.Created_By,
     created_at: header.Created_At,
@@ -1671,9 +1734,11 @@ const exportMasterRKTDoubleChecklist = async (selectedYear, res, source = 'snaps
     rightEnd: lastColumn,
     preparedByName,
     preparedByDate: snapshotHeader?.Requested_At,
+    preparedDelegate: snapshotHeader?.Prepared_Delegate,
     preparedByTitle: snapshotHeader?.Prepared_By_Title,
     approvedByName,
     approvedByDate: snapshotHeader?.Approved_At,
+    approvedDelegate: snapshotHeader?.Approved_Delegate,
     approvedByTitle: snapshotHeader?.Approved_By_Title,
   });
 
@@ -1853,9 +1918,11 @@ const exportMasterRKT = async (req, res, next) => {
       rightEnd: 17,
       preparedByName,
       preparedByDate: snapshotHeader?.Requested_At,
+    preparedDelegate: snapshotHeader?.Prepared_Delegate,
       preparedByTitle: snapshotHeader?.Prepared_By_Title,
       approvedByName,
       approvedByDate: snapshotHeader?.Approved_At,
+    approvedDelegate: snapshotHeader?.Approved_Delegate,
       approvedByTitle: snapshotHeader?.Approved_By_Title,
     });
 
@@ -1894,6 +1961,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
       : null;
     const { user_id, nama_user } = req.user || {};
     const preparedByName = nama_user || user_id;
+    const preparedDelegate = getUserDelegateName(req.user);
     const preparedByTitle = getRequestJobDescription(req, 'prepared_by_title');
 
     if (!selectedYear) {
@@ -2016,6 +2084,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
               Prepared_By,
               Prepared_By_Name,
               Prepared_By_Title,
+              Prepared_Delegate,
               Requested_At,
               Notes,
               Created_By,
@@ -2056,6 +2125,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
               :userId,
               :preparedByName,
               :preparedByTitle,
+              :preparedDelegate,
               GETDATE(),
               :notes,
               :userId,
@@ -2096,6 +2166,7 @@ const requestMasterRKTApproval = async (req, res, next) => {
             userId: user_id,
             preparedByName,
             preparedByTitle,
+            preparedDelegate,
             notes,
           },
           type: Sequelize.QueryTypes.SELECT,
@@ -2230,6 +2301,7 @@ const approveMasterRKT = async (req, res, next) => {
     const notes = req.body?.notes || null;
     const { user_id, nama_user } = req.user || {};
     const approvedByName = nama_user || user_id;
+    const approvedDelegate = getUserDelegateName(req.user);
     const approvedByTitle = getRequestJobDescription(req, 'approved_by_title');
 
     if (!awpId && !selectedYear) {
@@ -2273,6 +2345,7 @@ const approveMasterRKT = async (req, res, next) => {
               Prepared_By,
               Prepared_By_Name,
               Prepared_By_Title,
+              Prepared_Delegate,
               Requested_At,
               Approved_By,
               Approved_By_Name,
@@ -2345,6 +2418,7 @@ const approveMasterRKT = async (req, res, next) => {
             Approved_By_Name = :approvedByName,
             Approved_By_Title = :approvedByTitle,
             Approved_At = GETDATE(),
+            Approved_Delegate = :approvedDelegate,
             Notes = COALESCE(:notes, Notes),
             Updated_By = :userId,
             Updated_At = GETDATE()
@@ -2356,6 +2430,7 @@ const approveMasterRKT = async (req, res, next) => {
             userId: user_id,
             approvedByName,
             approvedByTitle,
+            approvedDelegate,
             notes,
           },
           type: Sequelize.QueryTypes.UPDATE,
