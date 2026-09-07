@@ -16,7 +16,7 @@ const authentication = async (req, res, next) => {
     if (token) {
       let response;
       try {
-        response = await fetch("http://192.168.1.38/api/lms-dev/v1/decode", {
+        response = await fetch("http://192.168.1.69/api/lms/v1/decode", {
           method: "GET",
           headers: {
             access_token: token,
