@@ -195,7 +195,15 @@ router.get("/assesment/check-can-reject", authentication, checkCanReject);
 router.get("/assesment/check-can-approve", authentication, checkCanApprove);
 router.post("/assesment/approve", authentication, approvePermohonanAssesment);
 router.post("/assesment/reject", authentication, rejectPermohonanAssesment);
-router.post("/assesment/generate-print", authentication, generatePrint);
+// TANPA `authentication` — DISENGAJA. Endpoint ini hanya dipanggil oleh halaman
+// FE /PrintPermohonanKalibrasi, yang dirender di browser headless puppeteer lewat
+// /assesment/print. Browser itu instance baru: sessionStorage kosong, jadi header
+// `authentication` yang dikirim halaman selalu bernilai "null" dan request kena
+// 401 — hasilnya PDF keluar kosong tanpa nama & timestamp approval.
+// Pola yang sama dipakai semua endpoint print-data lain (sertifikat, bagian,
+// friability, moisture, dst.). Data yang dikembalikan hanya bisa diambil kalau
+// No_Permohonan-nya sudah diketahui.
+router.post("/assesment/generate-print", generatePrint);
 router.post("/assesment/generate-da", authentication, generateDA);
 router.post("/assesment/generate-sertifikat", authentication, generateSertifikat);
 router.get("/assesment/download", authentication, downloadFileAssesment);

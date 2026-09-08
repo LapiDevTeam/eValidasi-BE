@@ -1013,7 +1013,9 @@ const rejectPermohonanAssesment = async (req, res, next) => {
 
 const generatePrint = async (req, res, next) => {
   try {
-    const { user_id, delegated_to, nama_user, bagian_user } = req.user;
+    // Route ini sengaja tidak pakai middleware authentication (dipanggil dari
+    // halaman print yang dirender puppeteer), jadi req.user bisa undefined.
+    // Nilainya memang tidak dipakai di sini — semua data diambil dari query.
     const { no_permohonan } = req.body;
 
     if (!no_permohonan) {
