@@ -1111,11 +1111,92 @@ const getPenghapusanPrintData = async (req, res, next) => {
       });
     }
 
-    // VBA: select * from vw_Kal_ListAppr_Hapus where no_penghapusan = '...'
+    // VBA aslinya: select * from vw_Kal_ListAppr_Hapus where no_penghapusan = '...'
+    //
+    // View itu tidak membawa data tanda tangan (nama approver + waktu approve),
+    // jadi kotak "Pemohon / Mengetahui / Menyetujui" pada form selalu kosong
+    // walaupun penghapusannya sudah di-approve. Query di bawah menggantikannya:
+    // header diambil langsung dari tabelnya lalu di-join ke dua approver, persis
+    // pola yang dipakai `generatePrint` pada modul Permohonan Kalibrasi.
+    //
+    // Nama kolom hasilnya sengaja disamakan dengan form Permohonan
+    // (txt_27/28/29) supaya halaman print keduanya bisa dibaca dengan pola yang
+    // sama. Approver_No 1 = Manager Bagian, 2 = VN Manager (lihat alias
+    // appr_Mgr_Dept / appr_Mgr_QA di getPenghapusanList).
+    //
+    // ROW_NUMBER dipakai karena satu no_penghapusan bisa punya lebih dari satu
+    // baris untuk Approver_No yang sama kalau sempat di-approve ulang; tanpa itu
+    // LEFT JOIN menggandakan baris header dan yang terpakai belum tentu yang
+    // terakhir.
     const headerQuery = `
-      SELECT *
-      FROM vw_Kal_ListAppr_Hapus
-      WHERE no_penghapusan = :no_penghapusan
+      SELECT
+        A.no_penghapusan,
+        A.bagian,
+        A.pemohon,
+        dbo.fnGetNamaKaryawan(A.pemohon) AS Pemohon_Name,
+
+        -- Pemohon
+        dbo.fnGetNamaKaryawan(A.pemohon)              AS txt_27_TTd_Pemohon01,
+        ' '                                           AS txt_27_TTd_Pemohon02,
+        CONVERT(varchar(20), A.tanggal, 13)           AS txt_27_TTd_Pemohon03,
+
+        -- Mengetahui, Manager Bagian
+        CASE
+          WHEN B.MgrDept_UID = B.MgrDept_Delegate
+            THEN 'Approved By: ' + dbo.fnGetNamaKaryawan(B.MgrDept_UID)
+          ELSE dbo.fnGetNamaKaryawan(B.MgrDept_Delegate)
+        END                                           AS txt_28_TTd_Mgr_Dept01,
+        CASE
+          WHEN B.MgrDept_UID = B.MgrDept_Delegate THEN ' '
+          ELSE 'Delegated to: ' + dbo.fnGetNamaKaryawan(B.MgrDept_UID)
+        END                                           AS txt_28_TTd_Mgr_Dept02,
+        CONVERT(varchar(20), B.MgrDept_date, 13)      AS txt_28_TTd_Mgr_Dept03,
+
+        -- Menyetujui, VN Manager
+        CASE
+          WHEN C.MgrQA_UID = C.MgrQA_Delegate
+            THEN 'Approved By: ' + dbo.fnGetNamaKaryawan(C.MgrQA_UID)
+          ELSE dbo.fnGetNamaKaryawan(C.MgrQA_Delegate)
+        END                                           AS txt_29_TTd_Mgr_QA01,
+        CASE
+          WHEN C.MgrQA_UID = C.MgrQA_Delegate THEN ' '
+          ELSE 'Delegated to: ' + dbo.fnGetNamaKaryawan(C.MgrQA_UID)
+        END                                           AS txt_29_TTd_Mgr_QA02,
+        CONVERT(varchar(20), C.MgrQA_date, 13)        AS txt_29_TTd_Mgr_QA03
+      FROM T_Kalibrasi_Penghapusan AS A
+      LEFT JOIN (
+        SELECT no_penghapusan, MgrDept_UID, MgrDept_Delegate, MgrDept_date
+        FROM (
+          SELECT
+            no_penghapusan,
+            User_ID      AS MgrDept_UID,
+            Delegated_To AS MgrDept_Delegate,
+            Process_Date AS MgrDept_date,
+            ROW_NUMBER() OVER (
+              PARTITION BY no_penghapusan ORDER BY Process_Date DESC
+            ) AS rn
+          FROM T_Kalibrasi_Penghapusan_status
+          WHERE Approver_No = 1
+        ) AS b1
+        WHERE rn = 1
+      ) AS B ON A.no_penghapusan = B.no_penghapusan
+      LEFT JOIN (
+        SELECT no_penghapusan, MgrQA_UID, MgrQA_Delegate, MgrQA_date
+        FROM (
+          SELECT
+            no_penghapusan,
+            User_ID      AS MgrQA_UID,
+            Delegated_To AS MgrQA_Delegate,
+            Process_Date AS MgrQA_date,
+            ROW_NUMBER() OVER (
+              PARTITION BY no_penghapusan ORDER BY Process_Date DESC
+            ) AS rn
+          FROM T_Kalibrasi_Penghapusan_status
+          WHERE Approver_No = 2
+        ) AS c1
+        WHERE rn = 1
+      ) AS C ON A.no_penghapusan = C.no_penghapusan
+      WHERE A.no_penghapusan = :no_penghapusan
     `;
 
     // VBA: SELECT Assm_nama_instrumen, Assm_No_identitas_Istrumen, Parameter_Kalibrasi,

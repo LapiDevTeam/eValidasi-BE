@@ -3121,9 +3121,18 @@ const printDAThermo = async (req, res) => {
 
   let browser;
   try {
-    const browser = await puppeteer.launch({
+    // `browser =`, BUKAN `const browser =`. Deklarasi di dalam try menutupi
+    // (shadow) variabel luar, sehingga `browser` di blok catch selamanya
+    // undefined dan Chrome tidak pernah ditutup saat request gagal — proses
+    // yatim menumpuk tiap kali error.
+    //
+    // `userDataDir` juga sudah dihapus: profil Chrome yang dipakai bersama
+    // (dulu: process.env.PUPPETEER_DIR || 'D:/Temp') dikunci lewat SingletonLock,
+    // jadi launch gagal kalau ada Chrome lain yang masih memegangnya — dua print
+    // bersamaan, atau proses yatim dari kegagalan sebelumnya. Tanpa opsi ini
+    // puppeteer memakai profil temporer baru tiap launch.
+    browser = await puppeteer.launch({
       headless: true,
-      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
     });
     const page = await browser.newPage();
 
@@ -3211,11 +3220,28 @@ const printDAThermo = async (req, res) => {
     });
 
     await browser.close();
+    browser = null;
+
+    // Tanpa header ini browser men-download file tanpa nama alih-alih
+    // menampilkannya di viewer PDF.
+    res.setHeader('Content-Type', 'application/pdf');
     res.end(pdfBuffer);
   } catch (error) {
-    console.error('Error during printCatatanTrial:', error);
-    if (browser) await browser.close();
-    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+    console.error('Error during printDAThermo:', error);
+    // browser.close() sendiri bisa melempar (mis. proses Chrome sudah mati),
+    // dan kalau itu terjadi response tidak pernah terkirim — request menggantung
+    // sampai timeout, bukan menampilkan error.
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser in printDAThermo:', closeError);
+      }
+    }
+    res.status(500).send({
+      error: 'An error occurred during PDF generation.',
+      reason: error?.message || String(error),
+    });
   }
 }
 
