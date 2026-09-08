@@ -74,9 +74,16 @@ const getDaBagianList = async (req, res, next) => {
       LEFT JOIN (
         SELECT * FROM T_Kalibrasi_DA_Bagian_status WHERE approver_no = 1
       ) AS B ON A.QA_ID = B.QA_id
-      -- Feedback 6.3 (userfeedback2): hanya tampilkan DA yang sudah di-approve
-      -- (approver level 1). Tanpa filter ini, asesmen belum-approve ikut tampil di DA.
-      WHERE B.QA_id IS NOT NULL
+      -- Dulu di sini ada WHERE B.QA_id IS NOT NULL (Feedback 6.3 / userfeedback2)
+      -- supaya hanya DA yang sudah di-approve yang tampil. Filter itu DICABUT atas
+      -- keputusan Michael 2026-09-08 karena efeknya form DA Bagian kosong sama
+      -- sekali, dan modul ini jadi satu-satunya yang berperilaku begitu —
+      -- DAThermo, DAMassa, dan DAAnakTimbang tidak pernah punya filter ini.
+      --
+      -- Efek sampingnya juga tidak diniatkan: cmd_reject menghapus barisnya
+      -- (DELETE FROM T_Kalibrasi_DA_Bagian_status), jadi dengan filter tadi record
+      -- yang di-reject hilang permanen dan tidak bisa diperbaiki atau di-approve
+      -- ulang. Tanpa filter, LEFT JOIN mengembalikannya dengan kolom approval kosong.
       ORDER BY A.QA_ID ASC
     `;
 
@@ -212,9 +219,16 @@ const getDaBagianForExport = async (req, res, next) => {
       LEFT JOIN (
         SELECT * FROM T_Kalibrasi_DA_Bagian_status WHERE approver_no = 1
       ) AS B ON A.QA_ID = B.QA_id
-      -- Feedback 6.3 (userfeedback2): hanya tampilkan DA yang sudah di-approve
-      -- (approver level 1). Tanpa filter ini, asesmen belum-approve ikut tampil di DA.
-      WHERE B.QA_id IS NOT NULL
+      -- Dulu di sini ada WHERE B.QA_id IS NOT NULL (Feedback 6.3 / userfeedback2)
+      -- supaya hanya DA yang sudah di-approve yang tampil. Filter itu DICABUT atas
+      -- keputusan Michael 2026-09-08 karena efeknya form DA Bagian kosong sama
+      -- sekali, dan modul ini jadi satu-satunya yang berperilaku begitu —
+      -- DAThermo, DAMassa, dan DAAnakTimbang tidak pernah punya filter ini.
+      --
+      -- Efek sampingnya juga tidak diniatkan: cmd_reject menghapus barisnya
+      -- (DELETE FROM T_Kalibrasi_DA_Bagian_status), jadi dengan filter tadi record
+      -- yang di-reject hilang permanen dan tidak bisa diperbaiki atau di-approve
+      -- ulang. Tanpa filter, LEFT JOIN mengembalikannya dengan kolom approval kosong.
       ORDER BY A.QA_ID ASC
     `;
 
