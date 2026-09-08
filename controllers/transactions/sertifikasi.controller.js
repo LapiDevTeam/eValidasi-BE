@@ -3224,9 +3224,16 @@ const printHapusAlat = async (req, res) => {
 
   let browser;
   try {
+    // JANGAN pasang `userDataDir` di sini. Profil Chrome yang dipakai bersama
+    // (dulu: process.env.PUPPETEER_DIR || 'D:/Temp') bikin launch gagal kalau
+    // foldernya tidak ada/tidak writable, kalau ada dua permintaan print
+    // bersamaan (Chrome mengunci profil lewat SingletonLock), atau kalau ada
+    // SingletonLock basi dari proses Chrome yang mati mendadak — dan lock basi
+    // itu bikin SEMUA print berikutnya gagal sampai file-nya dihapus manual.
+    // Tanpa opsi ini puppeteer memakai profil temporer baru tiap launch, sama
+    // seperti controller print lain di project ini yang tidak pernah bermasalah.
     browser = await puppeteer.launch({
       headless: true,
-      userDataDir: process.env.PUPPETEER_DIR || 'D:/Temp',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -3316,11 +3323,30 @@ const printHapusAlat = async (req, res) => {
     });
 
     await browser.close();
+    browser = null;
+
+    // Tanpa header ini browser men-download file tanpa nama alih-alih
+    // menampilkannya di viewer PDF. Controller print lain sudah memasangnya.
+    res.setHeader('Content-Type', 'application/pdf');
     res.end(pdfBuffer);
   } catch (error) {
     console.error('Error during printHapusAlat:', error);
-    if (browser) await browser.close();
-    res.status(500).send({ error: 'An error occurred during PDF generation.' });
+    // browser.close() sendiri bisa melempar (mis. proses Chrome sudah mati),
+    // dan kalau itu terjadi response tidak pernah terkirim — request menggantung
+    // sampai timeout, bukan menampilkan error.
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser in printHapusAlat:', closeError);
+      }
+    }
+    // Sertakan penyebab aslinya. Pesan generik sebelumnya bikin kegagalan
+    // launch, timeout goto, dan halaman FE error terlihat identik dari sisi user.
+    res.status(500).send({
+      error: 'An error occurred during PDF generation.',
+      reason: error?.message || String(error),
+    });
   }
 }
 
