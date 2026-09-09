@@ -53,6 +53,10 @@ async function listSessions(filters = {}) {
       cs.humidity,
       cs.notes,
       cs.metode_kalibrasi,
+      cs.workbook_profile,
+      cs.assm_kapasitas,
+      cs.assm_lokasi,
+      cs.toleransi,
       cs.evaluation_result,
       cs.approved_by_admin,
       cs.approved_by_admin_date,
@@ -105,6 +109,10 @@ async function getSessionById(sessionId, transaction) {
         humidity,
         notes,
         metode_kalibrasi,
+        workbook_profile,
+        assm_kapasitas,
+        assm_lokasi,
+        toleransi,
         evaluation_result,
         approved_by_admin,
         approved_by_admin_date,
@@ -142,6 +150,10 @@ async function createSession(payload, transaction) {
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
     .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
+    .input('WorkbookProfile', sql.VarChar(20), toDbNull(payload.workbook_profile))
+    .input('AssmKapasitas', sql.VarChar(50), toDbNull(payload.assm_kapasitas))
+    .input('AssmLokasi', sql.VarChar(1000), toDbNull(payload.assm_lokasi))
+    .input('Toleransi', sql.Decimal(18, 6), toDbNull(payload.toleransi))
     .input('CreatedBy', sql.VarChar(100), toDbNull(payload.created_by))
     .query(`
     INSERT INTO [dbo].[calibration_sessions]
@@ -159,6 +171,10 @@ async function createSession(payload, transaction) {
       humidity,
       notes,
       metode_kalibrasi,
+      workbook_profile,
+      assm_kapasitas,
+      assm_lokasi,
+      toleransi,
       created_by
     )
     VALUES
@@ -176,6 +192,10 @@ async function createSession(payload, transaction) {
       @Humidity,
       @Notes,
       @MetodeKalibrasi,
+      @WorkbookProfile,
+      @AssmKapasitas,
+      @AssmLokasi,
+      @Toleransi,
       @CreatedBy
     );
     SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
@@ -201,6 +221,10 @@ async function updateSession(sessionId, payload, transaction) {
     .input('Humidity', sql.Decimal(18, 6), toDbNull(payload.humidity))
     .input('Notes', sql.VarChar(1000), toDbNull(payload.notes))
     .input('MetodeKalibrasi', sql.VarChar(500), toDbNull(payload.metode_kalibrasi))
+    .input('WorkbookProfile', sql.VarChar(20), toDbNull(payload.workbook_profile))
+    .input('AssmKapasitas', sql.VarChar(50), toDbNull(payload.assm_kapasitas))
+    .input('AssmLokasi', sql.VarChar(1000), toDbNull(payload.assm_lokasi))
+    .input('Toleransi', sql.Decimal(18, 6), toDbNull(payload.toleransi))
     .input('UpdatedBy', sql.VarChar(100), toDbNull(payload.updated_by))
     .query(`
     UPDATE [dbo].[calibration_sessions]
@@ -218,6 +242,10 @@ async function updateSession(sessionId, payload, transaction) {
       humidity         = @Humidity,
       notes            = @Notes,
       metode_kalibrasi = @MetodeKalibrasi,
+      workbook_profile = @WorkbookProfile,
+      assm_kapasitas   = @AssmKapasitas,
+      assm_lokasi      = @AssmLokasi,
+      toleransi        = @Toleransi,
       updated_by       = @UpdatedBy,
       updated_at       = GETDATE()
     WHERE session_id = @SessionId

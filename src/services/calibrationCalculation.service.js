@@ -765,6 +765,7 @@ async function publishSessionToSertifikatBagian(
         ?? '',
       assm_kapasitas:
         publishOptions.assm_kapasitas
+        ?? session.assm_kapasitas
         ?? existingDa?.Assm_Kapasitas
         ?? qaCandidate?.Assm_Kapasitas
         ?? '',
@@ -775,6 +776,7 @@ async function publishSessionToSertifikatBagian(
         ?? 'Pressure Calibration',
       assm_lokasi:
         publishOptions.assm_lokasi
+        ?? session.assm_lokasi
         ?? existingDa?.Assm_Lokasi
         ?? qaCandidate?.Assm_Lokasi
         ?? '',
@@ -875,8 +877,10 @@ async function publishSessionToSertifikatBagian(
         publishOptions.assm_no_identitas_kalibrasi
         ?? header.Assm_No_identitas_kalibrasi
         ?? '',
-      assm_kapasitas: publishOptions.assm_kapasitas ?? header.Assm_Kapasitas ?? '',
-      assm_lokasi: publishOptions.assm_lokasi ?? header.Assm_Lokasi ?? '',
+      assm_kapasitas:
+        publishOptions.assm_kapasitas ?? session.assm_kapasitas ?? header.Assm_Kapasitas ?? '',
+      assm_lokasi:
+        publishOptions.assm_lokasi ?? session.assm_lokasi ?? header.Assm_Lokasi ?? '',
       nama: publishOptions.nama ?? header.Nama ?? '',
       no_ident_no_batch: publishOptions.no_ident_no_batch ?? header.No_Ident_No_batch ?? '',
       no_sertifikat: publishOptions.no_sertifikat ?? header.No_Sertifikat ?? '',
@@ -1069,7 +1073,6 @@ async function calculateSession(sessionId, changedBy = null) {
       delta_h: levelCorrection.delta_h,
       media_density: levelCorrection.media_density,
       gravity: levelCorrection.gravity,
-      unit_mode: session.unit_mode,
     });
     const levelCorrectionForResult =
       workbookProfile === PROFILE_HASIL_TEMPLATE

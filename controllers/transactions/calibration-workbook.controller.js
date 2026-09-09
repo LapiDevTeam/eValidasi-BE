@@ -4,6 +4,10 @@ const sql = require('mssql');
 const repo = require('../../repositories/calibration-workbook.repository');
 const formulaSvc = require('../../src/services/calibrationFormula.service');
 const calcSvc = require('../../src/services/calibrationCalculation.service');
+const {
+  PROFILE_HASIL_TEMPLATE,
+  PROFILE_IEG,
+} = require('../../src/services/workbookProfile.service');
 
 function parseIntParam(value, label) {
   const parsed = Number.parseInt(value, 10);
@@ -240,6 +244,19 @@ function normalizeUnitMode(value) {
   return unit;
 }
 
+// Profil workbook menentukan konvensi tanda error & beda level acuan
+// (lihat src/services/workbookProfile.service.js). Kosong = biarkan BE menebak
+// dari pola titik nominal; itu fallback, bukan default yang disarankan.
+function normalizeWorkbookProfile(value) {
+  const profile = String(value || '').trim().toUpperCase();
+  if (!profile) return null;
+  const allowed = [PROFILE_HASIL_TEMPLATE, PROFILE_IEG];
+  if (!allowed.includes(profile)) {
+    throwValidation('workbook_profile', `Workbook profile must be one of ${allowed.join(', ')}.`);
+  }
+  return profile;
+}
+
 function normalizeStatus(value) {
   const status = String(value || '').trim().toUpperCase();
   const allowed = ['DRAFT', 'CALCULATED', 'FINALIZED', 'CANCELLED'];
@@ -443,6 +460,29 @@ function mapSessionPayload(body, isUpdate = false) {
     metode_kalibrasi: normalizeLimitedString(body.metode_kalibrasi ?? body.metodeKalibrasi, {
       field: 'metode_kalibrasi',
       maxLength: 50,
+    }),
+    // HASIL_TEMPLATE (sheet LOW PRESSURE) atau IEG (sheet IEG 241/281).
+    // Dua profil ini berlawanan tanda error, jadi harus dipilih eksplisit —
+    // dulu ditebak dari nama alat dan itu penyebab salah hitung sesi 14.
+    workbook_profile: normalizeWorkbookProfile(body.workbook_profile ?? body.workbookProfile),
+    // Kapasitas/Resolusi & Lokasi alat. Ikut tercetak di sertifikat, jadi
+    // panjangnya dibatasi sama dengan validatePublishLengths() supaya ditolak
+    // di sini, bukan baru gagal saat Manager approve dan sertifikat terbit.
+    assm_kapasitas: normalizeLimitedString(body.assm_kapasitas ?? body.assmKapasitas, {
+      field: 'assm_kapasitas',
+      maxLength: 50,
+    }),
+    assm_lokasi: normalizeLimitedString(body.assm_lokasi ?? body.assmLokasi, {
+      field: 'assm_lokasi',
+      maxLength: 1000,
+    }),
+    // Toleransi / Accuracy dalam satuan sesi. Menentukan garis merah di Grafik
+    // Hasil Evaluasi dan jadi dasar verdict LAYAK / TIDAK LAYAK.
+    toleransi: normalizeDecimal(body.toleransi ?? body.tolerance, {
+      required: false,
+      field: 'toleransi',
+      precision: 18,
+      scale: 6,
     }),
     created_by: normalizeLimitedString(body.created_by, {
       field: 'created_by',
