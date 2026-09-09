@@ -213,6 +213,12 @@ async function saveWorkbook(sessionId, payload = {}) {
         point_order: p.point_order ?? i + 1,
         unit: p.unit || session.unit || 'kg',
         is_active: true,
+        // Tepat 2 pembacaan + 2 titik nol per titik (workbook: AVERAGE 2 nilai).
+        // null = belum diisi, supaya tidak ikut ditarik ke rata-rata sebagai 0.
+        uut_reading_1: toNumberOrNull(p.uut_reading_1),
+        uut_reading_2: toNumberOrNull(p.uut_reading_2),
+        zero_reading_1: toNumberOrNull(p.zero_reading_1),
+        zero_reading_2: toNumberOrNull(p.zero_reading_2),
       }, transaction);
       counts.points += 1;
 
@@ -360,7 +366,15 @@ async function calculate(sessionId, changedBy = null) {
 
     for (const point of points) {
       const standards = standardsByPoint.get(point.point_id) || [];
-      const c = formula.computePoint({ standards, resolusi, repeatability: rep, maxLoadRef, unit });
+      const c = formula.computePoint({
+        standards,
+        readings: [point.uut_reading_1, point.uut_reading_2],
+        zeros: [point.zero_reading_1, point.zero_reading_2],
+        resolusi,
+        repeatability: rep,
+        maxLoadRef,
+        unit,
+      });
       maxExpanded = Math.max(maxExpanded, c.uExpanded);
       computedForLop.push({ error: c.error, uExpanded: c.uExpanded });
 

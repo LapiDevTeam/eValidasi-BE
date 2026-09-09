@@ -406,7 +406,8 @@ async function listPoints(sessionId, transaction) {
   const result = await request
     .input('SessionId', sql.Int, sessionId)
     .query(`
-      SELECT point_id, session_id, point_order, unit, is_active
+      SELECT point_id, session_id, point_order, unit, is_active,
+             uut_reading_1, uut_reading_2, zero_reading_1, zero_reading_2
       FROM [dbo].[timbangan_points]
       WHERE session_id = @SessionId AND is_active = 1
       ORDER BY point_order ASC, point_id ASC
@@ -444,12 +445,21 @@ async function createPoint(sessionId, payload, transaction) {
     .input('PointOrder', sql.Int, payload.point_order)
     .input('Unit', sql.VarChar(10), payload.unit || 'kg')
     .input('IsActive', sql.Bit, boolBit(payload.is_active))
+    // III. Koreksi: pembacaan UUT & titik nol milik TITIK (tepat 2 nilai),
+    // bukan milik baris anak timbangan -- lihat add-timbangan-point-readings.sql.
+    .input('UutReading1', sql.Decimal(18, 10), toDbNull(payload.uut_reading_1))
+    .input('UutReading2', sql.Decimal(18, 10), toDbNull(payload.uut_reading_2))
+    .input('ZeroReading1', sql.Decimal(18, 10), toDbNull(payload.zero_reading_1))
+    .input('ZeroReading2', sql.Decimal(18, 10), toDbNull(payload.zero_reading_2))
     .query(`
       DECLARE @out TABLE (point_id INT);
 
-      INSERT INTO [dbo].[timbangan_points] (session_id, point_order, unit, is_active)
+      INSERT INTO [dbo].[timbangan_points]
+        (session_id, point_order, unit, is_active,
+         uut_reading_1, uut_reading_2, zero_reading_1, zero_reading_2)
       OUTPUT INSERTED.point_id INTO @out
-      VALUES (@SessionId, @PointOrder, @Unit, @IsActive)
+      VALUES (@SessionId, @PointOrder, @Unit, @IsActive,
+              @UutReading1, @UutReading2, @ZeroReading1, @ZeroReading2)
 
       SELECT point_id FROM @out;
     `);
