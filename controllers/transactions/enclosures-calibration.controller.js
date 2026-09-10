@@ -18,6 +18,12 @@ function textValue(value) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+function createControllerError(message, statusCode = 400) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
 function pickValue(source, ...keys) {
   for (const key of keys) {
     if (source?.[key] !== undefined) return source[key];
@@ -470,6 +476,209 @@ async function replaceEnclosuresCertificateRows({ qaId, idNoSertifikat, rows, us
   }
 }
 
+/**
+ * Inti penerbitan sertifikat Enclosures (header + baris hasil kalibrasi).
+ *
+ * Dipakai dua jalur:
+ *  - approveSession() saat Manager approve (jalur normal, sertifikat baru
+ *    dibuat di sini);
+ *  - endpoint generate-sertifikat (re-publish / perbaikan data).
+ *
+ * Idempoten: kalau sertifikat sudah ada, nomornya dipakai ulang dan baris
+ * hasil kalibrasi ditulis ulang dari calculationResult session.
+ *
+ * @param {object}  opts.session               row session (hasil fetchSessionById)
+ * @param {object}  opts.body                  payload request (opsional)
+ * @param {object}  opts.user                  req.user
+ * @param {object}  opts.transaction           transaksi MSSQL yang sedang berjalan
+ * @param {boolean} opts.preserveSessionOwner  true = jangan timpa Status/UserID
+ *                                             session (dipakai jalur approval,
+ *                                             supaya kepemilikan workbook tetap
+ *                                             milik pelaksana, bukan Manager)
+ */
+async function publishEnclosuresCertificate({
+  session,
+  body = {},
+  user = {},
+  transaction,
+  preserveSessionOwner = false,
+}) {
+  const userId = user.user_id;
+  // Samakan dengan finalizeManagerCalibrationApproval: Delegated_To jangan NULL,
+  // karena query tanda tangan approver membandingkan USER_ID = Delegated_To.
+  const delegatedTo = user.delegated_to || userId;
+  const sessionId = Number(session?.Session_ID);
+
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    throw createControllerError('Session tidak valid untuk generate sertifikat', 400);
+  }
+
+  const sessionWorkbookPayload = session.workbookPayload || {};
+  const requestWorkbookPayload = body.workbookPayload || {};
+  const mergedHeader = {
+    ...(sessionWorkbookPayload.header || {}),
+    ...(requestWorkbookPayload.header || {}),
+    ...(body.header || {}),
+  };
+
+  const qaId = textValue(
+    pickValue(body, 'qa_id', 'qaId', 'QA_ID') ||
+      session.QA_ID ||
+      mergedHeader.QA_ID
+  ).trim();
+  let idNoSertifikat = textValue(
+    pickValue(body, 'id_no_sertifikat', 'idNoSertifikat', 'ID_No_Sertifikat') ||
+      session.ID_No_Sertifikat ||
+      mergedHeader.ID_No_Sertifikat
+  ).trim();
+
+  if (!qaId) {
+    throw createControllerError(
+      'QA_ID is required to generate Enclosures certificate',
+      400
+    );
+  }
+
+  const evaluationResult = normalizeEvaluationResult(
+    pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
+      session.Evaluation_Result
+  );
+  if (!evaluationResult) {
+    throw createControllerError('Pilih hasil evaluasi workbook terlebih dahulu', 400);
+  }
+
+  if (!idNoSertifikat) {
+    idNoSertifikat = await getNextEnclosuresCertificateNumber(transaction);
+  }
+
+  if (!idNoSertifikat) {
+    throw createControllerError(
+      'Gagal mengambil nomor otomatis sertifikat Enclosures',
+      500
+    );
+  }
+
+  const headerCreated = await ensureEnclosuresCertificateHeader({
+    qaId,
+    idNoSertifikat,
+    userId,
+    delegatedTo,
+    transaction,
+  });
+
+  if (!headerCreated) {
+    throw createControllerError(
+      `DA Bagian tidak ditemukan untuk QA_ID ${qaId}`,
+      404
+    );
+  }
+
+  const headerForSave = {
+    ...mergedHeader,
+    QA_ID: qaId,
+    ID_No_Sertifikat: idNoSertifikat,
+  };
+  await updateEnclosuresCertificateHeader({
+    qaId,
+    idNoSertifikat,
+    header: headerForSave,
+    userId,
+    delegatedTo,
+    transaction,
+  });
+
+  const calculationResult = body.calculationResult || session.calculationResult || null;
+  const resultRows = buildEnclosuresResultRows(
+    calculationResult,
+    body.certificateRows || []
+  );
+  await replaceEnclosuresCertificateRows({
+    qaId,
+    idNoSertifikat,
+    rows: resultRows,
+    userId,
+    delegatedTo,
+    transaction,
+  });
+
+  const nextWorkbookPayload = {
+    ...sessionWorkbookPayload,
+    ...requestWorkbookPayload,
+    header: headerForSave,
+  };
+
+  const setClauses = [
+    'QA_ID = :qaId',
+    'ID_No_Sertifikat = :idNoSertifikat',
+    'Workbook_Payload_JSON = :workbookPayloadJson',
+    'Calculation_Result_JSON = :calculationResultJson',
+    'Evaluation_Result = :evaluationResult',
+  ];
+  const replacements = {
+    qaId,
+    idNoSertifikat,
+    workbookPayloadJson: JSON.stringify(nextWorkbookPayload),
+    calculationResultJson: calculationResult ? JSON.stringify(calculationResult) : null,
+    evaluationResult,
+    sessionId,
+  };
+
+  if (!preserveSessionOwner) {
+    setClauses.push('Status = :status', 'UserID = :userId', 'Delegated_To = :delegatedTo');
+    Object.assign(replacements, {
+      status: 'PUBLISHED',
+      userId,
+      delegatedTo,
+    });
+  }
+
+  setClauses.push('Update_Date = GETDATE()');
+
+  await sequelizeMSQL.query(
+    `
+      UPDATE ${SESSION_TABLE}
+      SET
+        ${setClauses.join(',\n        ')}
+      WHERE Session_ID = :sessionId
+    `,
+    {
+      replacements,
+      type: Sequelize.QueryTypes.UPDATE,
+      transaction,
+    }
+  );
+
+  return {
+    qaId,
+    idNoSertifikat,
+    publishedRows: resultRows.length,
+  };
+}
+
+/**
+ * Hook untuk jalur approval terpusat (Pending Approval Calibration).
+ * Menerbitkan sertifikat Enclosures sebelum finalizeManagerCalibrationApproval
+ * dijalankan, lalu mengembalikan session yang sudah berisi No Sertifikat.
+ */
+async function publishEnclosuresCertificateForManagerApproval({
+  session,
+  user,
+  transaction,
+}) {
+  const published = await publishEnclosuresCertificate({
+    session,
+    user,
+    transaction,
+    preserveSessionOwner: true,
+  });
+
+  return {
+    ...session,
+    QA_ID: published.qaId,
+    ID_No_Sertifikat: published.idNoSertifikat,
+  };
+}
+
 function normalizeSessionPayload(body) {
   const qaId = pickValue(body, 'qa_id', 'qaId', 'QA_ID');
   const idNoSertifikat = pickValue(
@@ -897,13 +1106,6 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    if (!String(session.ID_No_Sertifikat || '').trim()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Generate sertifikat terlebih dahulu sebelum approve workbook.',
-      });
-    }
-
     const actorRole = getActorApprovalRole(req);
     const role = resolveTargetApprovalRole(req);
     const orderMessage = assertWorkbookApproval({
@@ -911,6 +1113,9 @@ const approveSession = async (req, res, next) => {
       actorRole,
       targetRole: role,
       certificateApprovedByManager: true,
+      // Sertifikat + DA Enclosures baru diterbitkan pada approval Manager,
+      // jadi workbook tidak diblokir karena belum punya No Sertifikat.
+      requireGeneratedCertificate: false,
     });
     if (orderMessage) {
       return res.status(403).json({
@@ -921,9 +1126,18 @@ const approveSession = async (req, res, next) => {
 
     await sequelizeMSQL.transaction(async (transaction) => {
       if (role.key === 'manager') {
+        // Approval Manager bersifat final: terbitkan sertifikat dulu (kalau
+        // belum ada), baru approve sertifikat + generate/approve DA Bagian.
+        const sessionForFinalization =
+          await publishEnclosuresCertificateForManagerApproval({
+            session,
+            user: req.user,
+            transaction,
+          });
+
         await finalizeManagerCalibrationApproval({
           certificateType: 'bagian',
-          session,
+          session: sessionForFinalization,
           user: req.user,
           transaction,
         });
@@ -958,6 +1172,12 @@ const approveSession = async (req, res, next) => {
       data,
     });
   } catch (error) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
     console.error('Error in Enclosures approveSession:', error);
     next(error);
   }
@@ -967,7 +1187,6 @@ const generateEnclosuresSertifikat = async (req, res, next) => {
   const transaction = await sequelizeMSQL.transaction();
 
   try {
-    const { user_id, delegated_to } = req.user;
     const body = req.body || {};
     const sessionId = Number(req.params.sessionId || body.sessionId || 0);
 
@@ -996,139 +1215,26 @@ const generateEnclosuresSertifikat = async (req, res, next) => {
       });
     }
 
-    const sessionWorkbookPayload = session.workbookPayload || {};
-    const requestWorkbookPayload = body.workbookPayload || {};
-    const mergedHeader = {
-      ...(sessionWorkbookPayload.header || {}),
-      ...(requestWorkbookPayload.header || {}),
-      ...(body.header || {}),
-    };
-
-    const qaId = textValue(
-      pickValue(body, 'qa_id', 'qaId', 'QA_ID') ||
-        session.QA_ID ||
-        mergedHeader.QA_ID
-    ).trim();
-    let idNoSertifikat = textValue(
-      pickValue(body, 'id_no_sertifikat', 'idNoSertifikat', 'ID_No_Sertifikat') ||
-        session.ID_No_Sertifikat ||
-        mergedHeader.ID_No_Sertifikat
-    ).trim();
-
-    if (!qaId) {
+    // Sertifikat Enclosures hanya boleh terbit lewat approval Manager.
+    // Endpoint ini disisakan untuk re-sync data sertifikat yang sudah ada.
+    if (
+      !String(session.ID_No_Sertifikat || '').trim() &&
+      !session.ApprovedByManager
+    ) {
       await transaction.rollback();
-      return res.status(400).json({
+      return res.status(403).json({
         success: false,
-        message: 'QA_ID is required to generate Enclosures certificate',
+        message:
+          'Sertifikat Enclosures diterbitkan otomatis saat workbook diapprove Manager, bukan digenerate manual.',
       });
     }
 
-    if (!idNoSertifikat) {
-      idNoSertifikat = await getNextEnclosuresCertificateNumber(transaction);
-    }
-
-    if (!idNoSertifikat) {
-      await transaction.rollback();
-      return res.status(500).json({
-        success: false,
-        message: 'Gagal mengambil nomor otomatis sertifikat Enclosures',
-      });
-    }
-
-    const headerCreated = await ensureEnclosuresCertificateHeader({
-      qaId,
-      idNoSertifikat,
-      userId: user_id,
-      delegatedTo: delegated_to,
+    const published = await publishEnclosuresCertificate({
+      session,
+      body,
+      user: req.user,
       transaction,
     });
-
-    if (!headerCreated) {
-      await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: `DA Bagian tidak ditemukan untuk QA_ID ${qaId}`,
-      });
-    }
-
-    const headerForSave = {
-      ...mergedHeader,
-      QA_ID: qaId,
-      ID_No_Sertifikat: idNoSertifikat,
-    };
-    await updateEnclosuresCertificateHeader({
-      qaId,
-      idNoSertifikat,
-      header: headerForSave,
-      userId: user_id,
-      delegatedTo: delegated_to,
-      transaction,
-    });
-
-    const calculationResult = body.calculationResult || session.calculationResult || null;
-    const evaluationResult = normalizeEvaluationResult(
-      pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
-        session.Evaluation_Result
-    );
-
-    if (!evaluationResult) {
-      await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: 'Pilih hasil evaluasi workbook terlebih dahulu',
-      });
-    }
-
-    const resultRows = buildEnclosuresResultRows(
-      calculationResult,
-      body.certificateRows || []
-    );
-    await replaceEnclosuresCertificateRows({
-      qaId,
-      idNoSertifikat,
-      rows: resultRows,
-      userId: user_id,
-      delegatedTo: delegated_to,
-      transaction,
-    });
-
-    const nextWorkbookPayload = {
-      ...sessionWorkbookPayload,
-      ...requestWorkbookPayload,
-      header: headerForSave,
-    };
-
-    await sequelizeMSQL.query(
-      `
-        UPDATE ${SESSION_TABLE}
-        SET
-          QA_ID = :qaId,
-          ID_No_Sertifikat = :idNoSertifikat,
-          Workbook_Payload_JSON = :workbookPayloadJson,
-          Calculation_Result_JSON = :calculationResultJson,
-          Evaluation_Result = :evaluationResult,
-          Status = :status,
-          UserID = :userId,
-          Delegated_To = :delegatedTo,
-          Update_Date = GETDATE()
-        WHERE Session_ID = :sessionId
-      `,
-      {
-        replacements: {
-          qaId,
-          idNoSertifikat,
-          workbookPayloadJson: JSON.stringify(nextWorkbookPayload),
-          calculationResultJson: calculationResult ? JSON.stringify(calculationResult) : null,
-          evaluationResult,
-          status: 'PUBLISHED',
-          userId: user_id,
-          delegatedTo: delegated_to,
-          sessionId,
-        },
-        type: Sequelize.QueryTypes.UPDATE,
-        transaction,
-      }
-    );
 
     await transaction.commit();
 
@@ -1136,10 +1242,10 @@ const generateEnclosuresSertifikat = async (req, res, next) => {
       success: true,
       message: 'Sukses Generate Data Sertifikat Enclosures!',
       data: {
-        qa_id: qaId,
-        id_no_sertifikat: idNoSertifikat,
+        qa_id: published.qaId,
+        id_no_sertifikat: published.idNoSertifikat,
         session_id: sessionId,
-        published_rows: resultRows.length,
+        published_rows: published.publishedRows,
       },
     });
   } catch (error) {
@@ -1148,6 +1254,14 @@ const generateEnclosuresSertifikat = async (req, res, next) => {
     } catch (_) {
       // Keep original error.
     }
+
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     console.error('Error in generateEnclosuresSertifikat:', error);
     next(error);
   }
@@ -1160,6 +1274,8 @@ module.exports = {
   saveSession,
   approveSession,
   generateEnclosuresSertifikat,
+  publishEnclosuresCertificate,
+  publishEnclosuresCertificateForManagerApproval,
 };
 
 

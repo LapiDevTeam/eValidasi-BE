@@ -93,6 +93,10 @@ function assertWorkbookApproval({
   actorRole,
   targetRole,
   certificateApprovedByManager = false,
+  // Modul yang menerbitkan sertifikat otomatis saat approval Manager
+  // (mis. Enclosures) mengirim false: workbook belum punya No Sertifikat
+  // sampai Manager approve, jadi tidak boleh diblokir karenanya.
+  requireGeneratedCertificate = true,
 }) {
   if (!actorRole) return 'User tidak memiliki role approval workbook';
   if (!targetRole) return 'Target approval workbook tidak valid';
@@ -102,7 +106,11 @@ function assertWorkbookApproval({
   if (session?.[targetRole.column]) {
     return `Workbook sudah approve oleh ${targetRole.label}`;
   }
-  if (actorRole.key !== 'admin' && !String(session?.ID_No_Sertifikat || '').trim()) {
+  if (
+    requireGeneratedCertificate &&
+    actorRole.key !== 'admin' &&
+    !String(session?.ID_No_Sertifikat || '').trim()
+  ) {
     return 'Generate sertifikat terlebih dahulu sebelum approve workbook.';
   }
   if (targetRole.key === 'officer' && !session?.ApprovedByAdmin) {

@@ -42,6 +42,19 @@ const {
   finalizeManagerCalibrationApproval,
 } = require('./calibrationManagerFinalization.service');
 const labelReprintRequestsController = require('../controllers/transactions/label-reprint-requests.controller');
+const {
+  publishEnclosuresCertificateForManagerApproval,
+} = require('../controllers/transactions/enclosures-calibration.controller');
+
+/**
+ * Modul yang sertifikatnya baru diterbitkan saat approval Manager (bukan
+ * digenerate manual sebelum approve). Publisher dijalankan di dalam transaksi
+ * yang sama dengan finalizeManagerCalibrationApproval, dan mengembalikan
+ * session yang sudah berisi QA_ID + ID_No_Sertifikat.
+ */
+const MANAGER_CERTIFICATE_PUBLISHERS = {
+  enclosures: publishEnclosuresCertificateForManagerApproval,
+};
 
 // Label Reprint requests use a single-step Manager approval (not the
 // Admin->Officer->Manager hierarchy below), and reuse the same 7 module keys
@@ -351,18 +364,44 @@ const BAGIAN_CERTIFICATE_DETAIL_APPLY = `
   ) AS CertificateBagian
 `;
 
+// Modul yang sertifikatnya baru terbit saat approval Manager belum punya row
+// di T_Kalibrasi_Sertifikat_Bagian selama masih menunggu approval, jadi detail
+// instrumennya diambil dari DA Bagian sebagai fallback.
+const BAGIAN_DA_DETAIL_APPLY = `
+  OUTER APPLY (
+    SELECT TOP 1
+      D.Assm_nama_instrumen,
+      D.Assm_No_identitas_kalibrasi,
+      D.Tgl_kalibrasi
+    FROM dbo.T_Kalibrasi_DA_Bagian AS D
+    WHERE D.QA_ID = S.QA_ID
+    ORDER BY D.Process_date DESC
+  ) AS DaBagian
+`;
+
 function bagianWorkbookConfig({
   displayName,
   table,
   routePrefix,
+  // true untuk modul yang sertifikatnya diterbitkan otomatis saat approval
+  // Manager (lihat MANAGER_CERTIFICATE_PUBLISHERS).
+  certificateOnManagerApproval = false,
 }) {
+  const detailApply = certificateOnManagerApproval
+    ? `${BAGIAN_CERTIFICATE_DETAIL_APPLY}${BAGIAN_DA_DETAIL_APPLY}`
+    : BAGIAN_CERTIFICATE_DETAIL_APPLY;
+  const detailColumn = (column) =>
+    certificateOnManagerApproval
+      ? `COALESCE(CertificateBagian.${column}, DaBagian.${column})`
+      : `CertificateBagian.${column}`;
+
   return {
     displayName,
     table,
     idColumn: 'Session_ID',
-    instrumentNameColumn: 'CertificateBagian.Assm_nama_instrumen',
-    calibrationIdColumn: 'CertificateBagian.Assm_No_identitas_kalibrasi',
-    calibrationDateColumn: 'CertificateBagian.Tgl_kalibrasi',
+    instrumentNameColumn: detailColumn('Assm_nama_instrumen'),
+    calibrationIdColumn: detailColumn('Assm_No_identitas_kalibrasi'),
+    calibrationDateColumn: detailColumn('Tgl_kalibrasi'),
     qaIdColumn: 'QA_ID',
     idNoSertifikatColumn: 'ID_No_Sertifikat',
     userIdColumn: 'UserID',
@@ -371,7 +410,7 @@ function bagianWorkbookConfig({
     statusColumn: 'Status',
     conforming: true,
     routePrefix,
-    detailApply: BAGIAN_CERTIFICATE_DETAIL_APPLY,
+    detailApply,
     finalizationCertificateType: 'bagian',
     approvalColumns: CONFORMING_APPROVAL_COLUMNS,
   };
@@ -451,6 +490,7 @@ const MODULE_REGISTRY = {
     displayName: 'Enclosures',
     table: 'dbo.T_Kalibrasi_Enclosures_Workbook_Session',
     routePrefix: '/enclosures-calibration',
+    certificateOnManagerApproval: true,
   }),
   'hardness-tester': bagianWorkbookConfig({
     displayName: 'Hardness Tester',
@@ -3226,7 +3266,44 @@ async function getSessionForManagerFinalization(config, sessionId) {
   return rows[0] || null;
 }
 
+function parseSessionJsonColumn(value) {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Row session lengkap (termasuk payload workbook + hasil perhitungan), dipakai
+ * modul yang menerbitkan sertifikatnya sendiri saat approval Manager.
+ */
+async function getFullSessionRowForCertificatePublish(config, sessionId) {
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1 *
+      FROM ${config.table}
+      WHERE ${config.idColumn} = :sessionId
+    `,
+    {
+      replacements: { sessionId },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    ...row,
+    workbookPayload: parseSessionJsonColumn(row.Workbook_Payload_JSON),
+    calculationResult: parseSessionJsonColumn(row.Calculation_Result_JSON),
+  };
+}
+
 async function approveConformingManagerSession({
+  moduleKey,
   config,
   ac,
   sessionId,
@@ -3247,6 +3324,8 @@ async function approveConformingManagerSession({
     throw err;
   }
 
+  const publishCertificate = MANAGER_CERTIFICATE_PUBLISHERS[moduleKey];
+
   await sequelizeMSQL.transaction(async (transaction) => {
     const finalizationUser = {
       ...user,
@@ -3258,9 +3337,29 @@ async function approveConformingManagerSession({
         userId,
     };
 
+    let finalizationSession = sessionForFinalization;
+
+    if (publishCertificate) {
+      const fullSession = await getFullSessionRowForCertificatePublish(
+        config,
+        sessionId
+      );
+      if (!fullSession) {
+        const err = new Error('Session not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      finalizationSession = await publishCertificate({
+        session: fullSession,
+        user: finalizationUser,
+        transaction,
+      });
+    }
+
     await finalizeManagerCalibrationApproval({
       certificateType: config.finalizationCertificateType,
-      session: sessionForFinalization,
+      session: finalizationSession,
       user: finalizationUser,
       transaction,
     });
@@ -3372,6 +3471,7 @@ async function approveSession(module, sessionId, user, options = {}) {
 
   if (isConformingManagerFinalization) {
     await approveConformingManagerSession({
+      moduleKey: key,
       config,
       ac,
       sessionId,
