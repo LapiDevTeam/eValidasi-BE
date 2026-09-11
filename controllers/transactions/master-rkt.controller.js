@@ -6,17 +6,25 @@
  * gagal dengan "Conversion failed when converting the nvarchar value '12 Bulan'
  * to data type int" dan menggagalkan seluruh proses scan.
  *
- * TRY_CAST saja TIDAK cukup: nilainya akan jadi NULL lalu 0, dan karena setiap
- * query menyaring "> 0", instrumennya akan HILANG dari rencana tanpa peringatan.
- * Jadi angka di depannya diambil dulu, baru dikonversi.
+ * Konversi langsung saja TIDAK cukup: nilainya akan jadi NULL lalu 0, dan karena
+ * setiap query menyaring "> 0", instrumennya akan HILANG dari rencana tanpa
+ * peringatan. Jadi angka di depannya diambil dulu, baru dikonversi.
  *
  *   '12 Bulan' -> 12      '12' -> 12      'abc' -> 0      NULL -> 0
+ *
+ * JANGAN pakai TRY_CAST/TRY_CONVERT di sini. Server .69 masih SQL Server 2008,
+ * dan fungsi itu baru ada sejak 2012 -> error 195 "'TRY_CAST' is not a
+ * recognized built-in function name" yang menggagalkan seluruh query UNION.
  */
 const intervalBulanInt = (kolom) => {
   const teks = `LTRIM(RTRIM(CONVERT(NVARCHAR(50), ${kolom})))`;
   // Ditambah penanda supaya PATINDEX selalu menemukan karakter non-angka,
   // termasuk saat isinya murni angka seperti '12'.
-  return `ISNULL(TRY_CAST(LEFT(${teks}, PATINDEX('%[^0-9]%', ${teks} + '|') - 1) AS INT), 0)`;
+  const angka = `LEFT(${teks}, PATINDEX('%[^0-9]%', ${teks} + '|') - 1)`;
+  // Hasil `angka` dijamin hanya digit (atau string kosong), jadi CAST aman.
+  // Batas 9 digit mencegah overflow INT; di luar rentang itu jatuh ke 0,
+  // persis seperti perilaku TRY_CAST + ISNULL sebelumnya.
+  return `CASE WHEN LEN(${angka}) BETWEEN 1 AND 9 THEN CAST(${angka} AS INT) ELSE 0 END`;
 };
 'use strict';
 
