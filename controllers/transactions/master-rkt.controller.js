@@ -1,3 +1,23 @@
+/**
+ * Ambil angka bulan dari kolom interval yang isinya bisa berupa teks ('12 Bulan').
+ *
+ * Kolom interval pada tabel DA bertipe teks dan sebagian barisnya berisi
+ * satuan, misalnya '12 Bulan'. CAST(... AS INT) langsung pada nilai seperti itu
+ * gagal dengan "Conversion failed when converting the nvarchar value '12 Bulan'
+ * to data type int" dan menggagalkan seluruh proses scan.
+ *
+ * TRY_CAST saja TIDAK cukup: nilainya akan jadi NULL lalu 0, dan karena setiap
+ * query menyaring "> 0", instrumennya akan HILANG dari rencana tanpa peringatan.
+ * Jadi angka di depannya diambil dulu, baru dikonversi.
+ *
+ *   '12 Bulan' -> 12      '12' -> 12      'abc' -> 0      NULL -> 0
+ */
+const intervalBulanInt = (kolom) => {
+  const teks = `LTRIM(RTRIM(CONVERT(NVARCHAR(50), ${kolom})))`;
+  // Ditambah penanda supaya PATINDEX selalu menemukan karakter non-angka,
+  // termasuk saat isinya murni angka seperti '12'.
+  return `ISNULL(TRY_CAST(LEFT(${teks}, PATINDEX('%[^0-9]%', ${teks} + '|') - 1) AS INT), 0)`;
+};
 'use strict';
 
 const ExcelJS = require('exceljs');
@@ -275,7 +295,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Thermohygro
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 
@@ -292,7 +312,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Anak_Timbangan
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 
@@ -309,7 +329,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Timbangan
-      WHERE CAST(ISNULL([Interval], 0) AS INT) > 0
+      WHERE ${intervalBulanInt('[Interval]')} > 0
 
       UNION ALL
 
@@ -326,7 +346,7 @@ const getRKTDataByYear = async (selectedYear) => {
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya
       FROM T_Kalibrasi_DA_Bagian
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 
@@ -392,11 +412,11 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya,
-        CAST(ISNULL(Parameter_Interval, 0) AS INT) AS Parameter_Interval,
+        ${intervalBulanInt('Parameter_Interval')} AS Parameter_Interval,
         CAST('T_Kalibrasi_DA_Thermohygro' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Thermohygro
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 
@@ -412,11 +432,11 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya,
-        CAST(ISNULL(Parameter_Interval, 0) AS INT) AS Parameter_Interval,
+        ${intervalBulanInt('Parameter_Interval')} AS Parameter_Interval,
         CAST('T_Kalibrasi_DA_Anak_Timbangan' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Anak_Timbangan
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 
@@ -432,11 +452,11 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya,
-        CAST(ISNULL([Interval], 0) AS INT) AS Parameter_Interval,
+        ${intervalBulanInt('[Interval]')} AS Parameter_Interval,
         CAST('T_Kalibrasi_DA_Timbangan' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Timbangan
-      WHERE CAST(ISNULL([Interval], 0) AS INT) > 0
+      WHERE ${intervalBulanInt('[Interval]')} > 0
 
       UNION ALL
 
@@ -452,11 +472,11 @@ const getRKTDoubleChecklistDataByYear = async (selectedYear, transaction = null)
         ISNULL(Jenis_Kalibrasi, 1) AS Jenis_Kalibrasi,
         Tgl_kalibrasi,
         Kalibrasi_selanjutnya,
-        CAST(ISNULL(Parameter_Interval, 0) AS INT) AS Parameter_Interval,
+        ${intervalBulanInt('Parameter_Interval')} AS Parameter_Interval,
         CAST('T_Kalibrasi_DA_Bagian' AS VARCHAR(128)) AS Source_Table,
         CAST(QA_ID AS VARCHAR(100)) AS Source_Key
       FROM T_Kalibrasi_DA_Bagian
-      WHERE CAST(ISNULL(Parameter_Interval, 0) AS INT) > 0
+      WHERE ${intervalBulanInt('Parameter_Interval')} > 0
 
       UNION ALL
 

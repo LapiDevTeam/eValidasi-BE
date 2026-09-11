@@ -19,6 +19,9 @@ BEGIN
     Approved_By_Name NVARCHAR(255) NULL,
     Approved_By_Title NVARCHAR(255) NULL,
     Approved_At DATETIME2(0) NULL,
+    -- Nama pelaksana saat penanda tangan bertindak atas nama orang lain.
+    Prepared_Delegate NVARCHAR(255) NULL,
+    Approved_Delegate NVARCHAR(255) NULL,
     Rejected_By NVARCHAR(50) NULL,
     Rejected_At DATETIME2(0) NULL,
     Notes NVARCHAR(MAX) NULL,
@@ -65,6 +68,42 @@ BEGIN
 END;
 GO
 
+-- ---------------------------------------------------------------------------
+-- Kolom delegasi HARUS ada sebelum trigger dibuat.
+--
+-- CREATE TRIGGER memvalidasi nama kolom saat dijalankan, dan kolom pada
+-- inserted/deleted mengikuti tabel induknya. Kalau blok ini ditaruh di akhir
+-- berkas, pembuatan trigger gagal dengan "Invalid column name".
+--
+-- Tabel induk ikut diperiksa supaya berkas ini tetap benar walau dijalankan
+-- sendiri, tanpa create-*-tables.sql lebih dulu.
+-- ---------------------------------------------------------------------------
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header', 'Prepared_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header ADD Prepared_Delegate NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header', 'Approved_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header ADD Approved_Delegate NVARCHAR(255) NULL;
+END;
+GO
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Prepared_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Prepared_Delegate NVARCHAR(255) NULL;
+END;
+GO
+
+IF OBJECT_ID('dbo.T_AWP_Header_Hist', 'U') IS NOT NULL
+  AND COL_LENGTH('dbo.T_AWP_Header_Hist', 'Approved_Delegate') IS NULL
+BEGIN
+  ALTER TABLE dbo.T_AWP_Header_Hist ADD Approved_Delegate NVARCHAR(255) NULL;
+END;
+GO
 IF OBJECT_ID('dbo.TR_T_AWP_Realization_History_DA_Thermohygro', 'TR') IS NOT NULL
 BEGIN
   DROP TRIGGER dbo.TR_T_AWP_Realization_History_DA_Thermohygro;
@@ -347,6 +386,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
@@ -371,6 +412,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
@@ -399,6 +442,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
@@ -423,6 +468,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
@@ -451,6 +498,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
@@ -475,6 +524,8 @@ BEGIN
       Approved_By_Name,
       Approved_By_Title,
       Approved_At,
+      Prepared_Delegate,
+      Approved_Delegate,
       Rejected_By,
       Rejected_At,
       Notes,
