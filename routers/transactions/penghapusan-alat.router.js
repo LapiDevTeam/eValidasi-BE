@@ -8,6 +8,7 @@ const {
   getPenghapusanDetailItems,
   getCurrentApprove,
   checkApproveButton,
+  getPendingMgrApproval,
   browseDaInstruments,
   getApproverIdentityPenghapusan,
   savePenghapusan,
@@ -34,6 +35,9 @@ router.get('/current-approve', authentication, getCurrentApprove);
 
 // Check whether current user can approve and whether print is enabled (sbCheck_Button_Approve)
 router.get('/check-approve-button', authentication, checkApproveButton);
+
+// Check whether a department still has penghapusan awaiting Manager Bagian approval
+router.get('/pending-mgr-approval', authentication, getPendingMgrApproval);
 
 // Browse DA instruments available for deletion (cmd_browse_DA_Click)
 router.get('/browse-da', authentication, browseDaInstruments);

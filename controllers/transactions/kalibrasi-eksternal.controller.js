@@ -1,21 +1,255 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
 const { getApproverIdentity, formatDateForSQL } = require('../../helpers/kalibrasi.helper');
+const {
+  uploadFileToFTP,
+  downloadFileFromFTP,
+  deleteFileFromFTP,
+  FTP_CONFIG,
+} = require('../../helpers/ftp.helper');
 
 const PROGRAM_NAME = 'KalibrasiEksternal';
 const APP_CODE = 'KAL_Eksternal';
 
+// Base directory used by uploadPublicV2 (controllers/v2/upload.controller.js).
+// Sejak sertifikat disimpan di FTP, folder ini hanya dipakai sebagai staging
+// sementara oleh multer sebelum file dikirim ke FTP.
+const UPLOAD_BASE_DIR = path.join('C:', 'publicuploads', PROGRAM_NAME);
+
+// Folder tmp untuk menampung file yang di-GET dari FTP sebelum dikirim ke browser.
+const TEMP_DOWNLOAD_DIR = path.join(__dirname, '../../tmp');
+
+// Penanda di kolom sertifikat_vendor_path bahwa file berada di FTP, bukan di disk lokal.
+// Record lama (sebelum fix ini) menyimpan path lokal absolut, jadi keduanya harus didukung.
+const FTP_PATH_PREFIX = 'ftp://';
+
+const isFtpStoredPath = (storedPath) =>
+  typeof storedPath === 'string' && storedPath.toLowerCase().startsWith(FTP_PATH_PREFIX);
+
+const buildFtpStoredPath = (remoteFileName) =>
+  `${FTP_PATH_PREFIX}${FTP_CONFIG.host}/${FTP_CONFIG.folder}/${remoteFileName}`;
+
+/**
+ * Nama file di FTP dibuat deterministik per record supaya:
+ *  - mudah ditelusuri manual di server FTP (tidak berupa hash md5 seperti sebelumnya),
+ *  - upload ulang menimpa file lama, tidak menumpuk sampah.
+ * Contoh: EKST_1042_QA-01-123.pdf
+ */
+const buildRemoteFileName = (ekstId, qaId, originalFileName) => {
+  const ext = (path.extname(originalFileName || '') || '.pdf').toLowerCase();
+  const safeQaId = String(qaId || 'NOQA').replace(/[^A-Za-z0-9._-]/g, '_');
+
+  return `EKST_${ekstId}_${safeQaId}${ext}`;
+};
+
+// Status yang sudah final — sertifikat tidak boleh dihapus lagi
+const LOCKED_STATUSES = ['APPROVED', 'TIDAK_DAPAT_APPROVED', 'LABEL_TEMPEL'];
+
+/**
+ * Best-effort physical file removal.
+ * Only removes files that live inside UPLOAD_BASE_DIR (guards against path traversal
+ * and against deleting legacy paths pointing elsewhere on the server).
+ */
+const removeUploadedFile = async (filePath) => {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    const resolved = path.resolve(filePath);
+    const base = path.resolve(UPLOAD_BASE_DIR);
+
+    if (resolved.toLowerCase().indexOf(base.toLowerCase() + path.sep) !== 0) {
+      console.warn('removeUploadedFile: skipped file outside upload dir ->', resolved);
+      return false;
+    }
+
+    await fs.promises.unlink(resolved);
+
+    return true;
+  } catch (error) {
+    // ENOENT = file sudah tidak ada, bukan kondisi error untuk user
+    if (error.code !== 'ENOENT') {
+      console.error('removeUploadedFile error:', error);
+    }
+
+    return false;
+  }
+};
+
+/**
+ * Best-effort cleanup untuk file tmp hasil download dari FTP.
+ */
+const removeTempDownload = async (filePath) => {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    await fs.promises.unlink(filePath);
+
+    return true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('removeTempDownload error:', error);
+    }
+
+    return false;
+  }
+};
+
+/**
+ * Resolves the owning department for a Kalibrasi Eksternal record.
+ * Accepts either a schedule_detail_id (T_Monthly_Schedule_External_Detail)
+ * or an ekst_id (T_Kalibrasi_Eksternal).
+ * Returns the department string, or null if not found or if user is VN/no dept filter.
+ */
+const getOwningDepartment = async (identifier, bagian_user) => {
+  if (!bagian_user || bagian_user === 'VN') {
+    return null;
+  }
+
+  // Try schedule_detail_id first
+  let result = await sequelizeMSQL.query(
+    `SELECT Department FROM T_Monthly_Schedule_External_Detail
+     WHERE Schedule_External_Detail_ID = :identifier`,
+    { replacements: { identifier }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  if (result.length) {
+    return result[0].Department;
+  }
+
+  // Try ekst_id via join
+  result = await sequelizeMSQL.query(
+    `SELECT d.Department
+     FROM T_Kalibrasi_Eksternal e
+     INNER JOIN T_Monthly_Schedule_External_Detail d
+       ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+     WHERE e.ekst_id = :identifier`,
+    { replacements: { identifier }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  return result[0]?.Department || null;
+};
+
+// DA tables + status tables (QA_ID unik per instrumen di salah satu tabel ini)
+const DA_TABLES = [
+  { table: 'T_Kalibrasi_DA_Thermohygro', statusTable: 'T_Kalibrasi_DA_Thermohygro_status', intervalCols: ['Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Anak_Timbangan', statusTable: 'T_Kalibrasi_DA_Anak_Timbangan_status', intervalCols: ['Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Timbangan', statusTable: 'T_Kalibrasi_DA_Timbangan_status', intervalCols: ['Interval', 'Parameter_Interval'] },
+  { table: 'T_Kalibrasi_DA_Bagian', statusTable: 'T_Kalibrasi_DA_Bagian_status', intervalCols: ['Parameter_Interval'] },
+];
+
+// Resolve QA_ID dari ekst_id atau schedule_detail_id
+const resolveQaIdEksternal = async ({ ekst_id, schedule_detail_id }) => {
+  if (schedule_detail_id) {
+    const rows = await sequelizeMSQL.query(
+      `SELECT QA_ID FROM T_Monthly_Schedule_External_Detail WHERE Schedule_External_Detail_ID = :schedule_detail_id`,
+      { replacements: { schedule_detail_id }, type: Sequelize.QueryTypes.SELECT }
+    );
+    return rows[0]?.QA_ID || null;
+  }
+
+  const rows = await sequelizeMSQL.query(
+    `SELECT d.QA_ID
+     FROM T_Kalibrasi_Eksternal e
+     INNER JOIN T_Monthly_Schedule_External_Detail d
+       ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+     WHERE e.ekst_id = :ekst_id`,
+    { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
+  );
+  return rows[0]?.QA_ID || null;
+};
+
+/**
+ * Mirror Keterangan ke DA master (kolom Catatan) by QA_ID.
+ * No-op jika QA_ID tidak punya row DA.
+ */
+const mirrorDaCatatanEksternal = async (qaId, catatan) => {
+  if (!qaId || !catatan) return;
+
+  for (const da of DA_TABLES) {
+    const result = await sequelizeMSQL.query(
+      `UPDATE ${da.table} SET Catatan = :catatan WHERE QA_ID = :qaId`,
+      { replacements: { qaId, catatan }, type: Sequelize.QueryTypes.UPDATE }
+    );
+    const affected = Array.isArray(result) ? result[1] : 0;
+    if (affected > 0) return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
+/**
+ * Unit tidak siap → set interval DA menjadi 0 (alat tidak dijadwalkan ulang).
+ * No-op jika QA_ID tidak punya row DA.
+ */
+const setDaIntervalNolEksternal = async (qaId) => {
+  if (!qaId) return;
+
+  for (const da of DA_TABLES) {
+    const setClause = da.intervalCols.map((c) => `${c} = 0`).join(', ');
+    const result = await sequelizeMSQL.query(
+      `UPDATE ${da.table} SET ${setClause} WHERE QA_ID = :qaId`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.UPDATE }
+    );
+    const affected = Array.isArray(result) ? result[1] : 0;
+    if (affected > 0) return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
+/**
+ * Mirror approval kalibrasi eksternal ke DA master:
+ * - Catatan DA (Keterangan) diisi catatan eksternal
+ * - Status DA di-approve (insert Approver_No = 1) mengikuti pola
+ *   ensureDaApproved di calibrationManagerFinalization.service
+ * No-op jika QA_ID tidak punya row DA atau DA sudah approved.
+ */
+const mirrorDaApprovalEksternal = async (ekst_id, catatan, user_id) => {
+  const qaId = await resolveQaIdEksternal({ ekst_id });
+  if (!qaId) return;
+
+  await mirrorDaCatatanEksternal(qaId, catatan);
+
+  for (const da of DA_TABLES) {
+    const daRow = await sequelizeMSQL.query(
+      `SELECT QA_ID FROM ${da.table} WHERE QA_ID = :qaId`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (!daRow.length) continue;
+
+    // Share approval status (skip jika sudah approved)
+    const approved = await sequelizeMSQL.query(
+      `SELECT COUNT(*) AS cnt FROM ${da.statusTable} WHERE QA_ID = :qaId AND Approver_No = 1`,
+      { replacements: { qaId }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if ((approved[0]?.cnt || 0) === 0) {
+      await sequelizeMSQL.query(
+        `INSERT INTO ${da.statusTable}
+           (QA_ID, Approver_No, isReject, Approver_Identity, Process_Date, User_ID, Delegated_To, flag_update)
+         VALUES
+           (:qaId, 1, 0, 0, GETDATE(), :user_id, :user_id, NULL)`,
+        { replacements: { qaId, user_id }, type: Sequelize.QueryTypes.INSERT }
+      );
+    }
+
+    return; // QA_ID hanya ada di satu tabel DA
+  }
+};
+
 /**
  * GET /list
  * Lists instruments from APPROVED external schedules, joined with execution status.
- * Query params: tahun, bulan (optional), status (optional: DRAFT|UPLOADED|APPROVED|REJECTED|PENDING)
+ * Query params: tahun, bulan (optional), status (optional: DRAFT|UPLOADED|APPROVED|REJECTED|
+ *               TIDAK_DAPAT|TIDAK_DAPAT_REJECTED|TIDAK_DAPAT_APPROVED|LABEL_TEMPEL|PENDING)
  */
 const getKalibrasiEksternalList = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { tahun, bulan, status } = req.query;
 
     const yearFilter = tahun || moment().utcOffset(7).year().toString();
@@ -27,6 +261,7 @@ const getKalibrasiEksternalList = async (req, res, next) => {
         d.Schedule_Period_Year         AS tahun,
         d.Schedule_Period_Month        AS bulan,
         d.QA_ID                        AS qa_id,
+        da.id_kalibrasi,
         d.Instrument_Name              AS nama_alat,
         d.Instrument_ID                AS instrument_id,
         d.Department                   AS departemen,
@@ -57,6 +292,20 @@ const getKalibrasiEksternalList = async (req, res, next) => {
       INNER JOIN T_Monthly_Schedule_External_Header h
         ON d.Schedule_External_Header_ID = h.Schedule_External_Header_ID
         AND h.Status = 'APPROVED'
+      -- ID kalibrasi diambil dari tabel DA (QA_ID unik per instrumen)
+      LEFT JOIN (
+        SELECT QA_ID, MAX(Assm_No_identitas_kalibrasi) AS id_kalibrasi
+        FROM (
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Thermohygro
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Anak_Timbangan
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Timbangan
+          UNION ALL
+          SELECT QA_ID, Assm_No_identitas_kalibrasi FROM T_Kalibrasi_DA_Bagian
+        ) u
+        GROUP BY QA_ID
+      ) da ON da.QA_ID = d.QA_ID
       LEFT JOIN T_Kalibrasi_Eksternal e
         ON e.schedule_detail_id = d.Schedule_External_Detail_ID
       LEFT JOIN T_Kalibrasi_Master_Vendor v
@@ -68,6 +317,11 @@ const getKalibrasiEksternalList = async (req, res, next) => {
 
     const replacements = { tahun: yearFilter };
 
+    if (bagian_user && bagian_user !== 'VN') {
+      query += ` AND d.Department = :bagian_user`;
+      replacements.bagian_user = bagian_user;
+    }
+
     if (bulan) {
       query += ` AND d.Schedule_Period_Month = :bulan`;
       replacements.bulan = bulan;
@@ -76,6 +330,12 @@ const getKalibrasiEksternalList = async (req, res, next) => {
     if (status && status !== 'SEMUA') {
       if (status === 'PENDING') {
         query += ` AND e.ekst_id IS NULL`;
+      } else if (status === 'TIDAK_DAPAT_REJECTED') {
+        // Ditolak MGR: status record sudah dikembalikan ke TIDAK_DAPAT, penandanya
+        // baris approval REJECT. TIDAK_DAPAT_REJECTED tetap dicek untuk data lama.
+        query += ` AND (e.status = 'TIDAK_DAPAT_REJECTED' OR (e.status = 'TIDAK_DAPAT' AND s.status = 'REJECT'))`;
+      } else if (status === 'TIDAK_DAPAT') {
+        query += ` AND e.status = 'TIDAK_DAPAT' AND (s.status IS NULL OR s.status <> 'REJECT')`;
       } else {
         query += ` AND e.status = :status`;
         replacements.status = status;
@@ -108,10 +368,19 @@ const getKalibrasiEksternalList = async (req, res, next) => {
  */
 const getKalibrasiEksternalDetail = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { schedule_detail_id } = req.query;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id is required' });
+      const err = new Error('schedule_detail_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const query = `
@@ -174,7 +443,27 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
     });
 
     if (!results.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    if (bagian_user && bagian_user !== 'VN' && results[0].departemen !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     return res.status(200).json({
@@ -198,7 +487,7 @@ const getKalibrasiEksternalDetail = async (req, res, next) => {
  */
 const saveKalibrasiEksternal = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const {
       schedule_detail_id,
       ekst_id,
@@ -217,7 +506,29 @@ const saveKalibrasiEksternal = async (req, res, next) => {
     } = req.body;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id wajib diisi' });
+      const err = new Error('schedule_detail_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard: create uses schedule_detail_id, update uses ekst_id
+    const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!ekst_id) {
@@ -232,10 +543,15 @@ const saveKalibrasiEksternal = async (req, res, next) => {
       });
 
       if (checkResult[0]?.cnt > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Record kalibrasi eksternal untuk alat ini sudah ada',
-        });
+        const err = new Error('Record kalibrasi eksternal untuk alat ini sudah ada');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
 
       const insertQuery = `
@@ -278,7 +594,15 @@ const saveKalibrasiEksternal = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (statusCheck[0]?.status === 'APPROVED') {
-      return res.status(400).json({ success: false, message: 'Data yang sudah disetujui tidak dapat diedit' });
+      const err = new Error('Data yang sudah disetujui tidak dapat diedit');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const updateQuery = `
@@ -335,10 +659,33 @@ const saveKalibrasiEksternal = async (req, res, next) => {
  */
 const deleteKalibrasiEksternal = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const statusCheck = await sequelizeMSQL.query(
@@ -347,13 +694,26 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
     );
 
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (statusCheck[0]?.status !== 'DRAFT') {
-      return res.status(400).json({
-        success: false,
-        message: 'Hanya data berstatus DRAFT yang dapat dihapus',
-      });
+      const err = new Error('Hanya data berstatus DRAFT yang dapat dihapus');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     await sequelizeMSQL.query(
@@ -373,36 +733,142 @@ const deleteKalibrasiEksternal = async (req, res, next) => {
  * Upload vendor certificate file for an eksternal record.
  * Multer middleware runs before this handler (via router).
  * Body (after multer): ekst_id, file path set by uploadPublicV2
+ *
+ * Alur: multer simpan sementara di UPLOAD_BASE_DIR -> kirim ke FTP (folder eKalibrasi)
+ * -> hapus file sementara -> simpan nama file FTP di DB.
+ * Sama dengan modul kalibrasi lain (permohonan, DA, dst) yang memang bertumpu ke FTP.
  */
 const uploadSertifikatVendor = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'File tidak ditemukan' });
+      const err = new Error('File tidak ditemukan');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
+    // File sementara hasil multer (nama file = hash md5, tanpa ekstensi asli)
     const ext = path.extname(req.file.originalname);
-    const filename = req.file.filename + ext;
-    const filePath = req.body.path || req.file.path;
+    const stagedFilePath = path.resolve(req.body.path || req.file.path);
 
     // Verify the record exists and is editable
     const statusCheck = await sequelizeMSQL.query(
-      `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
+      `SELECT e.status, d.QA_ID AS qa_id
+       FROM T_Kalibrasi_Eksternal e
+       LEFT JOIN T_Monthly_Schedule_External_Detail d
+         ON e.schedule_detail_id = d.Schedule_External_Detail_ID
+       WHERE e.ekst_id = :ekst_id`,
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
 
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      await removeUploadedFile(stagedFilePath);
+
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (statusCheck[0]?.status === 'APPROVED') {
-      return res.status(400).json({ success: false, message: 'Data yang sudah disetujui tidak dapat diubah' });
+      await removeUploadedFile(stagedFilePath);
+
+      const err = new Error('Data yang sudah disetujui tidak dapat diubah');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
+
+    if (!fs.existsSync(stagedFilePath)) {
+      const err = new Error('File hasil unggahan tidak ditemukan di server');
+
+      err.statusCode = 500;
+
+      res.status(500).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Kirim ke FTP — inilah langkah yang sebelumnya hilang sehingga file
+    // hanya menumpuk di disk lokal server dan tidak pernah muncul di FTP.
+    const filename = buildRemoteFileName(ekst_id, statusCheck[0]?.qa_id, req.file.originalname);
+    const uploadResult = await uploadFileToFTP(stagedFilePath, filename);
+
+    // Staging file selalu dibersihkan, sukses maupun gagal.
+    await removeUploadedFile(stagedFilePath);
+
+    if (!uploadResult.success) {
+      const err = new Error(
+        uploadResult.message
+          ? `Gagal mengunggah sertifikat ke server FTP: ${uploadResult.message}`
+          : 'Gagal mengunggah sertifikat ke server FTP'
+      );
+
+      err.statusCode = 502;
+
+      // DB tidak diubah supaya status tidak terlanjur jadi UPLOADED
+      // padahal file-nya tidak ada di FTP.
+      res.status(502).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const filePath = buildFtpStoredPath(filename);
+
+    // Bersihkan riwayat approval lama (mis. sisa REJECT sebelum upload ulang)
+    // supaya alur approval mulai lagi dari approver_no = 1 dan record muncul
+    // kembali di daftar pending approval.
+    await sequelizeMSQL.query(
+      `DELETE FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
+    );
 
     await sequelizeMSQL.query(
       `UPDATE T_Kalibrasi_Eksternal
@@ -420,11 +886,147 @@ const uploadSertifikatVendor = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Sertifikat berhasil diunggah',
-      data: { filename, filePath },
+      message: 'Sertifikat berhasil diunggah ke server FTP',
+      data: {
+        filename,
+        filePath,
+        originalFilename: req.file.originalname,
+        extension: ext,
+      },
     });
   } catch (error) {
+    // Jangan tinggalkan file sampah di staging kalau terjadi error tak terduga.
+    if (req.file) {
+      await removeUploadedFile(path.resolve(req.body?.path || req.file.path));
+    }
+
     console.error('Error in uploadSertifikatVendor:', error);
+    next(error);
+  }
+};
+
+/**
+ * DELETE /delete-sertifikat
+ * Menghapus file sertifikat vendor yang sudah terunggah selama record BELUM di-approve.
+ * Berguna kalau user salah upload file.
+ * Status record dikembalikan ke DRAFT sehingga user bisa upload ulang.
+ * Query params: ekst_id (required)
+ */
+const deleteSertifikatVendor = async (req, res, next) => {
+  try {
+    const { user_id, bagian_user } = req.user;
+    const ekst_id = req.query.ekst_id || req.body?.ekst_id;
+
+    if (!ekst_id) {
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const record = await sequelizeMSQL.query(
+      `SELECT status, sertifikat_vendor_filename, sertifikat_vendor_path
+       FROM T_Kalibrasi_Eksternal
+       WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
+    );
+
+    if (!record.length) {
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    const { status, sertifikat_vendor_filename, sertifikat_vendor_path } = record[0];
+
+    if (LOCKED_STATUSES.includes(status)) {
+      const err = new Error('Sertifikat yang sudah disetujui tidak dapat dihapus');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    if (!sertifikat_vendor_filename && !sertifikat_vendor_path) {
+      const err = new Error('Belum ada sertifikat yang diunggah');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Bersihkan referensi di DB dulu, lalu hapus file fisik (best effort)
+    await sequelizeMSQL.query(
+      `UPDATE T_Kalibrasi_Eksternal
+       SET sertifikat_vendor_filename = NULL,
+           sertifikat_vendor_path = NULL,
+           status = 'DRAFT',
+           updated_by = :updated_by,
+           updated_date = SYSDATETIME()
+       WHERE ekst_id = :ekst_id`,
+      {
+        replacements: { ekst_id, updated_by: user_id },
+        type: Sequelize.QueryTypes.UPDATE,
+      }
+    );
+
+    // File FTP dihapus di server FTP, record lama dihapus dari disk lokal.
+    let fileRemoved = false;
+
+    if (isFtpStoredPath(sertifikat_vendor_path)) {
+      const ftpDeleteResult = await deleteFileFromFTP(sertifikat_vendor_filename);
+
+      fileRemoved = ftpDeleteResult.success;
+
+      if (!ftpDeleteResult.success) {
+        // Referensi DB sudah dibersihkan, jadi user tetap bisa upload ulang.
+        // Sisa file di FTP akan tertimpa saat upload berikutnya (nama deterministik).
+        console.warn('FTP delete warning:', ftpDeleteResult.message);
+      }
+    } else {
+      fileRemoved = await removeUploadedFile(sertifikat_vendor_path);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Sertifikat berhasil dihapus. Silakan unggah ulang file yang benar.',
+      data: { filename: sertifikat_vendor_filename, fileRemoved },
+    });
+  } catch (error) {
+    console.error('Error in deleteSertifikatVendor:', error);
     next(error);
   }
 };
@@ -439,7 +1041,15 @@ const getCurrentApprove = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const query = `
@@ -476,7 +1086,15 @@ const checkApproveButton = async (req, res, next) => {
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Current approval level
@@ -550,26 +1168,69 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     const { ekst_id, action, catatan } = req.body;
 
     if (!ekst_id || !action) {
-      return res.status(400).json({ success: false, message: 'ekst_id dan action wajib diisi' });
+      const err = new Error('ekst_id dan action wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
+      const err = new Error('action harus "approve" atau "reject"');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard (additional to existing approver auth check)
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Verify record status allows approval
     const ekstRecord = await sequelizeMSQL.query(
-      `SELECT status FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
+      `SELECT status, catatan FROM T_Kalibrasi_Eksternal WHERE ekst_id = :ekst_id`,
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
 
     if (!ekstRecord.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (ekstRecord[0]?.status !== 'UPLOADED') {
-      return res.status(400).json({
-        success: false,
-        message: 'Hanya data berstatus UPLOADED yang dapat disetujui/ditolak',
-      });
+      const err = new Error('Hanya data berstatus UPLOADED yang dapat disetujui/ditolak');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Current approval level
@@ -581,7 +1242,15 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     const appr_no = apprmax + 1;
 
     if (appr_no > 1) {
-      return res.status(400).json({ success: false, message: 'Approval sudah selesai' });
+      const err = new Error('Approval sudah selesai');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Validate user is authorized
@@ -596,7 +1265,15 @@ const approveKalibrasiEksternal = async (req, res, next) => {
     );
 
     if ((authCheck[0]?.cnt || 0) === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak approval untuk record ini' });
+      const err = new Error('Anda tidak memiliki hak approval untuk record ini');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
@@ -629,6 +1306,11 @@ const approveKalibrasiEksternal = async (req, res, next) => {
       { replacements: { ekst_id, newStatus, user_id }, type: Sequelize.QueryTypes.UPDATE }
     );
 
+    // Approve → mirror Keterangan + status approval ke DA master (jika alat punya DA)
+    if (action === 'approve') {
+      await mirrorDaApprovalEksternal(ekst_id, ekstRecord[0]?.catatan || catatan || null, user_id);
+    }
+
     const message = action === 'approve'
       ? 'Sertifikat kalibrasi eksternal telah disetujui'
       : 'Sertifikat kalibrasi eksternal ditolak';
@@ -643,14 +1325,39 @@ const approveKalibrasiEksternal = async (req, res, next) => {
 /**
  * GET /download-sertifikat
  * Serves the uploaded vendor certificate file.
+ * File diambil dari FTP (folder eKalibrasi) ke tmp lalu di-stream ke browser.
+ * Record lama yang masih menyimpan path lokal absolut tetap dilayani dari disk.
  * Query params: ekst_id (required)
  */
 const downloadSertifikatVendor = async (req, res, next) => {
   try {
+    const { bagian_user } = req.user;
     const { ekst_id } = req.query;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id is required' });
+      const err = new Error('ekst_id is required');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const result = await sequelizeMSQL.query(
@@ -661,10 +1368,73 @@ const downloadSertifikatVendor = async (req, res, next) => {
     );
 
     if (!result.length || !result[0]?.sertifikat_vendor_path) {
-      return res.status(404).json({ success: false, message: 'File tidak ditemukan' });
+      const err = new Error('File tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
-    return res.sendFile(result[0].sertifikat_vendor_path);
+    const storedPath = result[0].sertifikat_vendor_path;
+    const fileName = result[0].sertifikat_vendor_filename || path.basename(storedPath);
+
+    // Record lama: file masih ada di disk lokal server.
+    if (!isFtpStoredPath(storedPath)) {
+      if (!fs.existsSync(storedPath)) {
+        const err = new Error('File tidak ditemukan di server');
+
+        err.statusCode = 404;
+
+        res.status(404).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
+      }
+
+      return res.download(storedPath, fileName);
+    }
+
+    // Record baru: ambil dari FTP ke tmp lalu kirim ke browser.
+    await fs.promises.mkdir(TEMP_DOWNLOAD_DIR, { recursive: true });
+
+    // Prefix unik supaya download paralel tidak saling menimpa file tmp.
+    const localFilePath = path.join(
+      TEMP_DOWNLOAD_DIR,
+      `${Date.now()}_${process.pid}_${fileName}`
+    );
+
+    const downloadResult = await downloadFileFromFTP(fileName, localFilePath);
+
+    if (!downloadResult.success) {
+      await removeTempDownload(localFilePath);
+
+      const err = new Error(
+        downloadResult.message
+          ? `Gagal mengunduh sertifikat dari server FTP: ${downloadResult.message}`
+          : 'Gagal mengunduh sertifikat dari server FTP'
+      );
+
+      err.statusCode = 502;
+
+      res.status(502).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    return res.download(localFilePath, fileName, async (sendErr) => {
+      await removeTempDownload(localFilePath);
+
+      if (sendErr) {
+        console.error('Error sending sertifikat file:', sendErr);
+      }
+    });
   } catch (error) {
     console.error('Error in downloadSertifikatVendor:', error);
     next(error);
@@ -675,19 +1445,50 @@ const downloadSertifikatVendor = async (req, res, next) => {
  * POST /save-tidak-dapat
  * Create or update a "unit tidak siap dikalibrasi" record.
  * New record: creates T_Kalibrasi_Eksternal with is_tidak_dapat=1, status=TIDAK_DAPAT.
- * Update: only allowed when status=TIDAK_DAPAT.
+ * Update: allowed when status=TIDAK_DAPAT (termasuk setelah ditolak MGR) atau legacy
+ *         TIDAK_DAPAT_REJECTED. Jejak penolakan dibuang supaya masuk antrian MGR lagi.
  * Body: schedule_detail_id, ekst_id (null = create), alasan_tidak_dapat, kondisi_alat
  */
 const saveTidakDapat = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { schedule_detail_id, ekst_id, alasan_tidak_dapat, kondisi_alat } = req.body;
 
     if (!schedule_detail_id) {
-      return res.status(400).json({ success: false, message: 'schedule_detail_id wajib diisi' });
+      const err = new Error('schedule_detail_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!alasan_tidak_dapat?.trim()) {
-      return res.status(400).json({ success: false, message: 'Alasan tidak dapat dikalibrasi wajib diisi' });
+      const err = new Error('Alasan tidak dapat dikalibrasi wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard: create uses schedule_detail_id, update uses ekst_id
+    const ownerDept = await getOwningDepartment(!ekst_id ? schedule_detail_id : ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     if (!ekst_id) {
@@ -696,7 +1497,15 @@ const saveTidakDapat = async (req, res, next) => {
         { replacements: { schedule_detail_id }, type: Sequelize.QueryTypes.SELECT }
       );
       if (checkResult[0]?.cnt > 0) {
-        return res.status(400).json({ success: false, message: 'Record kalibrasi eksternal untuk alat ini sudah ada' });
+        const err = new Error('Record kalibrasi eksternal untuk alat ini sudah ada');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
 
       await sequelizeMSQL.query(
@@ -720,16 +1529,41 @@ const saveTidakDapat = async (req, res, next) => {
         { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
       );
       if (!statusCheck.length) {
-        return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+        const err = new Error('Data tidak ditemukan');
+
+        err.statusCode = 404;
+
+        res.status(404).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
-      if (statusCheck[0]?.status !== 'TIDAK_DAPAT') {
-        return res.status(400).json({ success: false, message: 'Hanya data berstatus TIDAK_DAPAT yang dapat diubah' });
+      if (!['TIDAK_DAPAT', 'TIDAK_DAPAT_REJECTED'].includes(statusCheck[0]?.status)) {
+        const err = new Error('Hanya data berstatus TIDAK_DAPAT atau TIDAK_DAPAT_REJECTED yang dapat diubah');
+
+        err.statusCode = 400;
+
+        res.status(400).json({ success: false, message: err.message });
+
+        next(err);
+
+        return;
       }
+
+      // Revisi setelah ditolak MGR: buang jejak penolakan supaya catatan lama
+      // tidak ikut tampil dan record masuk lagi ke antrian approval MGR.
+      await sequelizeMSQL.query(
+        `DELETE FROM T_Kalibrasi_Eksternal_Status
+         WHERE ekst_id = :ekst_id AND approver_no = 1 AND status = 'REJECT'`,
+        { replacements: { ekst_id }, type: Sequelize.QueryTypes.DELETE }
+      );
 
       await sequelizeMSQL.query(
         `UPDATE T_Kalibrasi_Eksternal
          SET alasan_tidak_dapat = :alasan_tidak_dapat,
              kondisi_alat       = :kondisi_alat,
+             status             = 'TIDAK_DAPAT',
              updated_by         = :updated_by,
              updated_date       = SYSDATETIME()
          WHERE ekst_id = :ekst_id`,
@@ -745,6 +1579,11 @@ const saveTidakDapat = async (req, res, next) => {
       );
     }
 
+    // Mirror alasan OOC ke kolom Keterangan (Catatan) di DA master + interval DA → 0
+    const qaId = await resolveQaIdEksternal({ ekst_id, schedule_detail_id });
+    await mirrorDaCatatanEksternal(qaId, alasan_tidak_dapat.trim());
+    await setDaIntervalNolEksternal(qaId);
+
     return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi berhasil disimpan' });
   } catch (error) {
     console.error('Error in saveTidakDapat:', error);
@@ -756,7 +1595,9 @@ const saveTidakDapat = async (req, res, next) => {
  * POST /approve-tidak-dapat
  * Approve or reject a "tidak dapat dikalibrasi" record.
  * approve: INSERT T_Kalibrasi_Eksternal_Status (DELETE first to allow retry), status → TIDAK_DAPAT_APPROVED
- * reject : DELETE T_Kalibrasi_Eksternal_Status (allows re-approval after FA edits), status stays TIDAK_DAPAT
+ * reject : INSERT T_Kalibrasi_Eksternal_Status status='REJECT' + catatan, status main record
+ *          dikembalikan ke step sebelumnya (TIDAK_DAPAT) — pola sama dengan "lampiran dihapus".
+ *          Baris REJECT dihapus lagi ketika FA merevisi via saveTidakDapat.
  * Body: ekst_id, action ('approve'|'reject'), catatan
  */
 const approveTidakDapat = async (req, res, next) => {
@@ -765,10 +1606,40 @@ const approveTidakDapat = async (req, res, next) => {
     const { ekst_id, action, catatan } = req.body;
 
     if (!ekst_id || !action) {
-      return res.status(400).json({ success: false, message: 'ekst_id dan action wajib diisi' });
+      const err = new Error('ekst_id dan action wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (!['approve', 'reject'].includes(action)) {
-      return res.status(400).json({ success: false, message: 'action harus "approve" atau "reject"' });
+      const err = new Error('action harus "approve" atau "reject"');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard (additional to existing approver auth check)
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const ekstRecord = await sequelizeMSQL.query(
@@ -776,10 +1647,26 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (!ekstRecord.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
     if (ekstRecord[0]?.status !== 'TIDAK_DAPAT') {
-      return res.status(400).json({ success: false, message: 'Hanya data berstatus TIDAK_DAPAT yang dapat disetujui/ditolak' });
+      const err = new Error('Hanya data berstatus TIDAK_DAPAT yang dapat disetujui/ditolak');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const appr_no = 1;
@@ -793,7 +1680,33 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { appCode: APP_CODE, bagian_user, user_id, appr_no }, type: Sequelize.QueryTypes.SELECT }
     );
     if ((authCheck[0]?.cnt || 0) === 0) {
-      return res.status(403).json({ success: false, message: 'Anda tidak memiliki hak approval untuk record ini' });
+      const err = new Error('Anda tidak memiliki hak approval untuk record ini');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Sudah pernah ditolak → tunggu FA merevisi dulu (saveTidakDapat yang
+    // membuang jejak penolakannya), jangan bisa di-approve/tolak ulang.
+    const existingStatus = await sequelizeMSQL.query(
+      `SELECT status FROM T_Kalibrasi_Eksternal_Status WHERE ekst_id = :ekst_id AND approver_no = :appr_no`,
+      { replacements: { ekst_id, appr_no }, type: Sequelize.QueryTypes.SELECT }
+    );
+    if (existingStatus[0]?.status === 'REJECT') {
+      const err = new Error('Data sudah ditolak — menunggu revisi dari FA');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     // Always delete existing status record first (idempotent, handles retry)
@@ -802,37 +1715,43 @@ const approveTidakDapat = async (req, res, next) => {
       { replacements: { ekst_id, appr_no }, type: Sequelize.QueryTypes.DELETE }
     );
 
-    if (action === 'approve') {
-      await sequelizeMSQL.query(
-        `INSERT INTO T_Kalibrasi_Eksternal_Status
-           (ekst_id, approver_no, USER_ID, nama_approver, status, catatan, process_date, created_by, created_date)
-         VALUES
-           (:ekst_id, :appr_no, :user_id, :nama_user, 'APPROVE', :catatan, SYSDATETIME(), :user_id, SYSDATETIME())`,
-        {
-          replacements: { ekst_id, appr_no, user_id, nama_user, catatan: catatan || null },
-          type: Sequelize.QueryTypes.INSERT,
-        }
-      );
+    const isApprove = action === 'approve';
+    const approveStatus = isApprove ? 'APPROVE' : 'REJECT';
+    // Reject mengikuti pola "lampiran dihapus": status record dikembalikan ke
+    // step sebelumnya (TIDAK_DAPAT) supaya FA langsung bisa merevisi, bukan
+    // berhenti di status penolakan. Jejak penolakan + catatan MGR disimpan di
+    // T_Kalibrasi_Eksternal_Status (status='REJECT') dan baru dibuang saat FA
+    // menyimpan revisinya lewat saveTidakDapat.
+    const newStatus = isApprove ? 'TIDAK_DAPAT_APPROVED' : 'TIDAK_DAPAT';
+    await sequelizeMSQL.query(
+      `INSERT INTO T_Kalibrasi_Eksternal_Status
+         (ekst_id, approver_no, USER_ID, nama_approver, status, catatan, process_date, created_by, created_date)
+       VALUES
+         (:ekst_id, :appr_no, :user_id, :nama_user, :approveStatus, :catatan, SYSDATETIME(), :user_id, SYSDATETIME())`,
+      {
+        replacements: { ekst_id, appr_no, user_id, nama_user, approveStatus, catatan: catatan?.trim() || null },
+        type: Sequelize.QueryTypes.INSERT,
+      }
+    );
 
-      await sequelizeMSQL.query(
-        `UPDATE T_Kalibrasi_Eksternal
-         SET status = 'TIDAK_DAPAT_APPROVED', updated_by = :user_id, updated_date = SYSDATETIME()
-         WHERE ekst_id = :ekst_id`,
-        { replacements: { ekst_id, user_id }, type: Sequelize.QueryTypes.UPDATE }
-      );
+    await sequelizeMSQL.query(
+      `UPDATE T_Kalibrasi_Eksternal
+       SET status = :newStatus, updated_by = :user_id, updated_date = SYSDATETIME()
+       WHERE ekst_id = :ekst_id`,
+      { replacements: { ekst_id, newStatus, user_id }, type: Sequelize.QueryTypes.UPDATE }
+    );
 
-      return res.status(200).json({ success: true, message: 'Data tidak dapat dikalibrasi telah disetujui oleh Validation MGR' });
-    } else {
-      // reject: status record was deleted above, main record stays TIDAK_DAPAT
-      await sequelizeMSQL.query(
-        `UPDATE T_Kalibrasi_Eksternal
-         SET updated_by = :user_id, updated_date = SYSDATETIME()
-         WHERE ekst_id = :ekst_id`,
-        { replacements: { ekst_id, user_id }, type: Sequelize.QueryTypes.UPDATE }
-      );
-
-      return res.status(200).json({ success: true, message: 'Data dikembalikan ke FA untuk revisi' });
+    // Approve → mirror status approval ke DA master (Catatan sudah diisi saat saveTidakDapat)
+    if (isApprove) {
+      await mirrorDaApprovalEksternal(ekst_id, null, user_id);
     }
+
+    return res.status(200).json({
+      success: true,
+      message: isApprove
+        ? 'Data tidak dapat dikalibrasi telah disetujui oleh Validation MGR'
+        : 'Data ditolak dan dikembalikan ke FA untuk revisi',
+    });
   } catch (error) {
     console.error('Error in approveTidakDapat:', error);
     next(error);
@@ -848,11 +1767,33 @@ const approveTidakDapat = async (req, res, next) => {
  */
 const konfirmasiLabel = async (req, res, next) => {
   try {
-    const { user_id } = req.user;
+    const { user_id, bagian_user } = req.user;
     const { ekst_id } = req.body;
 
     if (!ekst_id) {
-      return res.status(400).json({ success: false, message: 'ekst_id wajib diisi' });
+      const err = new Error('ekst_id wajib diisi');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
+    }
+
+    // Ownership guard
+    const ownerDept = await getOwningDepartment(ekst_id, bagian_user);
+    if (ownerDept && ownerDept !== bagian_user) {
+      const err = new Error('Anda tidak memiliki akses ke data departemen lain');
+
+      err.statusCode = 403;
+
+      res.status(403).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const statusCheck = await sequelizeMSQL.query(
@@ -860,15 +1801,28 @@ const konfirmasiLabel = async (req, res, next) => {
       { replacements: { ekst_id }, type: Sequelize.QueryTypes.SELECT }
     );
     if (!statusCheck.length) {
-      return res.status(404).json({ success: false, message: 'Data tidak ditemukan' });
+      const err = new Error('Data tidak ditemukan');
+
+      err.statusCode = 404;
+
+      res.status(404).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     const currentStatus = statusCheck[0]?.status;
     if (!['APPROVED', 'TIDAK_DAPAT_APPROVED'].includes(currentStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Konfirmasi label hanya bisa dilakukan setelah sertifikat disetujui (APPROVED atau TIDAK_DAPAT_APPROVED)',
-      });
+      const err = new Error('Konfirmasi label hanya bisa dilakukan setelah sertifikat disetujui (APPROVED atau TIDAK_DAPAT_APPROVED)');
+
+      err.statusCode = 400;
+
+      res.status(400).json({ success: false, message: err.message });
+
+      next(err);
+
+      return;
     }
 
     await sequelizeMSQL.query(
@@ -895,6 +1849,7 @@ module.exports = {
   saveKalibrasiEksternal,
   deleteKalibrasiEksternal,
   uploadSertifikatVendor,
+  deleteSertifikatVendor,
   getCurrentApprove,
   checkApproveButton,
   getApproverIdentityEksternal,

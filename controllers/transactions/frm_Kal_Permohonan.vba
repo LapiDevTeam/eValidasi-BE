@@ -755,7 +755,7 @@ End Sub
 
     Dim rs As Recordset, sql As String
 
-    file = "FO.QA.000125_Permohonan.doc"
+    file = "FO.VN.000125_Permohonan.doc"
 
     If 1 = 1 Then
         copyTemplate filename:=file

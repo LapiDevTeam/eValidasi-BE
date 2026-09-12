@@ -6,14 +6,16 @@
  * Pure functions (no DB, no I/O) that reproduce the "HITUNGAN" sheet of the
  * TIMER (Detik / Menit) workbook.
  *
- * Workbook reference (per measurement point, n = 10 cycles):
+ * Workbook reference (per measurement point, up to 10 cycles, n = cycles actually entered):
  *   S (standard, sec) = Jam*3600 + Menit*60 + Detik + mDetik/1000 + Correction_STD
  *   T (UUT, sec)      = Jam*3600 + Menit*60 + Detik + mDetik/100
  *   error             = T - S
  *   meanError         = AVERAGE(error)
  *   SD                = STDEV(error)            (sample standard deviation, n-1)
  *   Uncertainty budget (RSS of 4 components):
- *     u1 repeatability (Type A) = SD / SQRT(n)
+ *     u1 repeatability (Type A) = SD / SQRT(n)   (n = number of entered cycles for THIS point,
+ *                                                  confirmed against current production certs
+ *                                                  PN 665-R1 / PN 141, 2026-07-10)
  *     u2 digital resolution     = digitalRes / (2*SQRT(3))
  *     u3 analog resolution      = analogRes  / SQRT(6)
  *     u4 certificate (Type B)   = UC_STD / 2
@@ -29,7 +31,6 @@
 const COVERAGE_FACTOR = 2;            // k, 95% confidence
 const STD_MS_DIVISOR = 1000;         // standard mDetik -> seconds
 const UUT_MS_DIVISOR = 100;          // UUT mDetik -> seconds (workbook uses /100)
-const REPEAT_DIVISOR = Math.sqrt(10);          // n = 10 readings
 const DIGITAL_DIVISOR = 2 * Math.sqrt(3);      // rectangular distribution
 const ANALOG_DIVISOR = Math.sqrt(6);           // triangular distribution
 const CERT_DIVISOR = 2;                         // certificate reported at k = 2
@@ -102,13 +103,15 @@ function stdev(values) {
  *
  * @param {object} input
  * @param {number} input.sd             sample SD of the per-cycle errors (sec)
+ * @param {number} input.n              number of entered reading cycles (repeatability divisor = sqrt(n))
  * @param {number} [input.digitalRes]   UUT digital resolution (sec)
  * @param {number} [input.analogRes]    UUT analog resolution (sec)
  * @param {number} [input.ucStd]        standard certificate uncertainty (sec, k=2)
  * @returns {object} budget incl. components array + combined/expanded values
  */
-function buildUncertaintyBudget({ sd, digitalRes = 0, analogRes = 0, ucStd = 0 }) {
-  const uRepeat = toNumber(sd) / REPEAT_DIVISOR;
+function buildUncertaintyBudget({ sd, n = 0, digitalRes = 0, analogRes = 0, ucStd = 0 }) {
+  const repeatDivisor = n > 0 ? Math.sqrt(n) : 0;
+  const uRepeat = repeatDivisor > 0 ? toNumber(sd) / repeatDivisor : 0;
   const uDigital = toNumber(digitalRes) / DIGITAL_DIVISOR;
   const uAnalog = toNumber(analogRes) / ANALOG_DIVISOR;
   const uCert = toNumber(ucStd) / CERT_DIVISOR;
@@ -120,7 +123,7 @@ function buildUncertaintyBudget({ sd, digitalRes = 0, analogRes = 0, ucStd = 0 }
 
   return {
     components: [
-      { no: 1, sumber: 'Daya ulang', tipe: 'A', nilai: toNumber(sd), divisor: REPEAT_DIVISOR, ui: uRepeat },
+      { no: 1, sumber: 'Daya ulang', tipe: 'A', nilai: toNumber(sd), divisor: repeatDivisor, ui: uRepeat },
       { no: 2, sumber: 'Resolusi (Digital)', tipe: 'B', nilai: toNumber(digitalRes), divisor: DIGITAL_DIVISOR, ui: uDigital },
       { no: 2, sumber: 'Resolusi (Analog)', tipe: 'B', nilai: toNumber(analogRes), divisor: ANALOG_DIVISOR, ui: uAnalog },
       { no: 3, sumber: 'Sertifikat', tipe: 'B', nilai: toNumber(ucStd), divisor: CERT_DIVISOR, ui: uCert },
@@ -171,7 +174,7 @@ function computePoint({ correctionStd = 0, ucStd = 0, digitalRes = 0, analogRes 
   const meanError = mean(errors);
   const sd = stdev(errors);
 
-  const budget = buildUncertaintyBudget({ sd, digitalRes, analogRes, ucStd });
+  const budget = buildUncertaintyBudget({ sd, n: entered.length, digitalRes, analogRes, ucStd });
 
   return {
     rows,

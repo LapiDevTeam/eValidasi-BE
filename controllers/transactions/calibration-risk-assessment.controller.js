@@ -73,7 +73,11 @@ const createAssessment = async (req, res, next) => {
 
     const errors = validateAssessmentBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const decision = calculateDecision({
@@ -86,6 +90,19 @@ const createAssessment = async (req, res, next) => {
     const payload = buildPayload(req.body, decision);
     payload.status    = 'Draft';
     payload.createdBy = user_id;
+
+    // Relasi permohonan : risk assessment = 1 : 1. Kalau permohonan-nya sudah
+    // punya RA aktif, pakai Update pada RA itu, bukan bikin RA baru.
+    if (payload.noPermohonan) {
+      const existing = await repo.findByNoPermohonan(payload.noPermohonan);
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Permohonan ${payload.noPermohonan} sudah punya Risk Assessment #${existing.AssessmentID}. Satu permohonan hanya punya satu Risk Assessment.`,
+          data: { AssessmentID: existing.AssessmentID, No_Permohonan: existing.No_Permohonan },
+        });
+      }
+    }
 
     const newId = await repo.create(payload);
     const created = await repo.findById(newId);
@@ -119,12 +136,20 @@ const getAssessmentById = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const data = await repo.findById(id);
     if (!data) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({ success: true, data });
@@ -142,17 +167,29 @@ const updateAssessment = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const errors = validateAssessmentBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const decision = calculateDecision({
@@ -167,6 +204,18 @@ const updateAssessment = async (req, res, next) => {
       payload.noPermohonan = existing.No_Permohonan || null;
     }
     payload.updatedBy = user_id;
+
+    // Jaga relasi 1 : 1 — RA ini tidak boleh dipindah ke permohonan yang sudah
+    // punya RA lain.
+    if (payload.noPermohonan && payload.noPermohonan !== existing.No_Permohonan) {
+      const occupant = await repo.findByNoPermohonan(payload.noPermohonan);
+      if (occupant && Number(occupant.AssessmentID) !== Number(id)) {
+        return res.status(400).json({
+          success: false,
+          message: `Permohonan ${payload.noPermohonan} sudah punya Risk Assessment #${occupant.AssessmentID}. Satu permohonan hanya punya satu Risk Assessment.`,
+        });
+      }
+    }
 
     await repo.update(id, payload);
     const updated = await repo.findById(id);
@@ -185,12 +234,20 @@ const deleteAssessment = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await repo.softDelete(id);
@@ -213,17 +270,29 @@ const patchAssessmentStatus = async (req, res, next) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid assessment ID.' });
+      const err = new Error('Invalid assessment ID.');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const existing = await repo.findById(id);
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+      const err = new Error('Assessment not found.');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const errors = validateStatusBody(req.body);
     if (errors.length > 0) {
-      return res.status(400).json({ success: false, message: errors.join(' ') });
+      const err = new Error(errors.join(' '));
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await repo.updateStatus(id, req.body.status, user_id);

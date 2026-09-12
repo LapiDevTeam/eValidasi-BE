@@ -9,12 +9,557 @@ const {
   getAutoHasilKalBagianID,
   isInputTglKalibrasiBAGIAN,
 } = require('../../helpers/kalibrasi.helper');
+const {
+  formatResultRows,
+  normalizeCalculationNumbers,
+  normalizeCertificateQuery,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const isEmptyValue = (value) => {
   if (value === null || value === undefined) return true;
   if (typeof value === 'string' && value.trim() === '') return true;
   return false;
 };
+
+const WORKBOOK_CERTIFICATE_CONFIGS = [
+  {
+    key: 'torque-meter',
+    label: 'Torque Meter',
+    prefixes: ['TQ'],
+    table: 'dbo.T_Kalibrasi_TorqueMeter_Workbook_Session',
+    printRoute: '/PrintTorqueMeter',
+    sessionRoute: '/torque-meter-calibration',
+  },
+  {
+    key: 'dissolution-tester',
+    label: 'Dissolution Tester',
+    prefixes: ['DT'],
+    table: 'dbo.T_Kalibrasi_DissolutionTester_Workbook_Session',
+    printRoute: '/PrintDissolutionTester',
+    sessionRoute: '/dissolution-tester-calibration',
+  },
+  {
+    key: 'enclosures',
+    label: 'Enclosures',
+    prefixes: ['E'],
+    table: 'dbo.T_Kalibrasi_Enclosures_Workbook_Session',
+    printRoute: '/PrintEnclosures',
+    sessionRoute: '/enclosures-calibration',
+  },
+  {
+    key: 'friability',
+    label: 'Friability',
+    prefixes: ['FT'],
+    table: 'dbo.T_Kalibrasi_Friability_Workbook_Session',
+    printRoute: '/PrintFriabilityTester',
+    sessionRoute: '/friability-calibration',
+  },
+  {
+    key: 'hardness-tester',
+    label: 'Hardness Tester',
+    prefixes: ['HT'],
+    table: 'dbo.T_Kalibrasi_HardnessTester_Workbook_Session',
+    printRoute: '/PrintHardnessTester',
+    sessionRoute: '/hardness-tester-calibration',
+  },
+  {
+    key: 'leak-test',
+    label: 'Leak Test',
+    prefixes: ['LT'],
+    table: 'dbo.T_Kalibrasi_LeakTest_Workbook_Session',
+    printRoute: '/PrintLeakTest',
+    sessionRoute: '/leak-test-calibration',
+  },
+  {
+    key: 'moisture',
+    label: 'Moisture',
+    prefixes: ['MA'],
+    table: 'dbo.T_Kalibrasi_Moisture_Workbook_Session',
+    printRoute: '/PrintMoisture',
+    sessionRoute: '/moisture-calibration',
+  },
+  {
+    key: 'temperature-control',
+    label: 'Temperature Control',
+    prefixes: ['TC'],
+    table: 'dbo.T_Kalibrasi_TemperatureControl_Workbook_Session',
+    printRoute: '/PrintTemperatureControl',
+    sessionRoute: '/temperature-control-calibration',
+  },
+];
+
+const WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX = WORKBOOK_CERTIFICATE_CONFIGS.reduce(
+  (map, config) => {
+    config.prefixes.forEach((prefix) => {
+      map.set(prefix, config);
+    });
+    return map;
+  },
+  new Map()
+);
+
+const SORTED_WORKBOOK_PREFIXES = [...WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX.keys()].sort(
+  (a, b) => b.length - a.length
+);
+
+function parseJson(value, fallback = null) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function textValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function parseNumberValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(String(value).replace(',', '.'));
+  return Number.isFinite(number) ? number : null;
+}
+
+function displayNumber(value, { signed = false, uncertainty = false, decimals = 3 } = {}) {
+  const number = parseNumberValue(value);
+  if (number === null) {
+    const text = textValue(value);
+    return uncertainty && text && !text.startsWith('\u00B1') ? `\u00B1${text}` : text;
+  }
+
+  const safeNumber = Math.abs(number) < 0.5 * 10 ** -decimals ? 0 : number;
+  const absolute = uncertainty ? Math.abs(safeNumber) : safeNumber;
+  const fixed = absolute.toFixed(decimals);
+  const cleanFixed = fixed === '-0.000' ? '0.000' : fixed;
+
+  if (uncertainty) return `\u00B1${cleanFixed}`;
+  if (signed && safeNumber > 0) return `+${cleanFixed}`;
+  return cleanFixed;
+}
+
+function getCertificateWorkbookPrefix(idNoSertifikat) {
+  const text = textValue(idNoSertifikat).toUpperCase();
+  return SORTED_WORKBOOK_PREFIXES.find((prefix) => text.startsWith(prefix)) || '';
+}
+
+function getWorkbookCertificateConfig(idNoSertifikat) {
+  const prefix = getCertificateWorkbookPrefix(idNoSertifikat);
+  return prefix ? WORKBOOK_CERTIFICATE_CONFIG_BY_PREFIX.get(prefix) : null;
+}
+
+function column(field, headerName, minWidth = 130) {
+  return { field, headerName, minWidth, flex: 1 };
+}
+
+function genericWorkbookRows(calculationResult = {}) {
+  const rows = Array.isArray(calculationResult?.certificateRows)
+    ? calculationResult.certificateRows
+    : Array.isArray(calculationResult?.rows)
+      ? calculationResult.rows
+      : Array.isArray(calculationResult?.points)
+        ? calculationResult.points
+        : [];
+
+  return rows.map((row, index) => ({
+    No: index + 1,
+    Setting: displayNumber(row.setting ?? row.Setting ?? row.setPoint),
+    Pembacaan_Alat: displayNumber(
+      row.pembacaanAlat ?? row.Pembacaan_Alat ?? row.indicator ?? row.avgUut
+    ),
+    Pembacaan_standar: displayNumber(
+      row.pembacaanStandar ?? row.Pembacaan_standar ?? row.reference ?? row.avgStd
+    ),
+    Error: displayNumber(row.error ?? row.ERROR ?? row.avgError, { signed: true }),
+    Ketidakpastian: displayNumber(
+      row.ketidakpastian ?? row.Ketidakpastian ?? row.uncertainty?.expanded,
+      { uncertainty: true }
+    ),
+  }));
+}
+
+function buildTorqueWorkbookGrid(calculationResult = {}) {
+  const directionLabels = {
+    clockwise: 'Pembacaan Searah Jarum Jam',
+    anticlockwise: 'Pembacaan Berlawanan Arah Jarum Jam',
+  };
+  const rows = (Array.isArray(calculationResult?.tables) ? calculationResult.tables : []).map(
+    (table, index) => ({
+      No: index + 1,
+      Arah: directionLabels[table.directionKey] || textValue(table.directionLabel),
+      Nilai_Standar: displayNumber(table.avgStandard),
+      Pembacaan_Alat: displayNumber(table.avgUut),
+      Error: displayNumber(table.avgError, { signed: true }),
+      Ketidakpastian: displayNumber(table.uExpanded, { uncertainty: true }),
+    })
+  );
+
+  return {
+    columns: [
+      column('Arah', 'Arah', 220),
+      column('Nilai_Standar', 'Nilai Standar'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows,
+  };
+}
+
+function buildEnclosuresWorkbookGrid(calculationResult = {}) {
+  const temperatureRows = Array.isArray(calculationResult?.temperature)
+    ? calculationResult.temperature
+    : [];
+  const humidityRows = Array.isArray(calculationResult?.humidity)
+    ? calculationResult.humidity
+    : [];
+  const hasHumidity = humidityRows.length > 0;
+  const rows = [
+    ...temperatureRows.map((point, index) => ({
+      No: index + 1,
+      Parameter: 'Suhu',
+      Setting_Alat: displayNumber(point.setPoint ?? point.setting),
+      Penunjukan_Alat: displayNumber(point.indicatorValue ?? point.pembacaanAlat),
+      Hasil_Terukur: displayNumber(point.measurementValue ?? point.pembacaanStandar),
+      Error: displayNumber(point.error, { signed: true }),
+      Ketidakpastian: displayNumber(point.uncertainty?.expanded ?? point.ketidakpastian),
+      Variasi_Spasial: displayNumber(point.spatialVariation),
+      Variasi_Temporal: displayNumber(point.temporalVariation),
+      Variasi_Total: displayNumber(point.totalVariation),
+    })),
+    ...humidityRows.map((point, index) => ({
+      No: temperatureRows.length + index + 1,
+      Parameter: 'rH',
+      Setting_Alat: displayNumber(point.setPoint ?? point.setting),
+      Penunjukan_Alat: displayNumber(point.indicatorValue ?? point.pembacaanAlat),
+      Hasil_Terukur: displayNumber(point.measurementValue ?? point.pembacaanStandar),
+      Error: displayNumber(point.error, { signed: true }),
+      Ketidakpastian: displayNumber(point.uncertainty?.expanded ?? point.ketidakpastian),
+      Variasi_Spasial: displayNumber(point.spatialVariation),
+      Variasi_Temporal: displayNumber(point.temporalVariation),
+      Variasi_Total: displayNumber(point.totalVariation),
+    })),
+  ];
+
+  return {
+    columns: [
+      ...(hasHumidity ? [column('Parameter', 'Parameter', 100)] : []),
+      column('Setting_Alat', 'Setting Alat'),
+      column('Penunjukan_Alat', 'Penunjukan Alat'),
+      column('Hasil_Terukur', 'Hasil Terukur'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian', 155),
+      column('Variasi_Spasial', 'Variasi Spasial'),
+      column('Variasi_Temporal', 'Variasi Temporal'),
+      column('Variasi_Total', 'Variasi Total'),
+    ],
+    rows,
+  };
+}
+
+function buildDissolutionWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.vesselRows)
+    ? calculationResult.vesselRows
+    : []
+  ).map((row, index) => ({
+    Vessel: row.vessel || index + 1,
+    Shaft_Wobble: displayNumber(row.shaftWobble),
+    Baskets_Wobble: displayNumber(row.basketsWobble ?? row.basketWobble),
+    Paddle_Wobble: displayNumber(row.paddleWobble),
+    Rot_Spd_1: displayNumber(row.rotSpd1),
+    Rot_Spd_2: displayNumber(row.rotSpd2),
+    Rot_Spd_3: displayNumber(row.rotSpd3),
+    Basket: displayNumber(row.basket ?? row.basketHeight),
+    Paddle: displayNumber(row.paddle ?? row.paddleHeight),
+    Temp_Vessel: displayNumber(row.tempVessel ?? row.temperatureVessel),
+  }));
+
+  return {
+    columns: [
+      column('Vessel', 'Vessel', 90),
+      column('Shaft_Wobble', 'Shaft Wobble'),
+      column('Baskets_Wobble', 'Baskets Wobble'),
+      column('Paddle_Wobble', 'Paddle Wobble'),
+      column('Rot_Spd_1', 'Rot Spd 1'),
+      column('Rot_Spd_2', 'Rot Spd 2'),
+      column('Rot_Spd_3', 'Rot Spd 3'),
+      column('Basket', 'Basket'),
+      column('Paddle', 'Paddle'),
+      column('Temp_Vessel', 'Temp Vessel'),
+    ],
+    rows,
+  };
+}
+
+function buildFriabilityWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.rows) ? calculationResult.rows : []).map(
+    (row, index) => ({
+      No: index + 1,
+      Time: displayNumber(row.time ?? row.tOneRotation),
+      RPM: displayNumber(row.rpm),
+      Pembacaan_Alat: displayNumber(row.rpm),
+      Pembacaan_standar: displayNumber(25),
+      Error: displayNumber(parseNumberValue(row.rpm) === null ? null : parseNumberValue(row.rpm) - 25, {
+        signed: true,
+      }),
+      Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      Keterangan: textValue(row.ket),
+    })
+  );
+
+  return {
+    columns: [
+      column('No', 'No', 80),
+      column('Time', 'Time'),
+      column('RPM', 'RPM'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Keterangan', 'Keterangan'),
+    ],
+    rows,
+  };
+}
+
+function buildMoistureWorkbookGrid(calculationResult = {}) {
+  const massRows = Array.isArray(calculationResult?.massRows)
+    ? calculationResult.massRows.map((row, index) => ({
+        No: index + 1,
+        Type: 'Mass',
+        Setting: '',
+        Pembacaan_Alat: displayNumber(row.r),
+        Pembacaan_standar: displayNumber(row.conventionalMass),
+        Error: displayNumber(row.error, { signed: true }),
+        Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      }))
+    : [];
+  const temperatureRows = Array.isArray(calculationResult?.temperatureRows)
+    ? calculationResult.temperatureRows.map((row, index) => ({
+        No: massRows.length + index + 1,
+        Type: 'Temperature',
+        Setting: displayNumber(row.setting),
+        Pembacaan_Alat: displayNumber(row.afterUut),
+        Pembacaan_standar: displayNumber(row.afterStandard),
+        Error: displayNumber(row.afterError, { signed: true }),
+        Ketidakpastian: displayNumber(row.ketidakpastian, { uncertainty: true }),
+      }))
+    : [];
+
+  return {
+    columns: [
+      column('Type', 'Type', 120),
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows: [...massRows, ...temperatureRows],
+  };
+}
+
+function buildHardnessWorkbookGrid(calculationResult = {}) {
+  const labels = {
+    hardness: 'Hardness',
+    thickness: 'Thickness',
+    diameter: 'Diameter',
+  };
+  const activeKeys = Array.isArray(calculationResult?.activeKeys) && calculationResult.activeKeys.length
+    ? calculationResult.activeKeys
+    : ['hardness', 'thickness', 'diameter'].filter((key) => calculationResult?.[key]?.enabled);
+  const rows = [];
+
+  activeKeys.forEach((key) => {
+    const test = calculationResult?.[key] || {};
+    const unit = test?.setup?.unit || '';
+    (test.points || []).forEach((point) => {
+      rows.push({
+        Parameter: labels[key] || key,
+        Setting: displayNumber(point.setting),
+        Unit: textValue(point.unit || unit),
+        Pembacaan_Alat: displayNumber(key === 'hardness' ? point.result : point.avgUut),
+        Pembacaan_standar: displayNumber(
+          key === 'hardness' ? point.convertedStandard : point.avgStd
+        ),
+        Error: displayNumber(key === 'hardness' ? point.error : point.avgError, {
+          signed: true,
+        }),
+        Ketidakpastian: displayNumber(point.expandedUncertainty, { uncertainty: true }),
+      });
+    });
+  });
+
+  return {
+    columns: [
+      column('Parameter', 'Parameter', 120),
+      column('Setting', 'Setting'),
+      column('Unit', 'Unit', 90),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows,
+  };
+}
+
+function buildLeakTestWorkbookGrid(calculationResult = {}) {
+  const pressureRows = (Array.isArray(calculationResult?.points)
+    ? calculationResult.points
+    : []
+  ).map((point, index) => ({
+    No: index + 1,
+    Parameter: 'Vacuum',
+    Setting: displayNumber(point.setting),
+    Pembacaan_Alat: displayNumber(point.avgUut),
+    Pembacaan_standar: displayNumber(point.avgStd),
+    Error: displayNumber(point.avgError, { signed: true }),
+    Ketidakpastian: '',
+    Keterangan:
+      point.passed === null || point.passed === undefined
+        ? ''
+        : point.passed
+          ? 'MS'
+          : 'TMS',
+  }));
+  const timerEnabled = Boolean(
+    calculationResult?.timer?.enabled || calculationResult?.timer?.hasData
+  );
+  const timerRows = (Array.isArray(calculationResult?.timer?.points)
+    ? calculationResult.timer.points
+    : []
+  )
+    .filter((point) => timerEnabled && Number(point?.enteredCount || 0) > 0)
+    .map((point, index) => ({
+      No: pressureRows.length + index + 1,
+      Parameter: 'Timer',
+      Setting: displayNumber(point.setting),
+      Pembacaan_Alat: '',
+      Pembacaan_standar: displayNumber(point.meanStdSec),
+      Error: displayNumber(point.meanErrorSec, { signed: true }),
+      Ketidakpastian: displayNumber(point.uExpandedSec, { uncertainty: true }),
+      Keterangan: '',
+    }));
+
+  return {
+    columns: [
+      column('Parameter', 'Parameter', 120),
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Keterangan', 'Keterangan', 110),
+    ],
+    rows: [...pressureRows, ...timerRows],
+  };
+}
+
+function buildTemperatureControlWorkbookGrid(calculationResult = {}) {
+  const rows = (Array.isArray(calculationResult?.points)
+    ? calculationResult.points
+    : []
+  ).map((point, index) => ({
+    No: index + 1,
+    Setting: displayNumber(point.setting),
+    Pembacaan_Alat: displayNumber(point.selected?.indicator),
+    Pembacaan_standar: displayNumber(point.selected?.reference),
+    Error: displayNumber(point.selected?.error, { signed: true }),
+    Ketidakpastian: displayNumber(point.uncertainty?.expanded, {
+      uncertainty: true,
+    }),
+    Toleransi: displayNumber(point.tolerance),
+    Keterangan:
+      point.passed === null || point.passed === undefined
+        ? ''
+        : point.passed
+          ? 'MS'
+          : 'TMS',
+  }));
+
+  return {
+    columns: [
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+      column('Toleransi', 'Toleransi'),
+      column('Keterangan', 'Keterangan', 110),
+    ],
+    rows,
+  };
+}
+
+function buildWorkbookGridData(config, calculationResult = {}) {
+  if (config.key === 'torque-meter') return buildTorqueWorkbookGrid(calculationResult);
+  if (config.key === 'dissolution-tester') return buildDissolutionWorkbookGrid(calculationResult);
+  if (config.key === 'enclosures') return buildEnclosuresWorkbookGrid(calculationResult);
+  if (config.key === 'friability') return buildFriabilityWorkbookGrid(calculationResult);
+  if (config.key === 'moisture') return buildMoistureWorkbookGrid(calculationResult);
+  if (config.key === 'hardness-tester') return buildHardnessWorkbookGrid(calculationResult);
+  if (config.key === 'leak-test') return buildLeakTestWorkbookGrid(calculationResult);
+  if (config.key === 'temperature-control') {
+    return buildTemperatureControlWorkbookGrid(calculationResult);
+  }
+
+  return {
+    columns: [
+      column('Setting', 'Setting'),
+      column('Pembacaan_Alat', 'Pembacaan Alat'),
+      column('Pembacaan_standar', 'Pembacaan Standard'),
+      column('Error', 'Error'),
+      column('Ketidakpastian', 'Ketidakpastian'),
+    ],
+    rows: genericWorkbookRows(calculationResult),
+  };
+}
+
+async function workbookSessionTableExists(tableName) {
+  const result = await sequelizeMSQL.query(
+    `SELECT OBJECT_ID(:tableName, 'U') AS object_id`,
+    {
+      replacements: { tableName },
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  return Boolean(result[0]?.object_id);
+}
+
+async function fetchWorkbookSessionByCertificate(config, qaId, idNoSertifikat) {
+  if (!config || !(await workbookSessionTableExists(config.table))) return null;
+
+  const qaFilter = qaId ? 'AND QA_ID = :qaId' : '';
+  const replacements = qaId ? { qaId, idNoSertifikat } : { idNoSertifikat };
+
+  const rows = await sequelizeMSQL.query(
+    `
+      SELECT TOP 1
+        Session_ID,
+        QA_ID,
+        ID_No_Sertifikat,
+        Workbook_Payload_JSON,
+        Calculation_Result_JSON,
+        Evaluation_Result,
+        Status,
+        Process_Date,
+        Update_Date
+      FROM ${config.table}
+      WHERE ID_No_Sertifikat = :idNoSertifikat
+        ${qaFilter}
+      ORDER BY ISNULL(Update_Date, Process_Date) DESC, Session_ID DESC
+    `,
+    {
+      replacements,
+      type: Sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  return rows[0] || null;
+}
 
 // ============================================================
 // SEARCH / LIST
@@ -214,13 +759,14 @@ const searchByQAID = async (req, res, next) => {
 const getSertifikatBagianDetail = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -258,10 +804,11 @@ const getSertifikatBagianDetail = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Data not found',
-      });
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({
@@ -286,13 +833,14 @@ const getSertifikatBagianDetail = async (req, res, next) => {
 const getHasilKalData = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -315,10 +863,93 @@ const getHasilKalData = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      data: results,
+      data: formatResultRows(results),
     });
   } catch (error) {
     console.error('Error in getHasilKalData:', error);
+    next(error);
+  }
+};
+
+const getWorkbookPrintData = async (req, res, next) => {
+  try {
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+
+    if (!id_no_sertifikat) {
+      return res.status(400).json({
+        success: false,
+        message: 'id_no_sertifikat is required',
+      });
+    }
+
+    const config = getWorkbookCertificateConfig(id_no_sertifikat);
+    if (!config) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          registered: false,
+          printDataPresent: false,
+          reason: 'certificate prefix is not managed by a workbook',
+        },
+      });
+    }
+
+    const session = await fetchWorkbookSessionByCertificate(
+      config,
+      qa_id,
+      id_no_sertifikat
+    );
+
+    if (!session) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          registered: false,
+          printDataPresent: false,
+          workbook: {
+            key: config.key,
+            label: config.label,
+            printRoute: config.printRoute,
+            sessionRoute: config.sessionRoute,
+          },
+        },
+      });
+    }
+
+    const workbookPayload = parseJson(session.Workbook_Payload_JSON, null);
+    const calculationResult = normalizeCalculationNumbers(
+      parseJson(session.Calculation_Result_JSON, null)
+    );
+    const grid = buildWorkbookGridData(config, calculationResult || {});
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        registered: true,
+        printDataPresent: Boolean(calculationResult && grid.rows.length),
+        workbook: {
+          key: config.key,
+          label: config.label,
+          printRoute: config.printRoute,
+          sessionRoute: config.sessionRoute,
+        },
+        session: {
+          Session_ID: session.Session_ID,
+          QA_ID: session.QA_ID,
+          ID_No_Sertifikat: session.ID_No_Sertifikat,
+          Evaluation_Result: session.Evaluation_Result,
+          Status: session.Status,
+          Process_Date: session.Process_Date,
+          Update_Date: session.Update_Date,
+        },
+        workbookPayload,
+        calculation: calculationResult,
+        columns: grid.columns,
+        rows: grid.rows,
+      },
+    });
+  } catch (error) {
+    console.error('Error in getWorkbookPrintData:', error);
     next(error);
   }
 };
@@ -363,11 +994,32 @@ const searchDABagian = async (req, res, next) => {
       LEFT JOIN (
         SELECT QA_ID FROM T_Kalibrasi_Permohonan WHERE QA_ID IS NOT NULL
       ) AS D ON D.QA_ID = A.QA_ID
-      WHERE A.Parameter_Sertifikasi IN ('Timer', 'Tekanan', 'Temperatur')
+      WHERE A.Parameter_Sertifikasi IN (
+        'Tekanan',
+        'Volume',
+        'Dimensi',
+        'Timer',
+        'Temperatur',
+        'Enclosures',
+        'Dissolution Tester',
+        'Disintegration Tester',
+        'Friability Tester',
+        'Moisture Analyzer',
+        'RPM',
+        'pH, Redoks, dan Conductivity',
+        'Indikator Suhu dan Simulasi Kelistrikan',
+        'Torque',
+        'Hardness Tester',
+        'Melting Point',
+        'Leak Tester',
+        'Tapped Volumeter',
+        'Lain-Lain'
+      )
         AND (
           A.QA_ID LIKE :search
           OR Assm_nama_instrumen LIKE :search
           OR Assm_No_identitas_Istrumen LIKE :search
+          OR Assm_No_identitas_kalibrasi LIKE :search
         )
       ORDER BY A.QA_ID ASC
     `;
@@ -506,13 +1158,15 @@ const searchResertifikasiBagian = async (req, res, next) => {
 const checkIsApproved = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat, approver_no } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { approver_no } = req.query;
 
     if (!qa_id || !id_no_sertifikat || approver_no === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id, id_no_sertifikat, and approver_no are required',
-      });
+      const err = new Error('qa_id, id_no_sertifikat, and approver_no are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -549,13 +1203,14 @@ const checkIsApproved = async (req, res, next) => {
 const checkApproveButton = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // 1# Check if user is an approver for KAL_Sert_Bagian level 1
@@ -614,13 +1269,14 @@ const checkApproveButton = async (req, res, next) => {
 const checkTglKalibrasi = async (req, res, next) => {
   try {
     const { user_id, delegated_to, nama_user, bagian_user } = req.user;
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -696,10 +1352,11 @@ const getApproverIdentityBagian = async (req, res, next) => {
     const { approver_id, approver_no } = req.query;
 
     if (!approver_id || approver_no === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'approver_id and approver_no are required',
-      });
+      const err = new Error('approver_id and approver_no are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -738,13 +1395,14 @@ const getApproverIdentityBagian = async (req, res, next) => {
  */
 const getLabelData = async (req, res, next) => {
   try {
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -776,10 +1434,11 @@ const getLabelData = async (req, res, next) => {
     });
 
     if (results.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Data not found',
-      });
+      const err = new Error('Data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const labelData = results[0];
@@ -822,13 +1481,14 @@ const getLabelData = async (req, res, next) => {
  */
 const getPrintData = async (req, res, next) => {
   try {
-    const { qa_id, id_no_sertifikat } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({
-        success: false,
-        message: 'qa_id and id_no_sertifikat are required',
-      });
+      const err = new Error('qa_id and id_no_sertifikat are required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // 1# Header data (Section A, B, C bookmarks in VBA template)
@@ -901,18 +1561,22 @@ const getPrintData = async (req, res, next) => {
     ]);
 
     if (headerResults.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sertifikat data not found',
-      });
+      const err = new Error('Sertifikat data not found');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
+
+    const disintegration = await getDisintegrationPrintBundle(qa_id, id_no_sertifikat);
 
     return res.status(200).json({
       success: true,
       data: {
         header: headerResults[0],
-        hasil_kal: hasilKalResults,
+        hasil_kal: formatResultRows(hasilKalResults),
         approver: approverResults[0] || null,
+        disintegration,
       },
     });
   } catch (error) {
@@ -920,6 +1584,86 @@ const getPrintData = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Disintegration Tester certificates need 4 separate result sections
+ * (Temperature / Kayuhan per menit / Jarak naik-turun paddle / Setting Timer)
+ * instead of the generic single Hasil_Kal table every other Bagian module uses.
+ * The data is already computed and sitting in disintegration_results /
+ * disintegration_timer_readings (same MSSQL DB) — no schema changes needed,
+ * this just joins it back by qa_id/id_no_sertifikat for the print page.
+ * Returns null when the certificate isn't a Disintegration one.
+ */
+async function getDisintegrationPrintBundle(qa_id, id_no_sertifikat) {
+  const sessionRows = await sequelizeMSQL.query(
+    `
+      SELECT session_id, paddle_count, keterangan
+      FROM disintegration_sessions
+      WHERE qa_id = :qa_id
+        AND id_no_sertifikat = :id_no_sertifikat
+    `,
+    { replacements: { qa_id, id_no_sertifikat }, type: Sequelize.QueryTypes.SELECT }
+  );
+
+  const session = sessionRows[0];
+  if (!session) return null;
+
+  const [resultRows, timerNominalRows] = await Promise.all([
+    sequelizeMSQL.query(
+      `
+        SELECT result_type, point_no, paddle_no, mean_standard, mean_uut, mean_error,
+               sd_value, u_combined, u_expanded, u_expanded_min, u_expanded_hour, tolerance, pass_flag
+        FROM disintegration_results
+        WHERE session_id = :session_id
+        ORDER BY result_type, point_no, paddle_no
+      `,
+      { replacements: { session_id: session.session_id }, type: Sequelize.QueryTypes.SELECT }
+    ),
+    sequelizeMSQL.query(
+      `
+        SELECT paddle_no, MIN(nominal_value) AS nominal_value, MIN(unit) AS unit
+        FROM disintegration_timer_readings
+        WHERE session_id = :session_id
+        GROUP BY paddle_no
+      `,
+      { replacements: { session_id: session.session_id }, type: Sequelize.QueryTypes.SELECT }
+    ),
+  ]);
+
+  const nominalByPaddle = new Map(timerNominalRows.map((row) => [Number(row.paddle_no), row]));
+  const byType = (type) => resultRows.filter((row) => row.result_type === type);
+
+  return {
+    paddle_count: Number(session.paddle_count) || 1,
+    keterangan: session.keterangan || '',
+    temperature: formatResultRows(byType('TEMPERATURE').map((row) => ({
+      titik_ukur: row.point_no,
+      pembacaan_alat: row.mean_uut,
+      pembacaan_standar: row.mean_standard,
+      error: row.mean_error,
+      ketidakpastian: row.u_expanded,
+    }))),
+    strokeRate: formatResultRows(byType('STROKE_RATE').map((row) => ({
+      paddle_no: row.paddle_no,
+      t_1_kayuhan_detik: row.mean_standard,
+      kayuhan_per_menit: row.mean_uut,
+    }))),
+    distance: formatResultRows(byType('DISTANCE').map((row) => ({
+      paddle_no: row.paddle_no,
+      distance_mm: row.mean_standard,
+    }))),
+    timer: formatResultRows(byType('TIMER').map((row) => ({
+      paddle_no: row.paddle_no,
+      setting_alat: nominalByPaddle.get(Number(row.paddle_no))?.nominal_value ?? null,
+      setting_unit: nominalByPaddle.get(Number(row.paddle_no))?.unit ?? 'Menit',
+      pembacaan_alat_sec: row.mean_uut,
+      pembacaan_standar_sec: row.mean_standard,
+      error_sec: row.mean_error,
+      ketidakpastian_menit: row.u_expanded_min,
+      ketidakpastian_detik: row.u_expanded,
+    }))),
+  };
+}
 
 // ============================================================
 // SAVE HEADER
@@ -955,12 +1699,20 @@ const saveSertifikatBagianHeader = async (req, res, next) => {
     } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // VBA parity: save is blocked if calibration date or interval is empty.
     if (isEmptyValue(tgl_kalibrasi) || isEmptyValue(interval)) {
-      return res.status(400).json({ success: false, message: 'Tanggal Kalibrasi dan interval harus di isi' });
+      const err = new Error('Tanggal Kalibrasi dan interval harus di isi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1 (fn_IS_approve(1) = true)
@@ -977,7 +1729,11 @@ const saveSertifikatBagianHeader = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1059,7 +1815,11 @@ const saveHasilKalData = async (req, res, next) => {
     } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (
@@ -1068,7 +1828,26 @@ const saveHasilKalData = async (req, res, next) => {
       || isEmptyValue(error)
       || isEmptyValue(ketidakpastian)
     ) {
-      return res.status(400).json({ success: false, message: 'Data harap di isi semua' });
+      const err = new Error('Data harap di isi semua');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
+    }
+
+    const numericRow = {
+      pembacaan_alat: parseDotDecimal(pembacaan_alat),
+      pembacaan_standar: parseDotDecimal(pembacaan_standar),
+      error: parseDotDecimal(error),
+      ketidakpastian: parseDotDecimal(ketidakpastian),
+    };
+
+    if (Object.values(numericRow).some((value) => value === null)) {
+      const err = new Error('Angka desimal harus menggunakan titik dan maksimal 3 angka di belakang desimal');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1085,7 +1864,11 @@ const saveHasilKalData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!seq_id) {
@@ -1098,7 +1881,14 @@ const saveHasilKalData = async (req, res, next) => {
         VALUES
           (:qa_id, :id_no_sertifikat, :seq_id, :pembacaan_alat, :pembacaan_standar, :error, :ketidakpastian, :user_id, :delegated_to, GETDATE())
       `, {
-        replacements: { qa_id, id_no_sertifikat, seq_id: autoSeqId, pembacaan_alat, pembacaan_standar, error, ketidakpastian, user_id, delegated_to },
+        replacements: {
+          qa_id,
+          id_no_sertifikat,
+          seq_id: autoSeqId,
+          ...numericRow,
+          user_id,
+          delegated_to,
+        },
         type: Sequelize.QueryTypes.INSERT,
       });
 
@@ -1118,7 +1908,14 @@ const saveHasilKalData = async (req, res, next) => {
           AND ID_No_Sertifikat = :id_no_sertifikat
           AND Seq_ID = :seq_id
       `, {
-        replacements: { qa_id, id_no_sertifikat, seq_id, pembacaan_alat, pembacaan_standar, error, ketidakpastian, user_id, delegated_to },
+        replacements: {
+          qa_id,
+          id_no_sertifikat,
+          seq_id,
+          ...numericRow,
+          user_id,
+          delegated_to,
+        },
         type: Sequelize.QueryTypes.UPDATE,
       });
 
@@ -1138,10 +1935,15 @@ const saveHasilKalData = async (req, res, next) => {
 const deleteHasilKalData = async (req, res, next) => {
   try {
     const { user_id } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1158,7 +1960,11 @@ const deleteHasilKalData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1190,10 +1996,15 @@ const deleteHasilKalData = async (req, res, next) => {
 const deleteKelembabanData = async (req, res, next) => {
   try {
     const { user_id } = req.user;
-    const { qa_id, id_no_sertifikat, seq_id } = req.query;
+    const { qa_id, id_no_sertifikat } = normalizeCertificateQuery(req.query);
+    const { seq_id } = req.query;
 
     if (!qa_id || !id_no_sertifikat || !seq_id) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: blocked when already approved at level 1
@@ -1210,7 +2021,11 @@ const deleteKelembabanData = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     await sequelizeMSQL.query(`
@@ -1245,7 +2060,11 @@ const approveSertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: fnIsInputTglKalibrasi — tgl_kalibrasi and interval must be filled
@@ -1261,11 +2080,19 @@ const approveSertifikatBagian = async (req, res, next) => {
     });
 
     if (tglResults.length === 0 || !tglResults[0].Tgl_kalibrasi) {
-      return res.status(400).json({ success: false, message: 'Belum simpan tanggal kalibrasi, save tanggal' });
+      const err = new Error('Belum simpan tanggal kalibrasi, save tanggal');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!tglResults[0].Interval) {
-      return res.status(400).json({ success: false, message: 'Harap isi interval' });
+      const err = new Error('Harap isi interval');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must NOT already be approved at level 1
@@ -1282,7 +2109,11 @@ const approveSertifikatBagian = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa update sertifikat karena sudah approve' });
+      const err = new Error('Tidak bisa update sertifikat karena sudah approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Get approver identity (fnApprIdentity — KAL_Sert_Bagian, level 1)
@@ -1328,7 +2159,11 @@ const rejectSertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must already be approved at level 1 to allow reject
@@ -1345,7 +2180,11 @@ const rejectSertifikatBagian = async (req, res, next) => {
     });
 
     if ((approveResults[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa reject, data belum approve' });
+      const err = new Error('Tidak bisa reject, data belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Delete ALL status records for this QA_ID + ID_No_Sertifikat
@@ -1380,7 +2219,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must be approved at level 1
@@ -1397,7 +2240,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if ((approve1Results[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa generate DA karena belum approve' });
+      const err = new Error('Tidak bisa generate DA karena belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must NOT already have generated DA (level 2)
@@ -1414,7 +2261,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if ((approve2Results[0]?.jumRow || 0) > 0) {
-      return res.status(400).json({ success: false, message: 'Sudah generate DA!' });
+      const err = new Error('Sudah generate DA!');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: interval must not be zero
@@ -1429,7 +2280,11 @@ const generateDASertifikatBagian = async (req, res, next) => {
     });
 
     if (!intervalResults[0]?.Interval || intervalResults[0].Interval == 0) {
-      return res.status(400).json({ success: false, message: 'Interval tidak boleh nol' });
+      const err = new Error('Interval tidak boleh nol');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Check if DA record already exists for this QA_ID
@@ -1554,7 +2409,11 @@ const createNewSertifikatBagian = async (req, res, next) => {
     const { qa_id, parameter_sertifikasi } = req.body;
 
     if (!qa_id || !parameter_sertifikasi) {
-      return res.status(400).json({ success: false, message: 'QA_ID dan parameter_sertifikasi wajib diisi' });
+      const err = new Error('QA_ID dan parameter_sertifikasi wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Get new certificate number based on parameter_sertifikasi
@@ -1566,14 +2425,22 @@ const createNewSertifikatBagian = async (req, res, next) => {
     } else if (parameter_sertifikasi === 'Temperatur') {
       fnQuery = `SELECT dbo.fnGetKal_Ser_T_No_ID() AS noSertifikat`;
     } else {
-      return res.status(400).json({ success: false, message: 'Tidak ada kategori Re-Sertifikasi untuk parameter ini' });
+      const err = new Error('Tidak ada kategori Re-Sertifikasi untuk parameter ini');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const noResults = await sequelizeMSQL.query(fnQuery, { type: Sequelize.QueryTypes.SELECT });
     const sNoSertifikat = noResults[0]?.noSertifikat;
 
     if (!sNoSertifikat) {
-      return res.status(500).json({ success: false, message: 'Gagal generate nomor sertifikat baru' });
+      const err = new Error('Gagal generate nomor sertifikat baru');
+      err.statusCode = 500;
+      res.status(500).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Insert new sertifikat from DA Bagian
@@ -1618,7 +2485,11 @@ const resertifikasiBagian = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'QA_ID dan ID_No_Sertifikat wajib diisi' });
+      const err = new Error('QA_ID dan ID_No_Sertifikat wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Guard: must be approved at level 1
@@ -1634,7 +2505,11 @@ const resertifikasiBagian = async (req, res, next) => {
     });
 
     if ((checkApproveResults[0]?.jumRow || 0) === 0) {
-      return res.status(400).json({ success: false, message: 'Tidak bisa Re-Sertifikat karena belum approve' });
+      const err = new Error('Tidak bisa Re-Sertifikat karena belum approve');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Determine auto-number function from first char of id_no_sertifikat (P/R/T)
@@ -1647,14 +2522,22 @@ const resertifikasiBagian = async (req, res, next) => {
     } else if (sType === 'T') {
       fnQuery = `SELECT dbo.fnGetKal_Ser_T_No_ID() AS AutoNum`;
     } else {
-      return res.status(400).json({ success: false, message: 'Tidak ada kategori Re-Sertifikasi' });
+      const err = new Error('Tidak ada kategori Re-Sertifikasi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const noResults = await sequelizeMSQL.query(fnQuery, { type: Sequelize.QueryTypes.SELECT });
     const autoIDNoSertifikat = noResults[0]?.AutoNum;
 
     if (!autoIDNoSertifikat) {
-      return res.status(500).json({ success: false, message: 'Gagal generate nomor sertifikat baru' });
+      const err = new Error('Gagal generate nomor sertifikat baru');
+      err.statusCode = 500;
+      res.status(500).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const replacements = { auto_id: autoIDNoSertifikat, qa_id, id_no_sertifikat, user_id, delegated_to };
@@ -1724,7 +2607,11 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     const { qa_id, id_no_sertifikat } = req.body;
 
     if (!qa_id || !id_no_sertifikat) {
-      return res.status(400).json({ success: false, message: 'Data belum di pilih' });
+      const err = new Error('Data belum di pilih');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Read current label state
@@ -1747,7 +2634,11 @@ const printLabelTerkalibrasi = async (req, res, next) => {
     });
 
     if (dataResults.length === 0) {
-      return res.status(404).json({ success: false, message: 'Label Terkalibrasi tidak dapat di cetak! Data Sertifikat Kalibrasi belum tersedia' });
+      const err = new Error('Label Terkalibrasi tidak dapat di cetak! Data Sertifikat Kalibrasi belum tersedia');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const row = dataResults[0];
@@ -1807,6 +2698,7 @@ module.exports = {
   searchByQAID,
   getSertifikatBagianDetail,
   getHasilKalData,
+  getWorkbookPrintData,
   searchDABagian,
   searchResertifikasiBagian,
   checkIsApproved,
