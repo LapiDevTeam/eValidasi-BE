@@ -1928,6 +1928,124 @@ const buildMonthlyScheduleSnapshotPayload = async (
   };
 };
 
+/**
+ * Instrumen yang baru masuk SETELAH revisi MAP di-approve.
+ *
+ * Snapshot MAP itu dokumen beku: isinya persis seperti saat di-approve dan
+ * memang TIDAK boleh diubah. Masalahnya, kartu "Total Instruments" di dashboard
+ * selalu men-scan tabel instrumen secara live, jadi begitu ada alat baru yang
+ * jatuh temponya di periode yang MAP-nya sudah approved, kartu naik tapi chart
+ * tidak -- persis kasus QA-BA-002735 (dibuat 2026-09-07 15:18, sementara MAP
+ * Plan September rev 0 di-approve 2026-09-07 14:22) yang bikin 335 vs 334.
+ *
+ * Baris seperti itu dikembalikan di sini dengan tanda `is_unplanned: true`.
+ * Baris ini TIDAK disimpan ke T_Monthly_Schedule_Detail dan TIDAK ikut export --
+ * murni pelengkap tampilan supaya alat baru tidak pernah hilang dari dashboard.
+ * Satu-satunya cara memasukkannya ke dokumen resmi tetap lewat revisi baru.
+ *
+ * Cakupan scan-nya sengaja disamakan dengan kartu dashboard
+ * (`searchInstrumen`), yaitu termasuk anak timbangan internal -- alat itu tidak
+ * masuk MAP internal (includeAnakTimbang=false) maupun MAP eksternal (scope-nya
+ * <> 1), jadi tanpa ini ia jadi celah kedua yang bikin angka beda.
+ */
+const buildUnplannedMonthlyRows = async (
+  selectedYear,
+  selectedMonth,
+  existingRows = [],
+  transaction = null,
+  workflowView = MONTHLY_SCHEDULE_WORKFLOW_VIEW.PLAN
+) => {
+  const isRealization = workflowView === MONTHLY_SCHEDULE_WORKFLOW_VIEW.REALIZATION;
+  const rawResults = await getMonthlyCalibrationData(
+    selectedYear,
+    selectedMonth,
+    CALIBRATION_SCOPE.INTERNAL,
+    transaction,
+    {
+      includeAnakTimbang: true,
+      // WAJIB false, termasuk untuk view realization.
+      //
+      // Dengan true, HAVING-nya ikut mencocokkan Tgl_kalibrasi, sehingga alat
+      // yang DIKALIBRASI di bulan ini tapi JATUH TEMPO-nya di tahun depan ikut
+      // terjaring (kalibrasi memajukan Kalibrasi_selanjutnya satu interval).
+      // Alat seperti itu memang bukan bagian dari MAP bulan ini:
+      //   - Plan disusun dari jatuh tempo, jadi ia benar tidak ada di sana;
+      //   - Realization di-seed HANYA dari Plan yang approved
+      //     (buildMonthlyScheduleRealizationRows), jadi ia tidak akan pernah
+      //     bisa masuk ke dokumen Realization.
+      // Hasilnya baris itu ditandai "belum masuk MAP" selamanya dan tidak bisa
+      // dibereskan dengan approve berapa kali pun. Cocokkan jatuh tempo saja,
+      // supaya yang ditandai hanya yang benar-benar bisa ditindaklanjuti.
+      includeCalibrationDate: false,
+    }
+  );
+
+  const known = new Set();
+  (existingRows || []).forEach((row) => {
+    const matchKey = getMonthlyScheduleRowMatchKey(row);
+    if (matchKey && matchKey !== '|') known.add(matchKey);
+    const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+    if (qaKey) known.add(`QA|${qaKey}`);
+  });
+
+  return mapMonthlyRows(rawResults, selectedYear, selectedMonth)
+    .filter((row) => {
+      const matchKey = getMonthlyScheduleRowMatchKey(row);
+      if (matchKey && matchKey !== '|' && known.has(matchKey)) return false;
+      const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+      if (qaKey && known.has(`QA|${qaKey}`)) return false;
+      return true;
+    })
+    .map((row) => {
+      // Di view realization, tanggal realisasi hanya diakui kalau kalibrasinya
+      // memang terjadi di periode ini -- aturan yang sama dipakai
+      // buildMonthlyScheduleRealizationRows untuk baris yang terencana.
+      const realizationDate =
+        isRealization && row?.is_calibration_in_period ? row.tgl_kalibrasi : null;
+
+      return {
+        ...row,
+        schedule_detail_id: null,
+        tgl_kalibrasi: isRealization ? realizationDate : null,
+        realisasi_eksekusi: isRealization ? realizationDate : null,
+        include_in_revision: false,
+        is_unplanned: true,
+      };
+    });
+};
+
+/**
+ * Tempelkan baris "unplanned" ke payload snapshot yang sudah jadi.
+ *
+ * Dipanggil hanya kalau klien minta `include_unplanned=1` (dashboard), jadi
+ * halaman MAP dan export sama sekali tidak terpengaruh.
+ */
+const attachUnplannedMonthlyRows = async (payload, selectedYear, selectedMonth) => {
+  if (!payload?.rows) return payload;
+
+  const unplanned = await buildUnplannedMonthlyRows(
+    selectedYear,
+    selectedMonth,
+    payload.rows,
+    null,
+    parseMonthlyScheduleWorkflowView(payload.view)
+  );
+
+  if (!unplanned.length) {
+    return { ...payload, unplanned_count: 0 };
+  }
+
+  const rows = [...payload.rows, ...unplanned];
+  sortMappedRows(rows);
+
+  return {
+    ...payload,
+    rows: rows.map((row, index) => ({ ...row, no: index + 1 })),
+    count: rows.length,
+    unplanned_count: unplanned.length,
+  };
+};
+
 const buildMonthlyScheduleRealizationRows = async (
   selectedYear,
   selectedMonth,
@@ -2285,6 +2403,9 @@ const getMasterJadwalBulananPreview = async (req, res, next) => {
       : 'snapshot';
     const workflowView = parseMonthlyScheduleWorkflowView(req.query.view);
     const includeAnakTimbang = parseBooleanFlag(req.query.include_anak_timbang, false);
+    // Dipakai dashboard saja. Halaman MAP & export tidak pernah mengirim flag
+    // ini, jadi dokumen revisi yang mereka tampilkan tetap apa adanya.
+    const includeUnplanned = parseBooleanFlag(req.query.include_unplanned, false);
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -2341,7 +2462,14 @@ const getMasterJadwalBulananPreview = async (req, res, next) => {
         workflowView
       );
       if (currentHeader) {
-        const currentPayload = await buildMonthlyScheduleSnapshotPayload(currentHeader);
+        let currentPayload = await buildMonthlyScheduleSnapshotPayload(currentHeader);
+        if (includeUnplanned) {
+          currentPayload = await attachUnplannedMonthlyRows(
+            currentPayload,
+            selectedYear,
+            selectedMonth
+          );
+        }
         return res.status(200).json(currentPayload);
       }
 
@@ -3838,6 +3966,99 @@ const buildExternalSnapshotPayload = async (header, transaction = null, sourceOv
   };
 };
 
+/**
+ * Versi eksternal dari buildUnplannedMonthlyRows.
+ *
+ * MAP eksternal satu header mencakup DUA periode (bulan basis + bulan
+ * berikutnya), jadi scan-nya juga dua kali dan penandaan periodenya mengikuti
+ * `_period_key` supaya baris baru jatuh di kolom bulan yang benar.
+ */
+const buildUnplannedExternalRows = async (
+  selectedYear,
+  selectedMonth,
+  existingRows = [],
+  transaction = null
+) => {
+  const nextPeriod = getNextPeriodConfig(selectedYear, selectedMonth);
+  const currentLabel = `${MONTH_NAMES_ID[Number(selectedMonth) - 1]} ${selectedYear}`;
+  const nextLabel = `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`;
+
+  // includeCalibrationDate: false -- alasannya sama persis dengan catatan di
+  // buildUnplannedMonthlyRows: kalau dicocokkan lewat tanggal kalibrasi, alat
+  // yang dikalibrasi bulan ini tapi jatuh temponya masih jauh akan ditandai
+  // terus-menerus tanpa pernah bisa dibereskan.
+  const scanOptions = { includeAnakTimbang: true, includeCalibrationDate: false };
+  const [currentResults, nextResults] = await Promise.all([
+    getMonthlyCalibrationData(
+      selectedYear,
+      selectedMonth,
+      CALIBRATION_SCOPE.EXTERNAL,
+      transaction,
+      scanOptions
+    ),
+    getMonthlyCalibrationData(
+      nextPeriod.year,
+      nextPeriod.month,
+      CALIBRATION_SCOPE.EXTERNAL,
+      transaction,
+      scanOptions
+    ),
+  ]);
+
+  const liveRows = [
+    ...mapExternalLiveRowsForPeriod(currentResults, selectedYear, selectedMonth, currentLabel),
+    ...mapExternalLiveRowsForPeriod(nextResults, nextPeriod.year, nextPeriod.month, nextLabel),
+  ];
+
+  const known = new Set();
+  (existingRows || []).forEach((row) => {
+    const rowKey = getExternalScheduleRowKey(row);
+    if (rowKey) known.add(rowKey);
+    const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+    const periodKey = String(row?._period_key || '').trim().toUpperCase();
+    if (qaKey) known.add(`QA|${qaKey}|${periodKey}`);
+  });
+
+  return liveRows
+    .filter((row) => {
+      const rowKey = getExternalScheduleRowKey(row);
+      if (rowKey && known.has(rowKey)) return false;
+      const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+      const periodKey = String(row?._period_key || '').trim().toUpperCase();
+      if (qaKey && known.has(`QA|${qaKey}|${periodKey}`)) return false;
+      return true;
+    })
+    .map((row) => ({
+      ...row,
+      schedule_detail_id: null,
+      include_in_revision: false,
+      is_unplanned: true,
+    }));
+};
+
+const attachUnplannedExternalRows = async (payload, selectedYear, selectedMonth) => {
+  if (!payload?.rows) return payload;
+
+  const unplanned = await buildUnplannedExternalRows(
+    selectedYear,
+    selectedMonth,
+    payload.rows
+  );
+
+  if (!unplanned.length) {
+    return { ...payload, unplanned_count: 0 };
+  }
+
+  const rows = [...payload.rows, ...unplanned];
+
+  return {
+    ...payload,
+    rows: rows.map((row, index) => ({ ...row, no: index + 1 })),
+    count: rows.length,
+    unplanned_count: unplanned.length,
+  };
+};
+
 const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
@@ -3846,6 +4067,8 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
     const source = ['live', 'requested', 'snapshot', 'previous'].includes(req.query.source)
       ? req.query.source
       : 'snapshot';
+    // Lihat catatan di getMasterJadwalBulananPreview: flag khusus dashboard.
+    const includeUnplanned = parseBooleanFlag(req.query.include_unplanned, false);
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -3885,9 +4108,15 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
         workflowView
       );
       if (currentHeader) {
-        return res.status(200).json(
-          await buildExternalSnapshotPayload(currentHeader)
-        );
+        let currentPayload = await buildExternalSnapshotPayload(currentHeader);
+        if (includeUnplanned) {
+          currentPayload = await attachUnplannedExternalRows(
+            currentPayload,
+            selectedYear,
+            selectedMonth
+          );
+        }
+        return res.status(200).json(currentPayload);
       }
 
       const requestedHeader = await getLatestRequestedExternalHeader(

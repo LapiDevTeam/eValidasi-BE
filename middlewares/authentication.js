@@ -1,6 +1,7 @@
 
 const axios = require("axios");
 const MyError = require("../helpers/errors");
+require("dotenv").config();
 
 const authentication = async (req, res, next) => {
   try {
@@ -16,7 +17,7 @@ const authentication = async (req, res, next) => {
     if (token) {
       let response;
       try {
-        response = await fetch("http://192.168.1.69/api/lms/v1/decode", {
+        response = await fetch(process.env.LMS_URL, {
           method: "GET",
           headers: {
             access_token: token,
