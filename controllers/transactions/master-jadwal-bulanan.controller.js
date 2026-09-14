@@ -2407,6 +2407,9 @@ const resolveMonthlySchedulePreviewPayload = async (
     : 'snapshot';
   const workflowView = parseMonthlyScheduleWorkflowView(options.view);
   const includeAnakTimbang = Boolean(options.includeAnakTimbang);
+  // Dipakai dashboard saja. Halaman MAP & export tidak pernah mengirim flag
+  // ini, jadi dokumen revisi yang mereka tampilkan tetap apa adanya.
+  const includeUnplanned = Boolean(options.includeUnplanned);
 
   await ensureMonthlyScheduleInternalSchema();
 
@@ -2447,7 +2450,14 @@ const resolveMonthlySchedulePreviewPayload = async (
       workflowView
     );
     if (currentHeader) {
-      return buildMonthlyScheduleSnapshotPayload(currentHeader);
+      const currentPayload = await buildMonthlyScheduleSnapshotPayload(currentHeader);
+      // Baris "unplanned" hanya ditempel pada revisi yang SUDAH approved --
+      // di situlah istilah "belum masuk MAP" punya arti. Untuk revisi yang
+      // masih requested atau hasil live scan, tidak ada dokumen resmi untuk
+      // dibandingkan, jadi dashboard yang menjelaskan keadaannya.
+      return includeUnplanned
+        ? attachUnplannedMonthlyRows(currentPayload, selectedYear, selectedMonth)
+        : currentPayload;
     }
 
     const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
@@ -2482,6 +2492,7 @@ const getMasterJadwalBulananPreview = async (req, res, next) => {
       source: req.query.source,
       view: req.query.view,
       includeAnakTimbang: parseBooleanFlag(req.query.include_anak_timbang, false),
+      includeUnplanned: parseBooleanFlag(req.query.include_unplanned, false),
     });
     return res.status(200).json(payload);
   } catch (error) {
@@ -3968,6 +3979,97 @@ const buildExternalSnapshotPayload = async (header, transaction = null, sourceOv
 
 // Resolusi payload preview MAP External (snapshot -> requested -> live).
 // Dipakai oleh endpoint preview dan Dashboard (cms/dashboard/monthly-summary).
+/**
+ * Instrumen eksternal yang baru masuk SETELAH revisi MAP di-approve.
+ * Kembaran dari buildUnplannedMonthlyRows untuk sisi eksternal; cakupannya
+ * dua bulan karena MAP eksternal N memuat jadwal N dan N+1.
+ */
+const buildUnplannedExternalRows = async (
+  selectedYear,
+  selectedMonth,
+  existingRows = [],
+  transaction = null
+) => {
+  const nextPeriod = getNextPeriodConfig(selectedYear, selectedMonth);
+  const currentLabel = `${MONTH_NAMES_ID[Number(selectedMonth) - 1]} ${selectedYear}`;
+  const nextLabel = `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`;
+
+  // includeCalibrationDate: false -- alasannya sama persis dengan catatan di
+  // buildUnplannedMonthlyRows: kalau dicocokkan lewat tanggal kalibrasi, alat
+  // yang dikalibrasi bulan ini tapi jatuh temponya masih jauh akan ditandai
+  // terus-menerus tanpa pernah bisa dibereskan.
+  const scanOptions = { includeAnakTimbang: true, includeCalibrationDate: false };
+  const [currentResults, nextResults] = await Promise.all([
+    getMonthlyCalibrationData(
+      selectedYear,
+      selectedMonth,
+      CALIBRATION_SCOPE.EXTERNAL,
+      transaction,
+      scanOptions
+    ),
+    getMonthlyCalibrationData(
+      nextPeriod.year,
+      nextPeriod.month,
+      CALIBRATION_SCOPE.EXTERNAL,
+      transaction,
+      scanOptions
+    ),
+  ]);
+
+  const liveRows = [
+    ...mapExternalLiveRowsForPeriod(currentResults, selectedYear, selectedMonth, currentLabel),
+    ...mapExternalLiveRowsForPeriod(nextResults, nextPeriod.year, nextPeriod.month, nextLabel),
+  ];
+
+  const known = new Set();
+  (existingRows || []).forEach((row) => {
+    const rowKey = getExternalScheduleRowKey(row);
+    if (rowKey) known.add(rowKey);
+    const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+    const periodKey = String(row?._period_key || '').trim().toUpperCase();
+    if (qaKey) known.add(`QA|${qaKey}|${periodKey}`);
+  });
+
+  return liveRows
+    .filter((row) => {
+      const rowKey = getExternalScheduleRowKey(row);
+      if (rowKey && known.has(rowKey)) return false;
+      const qaKey = String(row?.qa_id || '').trim().toUpperCase();
+      const periodKey = String(row?._period_key || '').trim().toUpperCase();
+      if (qaKey && known.has(`QA|${qaKey}|${periodKey}`)) return false;
+      return true;
+    })
+    .map((row) => ({
+      ...row,
+      schedule_detail_id: null,
+      include_in_revision: false,
+      is_unplanned: true,
+    }));
+};
+
+const attachUnplannedExternalRows = async (payload, selectedYear, selectedMonth) => {
+  if (!payload?.rows) return payload;
+
+  const unplanned = await buildUnplannedExternalRows(
+    selectedYear,
+    selectedMonth,
+    payload.rows
+  );
+
+  if (!unplanned.length) {
+    return { ...payload, unplanned_count: 0 };
+  }
+
+  const rows = [...payload.rows, ...unplanned];
+
+  return {
+    ...payload,
+    rows: rows.map((row, index) => ({ ...row, no: index + 1 })),
+    count: rows.length,
+    unplanned_count: unplanned.length,
+  };
+};
+
 const resolveExternalMonthlySchedulePreviewPayload = async (
   selectedYear,
   selectedMonth,
@@ -3977,6 +4079,7 @@ const resolveExternalMonthlySchedulePreviewPayload = async (
   const source = ['live', 'requested', 'snapshot', 'previous'].includes(options.source)
     ? options.source
     : 'snapshot';
+  const includeUnplanned = Boolean(options.includeUnplanned);
 
   await ensureMonthlyScheduleExternalSchema();
 
@@ -4005,7 +4108,11 @@ const resolveExternalMonthlySchedulePreviewPayload = async (
       workflowView
     );
     if (currentHeader) {
-      return buildExternalSnapshotPayload(currentHeader);
+      const currentPayload = await buildExternalSnapshotPayload(currentHeader);
+      // Sama seperti internal: hanya revisi approved yang ditempeli.
+      return includeUnplanned
+        ? attachUnplannedExternalRows(currentPayload, selectedYear, selectedMonth)
+        : currentPayload;
     }
 
     const requestedHeader = await getLatestRequestedExternalHeader(
@@ -4037,6 +4144,7 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
       await resolveExternalMonthlySchedulePreviewPayload(selectedYear, selectedMonth, {
         source: req.query.source,
         view: req.query.view,
+        includeUnplanned: parseBooleanFlag(req.query.include_unplanned, false),
       })
     );
   } catch (error) {
