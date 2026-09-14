@@ -2394,18 +2394,82 @@ const insertMonthlyScheduleDetails = async (scheduleHeaderId, rows, userId, tran
   }
 };
 
+// Resolusi payload preview MAP Internal (snapshot -> requested -> live).
+// Dipakai oleh endpoint preview dan juga Dashboard (cms/dashboard/monthly-summary)
+// supaya angka "Total Instruments" di dashboard selalu sama dengan halaman MAP.
+const resolveMonthlySchedulePreviewPayload = async (
+  selectedYear,
+  selectedMonth,
+  options = {}
+) => {
+  const source = ['live', 'requested', 'snapshot', 'previous', 'scan'].includes(options.source)
+    ? options.source
+    : 'snapshot';
+  const workflowView = parseMonthlyScheduleWorkflowView(options.view);
+  const includeAnakTimbang = Boolean(options.includeAnakTimbang);
+
+  await ensureMonthlyScheduleInternalSchema();
+
+  if (source === 'scan') {
+    return buildMonthlyScheduleScanPayload(selectedYear, selectedMonth, null, {
+      includeAnakTimbang,
+      workflowView,
+    });
+  }
+
+  if (source === 'previous') {
+    const { previousHeader } = await getMonthlyScheduleRevisionState(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (!previousHeader) {
+      const err = new Error('No previous monthly schedule revision is available.');
+      err.statusCode = 404;
+      throw err;
+    }
+    return buildMonthlyScheduleSnapshotPayload(previousHeader, null, 'previous');
+  }
+
+  if (source === 'requested') {
+    const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (requestedHeader) {
+      return buildMonthlyScheduleSnapshotPayload(requestedHeader);
+    }
+  } else if (source !== 'live') {
+    const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (currentHeader) {
+      return buildMonthlyScheduleSnapshotPayload(currentHeader);
+    }
+
+    const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (requestedHeader) {
+      return buildMonthlyScheduleSnapshotPayload(requestedHeader);
+    }
+  }
+
+  return buildMonthlyScheduleLivePayload(selectedYear, selectedMonth, null, {
+    includeAnakTimbang,
+    workflowView,
+  });
+};
+
 const getMasterJadwalBulananPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const selectedMonth = parseMonth(req.query.month);
-    const source = ['live', 'requested', 'snapshot', 'previous', 'scan'].includes(req.query.source)
-      ? req.query.source
-      : 'snapshot';
-    const workflowView = parseMonthlyScheduleWorkflowView(req.query.view);
-    const includeAnakTimbang = parseBooleanFlag(req.query.include_anak_timbang, false);
-    // Dipakai dashboard saja. Halaman MAP & export tidak pernah mengirim flag
-    // ini, jadi dokumen revisi yang mereka tampilkan tetap apa adanya.
-    const includeUnplanned = parseBooleanFlag(req.query.include_unplanned, false);
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -2414,82 +2478,18 @@ const getMasterJadwalBulananPreview = async (req, res, next) => {
       });
     }
 
-    await ensureMonthlyScheduleInternalSchema();
-
-    if (source === 'scan') {
-      const scanPayload = await buildMonthlyScheduleScanPayload(selectedYear, selectedMonth, null, {
-        includeAnakTimbang,
-        workflowView,
-      });
-      return res.status(200).json(scanPayload);
-    }
-
-    if (source === 'previous') {
-      const { previousHeader } = await getMonthlyScheduleRevisionState(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (!previousHeader) {
-        const err = new Error('No previous monthly schedule revision is available.');
-        err.statusCode = 404;
-        res.status(404).json({ success: false, message: err.message });
-        next(err);
-        return;
-      }
-      const previousPayload = await buildMonthlyScheduleSnapshotPayload(
-        previousHeader,
-        null,
-        'previous'
-      );
-      return res.status(200).json(previousPayload);
-    }
-
-    if (source === 'requested') {
-      const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (requestedHeader) {
-        const requestedPayload = await buildMonthlyScheduleSnapshotPayload(requestedHeader);
-        return res.status(200).json(requestedPayload);
-      }
-    } else if (source !== 'live') {
-      const currentHeader = await getLatestApprovedMonthlyScheduleHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (currentHeader) {
-        let currentPayload = await buildMonthlyScheduleSnapshotPayload(currentHeader);
-        if (includeUnplanned) {
-          currentPayload = await attachUnplannedMonthlyRows(
-            currentPayload,
-            selectedYear,
-            selectedMonth
-          );
-        }
-        return res.status(200).json(currentPayload);
-      }
-
-      const requestedHeader = await getLatestRequestedMonthlyScheduleHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (requestedHeader) {
-        const requestedPayload = await buildMonthlyScheduleSnapshotPayload(requestedHeader);
-        return res.status(200).json(requestedPayload);
-      }
-    }
-
-    const livePayload = await buildMonthlyScheduleLivePayload(selectedYear, selectedMonth, null, {
-      includeAnakTimbang,
-      workflowView,
+    const payload = await resolveMonthlySchedulePreviewPayload(selectedYear, selectedMonth, {
+      source: req.query.source,
+      view: req.query.view,
+      includeAnakTimbang: parseBooleanFlag(req.query.include_anak_timbang, false),
     });
-    return res.status(200).json(livePayload);
+    return res.status(200).json(payload);
   } catch (error) {
+    if (error.statusCode === 404) {
+      res.status(404).json({ success: false, message: error.message });
+      next(error);
+      return;
+    }
     console.error('Error in getMasterJadwalBulananPreview:', error);
     next(error);
   }
@@ -3966,109 +3966,65 @@ const buildExternalSnapshotPayload = async (header, transaction = null, sourceOv
   };
 };
 
-/**
- * Versi eksternal dari buildUnplannedMonthlyRows.
- *
- * MAP eksternal satu header mencakup DUA periode (bulan basis + bulan
- * berikutnya), jadi scan-nya juga dua kali dan penandaan periodenya mengikuti
- * `_period_key` supaya baris baru jatuh di kolom bulan yang benar.
- */
-const buildUnplannedExternalRows = async (
+// Resolusi payload preview MAP External (snapshot -> requested -> live).
+// Dipakai oleh endpoint preview dan Dashboard (cms/dashboard/monthly-summary).
+const resolveExternalMonthlySchedulePreviewPayload = async (
   selectedYear,
   selectedMonth,
-  existingRows = [],
-  transaction = null
+  options = {}
 ) => {
-  const nextPeriod = getNextPeriodConfig(selectedYear, selectedMonth);
-  const currentLabel = `${MONTH_NAMES_ID[Number(selectedMonth) - 1]} ${selectedYear}`;
-  const nextLabel = `${MONTH_NAMES_ID[nextPeriod.month - 1]} ${nextPeriod.year}`;
+  const workflowView = parseMonthlyScheduleWorkflowView(options.view);
+  const source = ['live', 'requested', 'snapshot', 'previous'].includes(options.source)
+    ? options.source
+    : 'snapshot';
 
-  // includeCalibrationDate: false -- alasannya sama persis dengan catatan di
-  // buildUnplannedMonthlyRows: kalau dicocokkan lewat tanggal kalibrasi, alat
-  // yang dikalibrasi bulan ini tapi jatuh temponya masih jauh akan ditandai
-  // terus-menerus tanpa pernah bisa dibereskan.
-  const scanOptions = { includeAnakTimbang: true, includeCalibrationDate: false };
-  const [currentResults, nextResults] = await Promise.all([
-    getMonthlyCalibrationData(
+  await ensureMonthlyScheduleExternalSchema();
+
+  if (source === 'requested') {
+    const requestedHeader = await getLatestRequestedExternalHeader(
       selectedYear,
       selectedMonth,
-      CALIBRATION_SCOPE.EXTERNAL,
-      transaction,
-      scanOptions
-    ),
-    getMonthlyCalibrationData(
-      nextPeriod.year,
-      nextPeriod.month,
-      CALIBRATION_SCOPE.EXTERNAL,
-      transaction,
-      scanOptions
-    ),
-  ]);
+      workflowView
+    );
+    if (requestedHeader) {
+      return buildExternalSnapshotPayload(requestedHeader);
+    }
+  } else if (source === 'previous') {
+    const { previousHeader } = await getExternalRevisionState(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (previousHeader) {
+      return buildExternalSnapshotPayload(previousHeader, null, 'previous');
+    }
+  } else if (source !== 'live') {
+    const currentHeader = await getLatestApprovedExternalHeader(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (currentHeader) {
+      return buildExternalSnapshotPayload(currentHeader);
+    }
 
-  const liveRows = [
-    ...mapExternalLiveRowsForPeriod(currentResults, selectedYear, selectedMonth, currentLabel),
-    ...mapExternalLiveRowsForPeriod(nextResults, nextPeriod.year, nextPeriod.month, nextLabel),
-  ];
-
-  const known = new Set();
-  (existingRows || []).forEach((row) => {
-    const rowKey = getExternalScheduleRowKey(row);
-    if (rowKey) known.add(rowKey);
-    const qaKey = String(row?.qa_id || '').trim().toUpperCase();
-    const periodKey = String(row?._period_key || '').trim().toUpperCase();
-    if (qaKey) known.add(`QA|${qaKey}|${periodKey}`);
-  });
-
-  return liveRows
-    .filter((row) => {
-      const rowKey = getExternalScheduleRowKey(row);
-      if (rowKey && known.has(rowKey)) return false;
-      const qaKey = String(row?.qa_id || '').trim().toUpperCase();
-      const periodKey = String(row?._period_key || '').trim().toUpperCase();
-      if (qaKey && known.has(`QA|${qaKey}|${periodKey}`)) return false;
-      return true;
-    })
-    .map((row) => ({
-      ...row,
-      schedule_detail_id: null,
-      include_in_revision: false,
-      is_unplanned: true,
-    }));
-};
-
-const attachUnplannedExternalRows = async (payload, selectedYear, selectedMonth) => {
-  if (!payload?.rows) return payload;
-
-  const unplanned = await buildUnplannedExternalRows(
-    selectedYear,
-    selectedMonth,
-    payload.rows
-  );
-
-  if (!unplanned.length) {
-    return { ...payload, unplanned_count: 0 };
+    const requestedHeader = await getLatestRequestedExternalHeader(
+      selectedYear,
+      selectedMonth,
+      workflowView
+    );
+    if (requestedHeader) {
+      return buildExternalSnapshotPayload(requestedHeader);
+    }
   }
 
-  const rows = [...payload.rows, ...unplanned];
-
-  return {
-    ...payload,
-    rows: rows.map((row, index) => ({ ...row, no: index + 1 })),
-    count: rows.length,
-    unplanned_count: unplanned.length,
-  };
+  return buildExternalLivePayload(selectedYear, selectedMonth, null, workflowView);
 };
 
 const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
   try {
     const selectedYear = parseYear(req.query.year);
     const selectedMonth = parseMonth(req.query.month);
-    const workflowView = parseMonthlyScheduleWorkflowView(req.query.view);
-    const source = ['live', 'requested', 'snapshot', 'previous'].includes(req.query.source)
-      ? req.query.source
-      : 'snapshot';
-    // Lihat catatan di getMasterJadwalBulananPreview: flag khusus dashboard.
-    const includeUnplanned = parseBooleanFlag(req.query.include_unplanned, false);
 
     if (!selectedYear || !selectedMonth) {
       return res.status(400).json({
@@ -4077,63 +4033,12 @@ const getMasterJadwalBulananExternalPreview = async (req, res, next) => {
       });
     }
 
-    await ensureMonthlyScheduleExternalSchema();
-
-    if (source === 'requested') {
-      const requestedHeader = await getLatestRequestedExternalHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (requestedHeader) {
-        return res.status(200).json(
-          await buildExternalSnapshotPayload(requestedHeader)
-        );
-      }
-    } else if (source === 'previous') {
-      const { previousHeader } = await getExternalRevisionState(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (previousHeader) {
-        return res.status(200).json(
-          await buildExternalSnapshotPayload(previousHeader, null, 'previous')
-        );
-      }
-    } else if (source !== 'live') {
-      const currentHeader = await getLatestApprovedExternalHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (currentHeader) {
-        let currentPayload = await buildExternalSnapshotPayload(currentHeader);
-        if (includeUnplanned) {
-          currentPayload = await attachUnplannedExternalRows(
-            currentPayload,
-            selectedYear,
-            selectedMonth
-          );
-        }
-        return res.status(200).json(currentPayload);
-      }
-
-      const requestedHeader = await getLatestRequestedExternalHeader(
-        selectedYear,
-        selectedMonth,
-        workflowView
-      );
-      if (requestedHeader) {
-        return res.status(200).json(
-          await buildExternalSnapshotPayload(requestedHeader)
-        );
-      }
-    }
-
-    return res
-      .status(200)
-      .json(await buildExternalLivePayload(selectedYear, selectedMonth, null, workflowView));
+    return res.status(200).json(
+      await resolveExternalMonthlySchedulePreviewPayload(selectedYear, selectedMonth, {
+        source: req.query.source,
+        view: req.query.view,
+      })
+    );
   } catch (error) {
     if (error.status) {
       return res.status(error.status).json({ success: false, message: error.message });
@@ -5115,6 +5020,8 @@ module.exports = {
   requestMasterJadwalBulananExternalApproval,
   approveMasterJadwalBulananExternal,
   rejectMasterJadwalBulananExternal,
+  resolveMonthlySchedulePreviewPayload,
+  resolveExternalMonthlySchedulePreviewPayload,
 };
 
 
