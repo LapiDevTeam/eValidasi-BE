@@ -1683,6 +1683,8 @@ async function createSession(data) {
     .input('InstrumentId',    sql.NVarChar(50),  data.instrumentId)
     .input('StandardId',      sql.Int,           data.standardId)
     .input('CalibrationDate', sql.Date,          data.calibrationDate)
+    .input('IntervalBulan',   sql.VarChar(50),   data.intervalBulan   || null)
+    .input('MetodeKalibrasi', sql.VarChar(500),  data.metodeKalibrasi || null)
     .input('Temperature',     sql.Decimal(10,2), data.temperature     ?? null)
     .input('Humidity',        sql.Decimal(10,2), data.humidity        ?? null)
     .input('Pic',             sql.VarChar(100),  data.pic             || null)
@@ -1698,18 +1700,20 @@ async function createSession(data) {
     .input('CreatedBy',       sql.VarChar(100),  data.createdBy       || null)
     .query(`
       INSERT INTO [dbo].[calibration_sessions]
-        (instrument_id, standard_id, calibration_date, temperature, humidity,
+        (instrument_id, standard_id, calibration_date, interval_bulan, metode_kalibrasi,
+         temperature, humidity,
          pic, uut_unit, standard_unit, indicator_type, resolution,
          standard_uncertainty, metal_rule_uncertainty,
          delta_h, media_density, gravity,
          status, created_by)
-      OUTPUT INSERTED.session_id
       VALUES
-        (@InstrumentId, @StandardId, @CalibrationDate, @Temperature, @Humidity,
+        (@InstrumentId, @StandardId, @CalibrationDate, @IntervalBulan, @MetodeKalibrasi,
+         @Temperature, @Humidity,
          @Pic, @UutUnit, @StandardUnit, @IndicatorType, @Resolution,
          @StandardUncertainty, @MetalRuleUncertainty,
          @DeltaH, @MediaDensity, @Gravity,
-         'DRAFT', @CreatedBy)
+         'DRAFT', @CreatedBy);
+      SELECT CAST(SCOPE_IDENTITY() AS INT) AS session_id;
     `);
   return result.recordset[0].session_id;
 }
@@ -1732,6 +1736,8 @@ async function listSessions({ limit = 50 } = {}) {
         cs.instrument_id,
         cs.standard_id,
         cs.calibration_date,
+        cs.interval_bulan,
+        cs.metode_kalibrasi,
         cs.pic,
         cs.uut_unit,
         cs.standard_unit,
@@ -1761,10 +1767,14 @@ async function getSessionById(sessionId) {
     .query(`
       SELECT
         session_id, instrument_id, standard_id, calibration_date,
+        interval_bulan, metode_kalibrasi,
         temperature, humidity, pic, uut_unit, standard_unit,
         indicator_type, resolution,
         standard_uncertainty, metal_rule_uncertainty,
-        delta_h, media_density, gravity, status, evaluation_result, created_by, created_at
+        delta_h, media_density, gravity, status, evaluation_result, created_by, created_at,
+        approved_by_admin, approved_by_admin_date,
+        approved_by_officer, approved_by_officer_date,
+        approved_by_manager, approved_by_manager_date
       FROM [dbo].[calibration_sessions]
       WHERE session_id = @SessionId AND is_deleted = 0
     `);

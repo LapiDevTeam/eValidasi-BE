@@ -38,6 +38,7 @@ const CERT_DIVISOR = 2;                 // certificate reported at k = 2
 const SRES_FACTOR = 0.5 * 0.82;        // Sres = 0.41 * resolusi
 const TOLERANCE_FACTOR = 5;             // toleransi = 5 * resolusi
 const LOP_SR_FACTOR = 2.26;             // LOP = 2.26*Sr(max) + |CMAX| + U(CMAX)
+const POINT_READING_SLOTS = 2;          // III. Koreksi: pembacaan titik = AVERAGE(2 nilai)
 const REPEAT_SOURCE_RATIO = 0.6;        // nominal > 0.6*maxLoad uses max-cap Sr
 
 // Conversion factors from AT master storage (konvensional_g in g, uc_mg in mg) to working unit.
@@ -144,14 +145,38 @@ function computeRepeatability(rows = [], resolusi = 0) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Pembacaan bersih satu titik.
+ *
+ * Workbook LAPI ('HASIL HITUNG'!F41/F49/F57 ...) selalu AVERAGE dari TEPAT 2
+ * pembacaan, dan jumlah pembacaan tidak terikat jumlah anak timbangan
+ * ('INPUT FORM'!B52 -> 1 AT, 2 pembacaan). Nilai baru disimpan di level titik
+ * (uut_reading_1/2, zero_reading_1/2). Sesi lama yang pembacaannya masih
+ * menempel di baris anak timbangan tetap dihitung dengan cara lama.
+ */
+function pointNetReading({ readings, zeros, standards }) {
+  const r = (readings || []).slice(0, POINT_READING_SLOTS);
+  const z = (zeros || []).slice(0, POINT_READING_SLOTS);
+  if (r.some(isEntered) || z.some(isEntered)) {
+    return meanEntered(r) - meanEntered(z);
+  }
+  // fallback data lama (pra add-timbangan-point-readings.sql)
+  return meanEntered(standards.map((s) => s.uut_reading)) - meanEntered(standards.map((s) => s.zero_reading));
+}
+
+/**
  * @param {object} point
- * @param {Array}  point.standards    [{ konvensional_g, uc_mg, uut_reading, zero_reading, at_no_id }]
+ * @param {Array}  point.standards    [{ konvensional_g, uc_mg, at_no_id }]
+ * @param {Array}  point.readings     [uut_reading_1, uut_reading_2] (level titik)
+ * @param {Array}  point.zeros        [zero_reading_1, zero_reading_2] (level titik)
  * @param {number} point.resolusi
  * @param {object} point.repeatability  result of computeRepeatability
  * @param {number} point.maxLoadRef   kapasitas_alat in working unit (threshold = 0.6 * maxLoadRef)
  * @param {string} point.unit         'kg' | 'g' | 'mg'
  */
-function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoadRef = 0, unit = 'kg' }) {
+function computePoint({
+  standards = [], readings = [], zeros = [],
+  resolusi = 0, repeatability = {}, maxLoadRef = 0, unit = 'kg',
+}) {
   const active = standards.filter(
     (s) => isEntered(s.konvensional_g) || isEntered(s.uut_reading) || isEntered(s.at_no_id)
   );
@@ -159,7 +184,7 @@ function computePoint({ standards = [], resolusi = 0, repeatability = {}, maxLoa
   const factors = UNIT_FACTORS[unit] || UNIT_FACTORS.kg;
   const konvMass = active.reduce((acc, s) => acc + toNumber(s.konvensional_g), 0) * factors.gToUnit;
   const ucConverted = active.reduce((acc, s) => acc + toNumber(s.uc_mg), 0) * factors.mgToUnit;
-  const reading = meanEntered(active.map((s) => s.uut_reading)) - meanEntered(active.map((s) => s.zero_reading));
+  const reading = pointNetReading({ readings, zeros, standards: active });
   const error = reading - konvMass;
 
   // Pick half- or max-capacity repeatability based on 0.6 * kapasitas_alat (in working unit).
@@ -295,6 +320,7 @@ module.exports = {
   CONCLUSION_PASS,
   CONCLUSION_FAIL,
   UNIT_FACTORS,
+  POINT_READING_SLOTS,
   toNumber,
   mean,
   stdev,

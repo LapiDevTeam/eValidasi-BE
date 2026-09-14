@@ -176,6 +176,29 @@ async function findById(id) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// FIND BY NO PERMOHONAN (relasi permohonan : assessment = 1 : 1)
+// ──────────────────────────────────────────────────────────────
+async function findByNoPermohonan(noPermohonan) {
+  if (!noPermohonan) return null;
+
+  const pool = await getPool();
+  const request = pool.request();
+
+  request.input('No_Permohonan', sql.NVarChar(50), noPermohonan);
+
+  const result = await request.query(`
+    SELECT TOP 1
+      AssessmentID, InstrumentName, InstrumentCode, Status, No_Permohonan
+    FROM RA_CalibrationAssessment
+    WHERE No_Permohonan = @No_Permohonan
+      AND IsDeleted = 0
+    ORDER BY AssessmentID
+  `);
+
+  return result.recordset[0] || null;
+}
+
+// ──────────────────────────────────────────────────────────────
 // UPDATE
 // ──────────────────────────────────────────────────────────────
 async function update(id, data) {
@@ -293,6 +316,7 @@ module.exports = {
   create,
   findAll,
   findById,
+  findByNoPermohonan,
   update,
   softDelete,
   updateStatus,

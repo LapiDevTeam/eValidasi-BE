@@ -1,4 +1,4 @@
-const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
+﻿const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment-timezone');
 const ExcelJS = require('exceljs');
@@ -903,7 +903,7 @@ const saveDaAnakTimbangan = async (req, res, next) => {
           Assm_Lokasi = :assm_lokasi,
           tgl_kalibrasi = :tgl_kalibrasi,
           Parameter_Interval = :parameter_interval,
-          Kalibrasi_selanjutnya = DATEADD(MONTH, :parameter_interval, Tgl_kalibrasi),
+          Kalibrasi_selanjutnya = DATEADD(MONTH, :parameter_interval, :tgl_kalibrasi),
           Catatan = :catatan
         WHERE QA_ID = :qa_id
       `;
@@ -1470,3 +1470,4 @@ module.exports = {
   downloadFileDaAnakTimbangan,
   deleteFileDaAnakTimbangan,
 };
+

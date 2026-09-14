@@ -8,7 +8,7 @@ const router = express.Router();
 
 // All routes require authentication.
 router.use(authentication);
-
+// waway
 // Sessions
 router.get('/timer-sessions', controller.listSessions);
 router.get('/timer-sessions/:sessionId', controller.getSession);

@@ -1,6 +1,5 @@
 'use strict';
 
-const { convertPascalToSessionUnit } = require('./pressureConversion.service');
 
 const CYCLE_DIRECTION_MAP = {
   X1: 'INCREASING',
@@ -205,22 +204,43 @@ function calculateZeroDeviation(pointRows = [], zeroPointRows = []) {
   return calculateZeroDeviationFromWorkbookLogic(pointRows);
 }
 
+/**
+ * Beda level acuan (koreksi pengaruh beda tinggi kolom media).
+ *
+ * Rantai di workbook — sama persis di sheet IEG 281 (kolom Q) dan IEG 510
+ * (kolom AV), keduanya memakai T53/AY53 = 0.1:
+ *   Q56 = delta_h * rho * g          -> Pascal      (0.02 * 1.2 * 9.78 = 0.23472)
+ *   Q57 = Q56 * 10^-5                -> konversi Pa ke Bar
+ *   Q59 = (1 / T53) * Q57            -> 1/0.1 = 10
+ * Netnya: koreksi = delta_h * rho * g * 10^-4 = 2.3472e-05.
+ *
+ * Catatan jujur: sheet IEG 510 bersatuan Pa tapi tetap memakai rantai konversi
+ * ke Bar di atas, jadi angkanya sama untuk sesi Pa maupun Bar. Itu janggal
+ * secara dimensi, tapi memang begitu isi workbook-nya dan nilainya diverifikasi
+ * cocok dengan kolom "Beda Level Acuan" di kedua sheet. Aturan proyek: kalau
+ * tidak match dengan Excel referensi, itu bug — bukan perbedaan pendekatan.
+ * Karena itu convertPascalToSessionUnit() TIDAK dipakai lagi di sini; faktor
+ * 10^-5-nya sudah termasuk dalam 10^-4 di atas.
+ *
+ * Versi sebelumnya mengembalikan delta_h*rho*g apa adanya (0.23472) — 10.000x
+ * terlalu besar, dan menggeser setiap error sebesar 0.23 Pa pada profil Koreksi.
+ */
+const LEVEL_CORRECTION_WORKBOOK_FACTOR = 1e-4;
+
 function calculateLevelCorrection({
   delta_h,
   media_density,
   gravity,
-  unit_mode,
 }) {
   const deltaH = toNumberOrNull(delta_h) ?? 0.02;
   const density = toNumberOrNull(media_density) ?? 1.2;
   const g = toNumberOrNull(gravity) ?? 9.78;
 
   const correctionPascal = deltaH * density * g;
-  const correctionSessionUnit = convertPascalToSessionUnit(correctionPascal, unit_mode);
 
   return {
     correction_pascal: correctionPascal,
-    correction_session_unit: correctionSessionUnit,
+    correction_session_unit: correctionPascal * LEVEL_CORRECTION_WORKBOOK_FACTOR,
   };
 }
 

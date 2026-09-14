@@ -11,6 +11,7 @@ router.use(authentication);
 
 // Sessions
 router.get('/timbangan-sessions', controller.listSessions);
+router.get('/timbangan-sessions/hysteresis', controller.getPublishedHysteresisByCertificate);
 router.get('/timbangan-sessions/:sessionId', controller.getSession);
 router.post('/timbangan-sessions', controller.createSession);
 router.put('/timbangan-sessions/:sessionId', controller.updateSession);
@@ -33,5 +34,6 @@ router.get('/timbangan-at-standards/:noId', controller.lookupAt);
 // Certificate
 router.get('/timbangan-da-candidates', controller.listDaCandidates);
 router.post('/timbangan-sessions/:sessionId/publish-sertifikat', controller.publishSertifikat);
+router.get('/timbangan-sessions/:sessionId/print-data-draft', controller.getDraftPrintData);
 
 module.exports = router;

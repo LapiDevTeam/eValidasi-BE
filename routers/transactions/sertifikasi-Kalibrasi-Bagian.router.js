@@ -15,6 +15,7 @@ const {
   searchByQAID,
   getSertifikatBagianDetail,
   getHasilKalData,
+  getWorkbookPrintData,
   searchDABagian,
   searchResertifikasiBagian,
   checkIsApproved,
@@ -52,6 +53,9 @@ router.get('/detail', authentication, getSertifikatBagianDetail);
 
 // Get hasil kalibrasi grid rows (sb_Show_Grid_Suhu)
 router.get('/hasil-kal', authentication, getHasilKalData);
+
+// Get saved workbook-owned print rows for Bagian workbook certificates
+router.get('/workbook-print-data', authentication, getWorkbookPrintData);
 
 // Search DA Bagian for creating a new sertifikat (cmd_New_Click search part)
 router.get('/search-da', authentication, searchDABagian);

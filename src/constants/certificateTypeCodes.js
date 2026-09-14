@@ -13,9 +13,10 @@
  * bawah yang sudah ter-whitelist.
  */
 
-// Parameter_Sertifikasi (apa adanya di T_Kalibrasi_DA_Bagian) -> kode huruf.
+// Parameter_Sertifikasi (apa adanya di tabel kalibrasi) -> kode huruf.
 const PARAMETER_TO_CODE = Object.freeze({
   Timbangan: 'M',
+  'Timbangan (Massa)': 'M',
   'Anak Timbangan': 'AT',
   Tekanan: 'P',
   Volume: 'V',
@@ -29,19 +30,48 @@ const PARAMETER_TO_CODE = Object.freeze({
   'Friability Tester': 'FT',
   'Moisture Analyzer': 'MA',
   RPM: 'RP',
+  'pH, Redoks, dan Conductivity': 'H',
   'PH, redoks dan conductivity': 'H',
+  'Indikator Suhu dan Simulasi Kelistrikan': 'TC',
   'Indikator suhu dan simulasi kelistrikan': 'TC',
   Torque: 'TQ',
   'Hardness Tester': 'HT',
   'Melting Point': 'MP',
   'Leak Tester': 'LT',
+  'Leak Test': 'LT',
+  'Leak Tester / Alat tes kebocoran': 'LT',
+  'Alat tes kebocoran': 'LT',
   'Tapped Volumeter': 'TV',
+  'Lain-Lain': 'Z',
   'Lain-lain': 'Z',
 });
 
 // Kode yang BENAR-BENAR punya fungsi generator nomor di DB (dbo.fnGetKal_Ser_<KODE>_No_ID).
 // Tambahkan kode di sini hanya kalau fungsi SQL-nya sudah ada.
-const GENERATOR_AVAILABLE_CODES = Object.freeze(['D', 'DS', 'DT', 'L', 'M', 'P', 'R', 'RP', 'T', 'TQ', 'TV', 'V']);
+const GENERATOR_AVAILABLE_CODES = Object.freeze([
+  'M',
+  'AT',
+  'P',
+  'V',
+  'D',
+  'R',
+  'L',
+  'T',
+  'E',
+  'DT',
+  'DS',
+  'FT',
+  'MA',
+  'RP',
+  'H',
+  'TC',
+  'TQ',
+  'HT',
+  'MP',
+  'LT',
+  'TV',
+  'Z',
+]);
 
 /**
  * Ambil kode huruf untuk sebuah Parameter_Sertifikasi.

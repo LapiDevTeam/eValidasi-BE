@@ -3,6 +3,18 @@
 const { sequelizeMSQL } = require('../../config/config.sequelize.dbmssql');
 const { Sequelize } = require('../../models');
 const moment = require('moment');
+const {
+  assertWorkbookApproval,
+  getActorApprovalRole,
+  resolveTargetApprovalRole,
+} = require('../../services/calibrationWorkbookApproval.service');
+const {
+  finalizeManagerCalibrationApproval,
+} = require('../../services/calibrationManagerFinalization.service');
+const {
+  normalizeCalculationNumbers,
+  parseDotDecimal,
+} = require('../../helpers/calibration-number-format.helper');
 
 const SESSION_TABLE = 'dbo.T_Kalibrasi_Thermohygro_Workbook_Session';
 
@@ -221,12 +233,31 @@ function textValue(value) {
 }
 
 function parseNumberValue(value) {
-  if (value === undefined || value === null || value === '') return null;
-  const normalized = typeof value === 'string'
-    ? value.replace(',', '.').trim()
-    : value;
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
+  return parseDotDecimal(value);
+}
+
+function certificateCellValue(value) {
+  const parsedValue = parseNumberValue(value);
+  if (Number.isFinite(parsedValue)) return parsedValue;
+  return textValue(value).trim();
+}
+
+function formatThermoCertificateNumber(value, { prefix = '', unit = '' } = {}) {
+  const parsedValue = parseNumberValue(value);
+  if (!Number.isFinite(parsedValue)) return textValue(value);
+
+  const absoluteText = Math.abs(parsedValue).toFixed(3);
+  let signPrefix = '';
+
+  if (prefix === '+') {
+    signPrefix = parsedValue > 0 ? '+' : parsedValue < 0 ? '-' : '';
+  } else if (prefix === '\u00B1') {
+    signPrefix = '\u00B1';
+  } else {
+    signPrefix = parsedValue < 0 ? '-' : prefix;
+  }
+
+  return `${signPrefix}${absoluteText}${unit ? ` ${unit}` : ''}`;
 }
 
 function parseCalibrationDate(value) {
@@ -389,10 +420,10 @@ function buildThermoResultRows(channelResult = {}) {
   const points = Array.isArray(channelResult?.points) ? channelResult.points : [];
   return points.map((point, index) => ({
     seqId: index + 1,
-    pembacaanAlat: parseNumberValue(point.uutAverage),
-    pembacaanStandar: parseNumberValue(point.actualStd),
-    error: parseNumberValue(point.error),
-    ketidakpastian: parseNumberValue(point.u95),
+    pembacaanAlat: certificateCellValue(point.uutAverage),
+    pembacaanStandar: certificateCellValue(point.actualStd),
+    error: certificateCellValue(point.error),
+    ketidakpastian: certificateCellValue(point.u95),
   }));
 }
 
@@ -550,6 +581,7 @@ async function replaceThermoCertificateRows({ tableName, qaId, idNoSertifikat, r
   const resolvedTable = tableName === 'rh'
     ? 'T_Kalibrasi_Sertifikat_Thermohygro_Kelembaban'
     : 'T_Kalibrasi_Sertifikat_Thermohygro_Suhu';
+  const displayUnit = tableName === 'rh' ? '%' : '\u00B0C';
 
   await sequelizeMSQL.query(
     `
@@ -565,6 +597,22 @@ async function replaceThermoCertificateRows({ tableName, qaId, idNoSertifikat, r
   );
 
   for (const row of rows) {
+    const pembacaanAlat = formatThermoCertificateNumber(row.pembacaanAlat, {
+      unit: displayUnit,
+    });
+    const pembacaanStandar = formatThermoCertificateNumber(
+      row.pembacaanStandar,
+      { unit: displayUnit }
+    );
+    const error = formatThermoCertificateNumber(row.error, {
+      prefix: '+',
+      unit: displayUnit,
+    });
+    const ketidakpastian = formatThermoCertificateNumber(row.ketidakpastian, {
+      prefix: '\u00B1',
+      unit: displayUnit,
+    });
+
     await sequelizeMSQL.query(
       `
         INSERT INTO ${resolvedTable}
@@ -599,18 +647,63 @@ async function replaceThermoCertificateRows({ tableName, qaId, idNoSertifikat, r
           qaId,
           idNoSertifikat,
           seqId: row.seqId,
-          pembacaanAlat: row.pembacaanAlat,
-          pembacaanStandar: row.pembacaanStandar,
-          error: row.error,
-          ketidakpastian: row.ketidakpastian,
+          pembacaanAlat,
+          pembacaanStandar,
+          error,
+          ketidakpastian,
           userId,
           delegatedTo,
         },
         type: Sequelize.QueryTypes.INSERT,
         transaction,
       }
-    );
+      );
   }
+}
+
+async function syncThermoCertificateResultRows({
+  qaId,
+  idNoSertifikat,
+  calculationResult,
+  userId,
+  delegatedTo,
+  transaction,
+}) {
+  const hasCertificateIdentity = Boolean(
+    textValue(qaId).trim() && textValue(idNoSertifikat).trim()
+  );
+  const hasCalculatedResults = Boolean(
+    calculationResult?.suhu || calculationResult?.rh
+  );
+
+  if (!hasCertificateIdentity || !hasCalculatedResults) {
+    return { synced: false, suhuRowCount: 0, rhRowCount: 0 };
+  }
+
+  const suhuRows = buildThermoResultRows(calculationResult.suhu);
+  const rhRows = buildThermoResultRows(calculationResult.rh);
+
+  await replaceThermoCertificateRows({
+    tableName: 'suhu',
+    qaId,
+    idNoSertifikat,
+    rows: suhuRows,
+    userId,
+    delegatedTo,
+    transaction,
+  });
+
+  await replaceThermoCertificateRows({
+    tableName: 'rh',
+    qaId,
+    idNoSertifikat,
+    rows: rhRows,
+    userId,
+    delegatedTo,
+    transaction,
+  });
+
+  return { synced: true, suhuRowCount: suhuRows.length, rhRowCount: rhRows.length };
 }
 
 async function fetchSessionById(sessionId) {
@@ -632,7 +725,7 @@ async function fetchSessionById(sessionId) {
   return {
     ...row,
     workbookPayload: parseJson(row.Workbook_Payload_JSON, null),
-    calculationResult: parseJson(row.Calculation_Result_JSON, null),
+    calculationResult: normalizeCalculationNumbers(parseJson(row.Calculation_Result_JSON, null)),
   };
 }
 
@@ -852,6 +945,7 @@ const saveWorkbookHeader = async (req, res, next) => {
 };
 
 const saveSession = async (req, res, next) => {
+  let transaction = null;
   try {
     const { user_id, delegated_to } = req.user;
     const body = req.body || {};
@@ -893,7 +987,7 @@ const saveSession = async (req, res, next) => {
     const channels = workbookPayload.channels || body.channels || {};
     const suhuChannel = channels.suhu || {};
     const rhChannel = channels.rh || {};
-    const calculationResult = body.calculationResult || null;
+    const calculationResult = normalizeCalculationNumbers(body.calculationResult || null);
     const includeRh = Boolean(workbookPayload.includeRh ?? body.includeRh);
 
     const replacements = {
@@ -926,16 +1020,18 @@ const saveSession = async (req, res, next) => {
       }
 
       if (
-        existing.ApprovedByAdmin ||
-        existing.ApprovedByOfficer ||
         existing.ApprovedByManager
       ) {
         return res.status(403).json({
           success: false,
-          message: 'Tidak bisa simpan workbook karena sudah approve',
+          message: 'Tidak bisa simpan workbook karena sudah approve Manager',
         });
       }
+    }
 
+    transaction = await sequelizeMSQL.transaction();
+
+    if (sessionId) {
       await sequelizeMSQL.query(
         `
           UPDATE ${SESSION_TABLE}
@@ -961,6 +1057,7 @@ const saveSession = async (req, res, next) => {
         {
           replacements: { ...replacements, sessionId },
           type: Sequelize.QueryTypes.UPDATE,
+          transaction,
         }
       );
     } else {
@@ -1013,11 +1110,24 @@ const saveSession = async (req, res, next) => {
         {
           replacements,
           type: Sequelize.QueryTypes.SELECT,
+          transaction,
         }
       );
 
       savedSessionId = Number(inserted[0]?.Session_ID);
     }
+
+    await syncThermoCertificateResultRows({
+      qaId,
+      idNoSertifikat,
+      calculationResult,
+      userId: user_id,
+      delegatedTo: delegated_to,
+      transaction,
+    });
+
+    await transaction.commit();
+    transaction = null;
 
     const session = await fetchSessionById(savedSessionId);
 
@@ -1027,6 +1137,13 @@ const saveSession = async (req, res, next) => {
       data: session,
     });
   } catch (error) {
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error('Error rolling back thermohygrometer saveSession:', rollbackError);
+      }
+    }
     console.error('Error in thermohygrometer saveSession:', error);
     next(error);
   }
@@ -1216,14 +1333,14 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const jobLevel = Number(
-      req?.user?.joblevel_id_user ??
-        req?.body?.job_level_id ??
-        req?.body?.jobLevelId ??
-        req?.body?.Job_LevelID
-    );
-    const role = getWorkbookApprovalRole(req);
-    const orderMessage = assertWorkbookApprovalOrder(session, role, jobLevel);
+    const actorRole = getActorApprovalRole(req);
+    const role = resolveTargetApprovalRole(req);
+    const orderMessage = assertWorkbookApproval({
+      session,
+      actorRole,
+      targetRole: role,
+      certificateApprovedByManager: true,
+    });
     if (orderMessage) {
       return res.status(403).json({
         success: false,
@@ -1231,31 +1348,42 @@ const approveSession = async (req, res, next) => {
       });
     }
 
-    const pendingRole = getPendingRole(session);
-    await sequelizeMSQL.query(
-      `
-        UPDATE ${SESSION_TABLE}
-        SET
-          ${pendingRole.column} = :userId,
-          ${pendingRole.dateColumn} = GETDATE(),
-          Status = :status,
-          Update_Date = GETDATE()
-        WHERE Session_ID = :sessionId
-      `,
-      {
-        replacements: {
-          userId: user_id,
-          status: pendingRole.status,
-          sessionId,
-        },
-        type: Sequelize.QueryTypes.UPDATE,
+    await sequelizeMSQL.transaction(async (transaction) => {
+      if (role.key === 'manager') {
+        await finalizeManagerCalibrationApproval({
+          certificateType: 'thermo',
+          session,
+          user: req.user,
+          transaction,
+        });
       }
-    );
+
+      await sequelizeMSQL.query(
+        `
+          UPDATE ${SESSION_TABLE}
+          SET
+            ${role.column} = :userId,
+            ${role.dateColumn} = GETDATE(),
+            Status = :status,
+            Update_Date = GETDATE()
+          WHERE Session_ID = :sessionId
+        `,
+        {
+          replacements: {
+            userId: user_id,
+            status: role.status,
+            sessionId,
+          },
+          type: Sequelize.QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+    });
 
     const data = await fetchSessionById(sessionId);
     return res.status(200).json({
       success: true,
-      message: `Workbook approved by ${pendingRole.label}`,
+      message: `Workbook approved by ${role.label}`,
       data,
     });
   } catch (error) {
@@ -1294,14 +1422,6 @@ const generateSertifikatFromSession = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Session not found',
-      });
-    }
-
-    if (!session.ApprovedByAdmin || !session.ApprovedByOfficer || !session.ApprovedByManager) {
-      await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: 'Sertifikat hanya bisa diterbitkan setelah approval Admin, Officer, dan Manager lengkap.',
       });
     }
 
@@ -1374,7 +1494,9 @@ const generateSertifikatFromSession = async (req, res, next) => {
       transaction,
     });
 
-    const calculationResult = body.calculationResult || session.calculationResult || {};
+    const calculationResult = normalizeCalculationNumbers(
+      body.calculationResult || session.calculationResult || {}
+    );
     const evaluationResult = normalizeEvaluationResult(
       pickValue(body, 'evaluation_result', 'evaluationResult', 'Evaluation_Result') ||
         session.Evaluation_Result
@@ -1388,24 +1510,10 @@ const generateSertifikatFromSession = async (req, res, next) => {
       });
     }
 
-    const suhuRows = buildThermoResultRows(calculationResult.suhu);
-    const rhRows = buildThermoResultRows(calculationResult.rh);
-
-    await replaceThermoCertificateRows({
-      tableName: 'suhu',
+    const syncResult = await syncThermoCertificateResultRows({
       qaId,
       idNoSertifikat,
-      rows: suhuRows,
-      userId: user_id,
-      delegatedTo: delegated_to,
-      transaction,
-    });
-
-    await replaceThermoCertificateRows({
-      tableName: 'rh',
-      qaId,
-      idNoSertifikat,
-      rows: rhRows,
+      calculationResult,
       userId: user_id,
       delegatedTo: delegated_to,
       transaction,
@@ -1476,8 +1584,8 @@ const generateSertifikatFromSession = async (req, res, next) => {
         qa_id: qaId,
         id_no_sertifikat: idNoSertifikat,
         session_id: sessionId,
-        suhu_rows: suhuRows.length,
-        rh_rows: rhRows.length,
+        suhu_rows: syncResult.suhuRowCount,
+        rh_rows: syncResult.rhRowCount,
       },
     });
   } catch (error) {

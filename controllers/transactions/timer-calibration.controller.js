@@ -27,67 +27,71 @@ function getDelegatedTo(req, fallback) {
   return req?.user?.delegated_to || req?.body?.delegated_to || fallback;
 }
 
-function sendError(res, error) {
+function sendError(res, next, error) {
+  let response;
   if (error.statusCode && error.validation) {
-    return res.status(error.statusCode).json({ success: false, message: error.message || 'Validation failed', errors: error.validation });
+    response = res.status(error.statusCode).json({ success: false, message: error.message || 'Validation failed', errors: error.validation });
+  } else if (error.statusCode) {
+    response = res.status(error.statusCode).json({ success: false, message: error.message });
+  } else {
+    console.error('[error-logger-fix] unexpected error:', error);
+    response = res.status(500).json({ success: false, message: 'Internal server error' });
   }
-  if (error.statusCode) {
-    return res.status(error.statusCode).json({ success: false, message: error.message });
-  }
-  // eslint-disable-next-line no-console
-  console.error('[timer-calibration] unexpected error:', error);
-  return res.status(500).json({ success: false, message: 'Internal server error' });
+
+  // Propagate to global error middleware so the mutation error logger can record it.
+  next(error);
+  return response;
 }
 
 // ---------------------------------------------------------------------------
 // SESSIONS
 // ---------------------------------------------------------------------------
 
-async function listSessions(req, res) {
+async function listSessions(req, res, next) {
   try {
     const data = await repo.listSessions({ status: req.query.status, unitMode: req.query.unitMode });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getSession(req, res) {
+async function getSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calc.getSessionBundle(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function createSession(req, res) {
+async function createSession(req, res, next) {
   try {
     const result = await calc.createSession(req.body || {}, getChangedBy(req));
     return res.status(201).json({ success: true, data: result });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function updateSession(req, res) {
+async function updateSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const result = await calc.updateSession(sessionId, req.body || {}, getChangedBy(req));
     return res.status(200).json({ success: true, data: result });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function deleteSession(req, res) {
+async function deleteSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const ok = await repo.deleteSessionGraph(sessionId);
     return res.status(200).json({ success: true, data: { deleted: ok } });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
@@ -95,14 +99,14 @@ async function deleteSession(req, res) {
 // WORKBOOK (points + readings)
 // ---------------------------------------------------------------------------
 
-async function saveWorkbook(req, res) {
+async function saveWorkbook(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const points = Array.isArray(req.body?.points) ? req.body.points : [];
     const result = await calc.saveWorkbook(sessionId, points);
     return res.status(200).json({ success: true, data: result });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
@@ -110,54 +114,54 @@ async function saveWorkbook(req, res) {
 // CALCULATE / RESULTS / FINALIZE
 // ---------------------------------------------------------------------------
 
-async function calculate(req, res) {
+async function calculate(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calc.calculate(sessionId, getChangedBy(req));
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function getResults(req, res) {
+async function getResults(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calc.getResults(sessionId);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function finalize(req, res) {
+async function finalize(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calc.finalize(sessionId, getChangedBy(req));
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function approveSession(req, res) {
+async function approveSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const data = await calc.approveSession(sessionId, req.user);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function rejectSession(req, res) {
+async function rejectSession(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const { reason } = req.body || {};
     const data = await calc.rejectSession(sessionId, req.user, reason);
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
@@ -165,7 +169,7 @@ async function rejectSession(req, res) {
 // CERTIFICATE PUBLISH
 // ---------------------------------------------------------------------------
 
-async function listDaCandidates(req, res) {
+async function listDaCandidates(req, res, next) {
   try {
     const includeExternal = req.query.includeExternal === undefined
       ? undefined
@@ -178,11 +182,11 @@ async function listDaCandidates(req, res) {
     });
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 
-async function publishSertifikat(req, res) {
+async function publishSertifikat(req, res, next) {
   try {
     const sessionId = parseIntParam(req.params.sessionId, 'sessionId');
     const changedBy = getChangedBy(req);
@@ -190,7 +194,7 @@ async function publishSertifikat(req, res) {
     const data = await calc.publishToSertifikat(sessionId, changedBy, delegatedTo, req.body || {});
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, next, error);
   }
 }
 

@@ -9,6 +9,7 @@ const {
   saveKalibrasiEksternal,
   deleteKalibrasiEksternal,
   uploadSertifikatVendor,
+  deleteSertifikatVendor,
   getCurrentApprove,
   checkApproveButton,
   getApproverIdentityEksternal,
@@ -37,6 +38,7 @@ router.post('/save-tidak-dapat', authentication, saveTidakDapat);
 router.post('/approve-tidak-dapat', authentication, approveTidakDapat);
 router.post('/konfirmasi-label', authentication, konfirmasiLabel);
 router.delete('/delete', authentication, deleteKalibrasiEksternal);
+router.delete('/delete-sertifikat', authentication, deleteSertifikatVendor);
 
 // Upload sertifikat: multer middleware → uploadPublicV2 → uploadSertifikatVendor
 router.post(

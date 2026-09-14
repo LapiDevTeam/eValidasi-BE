@@ -75,7 +75,11 @@ const getVendorDetail = async (req, res, next) => {
     const { vendor_id } = req.query;
 
     if (!vendor_id) {
-      return res.status(400).json({ success: false, message: 'vendor_id is required' });
+      const err = new Error('vendor_id is required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     const query = `
@@ -105,7 +109,11 @@ const getVendorDetail = async (req, res, next) => {
     });
 
     if (!results.length) {
-      return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan' });
+      const err = new Error('Vendor tidak ditemukan');
+      err.statusCode = 404;
+      res.status(404).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     return res.status(200).json({
@@ -143,7 +151,11 @@ const saveVendor = async (req, res, next) => {
     } = req.body;
 
     if (!kode_vendor || !nama_vendor) {
-      return res.status(400).json({ success: false, message: 'kode_vendor dan nama_vendor wajib diisi' });
+      const err = new Error('kode_vendor dan nama_vendor wajib diisi');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     if (!vendor_id) {
@@ -157,7 +169,11 @@ const saveVendor = async (req, res, next) => {
         type: Sequelize.QueryTypes.SELECT,
       });
       if (checkResult[0]?.cnt > 0) {
-        return res.status(400).json({ success: false, message: `Kode vendor '${kode_vendor}' sudah terdaftar` });
+        const err = new Error(`Kode vendor '${kode_vendor}' sudah terdaftar`);
+        err.statusCode = 400;
+        res.status(400).json({ success: false, message: err.message });
+        next(err);
+        return;
       }
 
       const insertQuery = `
@@ -244,7 +260,11 @@ const deleteVendor = async (req, res, next) => {
     const { vendor_id } = req.query;
 
     if (!vendor_id) {
-      return res.status(400).json({ success: false, message: 'vendor_id is required' });
+      const err = new Error('vendor_id is required');
+      err.statusCode = 400;
+      res.status(400).json({ success: false, message: err.message });
+      next(err);
+      return;
     }
 
     // Check if vendor is used in any eksternal record
