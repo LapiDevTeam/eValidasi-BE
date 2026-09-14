@@ -17,6 +17,20 @@ const errorLogger = require("./middlewares/errorLogger");
 const { BASE_URL } = require("./config/configMssql");
 const port = process.env.PORT || 3001;
 const sqllapi = process.env.MS_SQL_DB_SERVER;
+// Mengembalikan jatah cetak yang ditahan job menggantung (tab ditutup di tengah
+// preview, printForm mati sebelum melapor). Tanpa penyapu ini, satu tab yang
+// ditutup diam-diam menahan jatah selamanya dan user tidak akan pernah bisa
+// mencetak lagi tanpa campur tangan DBA.
+const printJobService = require("./services/printJob.service");
+cron.schedule("*/5 * * * *", async () => {
+  try {
+    const expired = await printJobService.sweepExpiredJobs();
+    if (expired > 0) console.log(`[printForm] ${expired} job kedaluwarsa dibereskan`);
+  } catch (error) {
+    console.error("[printForm] Gagal menyapu job kedaluwarsa:", error.message);
+  }
+});
+
 cron.schedule("30 7 * * *", async () => {
   try {
     const response = await fetch(`${BASE_URL}/studi-praformulasi-pending`);
@@ -52,4 +66,19 @@ app.use(error);
 
 app.listen(port, () => {
   console.log(`E-Validation app listening on port ${port} ${sqllapi}`);
+
+  // Diperiksa setelah server mendengarkan, karena pemeriksaannya memanggil
+  // alamat publik backend ini sendiri. Salah alamat di sini membuat job tetap
+  // terbuat dan kuota tetap dipesan, lalu gagal jauh di hilir dengan 404 yang
+  // tidak menunjuk sebabnya — lebih baik diteriakkan sekarang.
+  printJobService
+    .checkPublicBaseUrl()
+    .then((result) => {
+      if (result.ok) {
+        console.log('[printForm] Alamat publik OK');
+      } else {
+        console.warn(`[printForm] PERINGATAN: ${result.message}`);
+      }
+    })
+    .catch((err) => console.warn('[printForm] Gagal memeriksa alamat publik:', err.message));
 });

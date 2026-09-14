@@ -8,6 +8,13 @@ const {
   approveTidakDapatMGR,
   konfirmasiLabelTidakDapat,
 } = require('../../controllers/transactions/tidak-dapat-internal.controller');
+const {
+  createPrintJob,
+  downloadJobFile,
+  recordJobResult,
+  getQuota: getPrintQuota,
+  listPrintEvents,
+} = require("../../controllers/transactions/print-job.controller");
 const { checkFileSizePublic } = require("../../middlewares/upload.middleware");
 const {
   getPermohonanKalibrasiList,
@@ -244,6 +251,21 @@ router.post("/sertifikat/print-form-pdf", authentication, printFormPdf)
 router.post("/sertifikat/print-label", authentication, printLabelTerkalibrasi);
 router.get("/sertifikat/print-da-thermo", printDAThermo);
 router.get("/sertifikat/print-hapus-alat", printHapusAlat);
+
+// ============== CETAK TERKONTROL (printForm) — PILOT SERTIFIKAT BAGIAN =========
+//
+// Dua route di bawah TANPA `authentication` dan itu disengaja: pemanggilnya
+// printForm.exe di PC user, bukan browser. printForm tidak punya sesi LMS dan
+// tidak bisa mendapatkannya. Penggantinya token acak 32 byte per job, hanya
+// berlaku 20 menit, disimpan sebagai hash di database — mekanisme lain untuk
+// masalah yang sama, bukan kelonggaran.
+router.get("/print-job/:jobId/download", downloadJobFile);
+router.post("/print-job/:jobId/result", recordJobResult);
+
+// Sisanya dipanggil browser dan tetap wajib sesi.
+router.post("/print-job", authentication, createPrintJob);
+router.get("/print-job/quota", getPrintQuota);
+router.get("/print-job/events", authentication, listPrintEvents);
 
 // ============== SERTIFIKAT TIMBANGAN ROUTES ==============
 
